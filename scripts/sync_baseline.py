@@ -67,7 +67,8 @@ COPY_FILES = ["scripts/session_checkin.sh", "scripts/stop_check.py",
               "scripts/worker_guard.py", "scripts/log_check.py", "scripts/timeline.py", "scripts/pii_guard.py", "scripts/first_use_check.py",
               "scripts/check.sh", "scripts/bloat_check.py", "scripts/git-hooks/pre-push",
               ".claude/orchestration.md", ".claude/bloat-audit.md", ".claude/project-log.md", ".claude/rule-tests.md", ".github/workflows/pii-guard.yml",
-              ".claude/skills/data-change/SKILL.md", ".claude/skills/ui-verify/SKILL.md", ".claude/skills/ui-verify/measure.mjs"]
+              ".claude/skills/data-change/SKILL.md", ".claude/skills/ui-verify/SKILL.md", ".claude/skills/ui-verify/measure.mjs",
+              ".claude/skills/run-verify/SKILL.md"]
 # Agent definitions: copied only when the project has no file with that name (projects may tune them).
 COPY_IF_MISSING = [".claude/agents/worker.md", ".claude/agents/scout.md", ".claude/agents/reviewer.md",
                    "docs/FIRST_USE.md"]
