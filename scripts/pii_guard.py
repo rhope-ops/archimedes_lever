@@ -15,10 +15,10 @@ Usage:
 Opt-in: the guard runs only in a repo with a `.pii-guard` file at its root (the hook and the Action check for it).
 That file lists exact strings that are allowed (one per line, `#` comments), and paths to skip as
 `skip: <path or glob>` lines (for example a public reference text that quotes office contacts), and the option line
-`denylist: warn` (starter tier; kit default since 2026-11-13): with no denylist, --require-denylist warns instead of failing. Only the Administrator adds entries;
+`denylist: warn` (starter tier; kit default since 2026-11-13): with no denylist, --require-denylist warns instead of failing. Only the owner adds entries;
 agents never add one to get past a block (AGENTS.md "Personal data").
 
-Two tiers (the Administrator, 2026-11-15), set in `.pii-guard`:
+Two tiers (the owner, 2026-11-15), set in `.pii-guard`:
     minimum    no option line: the checks under "Checks".
     DoD        the option line `profile: dod`: the minimum checks plus the checks under "DoD checks"; a missing
                denylist always blocks (`denylist: warn` is ignored). In the Action the line is read from the
