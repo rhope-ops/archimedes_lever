@@ -8,6 +8,7 @@ Newest first. "By" = the owner for a decision; "Agent" for a recommendation the 
 
 | Date | Decision | By | Replaces |
 |---|---|---|---|
+| 2026-11-14 | Kit skill `.claude/skills/run-verify`: start the app from the commands in AGENTS.md "Commands" and prove a change by what it does. One skill in the kit, synced to projects; no skill per project. | the owner | — |
 | 2026-11-13 | Claude deletes remote branches whose work is already on main, stale ones included; a branch with unmerged work is kept and listed with a recommendation. | the owner | Deletion only of the branch just merged |
 | 2026-11-13 | A fresh review covers the head commit that is merged; a fix made after a review gets its own review (AGENTS.md "Delegation"). | the owner | The reading that an earlier review covers later fixes (log #34) |
 | 2026-11-13 | Question rule clarified: one dialog holds up to 4 questions, the rest go in Decide; Decide asks in the dialog when the tool exists. | the owner | — |

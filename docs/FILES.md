@@ -9,7 +9,7 @@ Every file in the archimedes_lever kit and what it does. Kit only: `scripts/boot
 | docs/NEXT_PROMPT.md | Short handoff: where things stand, open work, and what needs the owner. |
 | docs/DECISIONS.md | The maintainer's own decisions. Public. A project gets the blank copy from docs/templates/ instead. |
 | docs/templates/ | Blank DECISIONS.md and LOG.md for a new project. Bootstrap moves them into docs/ and deletes this folder; sync uses the LOG.md copy. |
-| .claude/skills/ | Claude Code skills, synced to projects: `data-change` (dry run, approval and counts for data writes and large queries) and `ui-verify` (measure.mjs: screenshots at 375 and 1440 px, light and dark, contrast, targets, overflow). |
+| .claude/skills/ | Claude Code skills, synced to projects: `data-change` (dry run, approval and counts for data writes and large queries), `run-verify` (start the app from the commands in AGENTS.md and prove a change by what it does) and `ui-verify` (measure.mjs: screenshots at 375 and 1440 px, light and dark, contrast, targets, overflow). |
 | docs/WORKING_WITH_AGENTS.md | For people new to agents: the working loop, clean context, how to ask, what to check. |
 | docs/LOG.md | The kit's own public log (the owner, 2026-11-13). In a project (full only): the project log for a timeline and a story deck, from docs/templates/LOG.md: milestones, breakthroughs, misses and decisions, grouped into arcs. A public project keeps its log in a private place named in Project rules. |
 | docs/host-prompts.md | Short pointer text for a claude.ai Project. |

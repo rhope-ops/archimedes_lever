@@ -90,6 +90,7 @@ Chat history, Project files and remembered copies are not authority. If you cann
 ## Verification
 
 - Before you report "verified", run the checks in Commands and report the results (a check that returns pass or fail is the most reliable way to know work is done).
+- To run the app and prove a change works: follow `.claude/skills/run-verify/SKILL.md`.
 - For UI work, verify by measuring, not by looking: follow `.claude/skills/ui-verify/SKILL.md` and report the numbers.
 - Before a data write or a query that can scan a large table: follow `.claude/skills/data-change/SKILL.md`.
 
