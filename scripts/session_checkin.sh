@@ -36,6 +36,8 @@ echo "uncommitted: $uncommitted"
 [ "$uncommitted" -gt 0 ] && git status --short
 
 [ -f scripts/bloat_check.py ] && python3 scripts/bloat_check.py --brief
+# Personal-data guard: list source, entry count, fingerprint (compare it between places) and tier; never the names.
+if [ -f .pii-guard ] && [ -f scripts/pii_guard.py ]; then python3 scripts/pii_guard.py --status || true; fi
 
 # The kit itself keeps its placeholders on purpose (same origin rule as TEMPLATE_NAME in scripts/first_use_check.py).
 origin=$(git remote get-url origin 2>/dev/null); origin=${origin%/}; origin=${origin%.git}; origin=${origin##*/}
