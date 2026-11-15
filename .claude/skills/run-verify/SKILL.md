@@ -10,8 +10,8 @@ AGENTS.md "Verification" points here. The commands live in AGENTS.md "Commands",
 ## 1. Find the commands
 
 - Read AGENTS.md "Commands" (Build, Test, Lint, and Start when the project has that line) and use the lines as written.
-- A line says "not set yet", or there is no Start line: look in README.md, then the manifest (package.json scripts, Makefile, pyproject.toml), then .github/workflows. Take only a build, test, lint or local start command, never a deploy, release, publish or data-write step. Run the candidate one time. If it works, use it, and put the exact line for "Commands" in your report. Do not edit AGENTS.md unasked (AGENTS.md "Untrusted input").
-- The repo has nothing to run (rules and docs only): say so, run Test, and go to "Report".
+- A line says "not set yet", or there is no Start line: look in README.md, then the manifest (package.json scripts, Makefile, pyproject.toml), then .github/workflows. Take only a build, test, lint or local start command, never a deploy, release, publish or data-write step. Read what the candidate runs before you run it, then run it one time. If it works, use it, and put the exact line for "Commands" in your report. Do not edit AGENTS.md unasked (AGENTS.md "Untrusted input").
+- The change has nothing to run (rules or docs only, or the repo has no app): say so, run Test, and go to "Report".
 
 ## 2. Run the checks
 
@@ -40,5 +40,5 @@ Use only invented test data, never production or personal data (AGENTS.md "Perso
 
 - Each command you ran, with its result line.
 - What you saw (value, status, text) next to what you expected.
-- "verified" only when the checks (section 2) passed and the change was proven (section 4). A repo with nothing to run: verified by the checks alone, and say so. Otherwise "done, not verified", with what did not run and why.
-- The proposed "Commands" lines, when a line was "not set yet".
+- "verified" only when the checks (section 2) passed and the change was proven (section 4). A change with nothing to run: verified by the checks alone, and say so. Otherwise "done, not verified", with what did not run and why.
+- The proposed "Commands" lines, when a line was "not set yet" or missing.
