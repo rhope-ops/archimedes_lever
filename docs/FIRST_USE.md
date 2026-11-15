@@ -80,6 +80,8 @@ With the guard on (8A) in the full tier (11B), every push and every pull-request
 | Each Claude cloud environment the repo uses | 9A or 9C | Environment menu in the session title bar > Edit > Environment variables: `PII_GUARD_DENYLIST=Name1,Name2,...`. Only a new session reads it |
 | GitHub pull-request check | always (after the first push is fine) | `https://github.com/<owner/repo>/settings/secrets/actions` > New repository secret > Name `PII_GUARD_DENYLIST` |
 
+One master copy: the user keeps the list in one file in their own Google Drive and edits only that file. A computer with Drive for desktop reads it directly (set `PII_GUARD_DENYLIST_FILE` to the synced path); the cloud variable and the GitHub secret are pasted copies of it. An agent never opens the master file. To find a copy that differs, compare the fingerprint: `python3 scripts/pii_guard.py --status` in each place and the last line of the pull-request check print the same 8 characters when the lists are the same.
+
 Then:
 
 - **`--status` shows a list:** push (`git push -u origin main`; for 10C, skip the push) and go to step 5.
