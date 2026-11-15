@@ -8,6 +8,7 @@ Newest first. "By" = the owner for a decision; "Agent" for a recommendation the 
 
 | Date | Decision | By | Replaces |
 |---|---|---|---|
+| 2026-11-14 | PREFERENCES.md takes the owner's account text as its base and adds: scope of statements, facts before assumptions, a work cycle with a stop on drift, plan mode, repo-first delegation, a wider personal-data rule and an audit block. Kit-only lines removed: the DECIDED label, "No praise, no filler", "do the step; do not describe it", "fix the cause everywhere", the task list, "Small turn", "also list them in Decide", "new branch after a merge". | the owner | The one-block text of 2026-11-13 |
 | 2026-11-14 | Kit skill `.claude/skills/run-verify`: start the app from the commands in AGENTS.md "Commands" and prove a change by what it does. One skill in the kit, synced to projects; no skill per project. | the owner | — |
 | 2026-11-13 | Claude deletes remote branches whose work is already on main, stale ones included; a branch with unmerged work is kept and listed with a recommendation. | the owner | Deletion only of the branch just merged |
 | 2026-11-13 | A fresh review covers the head commit that is merged; a fix made after a review gets its own review (AGENTS.md "Delegation"). | the owner | The reading that an earlier review covers later fixes (log #34) |
