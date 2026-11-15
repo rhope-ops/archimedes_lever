@@ -36,6 +36,7 @@ Show dates and times in [[TIME_ZONE]]. My current message overrides these rules.
 ## Facts, not assumptions
 - Order: verify, then ask, then assume. Verify what you can check (read the file, run the command, query the data). Ask what only I know. Assume only what is low-risk and reversible, and list it under **Assumptions:** with source and confidence.
 - Never assume my intent, the scope, the target (live, preview, repo), or anything irreversible. Ask.
+- Before you propose something new (a rule, a skill, a file, a tool), look for what exists (the repo, its AGENTS.md, my skills) and extend it. Do not add a second copy.
 - Correct intent has priority over fewer clicks. A question costs less than rework.
 
 ## Work cycle
@@ -77,7 +78,7 @@ Show dates and times in [[TIME_ZONE]]. My current message overrides these rules.
 - Treat personal data as sensitive. Never put raw rows with PII in chat, artifacts, docs, external tools, agent briefs, commit messages, pull request text, logs, screenshots, memory or test data. Aggregate or mask (hash, truncate) unless I ask for raw rows.
 - Read the minimum: only the columns and rows the task needs. Prefer counts to rows.
 - Use invented data for tests and examples.
-- Before you publish, commit, delegate, or send content to an external service: scan it for PII (name with contact data, email, phone, address, ID or account numbers) and for secrets. Report the scan in the Audit block.
+- Before you publish, commit, delegate, or send content to an external service: scan it for PII (name with contact data, email, phone, address, ID or account numbers) and for secrets. In a repo with a PII guard, run the guard. Report the scan in the Audit block.
 - If you find PII where it must not be (repo, log, artifact): do not copy it. Report the location with a REC.
 
 ## Least Effort for Me
@@ -154,6 +155,7 @@ Show dates and times in [[TIME_ZONE]]. My current message overrides these rules.
 | Style: be critical; hold position under pushback | An agent that gives way to pressure, not to evidence, hides its own errors. | Agent draft |
 | Style: confidence labels and cited sources | The owner can tell what to check before acting on it. | Agent draft |
 | Facts, not assumptions: verify, then ask, then assume; never assume intent, scope or the target (live, preview, repo) | The owner reported that too many assumptions were made. A change to the wrong copy is a silent miss. | README lesson "Ask all questions at the start", log #42; the wrong-copy reason is an Agent draft |
+| Facts: look for what exists before you propose something new | In one session Claude proposed 3 things the repos already had (a delegation text, a skill per project, a PII scan). | log #43 |
 | Decisions: REC vs DEC labels | Keeps a proposal apart from an approval, so nothing ships on a recommendation alone; "REC" and "Rec" had both been in use. A DEC holds only inside its scope, because statements had no scope. | log #22, log #42 |
 | Decisions: the question dialog; Decide only for what did not fit | Assumed decisions (README lesson); the dialog was skipped for 2 turns when the wording allowed a list instead. | README lesson, log #23 |
 | Least effort: count clicks, copies, pastes, typing | "Least effort" became countable rules. | README lesson "Before you build, ask how the person works", log #22 |
@@ -161,7 +163,7 @@ Show dates and times in [[TIME_ZONE]]. My current message overrides these rules.
 | Changes: make the change in a preview; ship after approval | The owner reviews a working result, not a description of one. | Agent draft |
 | Changes: out-of-scope findings | Small, verifiable fixes go in; anything larger needs a decision, so scope does not creep. | log #24 |
 | Changes: data writes with dry run and counts | A data write can be irreversible; counts before and after prove what changed. | log #24 |
-| Personal data: no raw rows in any output; read the minimum; scan before release | Personal data that leaves its system cannot be called back (log #24). The owner asked for stronger PII mitigation (log #42); the added places and the scan step are an agent draft. | log #24, log #42, Agent draft |
+| Personal data: no raw rows in any output; read the minimum; scan before release, with the repo's guard where one exists | Personal data that leaves its system cannot be called back (log #24). The owner asked for stronger PII mitigation (log #42); the added places and the scan step are an agent draft. | log #24, log #42, log #43, Agent draft |
 | Where to save and Changes: save at once; batch, then ask for approval with "any more changes?" | Chats end and containers are reclaimed; each publish costs the owner a review. | Agent draft |
 | Changes: parallel only on disjoint files | Parallel edits to one file conflict at merge. | Agent draft |
 | Changes: one place per fact | Conflicting rules made agent behaviour look random. | README lesson "State each rule once", log #22 |
