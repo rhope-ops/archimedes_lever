@@ -12,7 +12,8 @@ It reports:
     FIRST USE       the repo still has template placeholders (a new project made from the template, not set up):
                     follow docs/FIRST_USE.md before any other work.
     KIT             the repo is the kit itself (origin named archimedes_lever), for example a plain `git clone` of it:
-                    when the user asks to initiate or start a project, follow docs/FIRST_USE.md.
+                    when the user asks to initiate or start a project, follow docs/FIRST_USE.md; for project
+                    work, or when it is not clear, ask before changing anything.
     DENYLIST        the repo has a .pii-guard file but this session has no name denylist, so pushes will be blocked.
 The kit repo itself keeps its placeholders on purpose: it gets the KIT line, never FIRST USE.
 Exit 0 always: a session-start hook informs, it never blocks. Standard library only.
@@ -57,7 +58,10 @@ def messages(root):
                    "initiate, start or set up a project, follow docs/FIRST_USE.md: it moves this clone to "
                    "the user's own repo first. If the user asks what this repo is or for your thoughts on it, give your view "
                    "and offer the two takes in README.md \"What you can take from it\" (adopt PREFERENCES.md by "
-                   "interview, or set up a project). Any other request is work on the kit.")
+                   "interview, or set up a project). A request about the kit's own files (its rules, scripts or docs) "
+                   "is work on the kit. Any other request (project work, or not clear which): before you change "
+                   "anything, ask in one question whether to set up the user's own project from this clone first "
+                   "(docs/FIRST_USE.md, recommended) or to work on the kit.")
     if first_use:
         out.append("FIRST USE: this repo was made from the template and is not set up yet. Before any other work, "
                    "follow docs/FIRST_USE.md: ask the owner its questions (in Claude Code, with the clickable "
@@ -105,6 +109,9 @@ def self_test():
             expect("new project with placeholders", kinds(), ["FIRST USE"])
             run("remote", "set-url", "origin", "https://github.com/someone/Archimedes_Lever.git")
             expect("kit clone: KIT, not FIRST USE", kinds(), ["KIT"])
+            good = any(m.startswith("KIT") and "ask in one question" in m for m in messages(d))
+            print(("ok   " if good else "FAIL ") + "KIT: project work or an unclear request is asked about, not taken as kit work")
+            ok = ok and good
             pathlib.Path(d, ".pii-guard").write_text("# on\n")
             expect("guard on, no denylist", kinds(), ["KIT", "DENYLIST"])
             os.environ["PII_GUARD_DENYLIST"] = "Sam"
