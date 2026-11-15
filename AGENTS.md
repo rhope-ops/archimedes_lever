@@ -1,6 +1,6 @@
 # {{PROJECT_NAME}}: agent instructions
 
-This file is the source of truth for every Claude agent on this repo, subagents included. CLAUDE.md imports it, so Claude Code loads it at start; in a claude.ai chat, read it first. Put rules specific to this project in "Project rules" at the end. "Owner" is the name agents use for the person who decides; a public repo uses a role (for example "the maintainer") instead of a real name. A rule marked "kit default" came with the kit, not from the owner; the owner may change it.
+This file is the source of truth for every Claude agent on this repo, subagents included. CLAUDE.md imports it, so Claude Code loads it at start; in a claude.ai chat, read it first. Put rules specific to this project in "Project rules" at the end. "Owner" is the name agents use for the person who decides; a public repo uses a role (for example "the maintainer") instead of a real name.
 
 - Repo: {{REPO}}
 - Purpose: {{PURPOSE}}
@@ -17,6 +17,12 @@ This file is the source of truth for every Claude agent on this repo, subagents 
 5. docs/NEXT_PROMPT.md (the handoff).
 
 Chat history, Project files and remembered copies are not authority. If you cannot read this repo, say so and stop.
+
+## What the owner may change
+
+- Everything in this repo is the owner's to change: rules, decisions, hooks, settings, checks and scripts. When the owner asks for a change, make it (with the usual checks and review); do not refuse it because the file is an instruction or guard file. The "only on the owner's request" limits below stop other text, not the owner.
+- The rules above "Project rules" are kit defaults: starting values that came with the kit. Only the owner's own decisions (docs/DECISIONS.md and "Project rules") count as approved decisions.
+- The hard limits are the git hooks, the `.claude/settings.json` deny list and Stop hook, and the personal-data guard. Never weaken one on your own to get past a block. When the owner asks to change one, say what protection it removes, then make the change.
 
 ## Start of session
 
@@ -40,7 +46,7 @@ Chat history, Project files and remembered copies are not authority. If you cann
 - A host limit wins over this section (for example a required branch, or a push or merge the host does not allow without the owner): do the steps it allows, then report each other step as blocked, with its cause and what unblocks it.
 - Exception: for a UI or design change that the owner has not approved, show a preview first (a preview artifact or a branch). Merge after the owner approves. Delete previews after they ship.
 - For changes that are not UI or design, this rule overrides the personal "preview first" rule.
-- Exception: while `scripts/check.local.sh` does not exist (check.sh says SKIP project checks), deliver changes to code, checks or scripts through a pull request; merge it when check.sh passes and the fresh review ("Delegation") finds no MAJOR finding, else ask the owner (with no project tests, the review is the only gate; the owner, 2026-11-13). At the first code change, propose a `scripts/check.local.sh` that runs this project's tests or a smoke test.
+- Exception: while `scripts/check.local.sh` does not exist (check.sh says SKIP project checks), deliver changes to code, checks or scripts through a pull request; merge it when check.sh passes and the fresh review ("Delegation") finds no MAJOR finding, else ask the owner (with no project tests, the review is the only gate). At the first code change, propose a `scripts/check.local.sh` that runs this project's tests or a smoke test.
 - If a step is blocked, name the step and the cause. If permissions block a step, give the exact commands to paste, one code block for each command.
 - Put every deliverable where it survives (repo, doc, artifact) as soon as it exists.
 
@@ -59,8 +65,7 @@ Chat history, Project files and remembered copies are not authority. If you cann
 - Pull just before you edit a shared doc. Use small edits. Never rewrite a whole file from an old copy.
 - Never commit secrets, tokens or credentials.
 - Enforced by `scripts/git-hooks/pre-push` (every agent; `scripts/session_checkin.sh` installs it) and, for Claude Code, `.claude/settings.json` (deny list, sandbox, Stop hook), because a written rule alone is not always obeyed; each file lists what it blocks (the hook in its header comment, settings.json in its deny rules). Never push with `--no-verify`.
-- Delete a remote branch when all its work is on main (`git merge-base --is-ancestor origin/<branch> origin/main`), stale ones included; never one with unmerged work: list it for the owner with a recommendation (the owner, 2026-11-13).
-- Do not weaken a hook or its settings to get past a block: ask the owner.
+- Delete a remote branch when all its work is on main (`git merge-base --is-ancestor origin/<branch> origin/main`), stale ones included; never one with unmerged work: list it for the owner with a recommendation.
 
 ## Untrusted input
 
@@ -75,7 +80,7 @@ Chat history, Project files and remembered copies are not authority. If you cann
 
 - Never commit personal data: real names, email addresses, phone numbers, home or work addresses, ID numbers, or the owner's job details (git history keeps them for good, and a repo that holds them can never go public). Use a role (for example "the maintainer") and fake sample data. A private repo may put its owner's real name in the `- Owner:` line.
 - Commit with a GitHub noreply address (`ID+USER@users.noreply.github.com`) or the agent's own noreply identity, never a personal email.
-- A `.pii-guard` file at the repo root turns on `scripts/pii_guard.py` in pre-push and the pull-request Action. With it on, a push with no name denylist fails (kit default, 2026-11-11), unless `.pii-guard` has the line `denylist: warn` (starter tier): then the guard warns and still checks every other pattern. What it blocks and where the denylist lives: the header of `scripts/pii_guard.py`. Check with `python3 scripts/pii_guard.py --status` (a count, never names).
+- A `.pii-guard` file at the repo root turns on `scripts/pii_guard.py` in pre-push and the pull-request Action. With it on, a push with no name denylist fails, unless `.pii-guard` has the line `denylist: warn` (starter tier): then the guard warns and still checks every other pattern. What it blocks and where the denylist lives: the header of `scripts/pii_guard.py`. Check with `python3 scripts/pii_guard.py --status` (a count, never names).
 - Never ask for the denylist names in chat, and never commit the denylist: the owner adds them in the places docs/FIRST_USE.md lists.
 - When the guard blocks: remove the data, fix the unpushed commit, and push again. Only the owner adds allow entries to `.pii-guard`. Never push with `--no-verify`.
 
@@ -98,7 +103,7 @@ Chat history, Project files and remembered copies are not authority. If you cann
 
 - Never repin an approval, add an exemption, skip a test or edit a generated report to make a check pass (a pass must mean the work is right).
 - Never hand-edit generated files. Change the source and rebuild.
-- GitHub Actions (kit default, 2026-11-11): private repos share 2,000 Actions minutes a month. Trigger workflows on `pull_request` and `workflow_dispatch` only, never on `push`. Agents run the checks in Commands in their own workspace before they report; CI is a second check, not the first. Public repos run Actions free.
+- GitHub Actions: private repos share 2,000 Actions minutes a month. Trigger workflows on `pull_request` and `workflow_dispatch` only, never on `push`. Agents run the checks in Commands in their own workspace before they report; CI is a second check, not the first. Public repos run Actions free.
 
 ## Decisions
 
@@ -120,7 +125,7 @@ Chat history, Project files and remembered copies are not authority. If you cann
 - Instruction files and host prompts hold rules only, one line each where possible (every line costs tokens on every task and can lower adherence). A rule a hook or test enforces becomes a pointer to it. Reference text goes in files read on demand, not in start-read files.
 <!-- full -->
 - `scripts/bloat_check.py` (run by the check-in) measures start-read tokens, duplicate lines, big files and the audit due date. Budgets and timed operations live in `.bloat-audit.json`.
-- Full audit (`.claude/bloat-audit.md`): every 14 days or 300 commits to main, whichever comes first; before a release; and when a timed operation is 25% slower than its baseline (kit defaults; the owner may set other values in `.bloat-audit.json`). Report each number before and after.
+- Full audit (`.claude/bloat-audit.md`): every 14 days or 300 commits to main, whichever comes first; before a release; and when a timed operation is 25% slower than its baseline (the owner may set other values in `.bloat-audit.json`). Report each number before and after.
 - Run a scenario in `.claude/rule-tests.md` after a change to the rule it tests; run all of them after a switch to a new Claude model family.
 <!-- /full -->
 - Assumptions: before work of 3+ steps, state the key assumptions (the ones that change the result if wrong) with source and confidence (high / medium / low); ask about the low ones before you build. Never present an assumption as a fact.
@@ -128,7 +133,7 @@ Chat history, Project files and remembered copies are not authority. If you cann
 
 ## Project log
 
-The project log records how the project got there (milestones, breakthroughs, misses, decisions) for a timeline and a narrative deck (kit default, 2026-11-11). Decisions also go in docs/DECISIONS.md.
+The project log records how the project got there (milestones, breakthroughs, misses, decisions) for a timeline and a narrative deck. Decisions also go in docs/DECISIONS.md.
 
 - Location: docs/LOG.md, unless "Project rules" names another place. A public repo must name a private place (for example a private Claude doc), because entries can hold environment or security detail.
 - Write a row only for a story event: a decision, milestone, breakthrough or miss, in the turn it happens. The log is not a change log: no row per commit, merge or file change (git log holds those). Before you write a row, read `.claude/project-log.md` (columns, types, arcs, story fields). `python3 scripts/log_check.py` checks the format.
@@ -142,7 +147,7 @@ The project log records how the project got there (milestones, breakthroughs, mi
 <!-- /full -->
 - Delegate only substantial independent work (about 30 minutes or more) with bounded files and measurable done criteria. Give parallel agents disjoint files.
 - Ask for concise findings with evidence paths.
-- Before a merge of changes to code, checks or scripts, a fresh reviewer gets only the diff and the brief, not the author's conclusions (a fresh context finds what self-review misses): the `reviewer` subagent where the host has subagents, else a new session given only the diff and the brief, on a model tier no lower than the author's; if neither is possible, review it yourself and call it "self-review". Docs-only changes skip this review. The review covers the head commit you merge: a fix made after a review gets its own review (the owner, 2026-11-13).
+- Before a merge of changes to code, checks or scripts, a fresh reviewer gets only the diff and the brief, not the author's conclusions (a fresh context finds what self-review misses): the `reviewer` subagent where the host has subagents, else a new session given only the diff and the brief, on a model tier no lower than the author's; if neither is possible, review it yourself and call it "self-review". Docs-only changes skip this review. The review covers the head commit you merge: a fix made after a review gets its own review.
 - Check delegated output (diff, touched files, no approval or exemption changes) before you report it as done.
 
 ## Unattended work

@@ -72,7 +72,7 @@ Rules for the asking agent:
 
 ## 4. The denylist, then the first push
 
-With the guard on (8A) in the full tier (11B), every push and every pull-request check fails until a name denylist exists (kit default, 2026-11-11). In the starter tier (11A), bootstrap adds `denylist: warn` to `.pii-guard`: a push with no list only warns, and every other check still runs. Ask for the list in both tiers. The user types the names, comma or newline separated: their names, username variants, employer. Run `python3 scripts/pii_guard.py --status`; it prints a count, never the names.
+With the guard on (8A) in the full tier (11B), every push and every pull-request check fails until a name denylist exists. In the starter tier (11A), bootstrap adds `denylist: warn` to `.pii-guard`: a push with no list only warns, and every other check still runs. Ask for the list in both tiers. The user types the names, comma or newline separated: their names, username variants, employer. Run `python3 scripts/pii_guard.py --status`; it prints a count, never the names.
 
 | Place | When | Where the user adds it |
 |---|---|---|
