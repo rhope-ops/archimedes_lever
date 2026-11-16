@@ -151,7 +151,7 @@ if [ -f "$top/scripts/check.sh" ] && [ "$carries" = 1 ]; then
     echo "pre-push: blocked: scripts/check.sh ${args[*]} failed (output above). Fix the cause, then push again." >&2
     exit 1
   fi
-  printf '%s\n' "$cout" | grep -E '^(TIME|WARN|CHECK) ' >&2
+  printf '%s\n' "$cout" | grep -E '^ *(TIME|WARN|CHECK) ' >&2  # indented: WARN lines of a passing check
 fi
 
 # Personal-data guard: runs only in a repo that opts in with a .pii-guard file at its root (AGENTS.md "Personal data").

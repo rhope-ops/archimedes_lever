@@ -88,6 +88,7 @@ TEXT_EXT = {".md", ".txt", ".py", ".sh", ".ps1", ".psm1", ".js", ".ts", ".json",
 VAGUE = ["appropriate", "appropriately", "as needed", "if needed", "when needed", "where possible", "if possible",
          "when possible", "properly", "reasonable", "be careful", "try to", "consider", "etc.", "best practice",
          "as much as", "usually", "generally", "ideally", "maybe", "might", "should"]
+VALUE_OPTIONS = {"-o", "--output", "--out", "--outline"}  # options whose value is a file the command writes
 NEAR_DUP = 0.6        # word overlap (Jaccard) from which two rule lines are a near-duplicate pair
 RULE_TESTS = ".claude/rule-tests.md"
 REVIEWS = "docs/reviews"
@@ -179,7 +180,7 @@ def rule_lines(text, with_sections=False):
                 counted = sec not in NOT_RULES and not (sec in RANKED and m.group(1))
                 rows.append([sec, m.group(2).strip(), counted])
                 open_item = True
-            elif open_item and "|" not in line and (indented or sec != PROJECT_RULES):
+            elif open_item and not line.lstrip().startswith("|") and (indented or sec != PROJECT_RULES):
                 rows[-1][1] += " " + line.strip()  # a wrapped line belongs to the item above it
             elif sec == PROJECT_RULES:
                 rows.append([sec, line.strip(), True])
@@ -251,7 +252,7 @@ def conflict_recorded(root, h):
 def missing_pointers(root, text):
     """Paths that AGENTS.md names and that do not exist: each `.claude/...`, `scripts/...` and `docs/...` path
     inside backticks (also after a command word: `python3 scripts/x.py --test`), and relative link targets. Not a
-    path to check: the value of an option (`-o docs/out.html`: a file the command makes); a line number
+    path to check: the value of an output option (`-o docs/out.html`: a file the command makes; VALUE_OPTIONS); a line number
     (`scripts/a.py:12`) and a pipe or ; or & after a path are cut off."""
     text = re.sub(r"(?ms)^<!-- starter -->\n.*?^<!-- /starter -->\n", "", text)
     names = set()
@@ -259,7 +260,7 @@ def missing_pointers(root, text):
         words = re.split(r"[\s|;&]+", span)
         for prev, w in zip([""] + words, words):
             w = re.sub(r"(:\d+)+$", "", w.rstrip(".,;:)"))
-            if re.match(r"(?:\.claude|scripts|docs)/", w) and not re.match(r"-\w", prev):
+            if re.match(r"(?:\.claude|scripts|docs)/", w) and prev not in VALUE_OPTIONS and not prev.endswith("="):
                 names.add(w)
     names -= OPTIONAL
     names |= {t.split("#")[0] for t in re.findall(r"\]\(([^)\s]+)\)", text)
@@ -557,6 +558,7 @@ def self_test():
         kit, project, every = rule_lines(sample)
         assert kit == ["Rule one.", "Rule two."] and project == ["Project rule."], "header, Commands, fences, comments and starter blocks are not rules"
         assert "Build: none." in every, "the list of changed lines also covers sections that are not counted"
+        assert rule_lines("## A\n\n- Rule start\n  continues with a | b here.\n")[0] == ["Rule start continues with a | b here."], "a continuation with a pipe stays in its rule (a change to it shows)"
         kit, project, _ = rule_lines("## A\n\n* Star.\n1. Numbered.\n  - Nested.\nA paragraph.\n\n## Project rules\n\n+ Plus.\n  wrapped.\nA rule as a paragraph.\n")
         assert kit == ["Star.", "Numbered.", "Nested. A paragraph."] and project == ["Plus. wrapped.", "A rule as a paragraph."], "every list marker counts; in the kit a line right below an item continues it, in Project rules only an indented one"
         _, project, _ = rule_lines("## Project rules\n\nRule one.\nRule two.\nRule three.\n\n- Bullet.\nAfter a bullet.\n\n#1 priority: never do X.\n")
@@ -582,12 +584,12 @@ def self_test():
             (ro / "AGENTS.md").write_text("## A\n\n- New rule.\n- Kept rule.\n- Third.\n\n## Project rules\n\n- P1.\n- P2.\n")
             rows, problems = rules_report(ro, caps)
             assert len(problems) == 2 and "rules over the cap (3 > 2)" in problems[0] and "project rules over" in problems[1], "both caps fail"
-            (ro / "AGENTS.md").write_text("## A\n\n- See `.claude/skills/x/SKILL.md` and [doc](docs/gone.md), [web](https://e.example/a), `.claude/skills/<name>/`, `scripts/gone.sh --fast`, `scripts/check.local.sh`, `python3 scripts/gone2.py --test`, `scripts/tool.sh -o docs/out.html`, `scripts/gone2.py:12`, `scripts/gone.sh|tee x`.\n")
+            (ro / "AGENTS.md").write_text("## A\n\n- See `.claude/skills/x/SKILL.md` and [doc](docs/gone.md), [web](https://e.example/a), `.claude/skills/<name>/`, `scripts/gone.sh --fast`, `scripts/check.local.sh`, `python3 scripts/gone2.py --test`, `scripts/tool.sh -o docs/out.html`, `scripts/gone2.py:12`, `scripts/gone.sh|tee x`, `bash -x scripts/gone3.sh`.\n")
             rows, problems = rules_report(ro, caps)
-            assert problems == ["missing paths named in AGENTS.md: .claude/skills/x/SKILL.md, docs/gone.md, scripts/gone.sh, scripts/gone2.py, scripts/tool.sh"], "missing paths (also after a command word, with a line number or a pipe), not URLs, patterns, optional files or option values"
+            assert problems == ["missing paths named in AGENTS.md: .claude/skills/x/SKILL.md, docs/gone.md, scripts/gone.sh, scripts/gone2.py, scripts/gone3.sh, scripts/tool.sh"], "missing paths (also after a command word, with a line number or a pipe), not URLs, patterns, optional files or option values"
             (ro / ".claude/skills/x").mkdir(parents=True); (ro / ".claude/skills/x/SKILL.md").write_text("x")
             (ro / "docs").mkdir(); (ro / "docs/gone.md").write_text("x")
-            (ro / "scripts").mkdir(); (ro / "scripts/gone.sh").write_text("x"); (ro / "scripts/gone2.py").write_text("x"); (ro / "scripts/tool.sh").write_text("x")
+            (ro / "scripts").mkdir(); (ro / "scripts/gone.sh").write_text("x"); (ro / "scripts/gone2.py").write_text("x"); (ro / "scripts/tool.sh").write_text("x"); (ro / "scripts/gone3.sh").write_text("x")
             assert rules_report(ro, caps)[1] == [], "paths exist: pass"
             # Conflict gate: changed rule lines need a record that names their hash; without --gate only a WARN line.
             (ro / "AGENTS.md").write_text("## A\n\n- New rule.\n- Kept rule.\n\n## Project rules\n\n")
