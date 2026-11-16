@@ -50,6 +50,9 @@ default_branches() {  # default_branches REMOTE: the names this clone knows for 
   printf '%s' "${out# }"
 }
 
+shown() { grep -E '^ *(TIME|WARN|CHECK) '; }  # the lines of a passing check.sh run that a push shows (WARN lines of a
+                                                # passing check are indented)
+
 own_tree() {  # own_tree: prints the top folder when it is this repo's own work tree, else nothing. "git --git-dir=<repo>/.git
              # push" run from another folder makes that folder the work tree: the checks would run there, or not at all.
   local top gd own
@@ -109,6 +112,7 @@ refs/heads/main $b refs/heads/main $a"
   eq "init.defaultBranch adds a name" "$(default_branches https://example.invalid/r.git)" "dev"
   eq "push to init.defaultBranch: full lane" "$(printf '%s\n' "refs/heads/x $c refs/heads/dev $a" | lane_of $(default_branches https://example.invalid/r.git))" full
   git config --unset init.defaultBranch
+  eq "a push shows TIME, WARN and CHECK lines, also an indented WARN" "$(printf '%s\n' 'PASS  a' '      WARN  rule lint: x' 'TIME  full' 'WARN  slower' 'CHECK PASS' '      rules: y' | shown | tr '\n' '|')" "      WARN  rule lint: x|TIME  full|WARN  slower|CHECK PASS|"
   o=$(mktemp -d); git -C "$o" init -q -b main  # another repo: the folder a "git --git-dir=..." push may start in
   eq "own work tree: the top folder" "$(own_tree)" "$(pwd -P)"
   eq "from a subfolder: the top folder" "$(mkdir -p sub && cd sub && own_tree)" "$(pwd -P)"
@@ -151,7 +155,7 @@ if [ -f "$top/scripts/check.sh" ] && [ "$carries" = 1 ]; then
     echo "pre-push: blocked: scripts/check.sh ${args[*]} failed (output above). Fix the cause, then push again." >&2
     exit 1
   fi
-  printf '%s\n' "$cout" | grep -E '^ *(TIME|WARN|CHECK) ' >&2  # indented: WARN lines of a passing check
+  printf '%s\n' "$cout" | shown >&2
 fi
 
 # Personal-data guard: runs only in a repo that opts in with a .pii-guard file at its root (AGENTS.md "Personal data").
