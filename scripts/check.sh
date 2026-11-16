@@ -34,7 +34,9 @@ cd "$(git rev-parse --show-toplevel)" || exit 1
 if [ "$selftest_main" = 1 ]; then
   # Each case runs this script in a small temporary repo: a fake kit script with a --test, and a check.local.sh that
   # records its argument. CHECK_IN_TEST stops the inner runs from starting this self-test again.
-  t="$(mktemp -d)"; trap 'rm -rf "$t"' EXIT
+  # A failed mktemp must stop here: with an empty $t the cases below would write at the top of the file system.
+  t="$(mktemp -d)" && [ -d "$t" ] || { echo "CHECK SELF-TEST FAIL: no temporary folder"; exit 1; }
+  trap 'rm -rf "$t"' EXIT
   export CHECK_IN_TEST=1
   export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1  # the host's git config (signing, templates) must not matter
   unset GIT_CONFIG_PARAMETERS GIT_CONFIG_COUNT  # nor "git -c ..." on the command that started this run
@@ -122,6 +124,11 @@ PY
     (cd "$t/keep" && TMPDIR="$t/no-such-dir" bash session_checkin.sh --test >/dev/null 2>&1)
     ok "check-in self-test with no temporary folder: fails, deletes nothing" "$?:$( [ -f "$t/keep/marker" ] && echo kept)" "1:kept"
   fi
+  # With no temporary folder, check.sh stops at once (a real run and this self-test): it writes nothing elsewhere.
+  ok "a real run with no temporary folder fails at once" "$( { cd "$t/r" && TMPDIR="$t/no-such-dir" bash scripts/check.sh 2>&1; echo "rc=$?"; } | tail -n 2)" "CHECK FAIL: no temporary folder (mktemp failed)
+rc=1"
+  ok "the self-test with no temporary folder fails at once" "$( { cd "$t/r" && TMPDIR="$t/no-such-dir" CHECK_IN_TEST= bash scripts/check.sh --test 2>&1; echo "rc=$?"; } | tail -n 2)" "CHECK SELF-TEST FAIL: no temporary folder
+rc=1"
   [ "$fails" = 0 ] && echo "CHECK SELF-TEST PASS" || { echo "CHECK SELF-TEST FAIL"; exit 1; }
   exit 0
 fi
@@ -172,7 +179,7 @@ touched() {  # true when the lane is full, the base is unknown, or one of the na
   return 1
 }
 
-tmp="$(mktemp -d)"
+tmp="$(mktemp -d)" && [ -d "$tmp" ] || { echo "CHECK FAIL: no temporary folder (mktemp failed)"; exit 1; }
 trap 'rm -rf "$tmp"' EXIT
 n=0 pass=0 fail=0 skip=0 untested=0
 names=()
