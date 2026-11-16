@@ -700,6 +700,7 @@ def self_test():
         assert "orphan/SKILL.md: orphan" in txt, "WARN: orphan"
         (rs / ".claude/skills/warnone/SKILL.md").write_text("---\nname: warnone\ndescription: Does things.\n---\nSee orphan.\n")
         assert "orphan/SKILL.md: orphan" not in "\n".join(skills_report(rs)[0]), "a mention in another SKILL.md is no orphan"
+        assert skill_frontmatter("---\nname: f\ndescription: >\n  Use when folded.\n---\n")["description"] == "Use when folded.", "a folded description keeps no > marker"
     print("BLOAT TEST PASS")
 
 
@@ -719,7 +720,8 @@ def skill_frontmatter(text):
             key = m.group(1)
             fm[key] = m.group(2).strip()
         elif key and ln.strip():
-            fm[key] = (fm[key] + " " + ln.strip()).strip()
+            head = "" if fm[key] in (">", "|", ">-", "|-") else fm[key]  # a block marker is not part of the text
+            fm[key] = (head + " " + ln.strip()).strip()
     for k, v in fm.items():
         fm[k] = "" if v in (">", "|", ">-", "|-") else v.strip("\"'")
     return fm

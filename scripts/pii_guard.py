@@ -289,8 +289,9 @@ def git(*args, root="."):
                           errors="replace").stdout
 
 
-def scan_files(paths, root, deny, allow, dod=False):
-    """dod: a file that cannot be scanned is a finding (kind unscanned) unless a `skip:` line names it."""
+def scan_files(paths, root, deny, allow, dod=False, named=False):
+    """dod, or named (the caller named these files: FILE mode, the hook): a file that cannot be scanned is a finding
+    (kind unscanned) unless a `skip:` line names it."""
     found = []
     for p in paths:
         f = pathlib.Path(root) / p
@@ -306,7 +307,7 @@ def scan_files(paths, root, deny, allow, dod=False):
             if b"\0" in data[:8192]:
                 why = "binary file"
         if why:
-            if dod:
+            if dod or named:
                 found.append((str(p), 0, "unscanned", why))
             continue
         found += scan_text(data.decode("utf-8", "replace"), str(p), deny, allow, dod)
@@ -389,6 +390,7 @@ def push_revs(stdin_text, root):
 
 
 HOOK_FILE_KEYS = ("file_path", "file_paths", "files")
+HOOK_RECIPIENT_KEYS = ("to", "cc", "bcc", "recipients", "attendees")  # a mail always holds an address here: not scanned
 
 
 def hook_parts(tool_input):
@@ -397,6 +399,8 @@ def hook_parts(tool_input):
     texts, paths = [], []
 
     def walk(v, key=""):
+        if key in HOOK_RECIPIENT_KEYS:
+            return
         if isinstance(v, str):
             texts.append(v)
             if key in HOOK_FILE_KEYS:
@@ -412,6 +416,16 @@ def hook_parts(tool_input):
 
 
 def hook(stdin_text):
+    """PreToolUse hook entry: any error blocks the call. Claude Code runs the call on any exit other than 2, so an
+    exception (deep nesting, a wrong type) must not end the script with exit 1."""
+    try:
+        return _hook(sys.stdin.read() if stdin_text is None else stdin_text)
+    except BaseException as e:  # noqa: B036 - fail closed, whatever went wrong
+        print(f"pii-guard hook: blocked: the scan failed ({e.__class__.__name__}); fail closed.", file=sys.stderr)
+        return 2
+
+
+def _hook(stdin_text):
     """PreToolUse hook. Exit 0 lets the call run; exit 2 blocks it and shows stderr to Claude. Bad input blocks
     (fail closed). Names are checked only when a denylist exists; the hook never blocks for a missing list."""
     try:
@@ -438,7 +452,7 @@ def hook(stdin_text):
     texts, paths = hook_parts(tool_input)
     found = scan_text("\n".join(texts), "tool input", deny, allow, dod)
     files = [os.path.join(cwd, p) for p in paths if os.path.isfile(os.path.join(cwd, p))]  # absolute paths stay
-    found += scan_files(files, root, deny, allow, dod)
+    found += scan_files(files, root, deny, allow, dod, named=True)
     if not found:
         return 0
     tool = event.get("tool_name", "tool")
@@ -790,6 +804,7 @@ def self_test():
         mail = "jane" + at + "corp" + dot + "io"
         pathlib.Path(d, "page.html").write_text("<p>" + mail + "</p>")
         pathlib.Path(d, "clean.html").write_text("<p>hello</p>")
+        pathlib.Path(d, "a.pdf").write_bytes(b"%PDF-1.4 fake")
         cases = [
             ("hook: clean Agent prompt passes", ["--hook"], {"tool_name": "Agent", "cwd": d, "tool_input": {"prompt": "fix the bug"}}, 0),
             ("hook: email in an Agent prompt blocks", ["--hook"], {"tool_name": "Agent", "cwd": d, "tool_input": {"prompt": "mail " + mail}}, 2),
@@ -799,6 +814,12 @@ def self_test():
             ("hook: files map source {from} is read", ["--hook"], {"tool_name": "Artifact", "cwd": d, "tool_input": {"file_path": "clean.html", "files": {"p/x.html": {"from": os.path.join(d, "page.html")}}}}, 2),
             ("hook: file_paths list is read", ["--hook"], {"tool_name": "SendUserFile", "cwd": d, "tool_input": {"file_paths": ["clean.html", "page.html"]}}, 2),
             ("hook: bad JSON blocks", ["--hook"], "{not json", 2),
+            ("hook: a crash blocks (deep nesting)", ["--hook"], '{"tool_input": {"prompt": "x", "a": ' + "[" * 3000 + "]" * 3000 + "}}", 2),
+            ("hook: a crash blocks (cwd of a wrong type)", ["--hook"], {"tool_name": "Agent", "cwd": 5, "tool_input": {"prompt": "x"}}, 2),
+            ("hook: mail recipients are not scanned, the body is", ["--hook"], {"tool_name": "mcp__Gmail__send_message", "cwd": d, "tool_input": {"to": [mail], "cc": mail, "subject": "hi", "body": "fix the bug"}}, 0),
+            ("hook: an address in a mail body blocks", ["--hook"], {"tool_name": "mcp__Gmail__send_message", "cwd": d, "tool_input": {"to": [mail], "body": "write to " + mail}}, 2),
+            ("hook: a named file it cannot scan blocks (minimum tier)", ["--hook"], {"tool_name": "SendUserFile", "cwd": d, "tool_input": {"file_paths": ["a.pdf"]}}, 2),
+            ("file: a named file it cannot scan fails (minimum tier)", [os.path.join(d, "a.pdf")], "", 1),
             ("stdin: email fails", ["--stdin"], "brief: " + mail, 1),
             ("stdin: clean passes", ["--stdin"], "brief: fix the bug", 0),
             ("file: missing path fails", [os.path.join(d, "no-such.md")], "", 1),
@@ -844,7 +865,7 @@ def main():
     if a.test:
         return self_test()
     if a.hook:
-        return hook(sys.stdin.read())
+        return hook(None)
     if a.status:
         raw, src = denylist_source()
         deny = load_denylist()
@@ -892,7 +913,7 @@ def main():
         # A named path that cannot be read is a finding: a wrong path must never print PASS.
         found += [(f, 0, "unscanned", "missing, unreadable or not a regular file") for f, r in zip(a.files, rel)
                   if not skipped(r, allow) and not (os.path.isfile(f) and os.access(f, os.R_OK))]
-        found += scan_files(rel, root, deny, allow, dod)
+        found += scan_files(rel, root, deny, allow, dod, named=True)
         what.append(f"{len(a.files)} file(s)")
     if a.stdin:
         found += scan_text(sys.stdin.read(), a.label, deny, allow, dod)
