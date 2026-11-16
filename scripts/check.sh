@@ -5,7 +5,8 @@
 #                             changed against origin/main, and scripts/check.local.sh gets --fast.
 # The checks:
 #   1. the self-test of each kit script present (--test; a starter project has fewer),
-#   2. the rule caps and the paths AGENTS.md names (scripts/bloat_check.py --rules; full tier),
+#   2. the rule caps and the paths AGENTS.md names, the lint of changed rule lines (WARN lines), and in the full lane
+#      the conflict-check record for changed rule lines (scripts/bloat_check.py --rules [--gate]; full tier),
 #   3. the project log check (full tier),
 #   4. the personal-data scan of all tracked files (when .pii-guard exists; in GitHub Actions the pii-guard step does it;
 #      with --no-pii the caller does it: the pre-push hook scans files and pushed commits in one run),
@@ -13,7 +14,10 @@
 #      .claude/skills/deliver/SKILL.md then guards main).
 # The checks run in parallel: each one works on its own temporary files. CHECK_SERIAL=1 runs them one at a time.
 # Prints one PASS/FAIL/SKIP line per check, the output of each failed check, a TIME line (wall time and the 3 slowest
-# checks) and "CHECK PASS" or "CHECK FAIL" last. Exit 0 only when no check failed. Needs bash, git and python3.
+# checks), a line that compares the times with the baselines in .bloat-audit.json (scripts/bloat_check.py --compare:
+# the full lane and each step; the fast lane only its steps, as its total depends on what changed; a slowdown is a
+# WARN line, never a failure) and "CHECK PASS" or "CHECK FAIL" last.
+# --record (full lane only): after a pass, store this run's times as the new baselines (commit the change). Exit 0 only when no check failed. Needs bash, git and python3.
 # Stamp: a lane that passes on a clean tree writes "<lane> <commit>" to .git/check-pass. With --cached, a run on the
 # same commit and a clean tree passes at once (the full stamp covers both lanes). Never write the stamp by hand.
 # Self-test (temporary repos, no network): scripts/check.sh --test
@@ -33,6 +37,7 @@ if [ "$selftest_main" = 1 ]; then
   t="$(mktemp -d)"; trap 'rm -rf "$t"' EXIT
   export CHECK_IN_TEST=1
   export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1  # the host's git config (signing, templates) must not matter
+  unset GIT_CONFIG_PARAMETERS GIT_CONFIG_COUNT  # nor "git -c ..." on the command that started this run
   g() { git -C "$t/r" -c user.email=t@t -c user.name=t -c commit.gpgsign=false "$@"; }
   git init -q -b main "$t/r"; mkdir -p "$t/r/scripts"
   cp "$self" "$t/r/scripts/check.sh"
@@ -46,6 +51,11 @@ with tempfile.TemporaryDirectory() as d:
 print("fake self-test")
 PY
   printf '%s\n' 'print("fake self-test")' > "$t/r/scripts/log_check.py"
+  # A fake bloat_check.py: its --test and --rules pass; --compare writes its arguments down.
+  printf '%s\n' 'import subprocess, sys' 'if "--compare" in sys.argv:' \
+    '    d = subprocess.run(["git", "rev-parse", "--git-dir"], capture_output=True, text=True).stdout.strip()' \
+    '    open(d + "/compare-args", "w").write("\n".join(sys.argv[2:]) + "\n"); print("TIME  baseline: fake")' \
+    'if "--rules" in sys.argv:' '    print("WARN  fake lint" + (" gate" if "--gate" in sys.argv else ""))' > "$t/r/scripts/bloat_check.py"
   cp "$t/r/scripts/log_check.py" "$t/r/scripts/timeline.py"
   printf '%s\n' 'echo "arg=${1:-none}" > "$(git rev-parse --git-dir)/local-arg"' '[ ! -f fail.flag ]' > "$t/r/scripts/check.local.sh"
   g add -A; g commit -q -m a; g update-ref refs/remotes/origin/main HEAD
@@ -57,6 +67,13 @@ PY
   ok "full lane: check.local.sh gets no argument" "$(cat "$t/r/.git/local-arg")" "arg=none"
   ok "a pass on a clean tree writes the full stamp" "$(cut -d' ' -f1 "$t/r/.git/check-pass")" full
   ok "a TIME line names the lane" "$(printf '%s\n' "$out" | grep -c '^TIME  full lane ')" 1
+  ok "the full lane compares its wall time with the baseline" "$(grep -c '^check=' "$t/r/.git/compare-args")" 1
+  ok "the full lane compares each step" "$(grep -c '^check:stop_check self-test=' "$t/r/.git/compare-args")" 1
+  ok "the comparison line is printed" "$(printf '%s\n' "$out" | grep -c '^TIME  baseline: fake')" 1
+  ok "a passing check shows its WARN lines; the full lane gates" "$(printf '%s\n' "$out" | grep -c '^      WARN  fake lint gate$')" 1
+  ok "no --record unless asked" "$(grep -c -- '--record' "$t/r/.git/compare-args")" 0
+  c --record >/dev/null; ok "--record after a full pass" "$(grep -c -- '--record' "$t/r/.git/compare-args")" 1
+  c --fast --record >/dev/null 2>&1; ok "--record with --fast exits 2" "$?" 2
   ok "--cached uses the full stamp" "$(c --cached | head -n 1 | cut -c1-18)" "CHECK PASS (cached"
   ok "--cached --fast uses the full stamp" "$(c --cached --fast | head -n 1 | cut -c1-18)" "CHECK PASS (cached"
   echo x > "$t/r/new.txt"
@@ -66,6 +83,8 @@ PY
   ok "a new commit is not cached" "$(c --cached --fast | grep -c 'cached')" 0
   ok "fast lane: check.local.sh gets --fast" "$(cat "$t/r/.git/local-arg")" "arg=--fast"
   ok "fast lane skips the self-test of an unchanged script" "$(c --fast | grep -c 'stop_check self-test')" 0
+  ok "the fast lane does not gate" "$(c --fast | grep -c '^      WARN  fake lint$')" 1
+  ok "the fast lane compares no wall time (it depends on what changed)" "$(grep -c '^check=' "$t/r/.git/compare-args")" 0
   ok "a fast stamp does not pass a full run" "$(c --cached | grep -c 'cached')" 0
   echo "# changed" >> "$t/r/scripts/stop_check.py"
   ok "fast lane runs the self-test of a changed script" "$(c --fast | grep -c '^PASS  stop_check self-test')" 1
@@ -101,15 +120,17 @@ PY
   exit 0
 fi
 
-lane=full cached=0 pii=1
+lane=full cached=0 pii=1 record=0
 for a in "$@"; do
   case "$a" in
     --fast) lane=fast ;;
     --cached) cached=1 ;;
     --no-pii) pii=0 ;;
-    *) echo "usage: scripts/check.sh [--fast] [--cached] [--no-pii]" >&2; exit 2 ;;
+    --record) record=1 ;;
+    *) echo "usage: scripts/check.sh [--fast] [--cached] [--no-pii] [--record]" >&2; exit 2 ;;
   esac
 done
+[ "$record" = 1 ] && [ "$lane" = fast ] && { echo "usage: --record needs the full lane" >&2; exit 2; }
 
 gitdir="$(git rev-parse --git-dir)"
 stamp="$gitdir/check-pass"
@@ -184,7 +205,11 @@ selftest pre-push scripts/git-hooks/pre-push -- scripts/git-hooks/pre-push --tes
 [ -z "${CHECK_IN_TEST:-}" ] && selftest check.sh scripts/check.sh -- bash scripts/check.sh --test
 [ "$untested" -gt 0 ] && skip "$untested self-tests" "fast lane: those scripts did not change; the full lane runs them"
 
-if [ -f scripts/bloat_check.py ]; then run "rule caps and pointers" python3 scripts/bloat_check.py --rules; fi
+# Rule caps, paths, the lint of changed rule lines, and (full lane) the conflict-check record for changed rule lines.
+if [ -f scripts/bloat_check.py ]; then
+  if [ "$lane" = full ]; then run "rule caps and pointers" python3 scripts/bloat_check.py --rules --gate
+  else run "rule caps and pointers" python3 scripts/bloat_check.py --rules; fi
+fi
 
 if [ ! -f scripts/log_check.py ]; then
   :  # starter tier: no project log
@@ -217,22 +242,30 @@ else
 fi
 
 wait
-times=""
+times="" items=()
 for ((i = 1; i <= n; i++)); do
   rc=1 us=0
   [ -f "$tmp/$i.rc" ] && read -r rc us <"$tmp/$i.rc"
   if [ "$rc" = 0 ]; then
     echo "PASS  ${names[i]}"; pass=$((pass + 1))
+    grep '^WARN ' "$tmp/$i.out" 2>/dev/null | sed 's/^/      /'  # a passing check can still warn (rule lint, conflict check)
   else
     echo "FAIL  ${names[i]}"; sed 's/^/      /' "$tmp/$i.out" 2>/dev/null | tail -n 25; fail=$((fail + 1))
   fi
   times+="$us ${names[i]}"$'\n'
+  items+=("check:${names[i]}=$(secs "$us")")
 done
 [ "${#skips[@]}" -gt 0 ] && printf '%s\n' "${skips[@]}"
 
 slow="$(printf '%s' "$times" | sort -rn | head -n 3 | while read -r us name; do printf '%s %s s, ' "$name" "$(secs "$us")"; done)"
-timeline="TIME  $lane lane $(secs $(( $(now) - t0 ))) s wall; slowest: ${slow%, }"
+wall=$(( $(now) - t0 ))
+timeline="TIME  $lane lane $(secs "$wall") s wall; slowest: ${slow%, }"
 echo "$timeline"
+[ "$lane" = full ] && items=("check=$(secs "$wall")" ${items[@]+"${items[@]}"})
+if [ -f scripts/bloat_check.py ] && [ "${#items[@]}" -gt 0 ]; then  # warn only: .claude/skills/efficiency/SKILL.md
+  rec=""; [ "$record" = 1 ] && [ "$fail" -eq 0 ] && rec=--record
+  python3 scripts/bloat_check.py --compare "${items[@]}" $rec 2>&1 | tail -n 1
+fi
 echo "$timeline ($(date '+%Y-%m-%d %H:%M'), ${head:0:7})" >"$gitdir/check-last" 2>/dev/null || true
 
 total=$((pass + fail + skip))
