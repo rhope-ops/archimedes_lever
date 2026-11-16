@@ -16,9 +16,10 @@ It measures:
     start read    lines, bytes and ~tokens (bytes / 4) of the files every session reads first
                   (AGENTS.md, CLAUDE.md, docs/NEXT_PROMPT.md, plus "start_read" in the config; docs/DECISIONS.md
                   is a record that agents read on demand, so it is not counted)
-    rules         list items in AGENTS.md (any marker, any indent): the kit sections (the header, "## Commands" and
-                  the ranking in "## Order of authority" are not counted) and "## Project rules" (there a paragraph
-                  line counts too), each against its cap, so rules cannot grow unseen
+    rules         list items in AGENTS.md (any marker, any indent; a wrapped line is part of its item): the kit
+                  sections (the header, "## Commands" and the numbered ranking in "## Order of authority" are not
+                  counted) and "## Project rules" (there a paragraph or a table row counts too), each against its
+                  cap, so rules cannot grow unseen
     pointers      each `.claude/...`, `scripts/...` and `docs/...` path in backticks and each relative link in
                   AGENTS.md exists (text moved to a skill is not lost)
     handoff       docs/NEXT_PROMPT.md lines
@@ -60,7 +61,8 @@ DEFAULTS = {"every_days": 14, "every_commits": 300,
                         "duplicate_lines": 20, "rules": 35, "project_rules": 15}}
 RULES_FILE = "AGENTS.md"
 PROJECT_RULES = "## Project rules"
-NOT_RULES = {"## Commands", "## Order of authority"}  # project-owned settings and the ranking of sources: not counted
+NOT_RULES = {"## Commands"}  # project-owned settings, not rules
+RANKED = {"## Order of authority"}  # its numbered ranking of sources is not a rule count; a bullet there is
 OPTIONAL = {"scripts/check.local.sh"}  # named in AGENTS.md, present only when the project has tests
 TEXT_EXT = {".md", ".txt", ".py", ".sh", ".ps1", ".psm1", ".js", ".ts", ".json", ".yml", ".yaml", ".html", ".css",
             ".toml", ".ini", ".cfg", ".csv", ""}
@@ -106,47 +108,65 @@ def start_read(root, cfg):
     return lines, size, size // 4, sorted(files, key=lambda f: -f[1])
 
 
-ITEM = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+(.*)$")
+ITEM = re.compile(r"^\s*(?:[-*+]|(\d+)[.)])\s+(.*)$")
+RULE_HR = re.compile(r"^\s*([-*_])(\s*\1){2,}\s*$")           # --- or * * *: a horizontal rule, not a rule
+TABLE_SEP = re.compile(r"^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$")  # |---|---|: the row above it is a header
 
 
 def rule_lines(text):
     """Return (kit, project, every): the rule lines of an AGENTS.md text, by where they are.
 
-    A rule line is a list item with any marker ("- ", "* ", "+ ", "1. ") at any indent. kit = items under a "## "
-    heading above "## Project rules" (not the header, not NOT_RULES sections); project = items under
-    "## Project rules", and there also each other text line, so a rule written as a paragraph still counts;
-    every = the list items of all sections, NOT_RULES ones included (for the list of changed lines).
-    Lines in ``` fences and <!-- comments --> are skipped. In the kit itself the file marks tier text with
-    <!-- starter --> blocks: those are dropped, so the count is the full tier.
+    A rule line is a list item with any marker ("- ", "* ", "+ ", "1. ") at any indent; a line that follows it with
+    no blank line between is its continuation, not a new rule. kit = items under a "## " heading above
+    "## Project rules" (not the header, not NOT_RULES sections; in RANKED sections the numbered ranking is not
+    counted, a bullet is); project = items under "## Project rules", and there also each paragraph and each table
+    row (not the header row), so a rule that is not a bullet still counts; every = the items of all sections, for
+    the list of changed lines. Not counted anywhere: blank lines, "###" sub-headings, horizontal rules, table
+    separator rows, lines in ``` or ~~~ fences, <!-- comments -->. In the kit itself the file marks tier text
+    with <!-- starter --> blocks: those are dropped, so the count is the full tier.
     """
     text = re.sub(r"(?ms)^<!-- starter -->\n.*?^<!-- /starter -->\n", "", text)
     text = re.sub(r"(?s)<!--.*?-->", "", text)
-    kit, project, every, sec, fenced = [], [], [], None, False
+    rows, sec, fenced, open_item = [], None, False, False  # rows: [section, text, counted]
     for line in text.splitlines():
-        if line.lstrip().startswith("```"):
-            fenced = not fenced
+        if line.lstrip().startswith(("```", "~~~")):
+            fenced, open_item = not fenced, False
         elif fenced:
             continue
         elif line.startswith("## "):
-            sec = line.rstrip()
-        elif sec:
+            sec, open_item = line.rstrip(), False
+        elif not sec:
+            continue
+        elif not line.strip() or line.lstrip().startswith("#") or RULE_HR.match(line):
+            open_item = False
+        elif TABLE_SEP.match(line) and "-" in line:
+            if open_item and rows and rows[-1][1].startswith("|"):
+                rows.pop()  # the header row of a table
+            open_item = False
+        else:
             m = ITEM.match(line)
-            item = m.group(1).strip() if m else (line.strip() if sec == PROJECT_RULES else "")
-            if not item:
-                continue
-            every.append(item)
-            if sec == PROJECT_RULES:
-                project.append(item)
-            elif sec not in NOT_RULES:
-                kit.append(item)
-    return kit, project, every
+            if m:
+                counted = sec not in NOT_RULES and not (sec in RANKED and m.group(1))
+                rows.append([sec, m.group(2).strip(), counted])
+                open_item = True
+            elif open_item and not line.lstrip().startswith("|"):
+                rows[-1][1] += " " + line.strip()  # a wrapped line belongs to the item above it
+            elif sec == PROJECT_RULES:
+                rows.append([sec, line.strip(), True])
+                open_item = True
+    kit = [t for s_, t, c in rows if c and s_ != PROJECT_RULES]
+    project = [t for s_, t, c in rows if c and s_ == PROJECT_RULES]
+    return kit, project, [t for _, t, _ in rows]
 
 
 def missing_pointers(root, text):
-    """Paths that AGENTS.md names and that do not exist: `.claude/...`, `scripts/...` and `docs/...` in backticks
-    (the first word, so `scripts/check.sh --fast` is checked as scripts/check.sh), and relative link targets."""
+    """Paths that AGENTS.md names and that do not exist: each `.claude/...`, `scripts/...` and `docs/...` path
+    inside backticks (also after a command word: `python3 scripts/x.py --test`), and relative link targets."""
     text = re.sub(r"(?ms)^<!-- starter -->\n.*?^<!-- /starter -->\n", "", text)
-    names = set(re.findall(r"`((?:\.claude|scripts|docs)/[^`\s]+)[^`]*`", text)) - OPTIONAL
+    names = set()
+    for span in re.findall(r"`([^`\n]+)`", text):
+        names |= {w.rstrip(".,;:)") for w in span.split() if re.match(r"(?:\.claude|scripts|docs)/", w)}
+    names -= OPTIONAL
     names |= {t.split("#")[0] for t in re.findall(r"\]\(([^)\s]+)\)", text)
               if "://" not in t and not t.startswith(("#", "mailto:"))}
     return sorted(n for n in names if n and not re.search(r"[<>*{]", n) and not (root / n).exists())
@@ -377,7 +397,12 @@ def self_test():
         assert kit == ["Rule one.", "Rule two."] and project == ["Project rule."], "header, Commands, fences, comments and starter blocks are not rules"
         assert "Build: none." in every, "the list of changed lines also covers sections that are not counted"
         kit, project, _ = rule_lines("## A\n\n* Star.\n1. Numbered.\n  - Nested.\nA paragraph.\n\n## Project rules\n\n+ Plus.\nA rule as a paragraph.\n")
-        assert kit == ["Star.", "Numbered.", "Nested."] and project == ["Plus.", "A rule as a paragraph."], "every list marker counts; in Project rules a paragraph counts too"
+        assert kit == ["Star.", "Numbered.", "Nested. A paragraph."] and project == ["Plus. A rule as a paragraph."], "every list marker counts; a line right below an item is its continuation"
+        kit, project, every = rule_lines("## Order of authority\n\n1. The owner.\n2. This file.\n- A bullet here counts.\n\n## B\n\n- One rule,\n  wrapped.\n~~~\n- in a tilde fence\n~~~\n* * *\n---\n### Sub\n\n"
+                                         "## Project rules\n\n### Group\n\n- P one,\n  wrapped.\n\nA paragraph rule\nover two lines.\n\n---\n\n| Rule | Why |\n|---|---|\n| T one | x |\n| T two | y |\n")
+        assert kit == ["A bullet here counts.", "One rule, wrapped."], "the ranking is not counted, a bullet in that section is; wraps, fences, rules and sub-headings are not rules"
+        assert project == ["P one, wrapped.", "A paragraph rule over two lines.", "| T one | x |", "| T two | y |"], "Project rules: wrapped bullet 1, paragraph 1, table rows without header and separator"
+        assert "The owner." in every, "ranking lines are still listed when they change"
         with tempfile.TemporaryDirectory() as o:
             g = lambda *c: subprocess.run(["git", "-C", o, "-c", "user.email=t@t", "-c", "user.name=t", *c], check=True, capture_output=True)
             g("init", "-q", "-b", "main")
@@ -392,12 +417,12 @@ def self_test():
             (ro / "AGENTS.md").write_text("## A\n\n- New rule.\n- Kept rule.\n- Third.\n\n## Project rules\n\n- P1.\n- P2.\n")
             rows, problems = rules_report(ro, caps)
             assert len(problems) == 2 and "rules over the cap (3 > 2)" in problems[0] and "project rules over" in problems[1], "both caps fail"
-            (ro / "AGENTS.md").write_text("## A\n\n- See `.claude/skills/x/SKILL.md` and [doc](docs/gone.md), [web](https://e.example/a), `.claude/skills/<name>/`, `scripts/gone.sh --fast`, `scripts/check.local.sh`.\n")
+            (ro / "AGENTS.md").write_text("## A\n\n- See `.claude/skills/x/SKILL.md` and [doc](docs/gone.md), [web](https://e.example/a), `.claude/skills/<name>/`, `scripts/gone.sh --fast`, `scripts/check.local.sh`, `python3 scripts/gone2.py --test`.\n")
             rows, problems = rules_report(ro, caps)
-            assert problems == ["missing paths named in AGENTS.md: .claude/skills/x/SKILL.md, docs/gone.md, scripts/gone.sh"], "missing paths, not URLs, patterns or optional files"
+            assert problems == ["missing paths named in AGENTS.md: .claude/skills/x/SKILL.md, docs/gone.md, scripts/gone.sh, scripts/gone2.py"], "missing paths (also after a command word), not URLs, patterns or optional files"
             (ro / ".claude/skills/x").mkdir(parents=True); (ro / ".claude/skills/x/SKILL.md").write_text("x")
             (ro / "docs").mkdir(); (ro / "docs/gone.md").write_text("x")
-            (ro / "scripts").mkdir(); (ro / "scripts/gone.sh").write_text("x")
+            (ro / "scripts").mkdir(); (ro / "scripts/gone.sh").write_text("x"); (ro / "scripts/gone2.py").write_text("x")
             assert rules_report(ro, caps)[1] == [], "paths exist: pass"
             with contextlib.redirect_stdout(io.StringIO()):
                 assert main_rules(ro) == 0, "--rules passes"

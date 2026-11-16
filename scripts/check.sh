@@ -20,20 +20,33 @@
 set -uo pipefail
 self="$(cd "$(dirname "$0")" && pwd -P)/$(basename "$0")"
 [ "${1:-}" = "--test" ] && { selftest_main=1; } || selftest_main=0
-cd "$(git rev-parse --show-toplevel)" || exit 1
 # Git gives a hook GIT_DIR and friends (in a linked worktree they point at the real repo). The self-tests make
-# temporary repos with "git init" and "git commit": with those variables set they would write into this repo.
+# temporary repos with "git init" and "git commit": with those variables set they would write into that repo.
+# Unset them first, so the top folder is found from the current folder (a hook starts at the top of its worktree).
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_PREFIX GIT_COMMON_DIR GIT_IMPLICIT_WORK_TREE
+cd "$(git rev-parse --show-toplevel)" || exit 1
+[ -f scripts/check.sh ] || { echo "CHECK FAIL: $(pwd) is not the top folder of a repo with scripts/check.sh" >&2; exit 1; }
 
 if [ "$selftest_main" = 1 ]; then
   # Each case runs this script in a small temporary repo: a fake kit script with a --test, and a check.local.sh that
   # records its argument. CHECK_IN_TEST stops the inner runs from starting this self-test again.
   t="$(mktemp -d)"; trap 'rm -rf "$t"' EXIT
   export CHECK_IN_TEST=1
-  g() { git -C "$t/r" -c user.email=t@t -c user.name=t "$@"; }
+  export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1  # the host's git config (signing, templates) must not matter
+  g() { git -C "$t/r" -c user.email=t@t -c user.name=t -c commit.gpgsign=false "$@"; }
   git init -q -b main "$t/r"; mkdir -p "$t/r/scripts"
   cp "$self" "$t/r/scripts/check.sh"
-  printf '%s\n' 'import sys' 'print("fake self-test")' > "$t/r/scripts/stop_check.py"
+  # Like the real self-tests, the fake one makes a temporary repo and commits in it.
+  cat > "$t/r/scripts/stop_check.py" <<'PY'
+import subprocess, tempfile
+with tempfile.TemporaryDirectory() as d:
+    subprocess.run(["git", "init", "-q", d], check=True)
+    subprocess.run(["git", "-C", d, "-c", "user.email=t@t", "-c", "user.name=t", "-c", "commit.gpgsign=false",
+                    "commit", "-q", "--allow-empty", "-m", "stray"], check=True)
+print("fake self-test")
+PY
+  printf '%s\n' 'print("fake self-test")' > "$t/r/scripts/log_check.py"
+  cp "$t/r/scripts/log_check.py" "$t/r/scripts/timeline.py"
   printf '%s\n' 'echo "arg=${1:-none}" > "$(git rev-parse --git-dir)/local-arg"' '[ ! -f fail.flag ]' > "$t/r/scripts/check.local.sh"
   g add -A; g commit -q -m a; g update-ref refs/remotes/origin/main HEAD
   fails=0
@@ -56,6 +69,10 @@ if [ "$selftest_main" = 1 ]; then
   ok "a fast stamp does not pass a full run" "$(c --cached | grep -c 'cached')" 0
   echo "# changed" >> "$t/r/scripts/stop_check.py"
   ok "fast lane runs the self-test of a changed script" "$(c --fast | grep -c '^PASS  stop_check self-test')" 1
+  ok "fast lane skips timeline while log_check is unchanged" "$(c --fast | grep -c 'timeline self-test')" 0
+  echo "# changed" >> "$t/r/scripts/log_check.py"
+  ok "a change to log_check also runs the timeline self-test (it imports log_check)" "$(c --fast | grep -c '^PASS  timeline self-test')" 1
+  g checkout -q scripts/log_check.py
   g commit -q -am c; rm -f "$t/r/.git/check-pass"
   c --fast --no-pii >/dev/null
   ok "--no-pii writes no stamp" "$( [ -f "$t/r/.git/check-pass" ] && echo stamp || echo none)" none
@@ -66,9 +83,20 @@ if [ "$selftest_main" = 1 ]; then
   g update-ref -d refs/remotes/origin/main
   ok "no default branch ref: the fast lane runs every self-test" "$(c --fast | grep -c '^PASS  stop_check self-test')" 1
   c --bogus >/dev/null 2>&1; ok "an unknown flag exits 2" "$?" 2
-  # Inside a hook git sets GIT_DIR: the run must not write into that repo.
-  git init -q -b main "$t/other"; before="$(git -C "$t/other" status --porcelain | wc -l)"
-  (cd "$t/r" && GIT_DIR="$t/r/.git" bash scripts/check.sh >/dev/null 2>&1); ok "runs with GIT_DIR set" "$?" 0
+  # A git error is not a clean tree: with a broken index, a stamp for this commit must not be used.
+  c >/dev/null; ok "a stamp exists before the index breaks" "$(cut -d' ' -f2 "$t/r/.git/check-pass")" "$(g rev-parse HEAD)"
+  cp "$t/r/.git/index" "$t/index.bak"; echo broken > "$t/r/.git/index"
+  ok "a git error is not treated as a clean tree" "$(c --cached 2>&1 | grep -c 'cached')" 0
+  cp "$t/index.bak" "$t/r/.git/index"
+  # Inside a hook git sets GIT_DIR (in a linked worktree it points at the real repo): the self-tests' "git init"
+  # and "git commit" must not write into that repo.
+  o="$t/other"; git init -q -b main "$o"
+  git -C "$o" -c user.email=t@t -c user.name=t -c commit.gpgsign=false commit -q --allow-empty -m base
+  want="$(git -C "$o" rev-parse HEAD) $(git -C "$o" rev-list --count HEAD) $(git -C "$o" config --get core.bare)"
+  (cd "$t/r" && GIT_DIR="$o/.git" bash scripts/check.sh >/dev/null 2>&1)
+  ok "a run with GIT_DIR set leaves that repo unchanged" "$(git -C "$o" rev-parse HEAD) $(git -C "$o" rev-list --count HEAD) $(git -C "$o" config --get core.bare)" "$want"
+  mkdir -p "$t/r/sub"
+  ok "a run from a subfolder with GIT_DIR set still runs the checks" "$(cd "$t/r/sub" && GIT_DIR="$t/r/.git" bash ../scripts/check.sh 2>&1 | grep -c '^PASS  stop_check self-test')" 1
   [ "$fails" = 0 ] && echo "CHECK SELF-TEST PASS" || { echo "CHECK SELF-TEST FAIL"; exit 1; }
   exit 0
 fi

@@ -44,7 +44,7 @@ Why: <the trigger, with its evidence>. Replaces: <the line it replaces, or "noth
 
 ## The caps
 
-`python3 scripts/bloat_check.py --rules` prints the rule count of AGENTS.md (list items in the kit sections; list items and paragraph lines in "Project rules") against the caps, each rule line added or removed against origin/main, and each path that AGENTS.md names but that does not exist. `scripts/check.sh` runs it and fails when a cap is passed or a path is missing. Starter tier: no script; count by hand.
+`python3 scripts/bloat_check.py --rules` prints the rule count of AGENTS.md (list items in the kit sections; list items, paragraphs and table rows in "Project rules"; a wrapped line belongs to its item) against the caps, each rule line added or removed against origin/main, and each path that AGENTS.md names but that does not exist. `scripts/check.sh` runs it and fails when a cap is passed or a path is missing. Starter tier: no script; count by hand.
 
 ## Labels
 
