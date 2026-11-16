@@ -1,5 +1,20 @@
 {
   "permissions": {
+    "allow": [
+      "Bash(git status*)",
+      "Bash(git log*)",
+      "Bash(git diff*)",
+      "Bash(git show*)",
+      "Bash(git rev-parse*)",
+      "Bash(git branch --show-current)",
+      "Bash(scripts/check.sh*)",
+      "Bash(bash scripts/check.sh*)",
+      "Bash(bash scripts/session_checkin.sh*)",
+      "Bash(python3 scripts/pii_guard.py*)",
+      "Bash(python3 scripts/bloat_check.py*)",
+      "Bash(python3 scripts/drift.py*)",
+      "Bash(python3 scripts/log_check.py*)"
+    ],
     "deny": [
       "Bash(git push --force*)",
       "Bash(git push -f*)",
