@@ -124,10 +124,12 @@ PY
     (cd "$t/keep" && TMPDIR="$t/no-such-dir" bash session_checkin.sh --test >/dev/null 2>&1)
     ok "check-in self-test with no temporary folder: fails, deletes nothing" "$?:$( [ -f "$t/keep/marker" ] && echo kept)" "1:kept"
   fi
-  # With no temporary folder, check.sh stops at once (a real run and this self-test): it writes nothing elsewhere.
-  ok "a real run with no temporary folder fails at once" "$( { cd "$t/r" && TMPDIR="$t/no-such-dir" bash scripts/check.sh 2>&1; echo "rc=$?"; } | tail -n 2)" "CHECK FAIL: no temporary folder (mktemp failed)
+  # With no temporary folder, check.sh stops at once (a real run and this self-test). A fake mktemp names a folder
+  # that does not exist inside $t: if the stop ever breaks, the writes fail there, never outside this test's folder.
+  mkdir -p "$t/fakebin"; printf '#!/bin/sh\necho "%s"\n' "$t/missing" > "$t/fakebin/mktemp"; chmod +x "$t/fakebin/mktemp"
+  ok "a real run with no temporary folder fails at once" "$( { cd "$t/r" && PATH="$t/fakebin:$PATH" bash scripts/check.sh 2>&1; echo "rc=$?"; } | tail -n 2)" "CHECK FAIL: no temporary folder (mktemp failed)
 rc=1"
-  ok "the self-test with no temporary folder fails at once" "$( { cd "$t/r" && TMPDIR="$t/no-such-dir" CHECK_IN_TEST= bash scripts/check.sh --test 2>&1; echo "rc=$?"; } | tail -n 2)" "CHECK SELF-TEST FAIL: no temporary folder
+  ok "the self-test with no temporary folder fails at once" "$( { cd "$t/r" && PATH="$t/fakebin:$PATH" bash scripts/check.sh --test 2>&1; echo "rc=$?"; } | tail -n 2)" "CHECK SELF-TEST FAIL: no temporary folder
 rc=1"
   [ "$fails" = 0 ] && echo "CHECK SELF-TEST PASS" || { echo "CHECK SELF-TEST FAIL"; exit 1; }
   exit 0
