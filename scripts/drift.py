@@ -213,10 +213,10 @@ def self_test():
         (proj / "AGENTS.md").write_text(sb.apply_tier(text, "starter"))
         expect("starter: no Project log section expected", get(("AGENTS.md", "Project log")), "absent")
         expect("starter: Delegation same", get(("AGENTS.md", "Delegation")), "same")
-        expect("starter: advanced file not expected", get(("file", ".claude/orchestration.md")), "absent")
+        expect("starter: advanced file not expected", get(("file", ".claude/skills/delegate/SKILL.md")), "absent")
         expect("starter: no log row", get(("log", "docs/LOG.md")), "absent")
         full = sb.apply_tier(text.replace("- Tier: starter", "- Tier: full"), "full")
-        good = "<!--" not in full.replace("<!-- Fill in", "").replace("<!-- Add rules", "") and "## Project log" in full
+        good = "<!--" not in full.replace("<!-- Fill in", "").replace("<!-- This project", "") and "## Project log" in full
         print(("ok   " if good else "FAIL ") + "apply_tier full: markers gone, Project log kept")
         ok = ok and good
         good = sb.header_tier("- Tier: Starter\n") == "starter" and sb.header_tier("# old\n") == "full"

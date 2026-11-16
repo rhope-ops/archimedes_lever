@@ -34,7 +34,7 @@ These are things that went wrong across 5 real projects, and the rule each one l
 | Ask all questions at the start, with options and a recommendation | A design review found 34 decisions the agent had assumed instead of asking | PREFERENCES.md "Decisions" |
 | A review in a fresh context finds what self-review misses | A self-review checked that 39 notes existed; 30 of them said the opposite of the source | PREFERENCES.md "Reporting"; the kit's `reviewer` agent |
 | Enforce safety with a hook, not just with written rules | A rule said "never force-push"; only one tool obeyed it | The kit's `scripts/git-hooks/pre-push` |
-| Don't push to main until the checks pass | A commit reached main with a failing check | The kit's pre-push hook runs `scripts/check.sh` |
+| Don't push to main until the checks pass | A commit reached main with a failing check | The kit's pre-push hook runs `scripts/check.sh`: the full lane before main, a fast lane on other branches |
 | State each rule once; conflicting rules hurt more than long ones | 3 conflicting preference rules made the agent's behavior look random | One rule set in PREFERENCES.md; the kit's `.claude/rule-tests.md` |
 | Measure; don't judge by eye | A layout shifted 14 px and no check noticed | The kit's `.claude/skills/ui-verify` |
 | Before you build, ask how the person works and what their setup allows | A solution assumed copy and paste, on a machine where the user had to type everything by hand | PREFERENCES.md "Least Effort for Me" |
@@ -144,4 +144,4 @@ An old AGENTS.md that doesn't follow the kit's layout is moved under "Project ru
 - Hooks are seat belts, not locks: Claude Code hooks only apply to Claude Code, and `--no-verify` skips git hooks.
 - The Claude Code sandbox (the network allowlist in .claude/settings.json) needs bubblewrap and socat on Linux. Without them, Claude Code warns you and runs commands outside the sandbox; the deny rules and git hooks still apply. Claude cloud containers don't have them, but they sit behind their own network proxy. macOS needs nothing extra.
 - The guard finds patterns and the names on your list. It can't find a name you didn't list, or personal details written out in sentences. Read everything before you publish.
-- Claude model names in orchestration.md go out of date; the tiers stay the same.
+- Claude model names in `.claude/skills/delegate/SKILL.md` go out of date; the tiers stay the same.

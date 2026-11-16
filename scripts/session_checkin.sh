@@ -36,6 +36,9 @@ echo "uncommitted: $uncommitted"
 [ "$uncommitted" -gt 0 ] && git status --short
 
 [ -f scripts/bloat_check.py ] && python3 scripts/bloat_check.py --brief
+# The last check run in this clone: lane, wall time and the 3 slowest checks (scripts/check.sh writes it).
+last="$(git rev-parse --git-dir)/check-last"
+[ -f "$last" ] && echo "check:       $(sed 's/^TIME  //' "$last")"
 # Personal-data guard: list source, entry count, fingerprint (compare it between places) and tier; never the names.
 if [ -f .pii-guard ] && [ -f scripts/pii_guard.py ]; then python3 scripts/pii_guard.py --status || true; fi
 

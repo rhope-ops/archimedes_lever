@@ -1,6 +1,11 @@
+---
+name: project-log
+description: Use before you write or change a row in the project log (docs/LOG.md, or the place AGENTS.md "Project rules" names), and when a decision, milestone, breakthrough or miss happens in a turn. Gives the columns, the row types, arcs and story fields, and the format check.
+---
+
 # Project log: how to write a row
 
-Read this file before you write or change a project log row. AGENTS.md "Project log" points here; `scripts/log_check.py` checks the format.
+AGENTS.md "Project log" points here; `python3 scripts/log_check.py` checks the format. The log records how the project got there (milestones, breakthroughs, misses, decisions) for a timeline and a narrative deck. A public repo keeps it in a private place, because entries can hold environment or security detail.
 
 - One row per story event (the types below). Not a change log: no row per commit, merge or file change; git log holds those. Columns, in this order: # | When | Type | Arc | Topic | Raised by | What the other missed | Evidence | Result.
 - When: `YYYY-MM-DD HH:MM` in the project time zone (the `- Time zone:` line at the top of AGENTS.md). A range: `YYYY-MM-DD HH:MM–HH:MM`. Mark an estimate with `~` before the date or the time.
