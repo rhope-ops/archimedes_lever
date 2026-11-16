@@ -116,6 +116,12 @@ PY
   ok "a run with GIT_DIR set leaves that repo unchanged" "$(git -C "$o" rev-parse HEAD) $(git -C "$o" rev-list --count HEAD) $(git -C "$o" config --get core.bare)" "$want"
   mkdir -p "$t/r/sub"
   ok "a run from a subfolder with GIT_DIR set still runs the checks" "$(cd "$t/r/sub" && GIT_DIR="$t/r/.git" bash ../scripts/check.sh 2>&1 | grep -c '^PASS  stop_check self-test')" 1
+  # The check-in self-test must not delete the folder it runs in when it cannot make a temporary folder.
+  if [ -f "$(dirname "$self")/session_checkin.sh" ]; then
+    mkdir -p "$t/keep"; cp "$(dirname "$self")/session_checkin.sh" "$t/keep/"; touch "$t/keep/marker"
+    (cd "$t/keep" && TMPDIR="$t/no-such-dir" bash session_checkin.sh --test >/dev/null 2>&1)
+    ok "check-in self-test with no temporary folder: fails, deletes nothing" "$?:$( [ -f "$t/keep/marker" ] && echo kept)" "1:kept"
+  fi
   [ "$fails" = 0 ] && echo "CHECK SELF-TEST PASS" || { echo "CHECK SELF-TEST FAIL"; exit 1; }
   exit 0
 fi

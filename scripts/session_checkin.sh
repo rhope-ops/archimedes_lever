@@ -34,7 +34,10 @@ fix_hooks() {  # sets core.hooksPath where the rule above says; prints the path,
 if [ "${1:-}" = "--test" ]; then
   export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1  # the host's git config must not change the cases
   unset GIT_CONFIG_PARAMETERS GIT_CONFIG_COUNT GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR
-  t=$(cd "$(mktemp -d)" && pwd -P); trap 'rm -rf "$t"' EXIT
+  # A failed mktemp must stop here: "cd ''" succeeds, and the trap below would then delete the current folder.
+  t=$(mktemp -d) && [ -n "$t" ] || { echo "CHECKIN TEST FAIL: no temporary folder"; exit 1; }
+  t=$(cd "$t" && pwd -P) && [ -n "$t" ] || { echo "CHECKIN TEST FAIL: no temporary folder"; exit 1; }
+  trap 'rm -rf "$t"' EXIT
   fails=0
   eq() { if [ "$2" = "$3" ]; then echo "ok   $1"; else echo "FAIL $1 (got '$2', want '$3')"; fails=1; fi; }
   hp() { git -C "$1" config --get core.hooksPath; }
