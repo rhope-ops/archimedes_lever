@@ -8,6 +8,7 @@ Newest first. "By" = the owner for a decision; "Agent" for a recommendation the 
 
 | Date | Decision | By | Replaces |
 |---|---|---|---|
+| 2026-11-16 | AGENTS.md "Personal data", exact text of the guard bullet's hook clause: "and a PreToolUse hook (`pii_guard.py --hook`, `.claude/settings.json`) checks the outgoing tool calls it names (list and gaps: `.claude/skills/personal-data/SKILL.md`)." Conflict check: docs/reviews/2026-11-16-rule-conflict-4.md. Scope: the kit, then icf-source, RADE, 90-161.Z. | the owner | The quoted sentence "... checks each outgoing tool call." in the row "Personal-data scan of outgoing content" |
 | 2026-11-16 | Allow list narrowed: `Bash(git diff*)` becomes `Bash(git diff)` and `Bash(git diff *)`, because the wide entry also allowed `git difftool -x <command>` (fresh review of the icf-source port). Scope: the kit and its ports. | the owner | `Bash(git diff*)` |
 | 2026-11-16 | `personal-data` skill, "Before you send", exact line: "In code, comments and tests, build a sample address from parts ("jane" + "@" + ...) or use an example.com address; never write one whole." (the guard blocked a whole sample address 2 times in one session). Scope: the kit and its ports. | the owner | — |
 | 2026-11-16 | Fix the 2 older slow paths of `scan_text` in this round (repeat check by set; the mail-host and allowed-string containment by binary search); same results required. Scope: the kit and its ports. | the owner | Fix later |
