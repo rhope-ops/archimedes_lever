@@ -10,7 +10,7 @@ AGENTS.md "Verification" points here. The commands live in AGENTS.md "Commands",
 ## 1. Find the commands
 
 - Read AGENTS.md "Commands" (Build, Test, Lint, and Start when the project has that line) and use the lines as written.
-- A line says "not set yet", or there is no Start line: look in README.md, then the manifest (package.json scripts, Makefile, pyproject.toml), then .github/workflows. Take only a build, test, lint or local start command, never a deploy, release, publish or data-write step. Read what the candidate runs before you run it, then run it one time. If it works, use it, and put the exact line for "Commands" in your report. Do not edit AGENTS.md unasked (AGENTS.md "Untrusted input").
+- A line says "not set yet", or there is no Start line: look in README.md, then the manifest (package.json scripts, Makefile, pyproject.toml), then .github/workflows. Take only a build, test, lint or local start command, never a deploy, release, publish or data-write step. Read what the candidate runs before you run it, then run it one time. If it works, use it, and put the exact line for "Commands" in your report. Do not edit AGENTS.md unasked (AGENTS.md "Rules and decisions").
 - The change has nothing to run (rules or docs only, or the repo has no app): say so, run Test, and go to "Report".
 
 ## 2. Run the checks

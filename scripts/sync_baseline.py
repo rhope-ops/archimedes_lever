@@ -29,18 +29,18 @@ What it changes:
                            An AGENTS.md without the baseline layout goes under "## Project rules" as it is.
     CLAUDE.md              Adds "@AGENTS.md" at the top if it is missing. Keeps the rest.
     scripts/session_checkin.sh, scripts/stop_check.py, scripts/worker_guard.py,
-    .claude/orchestration.md   Replaced with the baseline copies.
+    .claude/skills/ (every kit skill)   Replaced with the baseline copies.
     .claude/agents/worker.md, scout.md, reviewer.md, docs/FIRST_USE.md   Added only when missing (a project
                            may tune them; FIRST_USE.md holds the denylist places that the session-start check names).
     scripts/log_check.py, scripts/timeline.py, scripts/pii_guard.py, scripts/first_use_check.py,
-    scripts/check.sh, scripts/bloat_check.py, scripts/git-hooks/pre-push, .claude/bloat-audit.md, .claude/project-log.md,
+    scripts/check.sh, scripts/bloat_check.py, scripts/git-hooks/pre-push,
     .claude/rule-tests.md
                            Replaced with the baseline copies. A starter project gets none of ADVANCED_FILES. (.pii-guard is not copied: a project opts in itself.)
     .claude/settings.json  Adds the baseline deny rules, each baseline hook event the project has no hook for, and the
                            baseline "sandbox" block when the project has none. Keeps all other settings.
     .gitignore             Adds the baseline lines. Keeps all other lines.
     docs/LOG.md            An Arcs table with the old columns (Arc | Span | Summary | Outcome) gets the story columns
-                           Problem, Turning point and Lesson, each "-" (.claude/project-log.md). Rows are kept.
+                           Problem, Turning point and Lesson, each "-" (.claude/skills/project-log/SKILL.md). Rows are kept.
     docs/archimedes_lever-LICENSE.txt   The kit's license (MIT), which covers the copied files.
     Owner name             In baseline text only (AGENTS.md above "## Project rules" and the copied files, not this
                            script), "the owner" becomes the project owner ("The owner" becomes the owner with a capital
@@ -66,7 +66,8 @@ COMMANDS_HEADING = "## Commands"
 COPY_FILES = ["scripts/session_checkin.sh", "scripts/stop_check.py",
               "scripts/worker_guard.py", "scripts/log_check.py", "scripts/timeline.py", "scripts/pii_guard.py", "scripts/first_use_check.py",
               "scripts/check.sh", "scripts/bloat_check.py", "scripts/git-hooks/pre-push",
-              ".claude/orchestration.md", ".claude/bloat-audit.md", ".claude/project-log.md", ".claude/rule-tests.md", ".github/workflows/pii-guard.yml",
+              ".claude/skills/delegate/SKILL.md", ".claude/skills/audit/SKILL.md", ".claude/skills/project-log/SKILL.md", ".claude/rule-tests.md", ".github/workflows/pii-guard.yml",
+              ".claude/skills/deliver/SKILL.md", ".claude/skills/personal-data/SKILL.md", ".claude/skills/rule-change/SKILL.md",
               ".claude/skills/data-change/SKILL.md", ".claude/skills/ui-verify/SKILL.md", ".claude/skills/ui-verify/measure.mjs",
               ".claude/skills/run-verify/SKILL.md"]
 # Agent definitions: copied only when the project has no file with that name (projects may tune them).
@@ -83,9 +84,11 @@ def log_template(base):
 
 
 # Advanced parts: a starter project has none of these (one list for bootstrap, sync and drift).
-ADVANCED_FILES = [".claude/orchestration.md", ".claude/agents/scout.md", ".claude/agents/worker.md",
-                  ".claude/project-log.md", "docs/LOG.md", "scripts/log_check.py", "scripts/timeline.py",
-                  ".claude/bloat-audit.md", "scripts/bloat_check.py", ".claude/rule-tests.md"]
+ADVANCED_FILES = [".claude/skills/delegate/SKILL.md", ".claude/agents/scout.md", ".claude/agents/worker.md",
+                  ".claude/skills/project-log/SKILL.md", "docs/LOG.md", "scripts/log_check.py", "scripts/timeline.py",
+                  ".claude/skills/audit/SKILL.md", "scripts/bloat_check.py", ".claude/rule-tests.md"]
+# Moved to .claude/skills/ on 2026-11-16: a project synced before then still has the old copies.
+MOVED_FILES = [".claude/orchestration.md", ".claude/bloat-audit.md", ".claude/project-log.md"]
 TIERS = ("starter", "full")
 NO_OWNER_RENAME = {"scripts/sync_baseline.py", "scripts/first_use_check.py", "docs/FIRST_USE.md"}
 OWNER_RE = r"[A-Za-z0-9 ._,()-]+"  # safe inside Python strings, JSON and Markdown
@@ -439,6 +442,9 @@ def main():
             extra = [f for f in ADVANCED_FILES if (root / f).exists()]
             if extra:
                 print(f"Tier starter: these advanced files are not synced; delete them by hand if you want: {', '.join(extra)}")
+        old = [f for f in MOVED_FILES if (root / f).exists()]
+        if old:
+            print(f"These files moved to .claude/skills/; delete the old copies by hand: {', '.join(old)}")
         if not changed:
             print("No changes: the project already matches the baseline.")
             return

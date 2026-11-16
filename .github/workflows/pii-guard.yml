@@ -1,6 +1,6 @@
 name: pii-guard
 # Repo checks and the personal-data scan in one job (one runner start).
-# Pull requests and manual runs only, never on push (AGENTS.md "Checks": Actions minutes).
+# The full lane of scripts/check.sh. Pull requests and manual runs only, never on push (.claude/skills/deliver/SKILL.md: Actions minutes).
 on:
   pull_request:
   workflow_dispatch:
