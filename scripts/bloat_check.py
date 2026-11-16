@@ -10,6 +10,10 @@ Usage:
     python3 scripts/bloat_check.py --rules    # rule counts against the caps, rule lines added or removed against
                                               # origin/main, and missing .claude/ paths; exit 1 when a cap is passed
                                               # or a path is missing (scripts/check.sh runs this)
+    python3 scripts/bloat_check.py --rules --gate   # also fail when rule lines changed and no conflict-check
+                                              # record in docs/reviews/ names their hash (scripts/check.sh full lane)
+    python3 scripts/bloat_check.py --lint     # rule lint of every rule line: near-duplicates, vague words, untested
+                                              # rules; report only (--rules lints the changed lines)
     python3 scripts/bloat_check.py --compare NAME=SECONDS ...   # compare times that a script measured with their
                                               # baselines; one TIME or WARN line; never fails (scripts/check.sh,
                                               # session_checkin.sh and the pre-push hook run it); --record stores them
@@ -23,6 +27,12 @@ It measures:
                   sections (the header, "## Commands" and the numbered ranking in "## Order of authority" are not
                   counted) and "## Project rules" (there a paragraph or a table row counts too), each against its
                   cap, so rules cannot grow unseen
+    rule lint     (--lint all rules; --rules the changed ones, as WARN lines) a near-duplicate pair (similar text),
+                  a vague word (VAGUE), and an untested rule: its section has no scenario in .claude/rule-tests.md
+                  (column "Section") and the line names no script under scripts/ that enforces it. Warn only.
+    conflict gate (--rules) rule lines added or removed against origin/main need a fresh-context conflict check
+                  (.claude/skills/rule-change/SKILL.md); its record in docs/reviews/ holds the line
+                  "rule-conflict-check: <hash>" that --rules prints. With --gate (the full lane) a missing record fails.
     pointers      each `.claude/...`, `scripts/...` and `docs/...` path in backticks and each relative link in
                   AGENTS.md exists (text moved to a skill is not lost)
     handoff       docs/NEXT_PROMPT.md lines
@@ -75,6 +85,12 @@ RANKED = {"## Order of authority"}  # its numbered ranking of sources is not a r
 OPTIONAL = {"scripts/check.local.sh"}  # named in AGENTS.md, present only when the project has tests
 TEXT_EXT = {".md", ".txt", ".py", ".sh", ".ps1", ".psm1", ".js", ".ts", ".json", ".yml", ".yaml", ".html", ".css",
             ".toml", ".ini", ".cfg", ".csv", ""}
+VAGUE = ["appropriate", "appropriately", "as needed", "if needed", "when needed", "where possible", "if possible",
+         "when possible", "properly", "reasonable", "be careful", "try to", "consider", "etc.", "best practice",
+         "as much as", "usually", "generally", "ideally", "maybe", "might", "should"]
+NEAR_DUP = 0.6        # word overlap (Jaccard) from which two rule lines are a near-duplicate pair
+RULE_TESTS = ".claude/rule-tests.md"
+REVIEWS = "docs/reviews"
 MIN_DUP = 80          # characters in a normalized line before it counts as a duplicate
 MAX_SCAN = 1_000_000  # bytes; larger files are not scanned for duplicates
 
@@ -124,7 +140,7 @@ HEADING = re.compile(r"^\s*#{1,6}(\s|$)")                    # "### Sub"; "#1 pr
 EMPTY_ITEM = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s*$")         # a marker with no text
 
 
-def rule_lines(text):
+def rule_lines(text, with_sections=False):
     """Return (kit, project, every): the rule lines of an AGENTS.md text, by where they are.
 
     A rule line is a list item with any marker ("- ", "* ", "+ ", "1. ") at any indent; a line that follows it with
@@ -168,9 +184,68 @@ def rule_lines(text):
             elif sec == PROJECT_RULES:
                 rows.append([sec, line.strip(), True])
                 open_item = True
+    if with_sections:
+        return [(s_[3:].strip(), t) for s_, t, c in rows if c]
     kit = [t for s_, t, c in rows if c and s_ != PROJECT_RULES]
     project = [t for s_, t, c in rows if c and s_ == PROJECT_RULES]
     return kit, project, [t for _, t, _ in rows]
+
+
+def words(line):
+    return set(re.findall(r"[a-z0-9][a-z0-9'-]{2,}", line.lower()))
+
+
+def tested_sections(root):
+    """Sections of AGENTS.md that have a scenario: the "Section" column of the table in .claude/rule-tests.md."""
+    p = root / RULE_TESTS
+    if not p.is_file():
+        return None
+    out, col = set(), None
+    for line in p.read_text(encoding="utf-8", errors="replace").splitlines():
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if col is None and "Section" in cells:
+            col = cells.index("Section")
+        elif col is not None and len(cells) > col and not TABLE_SEP.match(line):
+            out |= {c.strip() for c in cells[col].split(";")}
+    return out
+
+
+def lint(root, rules, only=None):
+    """Rule lint, warn only. rules: [(section, text)]; only: the lines to report on (None = all).
+    Returns WARN lines: near-duplicate pairs, vague words, untested rules."""
+    tested = tested_sections(root)
+    out = []
+    for i, (_, a) in enumerate(rules):
+        for _, b in rules[i + 1:]:
+            if only is not None and a not in only and b not in only:
+                continue
+            wa, wb = words(a), words(b)
+            j = len(wa & wb) / len(wa | wb) if wa | wb else 0
+            if j >= NEAR_DUP:
+                out.append(f"WARN  rule lint: near-duplicate ({j:.0%} same words): \"{a[:70]}\" ~ \"{b[:70]}\"")
+    for sec, t in rules:
+        if only is not None and t not in only:
+            continue
+        low = " " + re.sub(r"`[^`]*`", " ", t.lower()) + " "
+        hits = [v for v in VAGUE if re.search(r"(?<![a-z])" + re.escape(v) + r"(?![a-z])", low)]
+        if hits:
+            out.append(f"WARN  rule lint: vague ({', '.join(hits)}): \"{t[:90]}\"")
+        if tested is not None and sec not in tested and not re.search(r"`scripts/[^`]+`|Enforced by", t):
+            out.append(f"WARN  rule lint: untested (no scenario for \"{sec}\" in {RULE_TESTS}, no script named): \"{t[:80]}\"")
+    return out
+
+
+def conflict_hash(added, removed):
+    """The hash a conflict-check record names: the changed rule lines, sorted, + and - kept apart."""
+    import hashlib
+    text = "\n".join(sorted("+" + l for l in added) + sorted("-" + l for l in removed))
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:12]
+
+
+def conflict_recorded(root, h):
+    d = root / REVIEWS
+    return d.is_dir() and any(f"rule-conflict-check: {h}" in f.read_text(encoding="utf-8", errors="replace")
+                              for f in d.rglob("*.md"))
 
 
 def missing_pointers(root, text):
@@ -192,8 +267,9 @@ def missing_pointers(root, text):
     return sorted(n for n in names if n and not re.search(r"[<>*{]", n) and not (root / n).exists())
 
 
-def rules_report(root, cfg):
-    """Return (lines to print, problems). Problems fail scripts/check.sh: a cap passed, or a missing path."""
+def rules_report(root, cfg, gate=False):
+    """Return (lines to print, problems). Problems fail scripts/check.sh: a cap passed, a missing path, and with gate
+    (the full lane) rule lines changed against origin/main with no conflict-check record in docs/reviews/."""
     p = root / RULES_FILE
     if not p.is_file():
         return [f"rules:       no {RULES_FILE}"], []
@@ -214,10 +290,22 @@ def rules_report(root, cfg):
     if old is not None:
         was = set(rule_lines(old)[2])
         now = set(every)
-        for mark, lines in (("+", [l for l in every if l not in was]), ("-", sorted(was - now))):
+        added, removed = [l for l in every if l not in was], sorted(was - now)
+        for mark, lines in (("+", added), ("-", removed)):
             out += [f"  {mark} {l}" for l in lines]  # the whole line: a change near its end must show
         if was != now:
             out.append("  (rule lines changed against the default branch: each one needs the owner's approval of its exact text)")
+            h = conflict_hash(added, removed)
+            if conflict_recorded(root, h):
+                out.append(f"  conflict check: recorded (rule-conflict-check: {h})")
+            else:
+                need = (f"no fresh-context conflict check for these lines: run it (.claude/skills/rule-change/SKILL.md) "
+                        f"and record the line \"rule-conflict-check: {h}\" in {REVIEWS}/")
+                if gate:
+                    problems.append(need)
+                else:
+                    out.append(f"WARN  {need} (the full lane fails without it)")
+            out += lint(root, rule_lines(text, with_sections=True), only=set(added))
     gone = missing_pointers(root, text)
     if gone:
         problems.append("missing paths named in AGENTS.md: " + ", ".join(gone))
@@ -501,8 +589,41 @@ def self_test():
             (ro / "docs").mkdir(); (ro / "docs/gone.md").write_text("x")
             (ro / "scripts").mkdir(); (ro / "scripts/gone.sh").write_text("x"); (ro / "scripts/gone2.py").write_text("x"); (ro / "scripts/tool.sh").write_text("x")
             assert rules_report(ro, caps)[1] == [], "paths exist: pass"
+            # Conflict gate: changed rule lines need a record that names their hash; without --gate only a WARN line.
+            (ro / "AGENTS.md").write_text("## A\n\n- New rule.\n- Kept rule.\n\n## Project rules\n\n")
+            h = conflict_hash(["New rule."], ["Old rule."])
+            assert h == conflict_hash(["New rule."], ["Old rule."]) != conflict_hash(["Old rule."], ["New rule."]), "the hash keeps + and - apart"
+            rows, problems = rules_report(ro, caps)
+            assert not problems and any(r.startswith("WARN") and h in r for r in rows), "no record, no gate: a WARN line with the hash"
+            rows, problems = rules_report(ro, caps, gate=True)
+            assert len(problems) == 1 and h in problems[0], "no record, gate: fails"
+            (ro / "docs").mkdir(exist_ok=True); (ro / "docs/reviews").mkdir()
+            (ro / "docs/reviews/r.md").write_text(f"Result: no conflict.\nrule-conflict-check: {'0' * 12}\n")
+            assert rules_report(ro, caps, gate=True)[1], "a record for other lines does not count"
+            (ro / "docs/reviews/r.md").write_text(f"Result: no conflict.\nrule-conflict-check: {h}\n")
+            rows, problems = rules_report(ro, caps, gate=True)
+            assert not problems and any("conflict check: recorded" in r for r in rows), "a record with the hash passes"
+            (ro / "AGENTS.md").write_text("## A\n\n- Old rule.\n- Kept rule.\n\n## Project rules\n\n")
+            assert not rules_report(ro, caps, gate=True)[1], "no changed lines: no gate"
+            # Lint: near-duplicates, vague words, untested rules (a section with no scenario, no script named).
+            (ro / ".claude").mkdir(exist_ok=True)
+            (ro / ".claude/rule-tests.md").write_text("| # | Rule tested | Section | Prompt |\n|---|---|---|---|\n| 1 | x | Tested; Other | p |\n")
+            rules = [("Tested", "Never push to main without the full check lane passing first."),
+                     ("Tested", "Never push to main without the full check lane passing."),
+                     ("Tested", "Use the right tool where possible."),
+                     ("Untested", "Keep the handoff short."), ("Untested", "The hook enforces it: `scripts/x.sh`."),
+                     ("Other", "Run `git clean` never.")]
+            flags = lint(ro, rules)
+            assert sum("near-duplicate" in f for f in flags) == 1, "one near-duplicate pair"
+            assert [f for f in flags if "vague" in f] == ['WARN  rule lint: vague (where possible): "Use the right tool where possible."'], "vague word; text in backticks is not read"
+            assert [f for f in flags if "untested" in f] == ['WARN  rule lint: untested (no scenario for "Untested" in .claude/rule-tests.md, no script named): "Keep the handoff short."'], "untested: no scenario and no script; a ';' list of sections counts each"
+            assert lint(ro, rules, only={"Keep the handoff short."}) == [f for f in flags if "handoff" in f], "only: the changed lines"
+            (ro / ".claude/rule-tests.md").unlink()
+            assert not [f for f in lint(ro, rules) if "untested" in f], "no rule-tests file (starter tier): no untested flags"
+            (ro / "AGENTS.md").write_text("## A\n\n- New rule.\n- Kept rule.\n\n## Project rules\n\n- See `.claude/skills/x/SKILL.md` and [doc](docs/gone.md), `scripts/gone.sh`, `scripts/gone2.py`, `scripts/tool.sh`.\n")
             with contextlib.redirect_stdout(io.StringIO()):
                 assert main_rules(ro) == 0, "--rules passes"
+                assert main_lint(ro) == 0, "--lint never fails"
                 (ro / "AGENTS.md").write_text("## A\n\n" + "- r.\n" * 36)
                 assert main_rules(ro) == 1, "--rules fails over the default cap of 35"
         (root / CONFIG).write_text(json.dumps({"budgets": {"start_read_warn_tokens": 1, "start_read_tokens": 99999},
@@ -540,13 +661,21 @@ def self_test():
     print("BLOAT TEST PASS")
 
 
-def main_rules(root):
+def main_lint(root):
+    p = root / RULES_FILE
+    rules = rule_lines(p.read_text(encoding="utf-8", errors="replace"), with_sections=True) if p.is_file() else []
+    rows = lint(root, rules)
+    print("\n".join(rows + [f"LINT: {len(rows)} flag(s) in {len(rules)} rule lines (warn only)"]))
+    return 0
+
+
+def main_rules(root, gate=False):
     try:
         cfg = load_config(root)
     except (ValueError, TypeError, KeyError) as e:
         print(f"rules:       {CONFIG} unreadable ({e}); fix it first")
         return 1
-    rows, problems = rules_report(root, cfg)
+    rows, problems = rules_report(root, cfg, gate)
     print("\n".join(rows))
     print("RULES FAIL" if problems else "RULES PASS")
     return 1 if problems else 0
@@ -561,14 +690,18 @@ def main():
     ap.add_argument("--strict", action="store_true")
     ap.add_argument("--test", action="store_true")
     ap.add_argument("--compare", nargs="+", metavar="NAME=SECONDS")
+    ap.add_argument("--gate", action="store_true")
+    ap.add_argument("--lint", action="store_true")
     ap.add_argument("--project", default=".")
     args = ap.parse_args()
     if args.test:
         self_test()
         return 0
     root = Path(git(Path(args.project), "rev-parse", "--show-toplevel") or args.project)
+    if args.lint:
+        return main_lint(root)
     if args.rules:
-        return main_rules(root)
+        return main_rules(root, args.gate)
     if args.compare:
         return main_compare(root, args.compare, args.record)
     return report(root, args)

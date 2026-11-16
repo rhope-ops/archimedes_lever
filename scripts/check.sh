@@ -5,7 +5,8 @@
 #                             changed against origin/main, and scripts/check.local.sh gets --fast.
 # The checks:
 #   1. the self-test of each kit script present (--test; a starter project has fewer),
-#   2. the rule caps and the paths AGENTS.md names (scripts/bloat_check.py --rules; full tier),
+#   2. the rule caps and the paths AGENTS.md names, the lint of changed rule lines (WARN lines), and in the full lane
+#      the conflict-check record for changed rule lines (scripts/bloat_check.py --rules [--gate]; full tier),
 #   3. the project log check (full tier),
 #   4. the personal-data scan of all tracked files (when .pii-guard exists; in GitHub Actions the pii-guard step does it;
 #      with --no-pii the caller does it: the pre-push hook scans files and pushed commits in one run),
@@ -53,7 +54,8 @@ PY
   # A fake bloat_check.py: its --test and --rules pass; --compare writes its arguments down.
   printf '%s\n' 'import subprocess, sys' 'if "--compare" in sys.argv:' \
     '    d = subprocess.run(["git", "rev-parse", "--git-dir"], capture_output=True, text=True).stdout.strip()' \
-    '    open(d + "/compare-args", "w").write("\n".join(sys.argv[2:]) + "\n"); print("TIME  baseline: fake")' > "$t/r/scripts/bloat_check.py"
+    '    open(d + "/compare-args", "w").write("\n".join(sys.argv[2:]) + "\n"); print("TIME  baseline: fake")' \
+    'if "--rules" in sys.argv:' '    print("WARN  fake lint" + (" gate" if "--gate" in sys.argv else ""))' > "$t/r/scripts/bloat_check.py"
   cp "$t/r/scripts/log_check.py" "$t/r/scripts/timeline.py"
   printf '%s\n' 'echo "arg=${1:-none}" > "$(git rev-parse --git-dir)/local-arg"' '[ ! -f fail.flag ]' > "$t/r/scripts/check.local.sh"
   g add -A; g commit -q -m a; g update-ref refs/remotes/origin/main HEAD
@@ -68,6 +70,7 @@ PY
   ok "the full lane compares its wall time with the baseline" "$(grep -c '^check=' "$t/r/.git/compare-args")" 1
   ok "the full lane compares each step" "$(grep -c '^check:stop_check self-test=' "$t/r/.git/compare-args")" 1
   ok "the comparison line is printed" "$(printf '%s\n' "$out" | grep -c '^TIME  baseline: fake')" 1
+  ok "a passing check shows its WARN lines; the full lane gates" "$(printf '%s\n' "$out" | grep -c '^      WARN  fake lint gate$')" 1
   ok "no --record unless asked" "$(grep -c -- '--record' "$t/r/.git/compare-args")" 0
   c --record >/dev/null; ok "--record after a full pass" "$(grep -c -- '--record' "$t/r/.git/compare-args")" 1
   c --fast --record >/dev/null 2>&1; ok "--record with --fast exits 2" "$?" 2
@@ -80,6 +83,7 @@ PY
   ok "a new commit is not cached" "$(c --cached --fast | grep -c 'cached')" 0
   ok "fast lane: check.local.sh gets --fast" "$(cat "$t/r/.git/local-arg")" "arg=--fast"
   ok "fast lane skips the self-test of an unchanged script" "$(c --fast | grep -c 'stop_check self-test')" 0
+  ok "the fast lane does not gate" "$(c --fast | grep -c '^      WARN  fake lint$')" 1
   ok "the fast lane compares no wall time (it depends on what changed)" "$(grep -c '^check=' "$t/r/.git/compare-args")" 0
   ok "a fast stamp does not pass a full run" "$(c --cached | grep -c 'cached')" 0
   echo "# changed" >> "$t/r/scripts/stop_check.py"
@@ -201,7 +205,11 @@ selftest pre-push scripts/git-hooks/pre-push -- scripts/git-hooks/pre-push --tes
 [ -z "${CHECK_IN_TEST:-}" ] && selftest check.sh scripts/check.sh -- bash scripts/check.sh --test
 [ "$untested" -gt 0 ] && skip "$untested self-tests" "fast lane: those scripts did not change; the full lane runs them"
 
-if [ -f scripts/bloat_check.py ]; then run "rule caps and pointers" python3 scripts/bloat_check.py --rules; fi
+# Rule caps, paths, the lint of changed rule lines, and (full lane) the conflict-check record for changed rule lines.
+if [ -f scripts/bloat_check.py ]; then
+  if [ "$lane" = full ]; then run "rule caps and pointers" python3 scripts/bloat_check.py --rules --gate
+  else run "rule caps and pointers" python3 scripts/bloat_check.py --rules; fi
+fi
 
 if [ ! -f scripts/log_check.py ]; then
   :  # starter tier: no project log
@@ -240,6 +248,7 @@ for ((i = 1; i <= n; i++)); do
   [ -f "$tmp/$i.rc" ] && read -r rc us <"$tmp/$i.rc"
   if [ "$rc" = 0 ]; then
     echo "PASS  ${names[i]}"; pass=$((pass + 1))
+    grep '^WARN ' "$tmp/$i.out" 2>/dev/null | sed 's/^/      /'  # a passing check can still warn (rule lint, conflict check)
   else
     echo "FAIL  ${names[i]}"; sed 's/^/      /' "$tmp/$i.out" 2>/dev/null | tail -n 25; fail=$((fail + 1))
   fi

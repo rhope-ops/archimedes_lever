@@ -69,7 +69,8 @@ COPY_FILES = ["scripts/session_checkin.sh", "scripts/stop_check.py",
               ".claude/skills/delegate/SKILL.md", ".claude/skills/audit/SKILL.md", ".claude/skills/project-log/SKILL.md", ".claude/rule-tests.md", ".github/workflows/pii-guard.yml",
               ".claude/skills/deliver/SKILL.md", ".claude/skills/personal-data/SKILL.md", ".claude/skills/rule-change/SKILL.md",
               ".claude/skills/data-change/SKILL.md", ".claude/skills/ui-verify/SKILL.md", ".claude/skills/ui-verify/measure.mjs",
-              ".claude/skills/run-verify/SKILL.md"]
+              ".claude/skills/run-verify/SKILL.md", ".claude/skills/efficiency/SKILL.md", ".claude/skills/handoff/SKILL.md",
+              ".claude/skills/port/SKILL.md"]
 # Agent definitions: copied only when the project has no file with that name (projects may tune them).
 COPY_IF_MISSING = [".claude/agents/worker.md", ".claude/agents/scout.md", ".claude/agents/reviewer.md",
                    "docs/FIRST_USE.md"]
@@ -86,7 +87,8 @@ def log_template(base):
 # Advanced parts: a starter project has none of these (one list for bootstrap, sync and drift).
 ADVANCED_FILES = [".claude/skills/delegate/SKILL.md", ".claude/agents/scout.md", ".claude/agents/worker.md",
                   ".claude/skills/project-log/SKILL.md", "docs/LOG.md", "scripts/log_check.py", "scripts/timeline.py",
-                  ".claude/skills/audit/SKILL.md", "scripts/bloat_check.py", ".claude/rule-tests.md"]
+                  ".claude/skills/audit/SKILL.md", "scripts/bloat_check.py", ".claude/rule-tests.md",
+                  ".claude/skills/efficiency/SKILL.md"]
 # Moved to .claude/skills/ on 2026-11-16: a project synced before then still has the old copies.
 MOVED_FILES = [".claude/orchestration.md", ".claude/bloat-audit.md", ".claude/project-log.md"]
 TIERS = ("starter", "full")
