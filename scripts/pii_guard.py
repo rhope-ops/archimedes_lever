@@ -390,29 +390,39 @@ def push_revs(stdin_text, root):
 
 
 HOOK_FILE_KEYS = ("file_path", "file_paths", "files")
-HOOK_RECIPIENT_KEYS = ("to", "cc", "bcc", "recipients", "attendees")  # a mail always holds an address here: not scanned
+HOOK_RECIPIENT_KEYS = ("to", "cc", "bcc", "recipients", "attendees")  # Gmail, top level: an address here is no finding
 
 
-def hook_parts(tool_input):
-    """(strings, file paths) of a PreToolUse tool_input. Every string value is scanned; the values of the file keys
-    are also read as files (an Artifact or SendUserFile call sends a file's content, not the path)."""
-    texts, paths = [], []
+HOOK_MAX_BYTES = 8_000_000  # named files above this total block: the scan must end well inside the hook timeout
 
-    def walk(v, key=""):
-        if key in HOOK_RECIPIENT_KEYS:
-            return
+
+def hook_parts(tool_input, tool_name=""):
+    """(texts, recipient texts, file paths, strict paths) of a PreToolUse tool_input. Every string value is scanned;
+    the values of the file keys are also read as files (an Artifact or SendUserFile call sends a file's content).
+    Recipient texts: the top-level recipient keys of a Gmail call only; they are scanned, but an email address there
+    is no finding. Strict paths (file_path, file_paths) must exist: a named file the hook cannot read blocks."""
+    texts, recipients, paths, strict = [], [], [], []
+    mail = tool_name.startswith("mcp__Gmail__")
+
+    def walk(v, key="", out=texts):
         if isinstance(v, str):
-            texts.append(v)
+            out.append(v)
             if key in HOOK_FILE_KEYS:
-                paths.append(v)  # the caller reads only paths that are files
+                paths.append(v)
+                if key != "files":
+                    strict.append(v)
         elif isinstance(v, dict):  # inside a file key ({"published/path": "source" | {"from": "source"}}) keep the key
             for k, x in v.items():
-                walk(x, key if key in HOOK_FILE_KEYS else k)
+                walk(x, key if key in HOOK_FILE_KEYS else k, out)
         elif isinstance(v, list):
             for x in v:
-                walk(x, key)
-    walk(tool_input)
-    return texts, paths
+                walk(x, key, out)
+    if isinstance(tool_input, dict):
+        for k, x in tool_input.items():
+            walk(x, k, recipients if mail and k in HOOK_RECIPIENT_KEYS else texts)
+    else:
+        walk(tool_input)
+    return texts, recipients, paths, strict
 
 
 def hook(stdin_text):
@@ -449,10 +459,17 @@ def _hook(stdin_text):
     dod = prof == "dod"
     allow = {v for v in allow if not is_option_line(v)}
     deny = load_denylist()
-    texts, paths = hook_parts(tool_input)
+    texts, recipients, paths, strict = hook_parts(tool_input, str(event.get("tool_name", "")))
     found = scan_text("\n".join(texts), "tool input", deny, allow, dod)
-    files = [os.path.join(cwd, p) for p in paths if os.path.isfile(os.path.join(cwd, p))]  # absolute paths stay
-    found += scan_files(files, root, deny, allow, dod, named=True)
+    found += [f for f in scan_text("\n".join(recipients), "mail recipients", deny, allow, dod) if f[2] != "email"]
+    full = lambda p: os.path.join(cwd, os.path.expanduser(p))  # an absolute path stays as it is
+    found += [(p, 0, "unscanned", "named file missing or unreadable") for p in strict
+              if not (os.path.isfile(full(p)) and os.access(full(p), os.R_OK))]
+    files = [full(p) for p in paths if os.path.isfile(full(p))]
+    if sum(os.path.getsize(f) for f in files) > HOOK_MAX_BYTES:
+        found.append(("named files", 0, "unscanned", f"over {HOOK_MAX_BYTES} bytes in total: send fewer files per call"))
+    else:
+        found += scan_files(files, root, deny, allow, dod, named=True)
     if not found:
         return 0
     tool = event.get("tool_name", "tool")
@@ -802,6 +819,7 @@ def self_test():
         env = {k: v for k, v in os.environ.items() if not k.startswith("PII_GUARD_DENYLIST")}
         env["PII_GUARD_DENYLIST_FILE"] = os.path.join(d, "none.txt")
         mail = "jane" + at + "corp" + dot + "io"
+        tok = "gh" + "p_" + "A" * 36
         pathlib.Path(d, "page.html").write_text("<p>" + mail + "</p>")
         pathlib.Path(d, "clean.html").write_text("<p>hello</p>")
         pathlib.Path(d, "a.pdf").write_bytes(b"%PDF-1.4 fake")
@@ -817,6 +835,10 @@ def self_test():
             ("hook: a crash blocks (deep nesting)", ["--hook"], '{"tool_input": {"prompt": "x", "a": ' + "[" * 3000 + "]" * 3000 + "}}", 2),
             ("hook: a crash blocks (cwd of a wrong type)", ["--hook"], {"tool_name": "Agent", "cwd": 5, "tool_input": {"prompt": "x"}}, 2),
             ("hook: mail recipients are not scanned, the body is", ["--hook"], {"tool_name": "mcp__Gmail__send_message", "cwd": d, "tool_input": {"to": [mail], "cc": mail, "subject": "hi", "body": "fix the bug"}}, 0),
+            ("hook: a token in a mail recipient field blocks", ["--hook"], {"tool_name": "mcp__Gmail__send_message", "cwd": d, "tool_input": {"to": [mail, tok]}}, 2),
+            ("hook: a 'to' key in a non-mail tool is scanned", ["--hook"], {"tool_name": "mcp__Claude_Docs__batch", "cwd": d, "tool_input": {"blocks": {"to": mail}}}, 2),
+            ("hook: a nested 'to' key in a mail call is scanned", ["--hook"], {"tool_name": "mcp__Gmail__send_message", "cwd": d, "tool_input": {"body": {"to": mail}}}, 2),
+            ("hook: a missing file_path blocks", ["--hook"], {"tool_name": "Artifact", "cwd": d, "tool_input": {"file_path": "no-such.html"}}, 2),
             ("hook: an address in a mail body blocks", ["--hook"], {"tool_name": "mcp__Gmail__send_message", "cwd": d, "tool_input": {"to": [mail], "body": "write to " + mail}}, 2),
             ("hook: a named file it cannot scan blocks (minimum tier)", ["--hook"], {"tool_name": "SendUserFile", "cwd": d, "tool_input": {"file_paths": ["a.pdf"]}}, 2),
             ("file: a named file it cannot scan fails (minimum tier)", [os.path.join(d, "a.pdf")], "", 1),

@@ -792,7 +792,7 @@ def main_rules(root, gate=False):
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0], allow_abbrev=False)
     ap.add_argument("--rules", action="store_true")
     ap.add_argument("--brief", action="store_true")
     ap.add_argument("--time", action="store_true")
