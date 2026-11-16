@@ -31,7 +31,7 @@ When the cause is spread over many files (layers of small additions), stop and p
 
 ## Record a baseline
 
-- Check lanes: `scripts/check.sh --record` after a full-lane pass; it stores the wall time and each step.
+- Check lanes: run the full lane 3 times; `scripts/check.sh --record` after the 3rd pass stores each step; then `python3 scripts/bloat_check.py --compare check=<median wall time> --record` sets the wall time to the median of the 3 runs.
 - One time: `python3 scripts/bloat_check.py --compare NAME=SECONDS --record` (NAME as in the table; `check:<step>` for one step). Use the median of 3 runs.
 - Commands with a `cmd`: `python3 scripts/bloat_check.py --time --record`.
 - Commit the change to `.bloat-audit.json`, with the before and after numbers in the commit message.
