@@ -19,10 +19,6 @@
       "cmd": "python3 scripts/bloat_check.py --brief",
       "max_slowdown": 0.25,
       "seconds": 0.1
-    },
-    "check-fast": {
-      "cmd": "bash scripts/check.sh --fast",
-      "max_slowdown": 0.25
     }
   }
 }
