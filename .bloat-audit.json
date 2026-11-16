@@ -8,7 +8,22 @@
     "check": {
       "cmd": "bash scripts/check.sh",
       "max_slowdown": 0.25,
-      "seconds": 4.5
+      "seconds": 4.7,
+      "steps": {
+        "stop_check self-test": 1.7,
+        "worker_guard self-test": 0.2,
+        "log_check self-test": 0.1,
+        "bloat_check self-test": 0.5,
+        "timeline self-test": 0.0,
+        "pii_guard self-test": 4.6,
+        "first_use_check self-test": 0.2,
+        "drift self-test": 0.3,
+        "pre-push self-test": 0.6,
+        "check.sh self-test": 3.1,
+        "rule caps and pointers": 0.1,
+        "project log": 0.2,
+        "personal-data scan": 0.3
+      }
     },
     "checkin": {
       "cmd": "bash scripts/session_checkin.sh",

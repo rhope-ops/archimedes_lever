@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Session check-in: run at the start and the end of each session.
 set -uo pipefail
+t0=$(date +%s%N 2>/dev/null)  # nanoseconds where date has %N (GNU); the run's time is compared with its baseline below
 top=$(git rev-parse --show-toplevel) && cd "$top" || exit 1  # paths below are repo-relative; a run from a subfolder must still find them
 
 git fetch --quiet origin main 2>/dev/null || echo "warning: fetch of origin/main failed"
@@ -57,4 +58,7 @@ origin=$(git remote get-url origin 2>/dev/null); origin=${origin%/}; origin=${or
 if [ "$(printf '%s' "$origin" | tr '[:upper:]' '[:lower:]')" != "archimedes_lever" ] && grep -rIl '{{[A-Z_]*}}' --exclude-dir=.git --exclude=bootstrap.sh --exclude=session_checkin.sh --exclude=sync_baseline.py --exclude=first_use_check.py --exclude=drift.py --exclude=check.sh --exclude=README.md . >/dev/null 2>&1; then
   echo "warning: template placeholders remain; run scripts/bootstrap.sh"
 fi
+# This run's time against the "checkin" baseline in .bloat-audit.json (warn only; .claude/skills/efficiency/SKILL.md).
+case "$t0" in *N|'') ;; *) [ -f scripts/bloat_check.py ] && python3 scripts/bloat_check.py \
+  --compare "checkin=$(awk -v a="$t0" -v b="$(date +%s%N)" 'BEGIN {printf "%.1f", (b - a) / 1e9}')" 2>&1 | tail -n 1 ;; esac
 exit 0

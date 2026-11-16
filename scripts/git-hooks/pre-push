@@ -151,7 +151,7 @@ if [ -f "$top/scripts/check.sh" ] && [ "$carries" = 1 ]; then
     echo "pre-push: blocked: scripts/check.sh ${args[*]} failed (output above). Fix the cause, then push again." >&2
     exit 1
   fi
-  printf '%s\n' "$cout" | grep -E '^(TIME|CHECK) ' >&2
+  printf '%s\n' "$cout" | grep -E '^(TIME|WARN|CHECK) ' >&2
 fi
 
 # Personal-data guard: runs only in a repo that opts in with a .pii-guard file at its root (AGENTS.md "Personal data").
@@ -165,8 +165,12 @@ if [ -f "$top/.pii-guard" ]; then
   fi
   gargs=(--push --require-denylist)
   [ "$carries" = 1 ] && gargs=(--all "${gargs[@]}")  # one run: every tracked file, and the pushed commits
+  g0=$(date +%s%N 2>/dev/null)
   pout=$(printf '%s\n' "$input" | python3 "$guard" "${gargs[@]}" 2>&1); rc=$?
   [ -n "$pout" ] && printf '%s\n' "$pout" >&2
+  # Compare the guard's time with its baseline (warn only; .claude/skills/efficiency/SKILL.md). Needs date +%N (GNU).
+  case "$g0" in *N|'') ;; *) [ -f "$top/scripts/bloat_check.py" ] && [ "$carries" = 1 ] && python3 "$top/scripts/bloat_check.py" \
+    --project "$top" --compare "push-guard=$(awk -v a="$g0" -v b="$(date +%s%N)" 'BEGIN {printf "%.1f", (b - a) / 1e9}')" 2>&1 | tail -n 1 >&2 ;; esac
   if [ "$rc" -ne 0 ]; then
     if printf '%s' "$pout" | grep -q "PII GUARD FAIL: no denylist found"; then
       echo "pre-push: blocked: this session has no name denylist, so the guard cannot check names. Add it (docs/FIRST_USE.md step 4), then push again." >&2

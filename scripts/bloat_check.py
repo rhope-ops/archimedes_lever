@@ -10,6 +10,9 @@ Usage:
     python3 scripts/bloat_check.py --rules    # rule counts against the caps, rule lines added or removed against
                                               # origin/main, and missing .claude/ paths; exit 1 when a cap is passed
                                               # or a path is missing (scripts/check.sh runs this)
+    python3 scripts/bloat_check.py --compare NAME=SECONDS ...   # compare times that a script measured with their
+                                              # baselines; one TIME or WARN line; never fails (scripts/check.sh,
+                                              # session_checkin.sh and the pre-push hook run it); --record stores them
     python3 scripts/bloat_check.py --test     # self-test; prints BLOAT TEST PASS
 
 It measures:
@@ -26,7 +29,10 @@ It measures:
     duplicates    normalized text lines of 80+ characters found in 2 or more tracked files
     big files     tracked files over the size budget
     audit due     days and commits on main since the last full audit (.bloat-audit.json "last_audit")
-    timings       (--time) wall time of each named command against its recorded baseline
+    timings       (--time) wall time of each named command against its recorded baseline; (--compare) times that
+                  a script measured itself: NAME is a timings key, NAME:STEP one of its "steps". Slower means over
+                  max_slowdown (default +25%) and over min_slowdown_seconds (default 0.5 s), so noise on a small step
+                  does not warn. A slowdown starts .claude/skills/efficiency/SKILL.md
 
 .bloat-audit.json (project-owned; the full audit in .claude/skills/audit/SKILL.md writes it). All keys are optional:
     {"last_audit": {"date": "YYYY-MM-DD", "commit": "<sha>", "report": "<path>"},
@@ -34,7 +40,10 @@ It measures:
      "budgets": {"start_read_tokens": 4500, "start_read_warn_tokens": 3500, "handoff_lines": 40, "file_kb": 500, "duplicate_lines": 20,
                  "rules": 35, "project_rules": 15},
      "start_read": [], "ignore": ["ref/**"],
-     "timings": {"tests": {"cmd": "tests/run.sh", "seconds": 20.8, "max_slowdown": 0.25}}}
+     "timings": {"tests": {"cmd": "tests/run.sh", "seconds": 20.8, "max_slowdown": 0.25},
+                 "check": {"cmd": "bash scripts/check.sh", "seconds": 4.5, "steps": {"pii_guard self-test": 4.1}},
+                 "push-guard": {"seconds": 0.4}}}
+A timing with no "cmd" is only compared (--compare), never run by --time.
 start_read_warn_tokens only warns (never "over", never fails --strict); set it to the cap to turn the warning off.
 A repo with no "last_audit" reports AUDIT DUE (never audited) once it is every_days or every_commits past its first
 commit (a new project is not due on day one; an older project synced for the first time usually is). The first audit
@@ -281,6 +290,8 @@ def audit_due(root, cfg, today):
 def run_timings(root, cfg, record):
     rows, slow = [], []
     for name, t in cfg.get("timings", {}).items():
+        if not t.get("cmd"):
+            continue  # measured by the script that runs it (--compare)
         t0 = time.monotonic()
         rc = subprocess.run(t["cmd"], shell=True, cwd=root, capture_output=True).returncode
         secs = round(time.monotonic() - t0, 1)
@@ -293,6 +304,53 @@ def run_timings(root, cfg, record):
         if record and not rc:
             t["seconds"] = secs
     return rows, slow
+
+
+def compare_times(cfg, pairs, record=False):
+    """pairs: [(name, seconds)]; name is a timings key, or "key:step" for one of its "steps". Returns (line, slow).
+    Warn only: a slowdown is reported, never a failure (the owner, 2026-11-16)."""
+    timings = cfg.setdefault("timings", {})
+    slow, new, n = [], [], 0
+    for name, secs in pairs:
+        key, _, step = name.partition(":")
+        entry = timings.setdefault(key, {}) if record else timings.get(key, {})
+        base = entry.get("steps", {}).get(step) if step else entry.get("seconds")
+        limit = entry.get("max_slowdown", 0.25)
+        floor = entry.get("min_slowdown_seconds", 0.5)
+        if base is None:
+            new.append(name)
+        elif secs > base * (1 + limit) and secs - base >= floor:
+            slow.append(f"{step or key} {secs} s (baseline {base} s, +{round((secs / base - 1) * 100) if base else 999}%)")
+        n += 1
+        if record:
+            if step:
+                entry.setdefault("steps", {})[step] = secs
+            else:
+                entry["seconds"] = secs
+    if record:
+        return f"TIME  baseline recorded for {n} time(s) in {CONFIG}", []
+    if slow:
+        return ("WARN  slower than the baseline: " + "; ".join(slow) +
+                ". Next: .claude/skills/efficiency/SKILL.md (a measured slowdown starts it)"), slow
+    tail = f"; no baseline yet for {len(new)} ({', '.join(new)}): .claude/skills/efficiency/SKILL.md, Record a baseline" if new else ""
+    return f"TIME  baseline: {n - len(new)} of {n} within the limit{tail}", []
+
+
+def main_compare(root, items, record):
+    try:
+        cfg = load_config(root)
+        pairs = [(i.rsplit("=", 1)[0], round(float(i.rsplit("=", 1)[1]), 1)) for i in items]
+    except (ValueError, TypeError, KeyError, IndexError) as e:
+        print(f"TIME  baseline: not compared ({e})")
+        return 0
+    line, _ = compare_times(cfg, pairs, record)
+    if record:
+        p = root / CONFIG
+        data = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+        data["timings"] = cfg["timings"]
+        p.write_text(json.dumps(data, indent=2) + "\n")
+    print(line)
+    return 0
 
 
 def report(root, args, today=None):
@@ -462,6 +520,23 @@ def self_test():
             report(root, argparse.Namespace(brief=True, time=True, record=True, strict=False))
         saved = json.loads((root / CONFIG).read_text())["timings"]
         assert "seconds" not in saved["f"] and saved["t"]["seconds"] is not None, "record skips failed commands"
+        tc = {"timings": {"check": {"seconds": 4.0, "steps": {"a": 2.0, "tiny": 0.1}}}}
+        line, slow = compare_times(json.loads(json.dumps(tc)), [("check", 4.4), ("check:a", 2.4), ("check:tiny", 0.3)])
+        assert not slow and line.startswith("TIME  baseline: 3 of 3"), "within +25%, or under 0.5 s slower: ok"
+        line, slow = compare_times(json.loads(json.dumps(tc)), [("check", 5.2), ("check:a", 2.0), ("check:new", 1.0)])
+        assert slow == ["check 5.2 s (baseline 4.0 s, +30%)"] and line.startswith("WARN") and "efficiency" in line, "a slowdown warns and names the skill"
+        line, _ = compare_times(json.loads(json.dumps(tc)), [("check:new", 1.0)])
+        assert "no baseline yet for 1 (check:new)" in line and "Record a baseline" in line, "no baseline: says how to record one"
+        rec = json.loads(json.dumps(tc))
+        compare_times(rec, [("check", 3.0), ("check:new", 1.0), ("other", 0.2)], record=True)
+        assert rec["timings"]["check"]["seconds"] == 3.0 and rec["timings"]["check"]["steps"]["new"] == 1.0 and rec["timings"]["other"]["seconds"] == 0.2, "record stores wall, step and a new key"
+        (root / CONFIG).write_text(json.dumps({"budgets": {}, **tc}))
+        with contextlib.redirect_stdout(io.StringIO()):
+            assert main_compare(root, ["check:a=9", "bad"], False) == 0, "a bad item: no failure"
+            main_compare(root, ["check:a=1.25"], True)
+        assert json.loads((root / CONFIG).read_text())["timings"]["check"]["steps"]["a"] == 1.2 and "budgets" in json.loads((root / CONFIG).read_text()), "--record keeps the other keys"
+        rows, _ = run_timings(root, {"timings": {"nocmd": {"seconds": 1}}}, record=False)
+        assert rows == [], "--time skips a timing with no cmd"
     print("BLOAT TEST PASS")
 
 
@@ -485,6 +560,7 @@ def main():
     ap.add_argument("--record", action="store_true")
     ap.add_argument("--strict", action="store_true")
     ap.add_argument("--test", action="store_true")
+    ap.add_argument("--compare", nargs="+", metavar="NAME=SECONDS")
     ap.add_argument("--project", default=".")
     args = ap.parse_args()
     if args.test:
@@ -493,6 +569,8 @@ def main():
     root = Path(git(Path(args.project), "rev-parse", "--show-toplevel") or args.project)
     if args.rules:
         return main_rules(root)
+    if args.compare:
+        return main_compare(root, args.compare, args.record)
     return report(root, args)
 
 
