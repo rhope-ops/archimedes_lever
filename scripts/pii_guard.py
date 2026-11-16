@@ -82,10 +82,14 @@ _EMAIL_AT = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A
 
 def emails(line):
     """EMAIL matches, plus an address that starts right where the one before it ends (two addresses joined by "-")."""
+    reach = 0  # end of the last match: a finditer match inside a chain already walked is skipped (else quadratic)
     for m in EMAIL.finditer(line):
+        if m.end() <= reach:
+            continue
         while m:
             yield m
-            m = _EMAIL_AT.match(line, m.end()) if m.end() < len(line) else None
+            reach = m.end()
+            m = _EMAIL_AT.match(line, reach) if reach < len(line) else None
 PHONE = [
     re.compile(r"(?<![\w./-])\(?\d{3}\)?[-. ]\d{3}[-.]\d{4}(?![\w-])"),
     re.compile(r"(?<![\w./-])\(\d{3}\) ?\d{3}[-. ]\d{4}(?![\w-])"),
@@ -443,7 +447,8 @@ def hook(stdin_text):
     """PreToolUse hook entry: any error blocks the call. Claude Code runs the call on any exit other than 2, so an
     exception (deep nesting, a wrong type) must not end the script with exit 1."""
     def too_slow(*_):  # exit here: an exception could escape between the except block and the finally block
-        print("pii-guard hook: blocked: the scan took longer than its own time budget; fail closed.", file=sys.stderr)
+        sys.stdout.flush()
+        os.write(2, b"pii-guard hook: blocked: the scan took longer than its own time budget; fail closed.\n")
         os._exit(2)
     if hasattr(signal, "SIGALRM"):  # a hook timeout lets the call run: stop first, and block
         signal.signal(signal.SIGALRM, too_slow)
@@ -530,6 +535,11 @@ def self_test():
         ok = ok and good
 
     expect("personal email", "mail jane" + at + "corp" + dot + "io", ["email"])
+    t0 = time.time()
+    chain = len(scan_text(("a" + at + "b" + dot + "cc+") * 20_000, "t", [], set()))  # 200 KB of joined addresses
+    good = 1 <= chain <= 2 and time.time() - t0 < 2  # the first address and the "+" joined one; scan_text drops repeats
+    print(("ok   " if good else "FAIL ") + f"200 KB chain of joined addresses: linear ({time.time() - t0:.2f} s)")
+    ok = ok and good
     expect("address joined to the end of an allowed one", "x" + at + "example" + dot + "com+bob" + at + "corp" + dot + "org", ["email"])
     expect("github noreply allowed", "123+x" + at + "users.noreply.github" + dot + "com", [])
     expect("noreply allowed", "noreply" + at + "anthropic" + dot + "com", [])
