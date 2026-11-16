@@ -13,8 +13,8 @@ AGENTS.md "Handoff" points here. The next session cannot see this chat: it reads
 2. Update docs/NEXT_PROMPT.md, within the AGENTS.md "Handoff" cap, in its sections:
    - `Updated:` date and time (the time zone in the AGENTS.md header) and who.
    - State: what is on main (commit), open branches and pull requests (full links), what runs now and who owns it.
-   - Open (in order): the next steps; each with what "done" is.
-   - Needs the owner: each open decision with its options and the recommendation.
+   - Open (in order): the next steps, one line each, with what "done" is.
+   - Needs the owner: each open decision in one line, with its options and the recommendation.
    - Do not: approaches that failed, with one line of why.
 3. Put detailed evidence (logs, tables, review findings) in its own file in the place AGENTS.md "Handoff" names (`YYYY-MM-DD-<topic>.md`), and link it.
 4. A decision by the owner: a row in docs/DECISIONS.md (date, scope, what it replaces). Full tier: a story event also gets a project log row (the `project-log` skill).
@@ -25,6 +25,6 @@ In the kit clone itself (the KIT line at start), docs/NEXT_PROMPT.md is the temp
 
 ## Start from a handoff
 
-1. Read docs/NEXT_PROMPT.md after the check-in.
+1. Read docs/NEXT_PROMPT.md as AGENTS.md "Start of session" says.
 2. Check each claim against the repo before you act on it: is the commit on origin/main, is the pull request still open, does the file exist? A claim that fails is drift: report it.
-3. The current request overrides the handoff. If they conflict, say so and follow the request.
+3. If the handoff and the current request conflict, say so; AGENTS.md "Order of authority" decides.
