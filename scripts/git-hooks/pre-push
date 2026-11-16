@@ -34,8 +34,9 @@ check() {  # reads "<local ref> <local sha> <remote ref> <remote sha>" lines; pr
   return $blocked
 }
 
-lane_of() {  # reads the same lines; prints "full" when a pushed commit goes to main or master, else "fast"
-  awk 'NF>=4 && $2 !~ /^0+$/ && ($3 == "refs/heads/main" || $3 == "refs/heads/master") {f=1} END {print (f ? "full" : "fast")}'
+lane_of() {  # lane_of [DEFAULT_BRANCH]: reads the same lines; prints "full" when a pushed commit goes to main, master
+             # or the named default branch, else "fast"
+  awk -v d="refs/heads/${1:-main}" 'NF>=4 && $2 !~ /^0+$/ && ($3 == "refs/heads/main" || $3 == "refs/heads/master" || $3 == d) {f=1} END {print (f ? "full" : "fast")}'
 }
 
 if [ "${1:-}" = "--test" ]; then
@@ -66,6 +67,8 @@ if [ "${1:-}" = "--test" ]; then
   lane "branch and main: full lane"   full "refs/heads/x $c refs/heads/x $zero
 refs/heads/main $b refs/heads/main $a"
   lane "delete only: fast lane"       fast "(delete) $zero refs/heads/main $b"
+  got=$(printf '%s\n' "refs/heads/x $c refs/heads/trunk $a" | lane_of trunk)
+  if [ "$got" = full ]; then echo "ok   push to a default branch with another name: full lane"; else echo "FAIL default branch trunk (got $got)"; fails=1; fi
   [ $fails = 0 ] && echo "PRE-PUSH TEST PASS" || { echo "PRE-PUSH TEST FAIL"; exit 1; }
   exit 0
 fi
@@ -78,14 +81,16 @@ top="$(git rev-parse --show-toplevel)"
 
 # Repo checks: a push that carries commits runs scripts/check.sh on this checkout and is blocked when it fails,
 # so an agent cannot sign off its own work (AGENTS.md "Git safety"). A push that only deletes branches skips it.
-# Lane: full for main or master, so nothing reaches the default branch on a fast-lane pass; fast for other branches.
+# Lane: full for main, master or the remote's default branch, so nothing reaches the default branch on a fast-lane pass; fast for other branches.
 # --cached: a lane that already passed on this commit with a clean tree is not run again.
 # --no-pii: with the guard on, the guard step below scans the tracked files and the pushed commits in one run.
 carries=0
 printf '%s\n' "$input" | awk 'NF>=4 && $2 !~ /^0+$/ {f=1} END {exit !f}' && carries=1
 if [ -f "$top/scripts/check.sh" ] && [ "$carries" = 1 ]; then
   args=(--cached)
-  [ "$(printf '%s\n' "$input" | lane_of)" = fast ] && args+=(--fast)
+  # The remote's default branch, when it is not main or master (origin/HEAD, set by clone).
+  def="$(git symbolic-ref -q --short "refs/remotes/${1:-origin}/HEAD" 2>/dev/null)"; def="${def#*/}"
+  [ "$(printf '%s\n' "$input" | lane_of "$def")" = fast ] && args+=(--fast)
   [ -f "$top/.pii-guard" ] && args+=(--no-pii)
   cout=$(bash "$top/scripts/check.sh" "${args[@]}" 2>&1); crc=$?
   if [ "$crc" -ne 0 ]; then

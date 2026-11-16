@@ -36,15 +36,15 @@ Why: <the trigger, with its evidence>. Replaces: <the line it replaces, or "noth
 
 ## Before you write
 
-1. Search AGENTS.md (all sections) and docs/DECISIONS.md for the same topic. If a line exists or conflicts, show both and ask which wins.
+1. Search AGENTS.md (all sections, and the header values such as `- Time zone:`) and docs/DECISIONS.md for the same topic. If a line or a header value exists or conflicts, show both and ask which wins (two rules that disagree make agents act at random).
 2. One line, with its reason in brackets where the reason is not plain.
 3. At the cap, the same change removes a line (one in, one out). Never raise a cap on your own: the caps are the owner's decision (`budgets` in `.bloat-audit.json`).
 4. Record the approval as a row in docs/DECISIONS.md (date, scope, what it replaces).
-5. Full tier: run the scenario in `.claude/rule-tests.md` for the changed rule.
+5. Full tier: run the scenario in `.claude/rule-tests.md` for the changed rule. Run all scenarios after a switch to a new Claude model family.
 
 ## The caps
 
-`python3 scripts/bloat_check.py --rules` prints the rule bullets of AGENTS.md (kit sections and "Project rules") against their caps, each rule line added or removed against origin/main, and each `.claude/` path that AGENTS.md names but that does not exist. `scripts/check.sh` runs it and fails when a cap is passed or a path is missing. Starter tier: no script; count by hand.
+`python3 scripts/bloat_check.py --rules` prints the rule count of AGENTS.md (list items in the kit sections; list items and paragraph lines in "Project rules") against the caps, each rule line added or removed against origin/main, and each path that AGENTS.md names but that does not exist. `scripts/check.sh` runs it and fails when a cap is passed or a path is missing. Starter tier: no script; count by hand.
 
 ## Labels
 

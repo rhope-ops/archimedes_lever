@@ -9,14 +9,69 @@
 #   3. the project log check (full tier),
 #   4. the personal-data scan of all tracked files (when .pii-guard exists; in GitHub Actions the pii-guard step does it;
 #      with --no-pii the caller does it: the pre-push hook scans files and pushed commits in one run),
-#   5. scripts/check.local.sh, when it exists: this project's own tests (SKIP when missing: AGENTS.md Delivery then gates main).
+#   5. scripts/check.local.sh, when it exists: this project's own tests (SKIP when missing: the review gate in
+#      .claude/skills/deliver/SKILL.md then guards main).
 # The checks run in parallel: each one works on its own temporary files. CHECK_SERIAL=1 runs them one at a time.
 # Prints one PASS/FAIL/SKIP line per check, the output of each failed check, a TIME line (wall time and the 3 slowest
 # checks) and "CHECK PASS" or "CHECK FAIL" last. Exit 0 only when no check failed. Needs bash, git and python3.
 # Stamp: a lane that passes on a clean tree writes "<lane> <commit>" to .git/check-pass. With --cached, a run on the
 # same commit and a clean tree passes at once (the full stamp covers both lanes). Never write the stamp by hand.
+# Self-test (temporary repos, no network): scripts/check.sh --test
 set -uo pipefail
+self="$(cd "$(dirname "$0")" && pwd -P)/$(basename "$0")"
+[ "${1:-}" = "--test" ] && { selftest_main=1; } || selftest_main=0
 cd "$(git rev-parse --show-toplevel)" || exit 1
+# Git gives a hook GIT_DIR and friends (in a linked worktree they point at the real repo). The self-tests make
+# temporary repos with "git init" and "git commit": with those variables set they would write into this repo.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_PREFIX GIT_COMMON_DIR GIT_IMPLICIT_WORK_TREE
+
+if [ "$selftest_main" = 1 ]; then
+  # Each case runs this script in a small temporary repo: a fake kit script with a --test, and a check.local.sh that
+  # records its argument. CHECK_IN_TEST stops the inner runs from starting this self-test again.
+  t="$(mktemp -d)"; trap 'rm -rf "$t"' EXIT
+  export CHECK_IN_TEST=1
+  g() { git -C "$t/r" -c user.email=t@t -c user.name=t "$@"; }
+  git init -q -b main "$t/r"; mkdir -p "$t/r/scripts"
+  cp "$self" "$t/r/scripts/check.sh"
+  printf '%s\n' 'import sys' 'print("fake self-test")' > "$t/r/scripts/stop_check.py"
+  printf '%s\n' 'echo "arg=${1:-none}" > "$(git rev-parse --git-dir)/local-arg"' '[ ! -f fail.flag ]' > "$t/r/scripts/check.local.sh"
+  g add -A; g commit -q -m a; g update-ref refs/remotes/origin/main HEAD
+  fails=0
+  ok() { if [ "$2" = "$3" ]; then echo "ok   $1"; else echo "FAIL $1 (got: $2; want: $3)"; fails=1; fi; }
+  c() { (cd "$t/r" && bash scripts/check.sh "$@" 2>&1); }
+  out="$(c)"; ok "full lane passes" "$?" 0
+  ok "full lane runs the self-test of an unchanged script" "$(printf '%s\n' "$out" | grep -c '^PASS  stop_check self-test')" 1
+  ok "full lane: check.local.sh gets no argument" "$(cat "$t/r/.git/local-arg")" "arg=none"
+  ok "a pass on a clean tree writes the full stamp" "$(cut -d' ' -f1 "$t/r/.git/check-pass")" full
+  ok "a TIME line names the lane" "$(printf '%s\n' "$out" | grep -c '^TIME  full lane ')" 1
+  ok "--cached uses the full stamp" "$(c --cached | head -n 1 | cut -c1-18)" "CHECK PASS (cached"
+  ok "--cached --fast uses the full stamp" "$(c --cached --fast | head -n 1 | cut -c1-18)" "CHECK PASS (cached"
+  echo x > "$t/r/new.txt"
+  ok "a dirty tree is not cached" "$(c --cached | grep -c 'cached')" 0
+  ok "a run on a dirty tree writes no new stamp" "$( [ -f "$t/r/.git/check-pass" ] && cut -d' ' -f2 "$t/r/.git/check-pass")" "$(g rev-parse HEAD)"
+  g add -A; g commit -q -m b
+  ok "a new commit is not cached" "$(c --cached --fast | grep -c 'cached')" 0
+  ok "fast lane: check.local.sh gets --fast" "$(cat "$t/r/.git/local-arg")" "arg=--fast"
+  ok "fast lane skips the self-test of an unchanged script" "$(c --fast | grep -c 'stop_check self-test')" 0
+  ok "a fast stamp does not pass a full run" "$(c --cached | grep -c 'cached')" 0
+  echo "# changed" >> "$t/r/scripts/stop_check.py"
+  ok "fast lane runs the self-test of a changed script" "$(c --fast | grep -c '^PASS  stop_check self-test')" 1
+  g commit -q -am c; rm -f "$t/r/.git/check-pass"
+  c --fast --no-pii >/dev/null
+  ok "--no-pii writes no stamp" "$( [ -f "$t/r/.git/check-pass" ] && echo stamp || echo none)" none
+  c >/dev/null; touch "$t/r/fail.flag"
+  c >/dev/null; ok "a failing check fails the run" "$?" 1
+  ok "a failed run removes the stamp" "$( [ -f "$t/r/.git/check-pass" ] && echo stamp || echo none)" none
+  rm "$t/r/fail.flag"
+  g update-ref -d refs/remotes/origin/main
+  ok "no default branch ref: the fast lane runs every self-test" "$(c --fast | grep -c '^PASS  stop_check self-test')" 1
+  c --bogus >/dev/null 2>&1; ok "an unknown flag exits 2" "$?" 2
+  # Inside a hook git sets GIT_DIR: the run must not write into that repo.
+  git init -q -b main "$t/other"; before="$(git -C "$t/other" status --porcelain | wc -l)"
+  (cd "$t/r" && GIT_DIR="$t/r/.git" bash scripts/check.sh >/dev/null 2>&1); ok "runs with GIT_DIR set" "$?" 0
+  [ "$fails" = 0 ] && echo "CHECK SELF-TEST PASS" || { echo "CHECK SELF-TEST FAIL"; exit 1; }
+  exit 0
+fi
 
 lane=full cached=0 pii=1
 for a in "$@"; do
@@ -31,7 +86,7 @@ done
 gitdir="$(git rev-parse --git-dir)"
 stamp="$gitdir/check-pass"
 head="$(git rev-parse HEAD 2>/dev/null || echo none)"
-clean() { [ -z "$(git status --porcelain 2>/dev/null)" ]; }
+clean() { local s; s="$(git status --porcelain 2>/dev/null)" || return 1; [ -z "$s" ]; }  # a git error is not "clean"
 if [ "$cached" = 1 ] && [ -f "$stamp" ] && clean; then
   read -r s_lane s_head <"$stamp" || true
   if [ "${s_head:-}" = "$head" ] && { [ "${s_lane:-}" = full ] || [ "$lane" = fast ]; }; then
@@ -88,14 +143,17 @@ selftest() {  # selftest NAME FILE [MORE FILES IT DEPENDS ON...] -- COMMAND...
   if touched "${deps[@]}"; then run "$name self-test" "$@"; else untested=$((untested + 1)); fi
 }
 
-for s in stop_check worker_guard log_check timeline bloat_check; do
+for s in stop_check worker_guard log_check bloat_check; do
   selftest "$s" "scripts/$s.py" -- python3 "scripts/$s.py" --test
 done
+selftest timeline scripts/timeline.py scripts/log_check.py -- python3 scripts/timeline.py --test  # it imports log_check
 selftest pii_guard scripts/pii_guard.py -- python3 scripts/pii_guard.py --test
 selftest first_use_check scripts/first_use_check.py scripts/pii_guard.py -- python3 scripts/first_use_check.py --test
 # Kit only: projects have no sync tools. The drift self-test reads the kit's AGENTS.md and stop_check.py.
 selftest drift scripts/drift.py scripts/sync_baseline.py AGENTS.md scripts/stop_check.py -- python3 scripts/drift.py --test
 selftest pre-push scripts/git-hooks/pre-push -- scripts/git-hooks/pre-push --test
+# This script's own self-test (not inside that self-test: it runs this script in temporary repos).
+[ -z "${CHECK_IN_TEST:-}" ] && selftest check.sh scripts/check.sh -- bash scripts/check.sh --test
 [ "$untested" -gt 0 ] && skip "$untested self-tests" "fast lane: those scripts did not change; the full lane runs them"
 
 if [ -f scripts/bloat_check.py ]; then run "rule caps and pointers" python3 scripts/bloat_check.py --rules; fi
@@ -127,7 +185,7 @@ if [ -f scripts/check.local.sh ]; then
     run "project checks (check.local.sh)" bash scripts/check.local.sh
   fi
 else
-  skip "project checks" "no scripts/check.local.sh: no project tests yet; AGENTS.md Delivery gates main"
+  skip "project checks" "no scripts/check.local.sh: no project tests yet; the review gate guards main (.claude/skills/deliver/SKILL.md)"
 fi
 
 wait

@@ -87,6 +87,8 @@ def log_template(base):
 ADVANCED_FILES = [".claude/skills/delegate/SKILL.md", ".claude/agents/scout.md", ".claude/agents/worker.md",
                   ".claude/skills/project-log/SKILL.md", "docs/LOG.md", "scripts/log_check.py", "scripts/timeline.py",
                   ".claude/skills/audit/SKILL.md", "scripts/bloat_check.py", ".claude/rule-tests.md"]
+# Moved to .claude/skills/ on 2026-11-16: a project synced before then still has the old copies.
+MOVED_FILES = [".claude/orchestration.md", ".claude/bloat-audit.md", ".claude/project-log.md"]
 TIERS = ("starter", "full")
 NO_OWNER_RENAME = {"scripts/sync_baseline.py", "scripts/first_use_check.py", "docs/FIRST_USE.md"}
 OWNER_RE = r"[A-Za-z0-9 ._,()-]+"  # safe inside Python strings, JSON and Markdown
@@ -440,6 +442,9 @@ def main():
             extra = [f for f in ADVANCED_FILES if (root / f).exists()]
             if extra:
                 print(f"Tier starter: these advanced files are not synced; delete them by hand if you want: {', '.join(extra)}")
+        old = [f for f in MOVED_FILES if (root / f).exists()]
+        if old:
+            print(f"These files moved to .claude/skills/; delete the old copies by hand: {', '.join(old)}")
         if not changed:
             print("No changes: the project already matches the baseline.")
             return
