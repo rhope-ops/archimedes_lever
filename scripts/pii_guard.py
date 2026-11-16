@@ -115,7 +115,7 @@ SECRET = [re.compile(r) for r in (
 # quadratic ("a." * 10,000 took 0.8 s). The marks are split in the source so this file does not flag itself.
 MILHOST = re.compile(
     r"(?i)(?<![A-Za-z0-9-])(?<![A-Za-z0-9-]\.)(?:(?:[a-z0-9-]+\.)+mil(?![A-Za-z0-9-]|\.[A-Za-z0-9])"   # any host under the military domain
-    r"|(?:[a-z0-9-]+\.)*sharepoint-mil\.us\b|dod\.teams\.microsoft\.us\b)")          # DoD cloud tenant hosts
+    r"|(?:[a-z0-9-]+\.)*sharepoint-mil\.us\b|(?:[a-z0-9-]+\.)*dod\.teams\.microsoft\.us\b)")          # DoD cloud tenant hosts
 MARKING = [re.compile(r) for r in (
     r"\bCUI/" r"/", r"^[^A-Za-z0-9]*CU" r"I[^A-Za-z0-9]*$", r"(?i)\bcontrolled\s+unclassified\s+" r"information\b",
     r"^[^A-Za-z0-9]*(?:SEC" r"RET|CONFID" r"ENTIAL|UNCLASS" r"IFIED)[^A-Za-z0-9]*$",  # one word alone on its line, upper case
@@ -540,6 +540,14 @@ def self_test():
     good = 1 <= chain <= 2 and time.time() - t0 < 2  # the first address and the "+" joined one; scan_text drops repeats
     print(("ok   " if good else "FAIL ") + f"200 KB chain of joined addresses: linear ({time.time() - t0:.2f} s)")
     ok = ok and good
+    teams = "api" + dot + "dod" + dot + "teams" + dot + "microsoft" + dot + "us"
+    expect("a DoD Teams host with a subdomain", "see https://" + teams + "/x", ["milhost"], dod=True)
+    for label, run in (("a.", "a." * 100_000), ("a-a.", "a-a." * 50_000), ("a.dod.", "a.dod." * 33_000)):
+        t0 = time.time()
+        scan_text(run, "t", [], set(), True)
+        good = time.time() - t0 < 2
+        print(("ok   " if good else "FAIL ") + f"200 KB of {label!r}: MILHOST linear ({time.time() - t0:.2f} s)")
+        ok = ok and good
     expect("address joined to the end of an allowed one", "x" + at + "example" + dot + "com+bob" + at + "corp" + dot + "org", ["email"])
     expect("github noreply allowed", "123+x" + at + "users.noreply.github" + dot + "com", [])
     expect("noreply allowed", "noreply" + at + "anthropic" + dot + "com", [])
