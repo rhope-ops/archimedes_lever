@@ -66,6 +66,7 @@ import json
 import os
 import pathlib
 import re
+import signal
 import subprocess
 import sys
 import tempfile
@@ -73,7 +74,9 @@ import time
 import unicodedata
 
 ZERO = re.compile(r"^0+$")
-EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}")
+# The lookbehind lets a match start only where a run of local-part characters starts: without it, a long run with
+# no "@" costs time in the square of its length (200 KB took 26 s, longer than the hook timeout).
+EMAIL = re.compile(r"(?<![A-Za-z0-9._%+-])[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}")
 PHONE = [
     re.compile(r"(?<![\w./-])\(?\d{3}\)?[-. ]\d{3}[-.]\d{4}(?![\w-])"),
     re.compile(r"(?<![\w./-])\(\d{3}\) ?\d{3}[-. ]\d{4}(?![\w-])"),
@@ -390,10 +393,11 @@ def push_revs(stdin_text, root):
 
 
 HOOK_FILE_KEYS = ("file_path", "file_paths", "files")
-HOOK_RECIPIENT_KEYS = ("to", "cc", "bcc", "recipients", "attendees")  # Gmail, top level: an address here is no finding
+HOOK_RECIPIENT_KEYS = ("to", "cc", "bcc")  # Gmail, top level: an address here is no finding
 
 
 HOOK_MAX_BYTES = 8_000_000  # named files above this total block: the scan must end well inside the hook timeout
+HOOK_BUDGET_S = 8  # seconds; the hook timeout in .claude/settings.json is 10
 
 
 def hook_parts(tool_input, tool_name=""):
@@ -428,11 +432,19 @@ def hook_parts(tool_input, tool_name=""):
 def hook(stdin_text):
     """PreToolUse hook entry: any error blocks the call. Claude Code runs the call on any exit other than 2, so an
     exception (deep nesting, a wrong type) must not end the script with exit 1."""
+    def too_slow(*_):
+        raise TimeoutError("over the hook's own time budget")
+    if hasattr(signal, "SIGALRM"):  # a hook timeout lets the call run: stop first, and block
+        signal.signal(signal.SIGALRM, too_slow)
+        signal.alarm(HOOK_BUDGET_S)
     try:
         return _hook(sys.stdin.read() if stdin_text is None else stdin_text)
     except BaseException as e:  # noqa: B036 - fail closed, whatever went wrong
         print(f"pii-guard hook: blocked: the scan failed ({e.__class__.__name__}); fail closed.", file=sys.stderr)
         return 2
+    finally:
+        if hasattr(signal, "SIGALRM"):
+            signal.alarm(0)
 
 
 def _hook(stdin_text):
@@ -823,6 +835,7 @@ def self_test():
         pathlib.Path(d, "page.html").write_text("<p>" + mail + "</p>")
         pathlib.Path(d, "clean.html").write_text("<p>hello</p>")
         pathlib.Path(d, "a.pdf").write_bytes(b"%PDF-1.4 fake")
+        pathlib.Path(d, "run.html").write_text("a1" * 100_000)  # 200 KB, one line, no "@"
         cases = [
             ("hook: clean Agent prompt passes", ["--hook"], {"tool_name": "Agent", "cwd": d, "tool_input": {"prompt": "fix the bug"}}, 0),
             ("hook: email in an Agent prompt blocks", ["--hook"], {"tool_name": "Agent", "cwd": d, "tool_input": {"prompt": "mail " + mail}}, 2),
@@ -838,6 +851,8 @@ def self_test():
             ("hook: a token in a mail recipient field blocks", ["--hook"], {"tool_name": "mcp__Gmail__send_message", "cwd": d, "tool_input": {"to": [mail, tok]}}, 2),
             ("hook: a 'to' key in a non-mail tool is scanned", ["--hook"], {"tool_name": "mcp__Claude_Docs__batch", "cwd": d, "tool_input": {"blocks": {"to": mail}}}, 2),
             ("hook: a nested 'to' key in a mail call is scanned", ["--hook"], {"tool_name": "mcp__Gmail__send_message", "cwd": d, "tool_input": {"body": {"to": mail}}}, 2),
+            ("hook: a long run with no @ ends fast and passes", ["--hook"], {"tool_name": "Artifact", "cwd": d, "tool_input": {"file_path": "run.html"}}, 0),
+            ("hook: named files over the size cap block", ["--hook"], {"tool_name": "SendUserFile", "cwd": d, "tool_input": {"file_paths": ["clean.html", "run.html"]}}, "cap"),
             ("hook: a missing file_path blocks", ["--hook"], {"tool_name": "Artifact", "cwd": d, "tool_input": {"file_path": "no-such.html"}}, 2),
             ("hook: an address in a mail body blocks", ["--hook"], {"tool_name": "mcp__Gmail__send_message", "cwd": d, "tool_input": {"to": [mail], "body": "write to " + mail}}, 2),
             ("hook: a named file it cannot scan blocks (minimum tier)", ["--hook"], {"tool_name": "SendUserFile", "cwd": d, "tool_input": {"file_paths": ["a.pdf"]}}, 2),
@@ -853,10 +868,19 @@ def self_test():
             for name, args, data, want in cases:
                 text = data if isinstance(data, str) else json.dumps(data)
                 if args == ["--hook"]:  # in-process: a new Python per case would double the test time
-                    err = io.StringIO()
-                    with contextlib.redirect_stderr(err):
-                        code = hook(text)
+                    global HOOK_MAX_BYTES
+                    cap, HOOK_MAX_BYTES = HOOK_MAX_BYTES, (150_000 if want == "cap" else HOOK_MAX_BYTES)
+                    err, t0 = io.StringIO(), time.time()
+                    try:
+                        with contextlib.redirect_stderr(err):
+                            code = hook(text)
+                    finally:
+                        HOOK_MAX_BYTES = cap
                     out = err.getvalue()
+                    want = 2 if want == "cap" else want
+                    if time.time() - t0 > 2:
+                        out += " too slow"
+                        code = -1
                 else:
                     r = subprocess.run(me + args, cwd=d, env=env, input=text, capture_output=True, text=True)
                     code, out = r.returncode, r.stdout + r.stderr
