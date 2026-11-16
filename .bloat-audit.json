@@ -22,7 +22,8 @@
         "check.sh self-test": 3.2,
         "rule caps and pointers": 0.1,
         "project log": 0.1,
-        "personal-data scan": 0.4
+        "personal-data scan": 0.4,
+        "session_checkin self-test": 0.2
       }
     },
     "checkin": {

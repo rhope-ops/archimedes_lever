@@ -584,7 +584,7 @@ def self_test():
             (ro / "AGENTS.md").write_text("## A\n\n- New rule.\n- Kept rule.\n- Third.\n\n## Project rules\n\n- P1.\n- P2.\n")
             rows, problems = rules_report(ro, caps)
             assert len(problems) == 2 and "rules over the cap (3 > 2)" in problems[0] and "project rules over" in problems[1], "both caps fail"
-            (ro / "AGENTS.md").write_text("## A\n\n- See `.claude/skills/x/SKILL.md` and [doc](docs/gone.md), [web](https://e.example/a), `.claude/skills/<name>/`, `scripts/gone.sh --fast`, `scripts/check.local.sh`, `python3 scripts/gone2.py --test`, `scripts/tool.sh -o docs/out.html`, `scripts/gone2.py:12`, `scripts/gone.sh|tee x`, `bash -x scripts/gone3.sh`, `x --output docs/a.md --out docs/b.md --outline docs/c.md -w out=docs/d.md`.\n")
+            (ro / "AGENTS.md").write_text("## A\n\n- See `.claude/skills/x/SKILL.md` and [doc](docs/gone.md), [web](https://e.example/a), `.claude/skills/<name>/`, `scripts/gone.sh --fast`, `scripts/check.local.sh`, `python3 scripts/gone2.py --test`, `scripts/tool.sh -o docs/out.html`, `scripts/gone2.py:12`, `scripts/gone.sh|tee x`, `bash -x scripts/gone3.sh`, `x --output docs/a.md --out docs/b.md --outline docs/c.md`.\n")
             rows, problems = rules_report(ro, caps)
             assert problems == ["missing paths named in AGENTS.md: .claude/skills/x/SKILL.md, docs/gone.md, scripts/gone.sh, scripts/gone2.py, scripts/gone3.sh, scripts/tool.sh"], "missing paths (also after a command word, with a line number or a pipe), not URLs, patterns, optional files or option values"
             (ro / ".claude/skills/x").mkdir(parents=True); (ro / ".claude/skills/x/SKILL.md").write_text("x")

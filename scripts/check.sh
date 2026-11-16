@@ -116,6 +116,12 @@ PY
   ok "a run with GIT_DIR set leaves that repo unchanged" "$(git -C "$o" rev-parse HEAD) $(git -C "$o" rev-list --count HEAD) $(git -C "$o" config --get core.bare)" "$want"
   mkdir -p "$t/r/sub"
   ok "a run from a subfolder with GIT_DIR set still runs the checks" "$(cd "$t/r/sub" && GIT_DIR="$t/r/.git" bash ../scripts/check.sh 2>&1 | grep -c '^PASS  stop_check self-test')" 1
+  # The check-in self-test must not delete the folder it runs in when it cannot make a temporary folder.
+  if [ -f "$(dirname "$self")/session_checkin.sh" ]; then
+    mkdir -p "$t/keep"; cp "$(dirname "$self")/session_checkin.sh" "$t/keep/"; touch "$t/keep/marker"
+    (cd "$t/keep" && TMPDIR="$t/no-such-dir" bash session_checkin.sh --test >/dev/null 2>&1)
+    ok "check-in self-test with no temporary folder: fails, deletes nothing" "$?:$( [ -f "$t/keep/marker" ] && echo kept)" "1:kept"
+  fi
   [ "$fails" = 0 ] && echo "CHECK SELF-TEST PASS" || { echo "CHECK SELF-TEST FAIL"; exit 1; }
   exit 0
 fi
@@ -201,6 +207,7 @@ selftest first_use_check scripts/first_use_check.py scripts/pii_guard.py -- pyth
 # Kit only: projects have no sync tools. The drift self-test reads the kit's AGENTS.md and stop_check.py.
 selftest drift scripts/drift.py scripts/sync_baseline.py AGENTS.md scripts/stop_check.py -- python3 scripts/drift.py --test
 selftest pre-push scripts/git-hooks/pre-push -- scripts/git-hooks/pre-push --test
+selftest session_checkin scripts/session_checkin.sh -- bash scripts/session_checkin.sh --test
 # This script's own self-test (not inside that self-test: it runs this script in temporary repos).
 [ -z "${CHECK_IN_TEST:-}" ] && selftest check.sh scripts/check.sh -- bash scripts/check.sh --test
 [ "$untested" -gt 0 ] && skip "$untested self-tests" "fast lane: those scripts did not change; the full lane runs them"
