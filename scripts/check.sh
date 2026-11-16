@@ -201,6 +201,7 @@ selftest first_use_check scripts/first_use_check.py scripts/pii_guard.py -- pyth
 # Kit only: projects have no sync tools. The drift self-test reads the kit's AGENTS.md and stop_check.py.
 selftest drift scripts/drift.py scripts/sync_baseline.py AGENTS.md scripts/stop_check.py -- python3 scripts/drift.py --test
 selftest pre-push scripts/git-hooks/pre-push -- scripts/git-hooks/pre-push --test
+selftest session_checkin scripts/session_checkin.sh -- bash scripts/session_checkin.sh --test
 # This script's own self-test (not inside that self-test: it runs this script in temporary repos).
 [ -z "${CHECK_IN_TEST:-}" ] && selftest check.sh scripts/check.sh -- bash scripts/check.sh --test
 [ "$untested" -gt 0 ] && skip "$untested self-tests" "fast lane: those scripts did not change; the full lane runs them"

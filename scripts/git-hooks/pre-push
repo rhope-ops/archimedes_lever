@@ -112,7 +112,7 @@ refs/heads/main $b refs/heads/main $a"
   eq "init.defaultBranch adds a name" "$(default_branches https://example.invalid/r.git)" "dev"
   eq "push to init.defaultBranch: full lane" "$(printf '%s\n' "refs/heads/x $c refs/heads/dev $a" | lane_of $(default_branches https://example.invalid/r.git))" full
   git config --unset init.defaultBranch
-  eq "a push shows TIME, WARN and CHECK lines, also an indented WARN" "$(printf '%s\n' 'PASS  a' '      WARN  rule lint: x' 'TIME  full' 'WARN  slower' 'CHECK PASS' '      rules: y' | shown | tr '\n' '|')" "      WARN  rule lint: x|TIME  full|WARN  slower|CHECK PASS|"
+  eq "a push shows TIME, WARN and CHECK lines, also an indented WARN" "$(printf '%s\n' 'PASS  a' '      WARN  rule lint: x' 'TIME  full' 'WARN  slower' 'CHECK PASS' '      rules: y' 'PASS  x WARN y' | shown | tr '\n' '|')" "      WARN  rule lint: x|TIME  full|WARN  slower|CHECK PASS|"
   o=$(mktemp -d); git -C "$o" init -q -b main  # another repo: the folder a "git --git-dir=..." push may start in
   eq "own work tree: the top folder" "$(own_tree)" "$(pwd -P)"
   eq "from a subfolder: the top folder" "$(mkdir -p sub && cd sub && own_tree)" "$(pwd -P)"
