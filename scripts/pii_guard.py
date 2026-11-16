@@ -6,7 +6,10 @@ Usage:
     python3 scripts/pii_guard.py --all             # every tracked file (working tree)
     python3 scripts/pii_guard.py --range A..B      # commits in A..B: added lines, messages, author and committer
     python3 scripts/pii_guard.py --push            # pre-push hook mode: reads the hook's stdin lines
-    python3 scripts/pii_guard.py FILE ...          # these files
+    python3 scripts/pii_guard.py FILE ...          # these files (a missing, unreadable or non-regular path fails)
+    python3 scripts/pii_guard.py --stdin [--label NAME]  # text on stdin: a brief, PR text or message before it is sent
+    python3 scripts/pii_guard.py --hook            # Claude Code PreToolUse hook: scans the tool call's input and the
+                                                   # files it names (file_path, file_paths, files); exit 2 blocks the call
     python3 scripts/pii_guard.py --status          # denylist source, entry count and fingerprint (never the names), profile
     --require-denylist                             # fail when no denylist is found (the hook and the Action use it),
                                                    # or only warn when .pii-guard has the line `denylist: warn`
@@ -55,8 +58,11 @@ Matches are printed masked (names and secrets as a length only), so CI logs do n
 Standard library only. Needs git (except for FILE mode).
 """
 import argparse
+import contextlib
 import fnmatch
 import hashlib
+import io
+import json
 import os
 import pathlib
 import re
@@ -314,6 +320,7 @@ def scan_commits(revs, root, deny, allow, dod=False):
     shas = git("rev-list", *revs, root=root).split()
     for sha in shas:
         short = sha[:7]
+        unscanned = set()  # dod: files already reported as unscanned; their patch lines are not scanned again
         meta = git("show", "-s", "--format=%an%n%ae%n%cn%n%ce%n%B", sha, root=root)
         lines = meta.split("\n")
         ident = "\n".join(lines[:4])
@@ -333,6 +340,7 @@ def scan_commits(revs, root, deny, allow, dod=False):
                 if len(parts) != 3 or skipped(parts[2], allow):
                     continue
                 if sizes.get(parts[2], 0) > MAX_BYTES:
+                    unscanned.add(parts[2])
                     found.append((f"commit {short} {parts[2]}", "+", "unscanned", f"larger than {MAX_BYTES} bytes"))
                 elif parts[2].lower().endswith(SKIP_SUFFIX):
                     found.append((f"commit {short} {parts[2]}", "+", "unscanned", "file type is not scanned"))
@@ -340,11 +348,18 @@ def scan_commits(revs, root, deny, allow, dod=False):
                     found.append((f"commit {short} {parts[2]}", "+", "unscanned", "binary file"))
         patch = git("-c", "core.quotepath=off", "show", "--format=", "--unified=0", "--no-color", "--no-ext-diff",
                     "--src-prefix=a/", "--dst-prefix=b/", sha, root=root)
-        cur, in_header = "?", False
+        cur, in_header, added = "?", False, []
+
+        def flush():  # one scan per file, not one per added line (a large file has many lines)
+            if added and not cur.endswith(SKIP_SUFFIX) and cur not in unscanned and not skipped(cur, allow):
+                found.extend((f"commit {short} {cur}", "+", k, v) for _, _, k, v in scan_text("\n".join(added), "", deny, allow, dod))
+            added.clear()
+
         for line in patch.splitlines():
             # A "+++ " line names the file only in a file header (after "diff --git", before the first "@@").
             # In a hunk it is an added line that starts with "++ ", and must be scanned like any other.
             if line.startswith(("diff --git ", "diff --cc ", "diff --combined ")):  # the last two: merge commits
+                flush()
                 in_header = True
             elif line.startswith("@@"):
                 in_header = False
@@ -353,8 +368,9 @@ def scan_commits(revs, root, deny, allow, dod=False):
                 if len(name) > 1 and name[0] == name[-1] == '"':
                     name = name[1:-1].replace('\\"', '"').replace("\\\\", "\\")
                 cur = name[2:] if name.startswith("b/") else name
-            elif line.startswith("+") and not cur.endswith(SKIP_SUFFIX) and not skipped(cur, allow):
-                found += [(f"commit {short} {cur}", "+", k, v) for _, _, k, v in scan_text(line[1:], "", deny, allow, dod)]
+            elif line.startswith("+"):
+                added.append(line[1:])
+        flush()
     return found, len(shas)
 
 
@@ -370,6 +386,68 @@ def push_revs(stdin_text, root):
             ["git", "cat-file", "-e", rsha + "^{commit}"], cwd=root, capture_output=True).returncode == 0
         out.append([f"{rsha}..{lsha}"] if known else [lsha, "--not", "--remotes"])
     return out
+
+
+HOOK_FILE_KEYS = ("file_path", "file_paths", "files")
+
+
+def hook_parts(tool_input):
+    """(strings, file paths) of a PreToolUse tool_input. Every string value is scanned; the values of the file keys
+    are also read as files (an Artifact or SendUserFile call sends a file's content, not the path)."""
+    texts, paths = [], []
+
+    def walk(v, key=""):
+        if isinstance(v, str):
+            texts.append(v)
+            if key in HOOK_FILE_KEYS:
+                paths.append(v)  # the caller reads only paths that are files
+        elif isinstance(v, dict):  # inside a file key ({"published/path": "source" | {"from": "source"}}) keep the key
+            for k, x in v.items():
+                walk(x, key if key in HOOK_FILE_KEYS else k)
+        elif isinstance(v, list):
+            for x in v:
+                walk(x, key)
+    walk(tool_input)
+    return texts, paths
+
+
+def hook(stdin_text):
+    """PreToolUse hook. Exit 0 lets the call run; exit 2 blocks it and shows stderr to Claude. Bad input blocks
+    (fail closed). Names are checked only when a denylist exists; the hook never blocks for a missing list."""
+    try:
+        event = json.loads(stdin_text)
+        tool_input = event.get("tool_input", {})
+        if not isinstance(tool_input, (dict, list, str)):
+            raise ValueError("tool_input")
+    except (ValueError, AttributeError) as e:
+        print(f"pii-guard hook: blocked: cannot read the hook input ({e.__class__.__name__}); fail closed.", file=sys.stderr)
+        return 2
+    cwd = event.get("cwd") or os.environ.get("CLAUDE_PROJECT_DIR") or "."
+    try:
+        root = git("rev-parse", "--show-toplevel", root=cwd).strip()
+    except (subprocess.CalledProcessError, FileNotFoundError, NotADirectoryError):
+        root = cwd
+    allow = load_allow(root)
+    prof = profile_of(allow)
+    if prof == "unknown":
+        print("pii-guard hook: blocked: " + UNKNOWN_PROFILE, file=sys.stderr)
+        return 2
+    dod = prof == "dod"
+    allow = {v for v in allow if not is_option_line(v)}
+    deny = load_denylist()
+    texts, paths = hook_parts(tool_input)
+    found = scan_text("\n".join(texts), "tool input", deny, allow, dod)
+    files = [os.path.join(cwd, p) for p in paths if os.path.isfile(os.path.join(cwd, p))]  # absolute paths stay
+    found += scan_files(files, root, deny, allow, dod)
+    if not found:
+        return 0
+    tool = event.get("tool_name", "tool")
+    for where, n, kind, val in found:
+        print(f"pii-guard hook: {where}:{n}: {kind}: {val}", file=sys.stderr)
+    print(f"pii-guard hook: blocked the {tool} call: {len(found)} finding(s) of personal data or secrets. Remove or "
+          "mask them (never copy them elsewhere), then call again. A finding that is not personal data: tell the owner; "
+          "only the owner adds an allow line to .pii-guard (.claude/skills/personal-data/SKILL.md).", file=sys.stderr)
+    return 2
 
 
 def report(found, what, deny, dod=False):
@@ -704,6 +782,47 @@ def self_test():
         good = revs == [[head, "--not", "--remotes"]]
         print(("ok   " if good else "FAIL ") + f"push lines: {revs}")
         ok = ok and good
+    # --hook, --stdin and named files (2026-11-16): a wrong path or bad hook input must never pass.
+    with tempfile.TemporaryDirectory() as d:
+        me = [sys.executable, os.path.abspath(__file__)]
+        env = {k: v for k, v in os.environ.items() if not k.startswith("PII_GUARD_DENYLIST")}
+        env["PII_GUARD_DENYLIST_FILE"] = os.path.join(d, "none.txt")
+        mail = "jane" + at + "corp" + dot + "io"
+        pathlib.Path(d, "page.html").write_text("<p>" + mail + "</p>")
+        pathlib.Path(d, "clean.html").write_text("<p>hello</p>")
+        cases = [
+            ("hook: clean Agent prompt passes", ["--hook"], {"tool_name": "Agent", "cwd": d, "tool_input": {"prompt": "fix the bug"}}, 0),
+            ("hook: email in an Agent prompt blocks", ["--hook"], {"tool_name": "Agent", "cwd": d, "tool_input": {"prompt": "mail " + mail}}, 2),
+            ("hook: email in a nested list blocks", ["--hook"], {"tool_name": "x", "cwd": d, "tool_input": {"a": [{"b": mail}]}}, 2),
+            ("hook: file named by file_path is read", ["--hook"], {"tool_name": "Artifact", "cwd": d, "tool_input": {"file_path": "page.html"}}, 2),
+            ("hook: clean file passes", ["--hook"], {"tool_name": "Artifact", "cwd": d, "tool_input": {"file_path": "clean.html"}}, 0),
+            ("hook: files map source {from} is read", ["--hook"], {"tool_name": "Artifact", "cwd": d, "tool_input": {"file_path": "clean.html", "files": {"p/x.html": {"from": os.path.join(d, "page.html")}}}}, 2),
+            ("hook: file_paths list is read", ["--hook"], {"tool_name": "SendUserFile", "cwd": d, "tool_input": {"file_paths": ["clean.html", "page.html"]}}, 2),
+            ("hook: bad JSON blocks", ["--hook"], "{not json", 2),
+            ("stdin: email fails", ["--stdin"], "brief: " + mail, 1),
+            ("stdin: clean passes", ["--stdin"], "brief: fix the bug", 0),
+            ("file: missing path fails", [os.path.join(d, "no-such.md")], "", 1),
+            ("file: /dev/stdin is not a regular file: fails", ["/dev/stdin"], "x " + mail, 1),
+        ]
+        saved = {k: os.environ.pop(k) for k in list(os.environ) if k.startswith("PII_GUARD_DENYLIST")}
+        os.environ["PII_GUARD_DENYLIST_FILE"] = env["PII_GUARD_DENYLIST_FILE"]
+        try:
+            for name, args, data, want in cases:
+                text = data if isinstance(data, str) else json.dumps(data)
+                if args == ["--hook"]:  # in-process: a new Python per case would double the test time
+                    err = io.StringIO()
+                    with contextlib.redirect_stderr(err):
+                        code = hook(text)
+                    out = err.getvalue()
+                else:
+                    r = subprocess.run(me + args, cwd=d, env=env, input=text, capture_output=True, text=True)
+                    code, out = r.returncode, r.stdout + r.stderr
+                good = code == want and mail not in out  # findings stay masked
+                print(("ok   " if good else "FAIL ") + f"{name} (exit {code})")
+                ok = ok and good
+        finally:
+            os.environ.pop("PII_GUARD_DENYLIST_FILE", None)
+            os.environ.update(saved)
     print("PII GUARD TEST " + ("PASS" if ok else "FAIL"))
     return 0 if ok else 1
 
@@ -717,10 +836,15 @@ def main():
     ap.add_argument("--allow-from", metavar="REF", help="read .pii-guard from this git ref (CI: the PR base), not the tree")
     ap.add_argument("--require-denylist", action="store_true", help="fail when no name denylist is found")
     ap.add_argument("--status", action="store_true", help="print the denylist source and entry count, never the names")
+    ap.add_argument("--stdin", action="store_true", help="scan the text on stdin")
+    ap.add_argument("--label", default="stdin", help="name for --stdin text in the findings")
+    ap.add_argument("--hook", action="store_true", help="Claude Code PreToolUse hook mode (JSON on stdin)")
     ap.add_argument("--test", action="store_true")
     a = ap.parse_args()
     if a.test:
         return self_test()
+    if a.hook:
+        return hook(sys.stdin.read())
     if a.status:
         raw, src = denylist_source()
         deny = load_denylist()
@@ -734,8 +858,8 @@ def main():
         prof = profile_of(load_allow(top))
         print("profile: " + (prof if prof != "unknown" else "UNKNOWN (" + UNKNOWN_PROFILE + ")"))
         return 0 if n and prof != "unknown" else 1
-    if not (a.files or a.all or a.range or a.push):
-        ap.error("give --all, --range, --push, --status or files")
+    if not (a.files or a.all or a.range or a.push or a.stdin):
+        ap.error("give --all, --range, --push, --stdin, --hook, --status or files")
     try:
         root = git("rev-parse", "--show-toplevel").strip()
     except (subprocess.CalledProcessError, FileNotFoundError):
@@ -765,8 +889,14 @@ def main():
         what.append(f"{len([f for f in files if f])} tracked files")
     if a.files:
         rel = [os.path.relpath(os.path.abspath(f), root) for f in a.files]
+        # A named path that cannot be read is a finding: a wrong path must never print PASS.
+        found += [(f, 0, "unscanned", "missing, unreadable or not a regular file") for f, r in zip(a.files, rel)
+                  if not skipped(r, allow) and not (os.path.isfile(f) and os.access(f, os.R_OK))]
         found += scan_files(rel, root, deny, allow, dod)
         what.append(f"{len(a.files)} file(s)")
+    if a.stdin:
+        found += scan_text(sys.stdin.read(), a.label, deny, allow, dod)
+        what.append(a.label)
     n = 0
     for revs in revsets:
         f, k = scan_commits(revs, root, deny, allow, dod)

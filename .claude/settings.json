@@ -38,6 +38,18 @@
     ]
   },
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "^(Agent|Task|Artifact|ArtifactData|ArtifactComments|SendUserFile|WebFetch|WebSearch|mcp__github__.*(pull_request|issue|comment|review|create_or_update_file|push_files).*|mcp__Gmail__(send_message|reply|forward|create_draft|update_draft)|mcp__Claude_Docs__(batch|update|create)|mcp__Google_(Docs|Drive|Sheets)__.*|mcp__claude-code-remote__(send_message|create_session|create_trigger|update_trigger|send_later))$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/scripts/pii_guard.py --hook",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [
