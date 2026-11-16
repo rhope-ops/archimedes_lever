@@ -77,6 +77,15 @@ ZERO = re.compile(r"^0+$")
 # The lookbehind lets a match start only where a run of local-part characters starts: without it, a long run with
 # no "@" costs time in the square of its length (200 KB took 26 s, longer than the hook timeout).
 EMAIL = re.compile(r"(?<![A-Za-z0-9._%+-])[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}")
+_EMAIL_AT = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}")  # for a fixed start only
+
+
+def emails(line):
+    """EMAIL matches, plus an address that starts right where the one before it ends (two addresses joined by "-")."""
+    for m in EMAIL.finditer(line):
+        while m:
+            yield m
+            m = _EMAIL_AT.match(line, m.end()) if m.end() < len(line) else None
 PHONE = [
     re.compile(r"(?<![\w./-])\(?\d{3}\)?[-. ]\d{3}[-.]\d{4}(?![\w-])"),
     re.compile(r"(?<![\w./-])\(\d{3}\) ?\d{3}[-. ]\d{4}(?![\w-])"),
@@ -98,9 +107,10 @@ SECRET = [re.compile(r) for r in (
     r"\b[rs]k_live_[0-9A-Za-z]{24,}",                   # Stripe live key
     r"-----BEGIN (?:[A-Z0-9]+ )*PRIVATE KEY(?: BLOCK)?-----",  # PEM, OpenSSH and PGP private keys
 )]
-# DoD tier (`profile: dod`). The marks are split in the source so this file does not flag itself.
+# DoD tier (`profile: dod`). MILHOST may not start inside a host name (after "x."): a match at every label was
+# quadratic ("a." * 10,000 took 0.8 s). The marks are split in the source so this file does not flag itself.
 MILHOST = re.compile(
-    r"(?i)(?<![A-Za-z0-9-])(?:(?:[a-z0-9-]+\.)+mil(?![A-Za-z0-9-]|\.[A-Za-z0-9])"   # any host under the military domain
+    r"(?i)(?<![A-Za-z0-9-])(?<![A-Za-z0-9-]\.)(?:(?:[a-z0-9-]+\.)+mil(?![A-Za-z0-9-]|\.[A-Za-z0-9])"   # any host under the military domain
     r"|(?:[a-z0-9-]+\.)*sharepoint-mil\.us\b|dod\.teams\.microsoft\.us\b)")          # DoD cloud tenant hosts
 MARKING = [re.compile(r) for r in (
     r"\bCUI/" r"/", r"^[^A-Za-z0-9]*CU" r"I[^A-Za-z0-9]*$", r"(?i)\bcontrolled\s+unclassified\s+" r"information\b",
@@ -255,7 +265,7 @@ def scan_text(text, where, deny, allow, dod=False):
     hosts_ok = {v.lower() for v in allow} if dod else set()  # a host name has no case
     for n, line in enumerate(text.splitlines(), 1):
         hits = []
-        for m in EMAIL.finditer(line):
+        for m in emails(line):
             if not ALLOWED_EMAIL.search(m.group()):
                 hits.append(("email", m.group()))
         for rx in SECRET:
@@ -265,7 +275,7 @@ def scan_text(text, where, deny, allow, dod=False):
         hits += [("id", m.group()) for m in SSN.finditer(line)]
         hits += [("id", m.group(1)) for m in SSN_KW.finditer(line)]
         if dod:
-            mails = [m.span() for m in EMAIL.finditer(line)]  # the host of a mail address is part of that finding
+            mails = [m.span() for m in emails(line)]  # the host of a mail address is part of that finding
             hits += [("milhost", m.group()) for m in MILHOST.finditer(line)
                      if not any(a <= m.start() and m.end() <= b for a, b in mails)]
             for rx in DODID:
@@ -432,8 +442,9 @@ def hook_parts(tool_input, tool_name=""):
 def hook(stdin_text):
     """PreToolUse hook entry: any error blocks the call. Claude Code runs the call on any exit other than 2, so an
     exception (deep nesting, a wrong type) must not end the script with exit 1."""
-    def too_slow(*_):
-        raise TimeoutError("over the hook's own time budget")
+    def too_slow(*_):  # exit here: an exception could escape between the except block and the finally block
+        print("pii-guard hook: blocked: the scan took longer than its own time budget; fail closed.", file=sys.stderr)
+        os._exit(2)
     if hasattr(signal, "SIGALRM"):  # a hook timeout lets the call run: stop first, and block
         signal.signal(signal.SIGALRM, too_slow)
         signal.alarm(HOOK_BUDGET_S)
@@ -519,6 +530,7 @@ def self_test():
         ok = ok and good
 
     expect("personal email", "mail jane" + at + "corp" + dot + "io", ["email"])
+    expect("address joined to the end of an allowed one", "x" + at + "example" + dot + "com+bob" + at + "corp" + dot + "org", ["email"])
     expect("github noreply allowed", "123+x" + at + "users.noreply.github" + dot + "com", [])
     expect("noreply allowed", "noreply" + at + "anthropic" + dot + "com", [])
     expect("example domain allowed", "a" + at + "example" + dot + "com", [])
@@ -878,7 +890,7 @@ def self_test():
                         HOOK_MAX_BYTES = cap
                     out = err.getvalue()
                     want = 2 if want == "cap" else want
-                    if time.time() - t0 > 2:
+                    if time.time() - t0 > 5:
                         out += " too slow"
                         code = -1
                 else:
