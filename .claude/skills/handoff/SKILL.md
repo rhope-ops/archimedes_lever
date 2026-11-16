@@ -10,13 +10,13 @@ AGENTS.md "Handoff" points here. The next session cannot see this chat: it reads
 ## Write a handoff
 
 1. Pull main just before you edit (docs/NEXT_PROMPT.md is a shared doc). Use small edits; never rewrite it from an old copy.
-2. Update docs/NEXT_PROMPT.md, at most 40 lines, in its sections:
+2. Update docs/NEXT_PROMPT.md, within the AGENTS.md "Handoff" cap, in its sections:
    - `Updated:` date and time (the time zone in the AGENTS.md header) and who.
    - State: what is on main (commit), open branches and pull requests (full links), what runs now and who owns it.
    - Open (in order): the next steps; each with what "done" is.
    - Needs the owner: each open decision with its options and the recommendation.
    - Do not: approaches that failed, with one line of why.
-3. Put detailed evidence (logs, tables, review findings) in `docs/reviews/YYYY-MM-DD-<topic>.md` and link it.
+3. Put detailed evidence (logs, tables, review findings) in its own file in the place AGENTS.md "Handoff" names (`YYYY-MM-DD-<topic>.md`), and link it.
 4. A decision by the owner: a row in docs/DECISIONS.md (date, scope, what it replaces). A story event: a project log row (`.claude/skills/project-log/SKILL.md`).
 5. Deliver it like any change (`.claude/skills/deliver/SKILL.md`). A docs-only change needs no fresh review.
 6. In the turn summary, give a resume prompt: one code block, at most 100 words, that stands alone (goal, state, approved decisions, next step, full links).
