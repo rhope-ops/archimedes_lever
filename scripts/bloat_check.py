@@ -111,6 +111,8 @@ def start_read(root, cfg):
 ITEM = re.compile(r"^\s*(?:[-*+]|(\d+)[.)])\s+(.*)$")
 RULE_HR = re.compile(r"^\s*([-*_])(\s*\1){2,}\s*$")           # --- or * * *: a horizontal rule, not a rule
 TABLE_SEP = re.compile(r"^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$")  # |---|---|: the row above it is a header
+HEADING = re.compile(r"^\s*#{1,6}(\s|$)")                    # "### Sub"; "#1 priority: ..." is text, not a heading
+EMPTY_ITEM = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s*$")         # a marker with no text
 
 
 def rule_lines(text):
@@ -120,9 +122,11 @@ def rule_lines(text):
     no blank line between is its continuation, not a new rule. kit = items under a "## " heading above
     "## Project rules" (not the header, not NOT_RULES sections; in RANKED sections the numbered ranking is not
     counted, a bullet is); project = items under "## Project rules", and there also each paragraph and each table
-    row (not the header row), so a rule that is not a bullet still counts; every = the items of all sections, for
-    the list of changed lines. Not counted anywhere: blank lines, "###" sub-headings, horizontal rules, table
-    separator rows, lines in ``` or ~~~ fences, <!-- comments -->. In the kit itself the file marks tier text
+    row (not the header row), so a rule that is not a bullet still counts; there a line continues the item above it
+    only when it is indented (an unindented line is a new rule: a count may be too high, never too low); every = the
+    items of all sections, for the list of changed lines. Not counted anywhere: blank lines, "###" sub-headings,
+    horizontal rules, table separator rows (they contain "|"), markers with no text, lines in ``` or ~~~ fences,
+    <!-- comments -->. In the kit itself the file marks tier text
     with <!-- starter --> blocks: those are dropped, so the count is the full tier.
     """
     text = re.sub(r"(?ms)^<!-- starter -->\n.*?^<!-- /starter -->\n", "", text)
@@ -137,19 +141,20 @@ def rule_lines(text):
             sec, open_item = line.rstrip(), False
         elif not sec:
             continue
-        elif not line.strip() or line.lstrip().startswith("#") or RULE_HR.match(line):
+        elif not line.strip() or HEADING.match(line) or RULE_HR.match(line) or EMPTY_ITEM.match(line):
             open_item = False
-        elif TABLE_SEP.match(line) and "-" in line:
-            if open_item and rows and rows[-1][1].startswith("|"):
+        elif TABLE_SEP.match(line) and "-" in line and "|" in line:
+            if open_item and rows and "|" in rows[-1][1]:
                 rows.pop()  # the header row of a table
             open_item = False
         else:
             m = ITEM.match(line)
+            indented = line[:1] in (" ", "\t")
             if m:
                 counted = sec not in NOT_RULES and not (sec in RANKED and m.group(1))
                 rows.append([sec, m.group(2).strip(), counted])
                 open_item = True
-            elif open_item and not line.lstrip().startswith("|"):
+            elif open_item and "|" not in line and (indented or sec != PROJECT_RULES):
                 rows[-1][1] += " " + line.strip()  # a wrapped line belongs to the item above it
             elif sec == PROJECT_RULES:
                 rows.append([sec, line.strip(), True])
@@ -161,11 +166,17 @@ def rule_lines(text):
 
 def missing_pointers(root, text):
     """Paths that AGENTS.md names and that do not exist: each `.claude/...`, `scripts/...` and `docs/...` path
-    inside backticks (also after a command word: `python3 scripts/x.py --test`), and relative link targets."""
+    inside backticks (also after a command word: `python3 scripts/x.py --test`), and relative link targets. Not a
+    path to check: the value of an option (`-o docs/out.html`: a file the command makes); a line number
+    (`scripts/a.py:12`) and a pipe or ; or & after a path are cut off."""
     text = re.sub(r"(?ms)^<!-- starter -->\n.*?^<!-- /starter -->\n", "", text)
     names = set()
     for span in re.findall(r"`([^`\n]+)`", text):
-        names |= {w.rstrip(".,;:)") for w in span.split() if re.match(r"(?:\.claude|scripts|docs)/", w)}
+        words = re.split(r"[\s|;&]+", span)
+        for prev, w in zip([""] + words, words):
+            w = re.sub(r"(:\d+)+$", "", w.rstrip(".,;:)"))
+            if re.match(r"(?:\.claude|scripts|docs)/", w) and not re.match(r"-\w", prev):
+                names.add(w)
     names -= OPTIONAL
     names |= {t.split("#")[0] for t in re.findall(r"\]\(([^)\s]+)\)", text)
               if "://" not in t and not t.startswith(("#", "mailto:"))}
@@ -347,6 +358,10 @@ def report(root, args, today=None):
 
 
 def self_test():
+    # The host's git config (forced signing, -c on the command line) must not change the cases.
+    for k in ("GIT_CONFIG_PARAMETERS", "GIT_CONFIG_COUNT"):
+        os.environ.pop(k, None)
+    os.environ.update(GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1")
     with tempfile.TemporaryDirectory() as d:
         root = Path(d)
         subprocess.run(["git", "init", "-q", str(root)], check=True)
@@ -396,12 +411,16 @@ def self_test():
         kit, project, every = rule_lines(sample)
         assert kit == ["Rule one.", "Rule two."] and project == ["Project rule."], "header, Commands, fences, comments and starter blocks are not rules"
         assert "Build: none." in every, "the list of changed lines also covers sections that are not counted"
-        kit, project, _ = rule_lines("## A\n\n* Star.\n1. Numbered.\n  - Nested.\nA paragraph.\n\n## Project rules\n\n+ Plus.\nA rule as a paragraph.\n")
-        assert kit == ["Star.", "Numbered.", "Nested. A paragraph."] and project == ["Plus. A rule as a paragraph."], "every list marker counts; a line right below an item is its continuation"
+        kit, project, _ = rule_lines("## A\n\n* Star.\n1. Numbered.\n  - Nested.\nA paragraph.\n\n## Project rules\n\n+ Plus.\n  wrapped.\nA rule as a paragraph.\n")
+        assert kit == ["Star.", "Numbered.", "Nested. A paragraph."] and project == ["Plus. wrapped.", "A rule as a paragraph."], "every list marker counts; in the kit a line right below an item continues it, in Project rules only an indented one"
+        _, project, _ = rule_lines("## Project rules\n\nRule one.\nRule two.\nRule three.\n\n- Bullet.\nAfter a bullet.\n\n#1 priority: never do X.\n")
+        assert project == ["Rule one.", "Rule two.", "Rule three.", "Bullet.", "After a bullet.", "#1 priority: never do X."], "Project rules: unindented lines are rules each; '#1' is text, not a heading"
+        _, project, _ = rule_lines("## Project rules\n\nRule | Why\n--- | ---\nT one | x\nT two | y\n\n| R | W |\n|---|---|\n| T three | z |\n-\n")
+        assert project == ["T one | x", "T two | y", "| T three | z |"], "tables without leading pipes: one rule per row; a lone '-' removes no row"
         kit, project, every = rule_lines("## Order of authority\n\n1. The owner.\n2. This file.\n- A bullet here counts.\n\n## B\n\n- One rule,\n  wrapped.\n~~~\n- in a tilde fence\n~~~\n* * *\n---\n### Sub\n\n"
                                          "## Project rules\n\n### Group\n\n- P one,\n  wrapped.\n\nA paragraph rule\nover two lines.\n\n---\n\n| Rule | Why |\n|---|---|\n| T one | x |\n| T two | y |\n")
         assert kit == ["A bullet here counts.", "One rule, wrapped."], "the ranking is not counted, a bullet in that section is; wraps, fences, rules and sub-headings are not rules"
-        assert project == ["P one, wrapped.", "A paragraph rule over two lines.", "| T one | x |", "| T two | y |"], "Project rules: wrapped bullet 1, paragraph 1, table rows without header and separator"
+        assert project == ["P one, wrapped.", "A paragraph rule", "over two lines.", "| T one | x |", "| T two | y |"], "Project rules: wrapped bullet 1, an unindented paragraph line 1 each, table rows without header and separator"
         assert "The owner." in every, "ranking lines are still listed when they change"
         with tempfile.TemporaryDirectory() as o:
             g = lambda *c: subprocess.run(["git", "-C", o, "-c", "user.email=t@t", "-c", "user.name=t", *c], check=True, capture_output=True)
@@ -417,12 +436,12 @@ def self_test():
             (ro / "AGENTS.md").write_text("## A\n\n- New rule.\n- Kept rule.\n- Third.\n\n## Project rules\n\n- P1.\n- P2.\n")
             rows, problems = rules_report(ro, caps)
             assert len(problems) == 2 and "rules over the cap (3 > 2)" in problems[0] and "project rules over" in problems[1], "both caps fail"
-            (ro / "AGENTS.md").write_text("## A\n\n- See `.claude/skills/x/SKILL.md` and [doc](docs/gone.md), [web](https://e.example/a), `.claude/skills/<name>/`, `scripts/gone.sh --fast`, `scripts/check.local.sh`, `python3 scripts/gone2.py --test`.\n")
+            (ro / "AGENTS.md").write_text("## A\n\n- See `.claude/skills/x/SKILL.md` and [doc](docs/gone.md), [web](https://e.example/a), `.claude/skills/<name>/`, `scripts/gone.sh --fast`, `scripts/check.local.sh`, `python3 scripts/gone2.py --test`, `scripts/tool.sh -o docs/out.html`, `scripts/gone2.py:12`, `scripts/gone.sh|tee x`.\n")
             rows, problems = rules_report(ro, caps)
-            assert problems == ["missing paths named in AGENTS.md: .claude/skills/x/SKILL.md, docs/gone.md, scripts/gone.sh, scripts/gone2.py"], "missing paths (also after a command word), not URLs, patterns or optional files"
+            assert problems == ["missing paths named in AGENTS.md: .claude/skills/x/SKILL.md, docs/gone.md, scripts/gone.sh, scripts/gone2.py, scripts/tool.sh"], "missing paths (also after a command word, with a line number or a pipe), not URLs, patterns, optional files or option values"
             (ro / ".claude/skills/x").mkdir(parents=True); (ro / ".claude/skills/x/SKILL.md").write_text("x")
             (ro / "docs").mkdir(); (ro / "docs/gone.md").write_text("x")
-            (ro / "scripts").mkdir(); (ro / "scripts/gone.sh").write_text("x"); (ro / "scripts/gone2.py").write_text("x")
+            (ro / "scripts").mkdir(); (ro / "scripts/gone.sh").write_text("x"); (ro / "scripts/gone2.py").write_text("x"); (ro / "scripts/tool.sh").write_text("x")
             assert rules_report(ro, caps)[1] == [], "paths exist: pass"
             with contextlib.redirect_stdout(io.StringIO()):
                 assert main_rules(ro) == 0, "--rules passes"

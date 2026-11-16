@@ -33,6 +33,7 @@ if [ "$selftest_main" = 1 ]; then
   t="$(mktemp -d)"; trap 'rm -rf "$t"' EXIT
   export CHECK_IN_TEST=1
   export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1  # the host's git config (signing, templates) must not matter
+  unset GIT_CONFIG_PARAMETERS GIT_CONFIG_COUNT  # nor "git -c ..." on the command that started this run
   g() { git -C "$t/r" -c user.email=t@t -c user.name=t -c commit.gpgsign=false "$@"; }
   git init -q -b main "$t/r"; mkdir -p "$t/r/scripts"
   cp "$self" "$t/r/scripts/check.sh"

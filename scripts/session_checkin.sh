@@ -5,18 +5,28 @@ top=$(git rev-parse --show-toplevel) && cd "$top" || exit 1  # paths below are r
 
 git fetch --quiet origin main 2>/dev/null || echo "warning: fetch of origin/main failed"
 
-# Git hooks for every agent (scripts/git-hooks/pre-push blocks force-pushes). Set only when no other hooks path is set.
+# Git hooks for every agent (scripts/git-hooks/pre-push blocks force-pushes). Set when no hooks path is set, when it is the
+# old relative value, or when it names a scripts/git-hooks folder that is gone (a moved clone). The path is absolute, in
+# the main clone (not a linked worktree that can be removed): git looks for a relative path in the folder a command runs
+# in, so "git --git-dir=<repo>/.git push" from another folder would find no hook. Another hooks path is kept.
 # core.hooksPath hides .git/hooks; our pre-push chains to an old .git/hooks/pre-push (Git LFS). Other old hooks: warned below.
 hooks=$(git config --get core.hooksPath || true)
-installed=""
-if [ -d scripts/git-hooks ] && [ -z "$hooks" ]; then
-  git config core.hooksPath scripts/git-hooks && hooks=scripts/git-hooks && installed=" (installed now)"
+common=$(cd "$(git rev-parse --git-common-dir)" && pwd -P)
+want="$(dirname "$common")/scripts/git-hooks"
+[ "$(basename "$common")" = .git ] && [ -d "$want" ] || want="$top/scripts/git-hooks"
+installed="" fix=0
+case "$hooks" in
+  ''|scripts/git-hooks) fix=1 ;;
+  */scripts/git-hooks) [ -d "$hooks" ] || fix=1 ;;
+esac
+if [ "$fix" = 1 ] && [ -d "$want" ]; then
+  git config core.hooksPath "$want" && hooks="$want" && installed=" (installed now)"
 fi
 echo "hooks:       ${hooks:-none}${installed:-}"
-if [ "$hooks" = scripts/git-hooks ]; then
+if [ "$hooks" = "$want" ]; then
   for h in "$(git rev-parse --git-common-dir)"/hooks/*; do
     case "$h" in *.sample|*/pre-push) continue ;; esac
-    [ -x "$h" ] && echo "warning: $(basename "$h") in .git/hooks is not run while core.hooksPath=scripts/git-hooks; copy it to scripts/git-hooks or unset core.hooksPath"
+    [ -x "$h" ] && echo "warning: $(basename "$h") in .git/hooks is not run while core.hooksPath is set; copy it to scripts/git-hooks or unset core.hooksPath"
   done
 fi
 echo "branch:      $(git rev-parse --abbrev-ref HEAD)"
