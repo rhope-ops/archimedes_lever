@@ -60,6 +60,7 @@ def run(cs):
         self_test_kinds(cs, ROOT, g, config)
         self_test_forms(cs, ROOT, g, config)
         self_test_main(cs, ROOT, g)
+        self_test_init(cs, ROOT)
     print('code standard self-test: pass')
     return 0
 
@@ -187,3 +188,26 @@ def self_test_edges(cs, root, g, config):
     assert 'u.py::deco' in v['comment'], 'a comment above a nested decorator is not the outer one: %s' % v['comment']
     for f in ('m.js', 'n.py', 'o.ps1', 'p.sh', 'q.ps1', 'r.py', 's.js', 't.ps1', 'u.py'):
         (root / f).unlink(missing_ok=True)
+
+
+def self_test_init(cs, root):
+    """Self-test of adoption: with no baseline the check fails and --report writes nothing; --init writes the first
+    baseline once; a second --init is refused, so it cannot add debt."""
+    import contextlib
+    import io
+    import sys
+
+    def main(*args):
+        """Run cs.main() with these arguments; return its exit code."""
+        sys.argv = ['code_standard.py', *args]
+        with contextlib.redirect_stdout(io.StringIO()):
+            return cs.main()
+    saved = sys.argv
+    try:
+        cs.BASELINE.unlink()
+        assert main() == 1, 'no baseline: the check fails'
+        assert main('--init', '--report') == 0 and not cs.BASELINE.exists(), '--report writes no baseline'
+        assert main('--init') == 0 and cs.BASELINE.exists(), '--init writes the first baseline'
+        assert main('--init') == 1, 'a second --init is refused'
+    finally:
+        sys.argv = saved

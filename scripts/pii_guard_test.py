@@ -484,6 +484,19 @@ def case_hook():
             os.environ.update(saved)
 
 
+def case_missing_parts():
+    """A copy of pii_guard.py without its parts blocks when run (exit 2, also in the hook) but only raises on import."""
+    with tempfile.TemporaryDirectory() as d:
+        alone = os.path.join(d, "pii_guard.py")
+        with open(ME[1]) as src, open(alone, "w") as dst:
+            dst.write(src.read())
+        hook = subprocess.run([sys.executable, alone, "--hook"], input="{}", capture_output=True, text=True)
+        check("missing parts: the hook blocks (exit 2)", hook.returncode == 2)
+        imp = subprocess.run([sys.executable, "-c", "import sys; sys.path.insert(0, %r)\ntry:\n import pii_guard\n"
+                              "except ImportError:\n print('raised')" % d], capture_output=True, text=True)
+        check("missing parts: an importer gets ImportError, not an exit", imp.stdout.strip() == "raised")
+
+
 def run():
     """Run every case in order; print PII GUARD TEST PASS or FAIL and return the exit code."""
     # The host's git config (forced signing, -c on the command line) must not change the cases.
@@ -491,7 +504,7 @@ def run():
         os.environ.pop(k, None)
     os.environ.update(GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1")
     for case in (case_speed, case_minimum_patterns, case_secrets_and_masks, case_dod_patterns, case_profile_lines,
-                 case_denylist_and_fingerprint, case_cli, case_commits, case_hook):
+                 case_denylist_and_fingerprint, case_cli, case_commits, case_hook, case_missing_parts):
         case()
     print("PII GUARD TEST " + ("FAIL" if FAILED else "PASS"))
     return 1 if FAILED else 0

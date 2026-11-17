@@ -464,19 +464,17 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     ap.add_argument('--report', action='store_true', help='print every measurement as JSON')
     ap.add_argument('--update', action='store_true', help='lower the baseline to the debt that is left')
-    ap.add_argument('--init', action='store_true', help='write the first baseline (only when none has debt yet)')
+    ap.add_argument('--init', action='store_true', help='write the first baseline (only when the repo has none)')
     ap.add_argument('--test', action='store_true', help='prove the check on small sample repos')
     args = ap.parse_args()
     if args.test:
         import code_standard_test   # scripts/code_standard_test.py: kept apart (rule C4)
         return code_standard_test.run(sys.modules[__name__])
     existed = BASELINE.exists()
-    if not existed:
-        if not args.init:
-            print('CODE-STANDARD fail: no %s; adopt the standard with --init (docs/code-standard.md)' % BASELINE_NAME)
-            return 1
-        BASELINE.write_text(json.dumps({'config': DEFAULT_CONFIG, 'debt': {}}))
-    base = json.loads(BASELINE.read_text())
+    if not existed and not args.init:
+        print('CODE-STANDARD fail: no %s; adopt the standard with --init (docs/code-standard.md)' % BASELINE_NAME)
+        return 1
+    base = json.loads(BASELINE.read_text()) if existed else {'config': DEFAULT_CONFIG, 'debt': {}}
     config = base['config']
     m = measure(config)
     if args.report:
