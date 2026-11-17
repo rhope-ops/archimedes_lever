@@ -2,7 +2,7 @@
 
 Decided by the owner, 2026-11-17 (docs/DECISIONS.md): all code is lean, modular, commented and human-editable, and stays so as work continues. Why: a person must be able to read any script and know what it does before they run it. [scripts/code_standard.py](../scripts/code_standard.py) enforces the rules marked **(check)**; the fresh reviewer of each pull request checks the rules marked **(review)**.
 
-The kit owns this file and the check. A project gets both by sync; it sets its own caps, scope and stricter rules (for example full docs per function) in its own `.code-standard.json` and a section below, never in a copy of the check.
+The kit owns this file and the check. A project gets both by sync, or by a hand port where its rules forbid sync; it sets its own caps, scope and stricter rules (for example full docs per function) in its own `.code-standard.json` and a section below, never in a copy of the check.
 
 ## Scope
 
