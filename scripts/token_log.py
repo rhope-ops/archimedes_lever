@@ -451,15 +451,22 @@ def self_test():
             waiter = subprocess.Popen([sys.executable, os.path.abspath(__file__), "--push", work, "s1", t1],
                                       env={**env, "TOKEN_LOG_HOME": logs}, stdout=subprocess.DEVNULL,
                                       stderr=subprocess.DEVNULL)
-            waiting = False
-            for _ in range(200):  # until the waiter holds the wait lock, so it is blocked on the running push
-                with open(os.path.join(logs, "s1.wait"), "w") as probe:
-                    try:
-                        fcntl.flock(probe, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                    except BlockingIOError:
-                        waiting = True
-                        break
+            # Wait until the waiter holds the wait lock (so it is blocked on the running push). Read the kernel's
+            # lock table instead of probing the lock, which could make the waiter exit as "coalesced".
+            inode = os.stat(os.path.join(logs, "s1.wait")).st_ino if os.path.exists(os.path.join(logs, "s1.wait")) else None
+            waiting = not os.path.exists("/proc/locks")  # no lock table (macOS): only a short wait below
+            for _ in range(200):
+                if waiting:
+                    break
                 time.sleep(0.05)
+                if inode is None and os.path.exists(os.path.join(logs, "s1.wait")):
+                    inode = os.stat(os.path.join(logs, "s1.wait")).st_ino
+                with open("/proc/locks") as f:
+                    waiting = inode is not None and any(
+                        f" {waiter.pid} " in line and line.split()[-3].endswith(f":{inode}") and "->" not in line
+                        for line in f)
+            if not os.path.exists("/proc/locks"):
+                time.sleep(0.5)
             expect("the second push waits for the running one", waiting, True)
             append(t1, msg("m10", "2026-01-01T02:00:11Z"))
         try:
