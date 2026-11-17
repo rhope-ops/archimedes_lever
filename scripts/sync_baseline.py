@@ -32,8 +32,8 @@ What it changes:
     .claude/skills/ (every kit skill)   Replaced with the baseline copies.
     .claude/agents/worker.md, scout.md, reviewer.md, docs/FIRST_USE.md   Added only when missing (a project
                            may tune them; FIRST_USE.md holds the denylist places that the session-start check names).
-    scripts/log_check.py, scripts/timeline.py, scripts/pii_guard.py, scripts/first_use_check.py,
-    scripts/check.sh, scripts/bloat_check.py, scripts/git-hooks/pre-push,
+    scripts/log_check.py, scripts/timeline.py, scripts/pii_guard*.py, scripts/first_use_check.py,
+    scripts/check.sh, scripts/bloat_check*.py, scripts/code_standard*.py, docs/code-standard.md, scripts/git-hooks/pre-push,
     .claude/rule-tests.md
                            Replaced with the baseline copies. A starter project gets none of ADVANCED_FILES. (.pii-guard is not copied: a project opts in itself.)
     .claude/settings.json  Adds the baseline deny rules, each baseline hook event the project has no hook for, and the
@@ -65,7 +65,9 @@ RULES_HEADING = "## Project rules"
 COMMANDS_HEADING = "## Commands"
 COPY_FILES = ["scripts/session_checkin.sh", "scripts/stop_check.py",
               "scripts/worker_guard.py", "scripts/log_check.py", "scripts/timeline.py", "scripts/pii_guard.py", "scripts/first_use_check.py",
-              "scripts/check.sh", "scripts/bloat_check.py", "scripts/git-hooks/pre-push",
+              "scripts/pii_guard_scan.py", "scripts/pii_guard_hook.py", "scripts/pii_guard_test.py",
+              "scripts/check.sh", "scripts/bloat_check.py", "scripts/bloat_check_skills.py", "scripts/bloat_check_test.py",
+              "scripts/code_standard.py", "scripts/code_standard_test.py", "docs/code-standard.md", "scripts/git-hooks/pre-push",
               ".claude/skills/delegate/SKILL.md", ".claude/skills/audit/SKILL.md", ".claude/skills/project-log/SKILL.md", ".claude/rule-tests.md", ".github/workflows/pii-guard.yml",
               ".claude/skills/deliver/SKILL.md", ".claude/skills/personal-data/SKILL.md", ".claude/skills/rule-change/SKILL.md",
               ".claude/skills/data-change/SKILL.md", ".claude/skills/ui-verify/SKILL.md", ".claude/skills/ui-verify/measure.mjs",
@@ -87,7 +89,8 @@ def log_template(base):
 # Advanced parts: a starter project has none of these (one list for bootstrap, sync and drift).
 ADVANCED_FILES = [".claude/skills/delegate/SKILL.md", ".claude/agents/scout.md", ".claude/agents/worker.md",
                   ".claude/skills/project-log/SKILL.md", "docs/LOG.md", "scripts/log_check.py", "scripts/timeline.py",
-                  ".claude/skills/audit/SKILL.md", "scripts/bloat_check.py", ".claude/rule-tests.md",
+                  ".claude/skills/audit/SKILL.md", "scripts/bloat_check.py", "scripts/bloat_check_skills.py",
+                  "scripts/bloat_check_test.py", ".claude/rule-tests.md",
                   ".claude/skills/efficiency/SKILL.md"]
 # Moved to .claude/skills/ on 2026-11-16: a project synced before then still has the old copies.
 MOVED_FILES = [".claude/orchestration.md", ".claude/bloat-audit.md", ".claude/project-log.md"]

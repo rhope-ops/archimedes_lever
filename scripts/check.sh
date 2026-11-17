@@ -4,7 +4,8 @@
 #   scripts/check.sh --fast   fast lane: each push to another branch (pre-push). Self-tests only of the kit scripts that
 #                             changed against origin/main, and scripts/check.local.sh gets --fast.
 # The checks:
-#   1. the self-test of each kit script present (--test; a starter project has fewer),
+#   1. the self-test of each kit script present (--test; a starter project has fewer), and the code standard
+#      (scripts/code_standard.py, when .code-standard.json exists),
 #   2. the rule caps and the paths AGENTS.md names, the lint of changed rule lines (WARN lines), and in the full lane
 #      the conflict-check record for changed rule lines (scripts/bloat_check.py --rules [--gate]; full tier),
 #   3. the project log check (full tier),
@@ -217,12 +218,16 @@ selftest() {
   if touched "${deps[@]}"; then run "$name self-test" "$@"; else untested=$((untested + 1)); fi
 }
 
-for s in stop_check worker_guard log_check bloat_check token_log; do
+for s in stop_check worker_guard log_check; do
   selftest "$s" "scripts/$s.py" -- python3 "scripts/$s.py" --test
 done
+# A script whose cases or parts live in sibling modules lists them, so the fast lane reruns its self-test when they change.
+selftest bloat_check scripts/bloat_check.py scripts/bloat_check_test.py scripts/bloat_check_skills.py -- python3 scripts/bloat_check.py --test
+selftest token_log scripts/token_log.py scripts/token_log_test.py -- python3 scripts/token_log.py --test
+selftest code_standard scripts/code_standard.py scripts/code_standard_test.py -- python3 scripts/code_standard.py --test
 selftest timeline scripts/timeline.py scripts/log_check.py -- python3 scripts/timeline.py --test  # it imports log_check
-selftest pii_guard scripts/pii_guard.py -- python3 scripts/pii_guard.py --test
-selftest first_use_check scripts/first_use_check.py scripts/pii_guard.py -- python3 scripts/first_use_check.py --test
+selftest pii_guard scripts/pii_guard.py scripts/pii_guard_scan.py scripts/pii_guard_hook.py scripts/pii_guard_test.py -- python3 scripts/pii_guard.py --test
+selftest first_use_check scripts/first_use_check.py scripts/pii_guard.py scripts/pii_guard_scan.py -- python3 scripts/first_use_check.py --test
 # Kit only: projects have no sync tools. The drift self-test reads the kit's AGENTS.md and stop_check.py.
 selftest drift scripts/drift.py scripts/sync_baseline.py AGENTS.md scripts/stop_check.py -- python3 scripts/drift.py --test
 selftest pre-push scripts/git-hooks/pre-push -- scripts/git-hooks/pre-push --test
@@ -230,6 +235,13 @@ selftest session_checkin scripts/session_checkin.sh -- bash scripts/session_chec
 # This script's own self-test (not inside that self-test: it runs this script in temporary repos).
 [ -z "${CHECK_IN_TEST:-}" ] && selftest check.sh scripts/check.sh -- bash scripts/check.sh --test
 [ "$untested" -gt 0 ] && skip "$untested self-tests" "fast lane: those scripts did not change; the full lane runs them"
+
+# The code standard (docs/code-standard.md), both lanes: it takes about 0.1 s. A repo that has not adopted it skips.
+if [ -f scripts/code_standard.py ] && [ -f .code-standard.json ]; then
+  run "code standard" python3 scripts/code_standard.py
+elif [ -f scripts/code_standard.py ]; then
+  skip "code standard" "no .code-standard.json: adopt it with python3 scripts/code_standard.py --init (docs/code-standard.md)"
+fi
 
 # Rule caps, paths, the lint of changed rule lines, and (full lane) the conflict-check record for changed rule lines.
 if [ -f scripts/bloat_check.py ]; then

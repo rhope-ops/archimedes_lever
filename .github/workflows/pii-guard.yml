@@ -24,7 +24,7 @@ jobs:
           PRIVATE: ${{ github.event.repository.private }}
         run: |
           # Opt-in and allow list come from the PR base, so a PR cannot switch the guard off or widen its allow list.
-          # The scripts run from the PR head: a PR that edits scripts/pii_guard.py or scripts/check.sh needs a review by hand.
+          # The scripts run from the PR head: a PR that edits scripts/pii_guard*.py or scripts/check.sh needs a review by hand.
           ref="${BASE_SHA:-HEAD}"
           if ! git cat-file -e "$ref:.pii-guard" 2>/dev/null; then echo "no .pii-guard file on $ref: guard not enabled"; exit 0; fi
           # No secret (not added, or a fork or Dependabot PR) = the check fails: names must be checked (kit default, 2026-11-11), unless the base .pii-guard has "denylist: warn" (starter tier): then pii_guard.py only warns.

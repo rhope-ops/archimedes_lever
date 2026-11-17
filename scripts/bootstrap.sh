@@ -55,7 +55,8 @@ if [ "$BS_OWNER" != "the owner" ]; then
   # Not renamed on purpose: docs/FIRST_USE.md and scripts/first_use_check.py, whose
   # "the owner" is an option, a role or a literal the script needs.
   owner_files=("${files[@]}" .claude/skills/delegate/SKILL.md .claude/skills/audit/SKILL.md .claude/skills/project-log/SKILL.md .claude/skills/deliver/SKILL.md .claude/skills/personal-data/SKILL.md .claude/skills/rule-change/SKILL.md .claude/skills/efficiency/SKILL.md .claude/skills/handoff/SKILL.md .claude/skills/port/SKILL.md .claude/rule-tests.md scripts/bloat_check.py scripts/session_checkin.sh scripts/stop_check.py scripts/worker_guard.py
-    scripts/log_check.py scripts/timeline.py scripts/pii_guard.py scripts/check.sh scripts/git-hooks/pre-push)
+    scripts/log_check.py scripts/timeline.py scripts/pii_guard.py scripts/pii_guard_scan.py scripts/pii_guard_hook.py scripts/pii_guard_test.py
+    scripts/bloat_check_skills.py scripts/bloat_check_test.py scripts/code_standard.py scripts/code_standard_test.py docs/code-standard.md scripts/check.sh scripts/git-hooks/pre-push)
   for f in "${owner_files[@]}"; do
     perl -pi -e 'my $c = ucfirst $ENV{BS_OWNER}; s/\b([Tt])he owner\b/$1 eq "T" ? $c : $ENV{BS_OWNER}/ge' "$f"
   done
@@ -92,7 +93,7 @@ rm -f -- PREFERENCES.md docs/FILES.md .bloat-audit.json
 find docs/reviews -maxdepth 1 -name '20*.md' -delete 2>/dev/null || true
 # Projects do not stay in sync with the kit (the owner, 2026-11-13): the sync tools stay in the kit only.
 # The token log hook is installed from the kit by the cloud setup scripts (the owner, 2026-11-17).
-rm -f -- scripts/sync_baseline.py scripts/drift.py scripts/token_log.py .baseline
+rm -f -- scripts/sync_baseline.py scripts/drift.py scripts/token_log.py scripts/token_log_test.py .baseline
 if [ -f LICENSE ]; then mv -- LICENSE docs/archimedes_lever-LICENSE.txt; fi
 
 rm -- "$0"
