@@ -32,8 +32,8 @@ What it changes:
     .claude/skills/ (every kit skill)   Replaced with the baseline copies.
     .claude/agents/worker.md, scout.md, reviewer.md, docs/FIRST_USE.md   Added only when missing (a project
                            may tune them; FIRST_USE.md holds the denylist places that the session-start check names).
-    scripts/log_check.py, scripts/timeline.py, scripts/pii_guard.py, scripts/first_use_check.py,
-    scripts/check.sh, scripts/bloat_check.py, scripts/git-hooks/pre-push,
+    scripts/log_check.py, scripts/timeline.py, scripts/pii_guard*.py, scripts/first_use_check.py,
+    scripts/check.sh, scripts/bloat_check*.py, scripts/code_standard*.py, docs/code-standard.md, scripts/git-hooks/pre-push,
     .claude/rule-tests.md
                            Replaced with the baseline copies. A starter project gets none of ADVANCED_FILES. (.pii-guard is not copied: a project opts in itself.)
     .claude/settings.json  Adds the baseline deny rules, each baseline hook event the project has no hook for, and the
@@ -65,7 +65,9 @@ RULES_HEADING = "## Project rules"
 COMMANDS_HEADING = "## Commands"
 COPY_FILES = ["scripts/session_checkin.sh", "scripts/stop_check.py",
               "scripts/worker_guard.py", "scripts/log_check.py", "scripts/timeline.py", "scripts/pii_guard.py", "scripts/first_use_check.py",
-              "scripts/check.sh", "scripts/bloat_check.py", "scripts/git-hooks/pre-push",
+              "scripts/pii_guard_scan.py", "scripts/pii_guard_hook.py", "scripts/pii_guard_test.py",
+              "scripts/check.sh", "scripts/bloat_check.py", "scripts/bloat_check_skills.py", "scripts/bloat_check_test.py",
+              "scripts/code_standard.py", "scripts/code_standard_test.py", "docs/code-standard.md", "scripts/git-hooks/pre-push",
               ".claude/skills/delegate/SKILL.md", ".claude/skills/audit/SKILL.md", ".claude/skills/project-log/SKILL.md", ".claude/rule-tests.md", ".github/workflows/pii-guard.yml",
               ".claude/skills/deliver/SKILL.md", ".claude/skills/personal-data/SKILL.md", ".claude/skills/rule-change/SKILL.md",
               ".claude/skills/data-change/SKILL.md", ".claude/skills/ui-verify/SKILL.md", ".claude/skills/ui-verify/measure.mjs",
@@ -87,7 +89,8 @@ def log_template(base):
 # Advanced parts: a starter project has none of these (one list for bootstrap, sync and drift).
 ADVANCED_FILES = [".claude/skills/delegate/SKILL.md", ".claude/agents/scout.md", ".claude/agents/worker.md",
                   ".claude/skills/project-log/SKILL.md", "docs/LOG.md", "scripts/log_check.py", "scripts/timeline.py",
-                  ".claude/skills/audit/SKILL.md", "scripts/bloat_check.py", ".claude/rule-tests.md",
+                  ".claude/skills/audit/SKILL.md", "scripts/bloat_check.py", "scripts/bloat_check_skills.py",
+                  "scripts/bloat_check_test.py", ".claude/rule-tests.md",
                   ".claude/skills/efficiency/SKILL.md"]
 # Moved to .claude/skills/ on 2026-11-16: a project synced before then still has the old copies.
 MOVED_FILES = [".claude/orchestration.md", ".claude/bloat-audit.md", ".claude/project-log.md"]
@@ -97,15 +100,18 @@ OWNER_RE = r"[A-Za-z0-9 ._,()-]+"  # safe inside Python strings, JSON and Markdo
 
 
 def die(msg):
+    """Print the error to stderr and exit 1."""
     print(f"error: {msg}", file=sys.stderr)
     sys.exit(1)
 
 
 def git(*args, cwd=None):
+    """Run git and return its stripped stdout; raise on failure."""
     return subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True, text=True).stdout.strip()
 
 
 def get_baseline(src, tmp):
+    """The baseline folder: `src` itself when it is a folder, else a shallow clone of it in `tmp`."""
     path = Path(src)
     if path.is_dir():
         return path.resolve()
@@ -148,6 +154,7 @@ def section(text, heading):
 
 
 def header_values(text):
+    """The (name, repo, purpose) values from an AGENTS.md header; None for each one missing."""
     name = re.search(r"^# (.+?): agent instructions\s*$", text, re.M)
     repo = re.search(r"^- Repo: (.+?)\s*$", text, re.M)
     purpose = re.search(r"^- Purpose: (.+?)\s*$", text, re.M)
@@ -169,6 +176,7 @@ def valid_timezone(name):
 
 
 def header_timezone(text):
+    """The project's "- Time zone:" value, or None."""
     tz = re.search(r"^- Time zone: (.+?)\s*$", text or "", re.M)
     return tz and tz.group(1)
 
@@ -214,6 +222,7 @@ def log_stamp(zone):
 
 
 def header_owner(text):
+    """The project's "- Owner:" value, or None."""
     owner = re.search(r"^- Owner: (.+?)\s*$", text or "", re.M)
     return owner and owner.group(1)
 
@@ -228,6 +237,7 @@ def apply_owner(text, owner):
 
 
 def build_agents(base_text, proj_text, args, owner, tier="full"):
+    """The new AGENTS.md: baseline text with this project's header values, Commands section and Project rules."""
     found = header_values(proj_text) if proj_text else (None, None, None)
     name = args.name or found[0]
     repo = args.repo or found[1]
@@ -268,6 +278,7 @@ def build_agents(base_text, proj_text, args, owner, tier="full"):
 
 
 def merge_settings(base_path, proj_path):
+    """The project settings.json plus the baseline deny rules, missing hook events and sandbox block."""
     base = json.loads(base_path.read_text())
     try:
         proj = json.loads(proj_path.read_text()) if proj_path.exists() else {}
@@ -330,13 +341,15 @@ def migrate_arcs(text):
 
 
 def merge_lines(base_path, proj_path):
+    """The project .gitignore with the baseline lines it lacks added at the top."""
     lines = proj_path.read_text().splitlines() if proj_path.exists() else []
     add = [l for l in base_path.read_text().splitlines() if l.strip() and l not in lines]
     # Baseline lines go first, so a later project exception (for example "!.env.example") still wins.
     return "\n".join(add + lines) + "\n"
 
 
-def main():
+def parse_args():
+    """Read the command line; stop when --timezone is not a known IANA name."""
     ap = argparse.ArgumentParser(description="Sync this project to the archimedes_lever baseline.")
     ap.add_argument("--apply", action="store_true", help="write the files (default: dry run)")
     ap.add_argument("--baseline", default=DEFAULT_BASELINE)
@@ -350,7 +363,126 @@ def main():
     args = ap.parse_args()
     if args.timezone and not valid_timezone(args.timezone):
         die(f"time zone {args.timezone!r} is not a known IANA name (for example UTC, Europe/Berlin)")
+    return args
 
+
+def baseline_sha(base):
+    """The baseline commit, marked when its folder has uncommitted changes or is not a git repo."""
+    try:
+        if Path(git("rev-parse", "--show-toplevel", cwd=base)).resolve() != base.resolve():
+            raise subprocess.CalledProcessError(1, "git")
+        sha = git("rev-parse", "HEAD", cwd=base)
+        if git("status", "--porcelain", cwd=base):
+            sha += " (with uncommitted baseline changes)"
+        return sha
+    except subprocess.CalledProcessError:
+        return "unknown (baseline folder is not a git repo)"
+
+
+def check_placeholders(root):
+    """Stop when AGENTS.md, README.md or docs/*.md still holds a {{PLACEHOLDER}} (bootstrap has not run)."""
+    for f in [root / "AGENTS.md", root / "README.md", *sorted(root.glob("docs/*.md"))]:
+        rel = f.relative_to(root)
+        if f.is_file() and re.search(r"\{\{[A-Z_]+\}\}", f.read_text(errors="replace")):
+            die(f"{rel} still has template placeholders; run scripts/bootstrap.sh first")
+
+
+def new_log(base, root, proj_text, agents_text, owner, tier):
+    """The docs/LOG.md text to write: a new log on a starter-to-full upgrade, or the Arcs migration; else None."""
+    log = root / "docs/LOG.md"
+    result = None
+    rules = section(proj_text, RULES_HEADING) if proj_text is not None else ""
+    upgrading = tier == "full" and header_tier(proj_text or "") == "starter"
+    if upgrading and not log.is_file() and not re.search(r"(?i)project log", rules or "") and log_template(base).exists():
+        zone = header_timezone(agents_text) or "UTC"
+        stamp = log_stamp(zone)
+        text = re.sub(r"(?m)^> Template: first use fills in.*\n", "", log_template(base).read_text())  # kit-only note, as bootstrap.sh
+        name, _, _ = header_values(agents_text)
+        for key, val in (("PROJECT_NAME", name or "Project"), ("TIMEZONE", zone),
+                         ("DATE", stamp[:10]), ("TIME", stamp[11:])):
+            text = text.replace("{{" + key + "}}", val)
+        result = apply_owner(text, owner)
+    if log.is_file():
+        migrated = migrate_arcs(log.read_text())
+        if migrated != log.read_text():
+            result = migrated
+    return result
+
+
+def planned_files(base, root, args):
+    """Map each project path to its synced text, and return it with the tier."""
+    proj_agents = root / "AGENTS.md"
+    proj_text = proj_agents.read_text() if proj_agents.exists() else None
+    owner = args.owner or header_owner(proj_text or "") or BASELINE_OWNER
+    if not re.fullmatch(OWNER_RE, owner):
+        die(f"owner {owner!r}: use letters, digits, space . _ , ( ) - only")
+    tier = args.tier or header_tier(proj_text or "")
+    copy_files, copy_if_missing = tier_files(tier)
+    new = {}
+    new["AGENTS.md"] = build_agents((base / "AGENTS.md").read_text(), proj_text, args, owner, tier)
+    claude = root / "CLAUDE.md"
+    old_claude = claude.read_text() if claude.exists() else ""
+    if not any(l.strip() == "@AGENTS.md" for l in old_claude.splitlines()):
+        new["CLAUDE.md"] = "@AGENTS.md\n" + ("\n" + old_claude if old_claude.strip() else "")
+    for rel in copy_files + [r for r in copy_if_missing if not (root / r).exists()]:
+        if (base / rel).exists():
+            text = (base / rel).read_text()
+            new[rel] = text if rel in NO_OWNER_RENAME else apply_owner(text, owner)
+    if (base / ".claude/settings.json").exists():
+        new[".claude/settings.json"] = merge_settings(base / ".claude/settings.json", root / ".claude/settings.json")
+    if (base / ".gitignore").exists():
+        new[".gitignore"] = merge_lines(base / ".gitignore", root / ".gitignore")
+    log_text = new_log(base, root, proj_text, new["AGENTS.md"], owner, tier)
+    if log_text is not None:
+        new["docs/LOG.md"] = log_text
+    if (base / "LICENSE").exists():
+        new["docs/archimedes_lever-LICENSE.txt"] = (base / "LICENSE").read_text()
+    return new, tier
+
+
+def show_diff(root, new):
+    """Print a unified diff for each file that would change; return their paths."""
+    changed = []
+    for rel, text in new.items():
+        path = root / rel
+        old = path.read_text() if path.exists() else ""
+        if old == text:
+            continue
+        changed.append(rel)
+        sys.stdout.writelines(difflib.unified_diff(
+            old.splitlines(True), text.splitlines(True), f"a/{rel}", f"b/{rel}"))
+        if not text.endswith("\n"):
+            print()
+    return changed
+
+
+def report_leftovers(root, tier):
+    """List the advanced files a starter project keeps and old copies of moved files, for deletion by hand."""
+    if tier == "starter":
+        extra = [f for f in ADVANCED_FILES if (root / f).exists()]
+        if extra:
+            print(f"Tier starter: these advanced files are not synced; delete them by hand if you want: {', '.join(extra)}")
+    old = [f for f in MOVED_FILES if (root / f).exists()]
+    if old:
+        print(f"These files moved to .claude/skills/; delete the old copies by hand: {', '.join(old)}")
+
+
+def write_files(base, root, new, changed):
+    """Write the changed files (with the baseline's file mode for scripts); stop when the project is not committed."""
+    if git("status", "--porcelain", cwd=root):
+        die("the project has uncommitted changes; commit them first")
+    for rel in changed:
+        path = root / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(new[rel])
+        if rel.endswith((".sh", ".py")) or rel.startswith("scripts/git-hooks/"):
+            shutil.copymode(base / rel, path) if (base / rel).exists() else None
+    print("Written. Review with 'git diff', then commit and push.")
+
+
+def main():
+    """Sync the project: show the diff (dry run) or write it (--apply); or apply --set-tier in place."""
+    args = parse_args()
     try:
         root = Path(git("rev-parse", "--show-toplevel"))
     except subprocess.CalledProcessError:
@@ -363,90 +495,11 @@ def main():
         base = get_baseline(args.baseline, tmp)
         if base.resolve() == root.resolve():
             die("this is the baseline repo itself; run the script in a project repo")
-        try:
-            if Path(git("rev-parse", "--show-toplevel", cwd=base)).resolve() != base.resolve():
-                raise subprocess.CalledProcessError(1, "git")
-            base_sha = git("rev-parse", "HEAD", cwd=base)
-            if git("status", "--porcelain", cwd=base):
-                base_sha += " (with uncommitted baseline changes)"
-        except subprocess.CalledProcessError:
-            base_sha = "unknown (baseline folder is not a git repo)"
-        print(f"Kit baseline: {base_sha}. Projects do not keep the sync tools or a .baseline pin (the owner, 2026-11-13).")
-
-        for f in [root / "AGENTS.md", root / "README.md", *sorted(root.glob("docs/*.md"))]:
-            rel = f.relative_to(root)
-            if f.is_file() and re.search(r"\{\{[A-Z_]+\}\}", f.read_text(errors="replace")):
-                die(f"{rel} still has template placeholders; run scripts/bootstrap.sh first")
-
-        proj_agents = root / "AGENTS.md"
-        owner = args.owner or header_owner(proj_agents.read_text() if proj_agents.exists() else "") or BASELINE_OWNER
-        if not re.fullmatch(OWNER_RE, owner):
-            die(f"owner {owner!r}: use letters, digits, space . _ , ( ) - only")
-        tier = args.tier or header_tier(proj_agents.read_text() if proj_agents.exists() else "")
-        copy_files, copy_if_missing = tier_files(tier)
-        new = {}
-        new["AGENTS.md"] = build_agents(
-            (base / "AGENTS.md").read_text(),
-            proj_agents.read_text() if proj_agents.exists() else None,
-            args,
-            owner,
-            tier,
-        )
-        claude = root / "CLAUDE.md"
-        old_claude = claude.read_text() if claude.exists() else ""
-        if not any(l.strip() == "@AGENTS.md" for l in old_claude.splitlines()):
-            new["CLAUDE.md"] = "@AGENTS.md\n" + ("\n" + old_claude if old_claude.strip() else "")
-        for rel in copy_files:
-            if (base / rel).exists():
-                text = (base / rel).read_text()
-                new[rel] = text if rel in NO_OWNER_RENAME else apply_owner(text, owner)
-        for rel in copy_if_missing:
-            if (base / rel).exists() and not (root / rel).exists():
-                text = (base / rel).read_text()
-                new[rel] = text if rel in NO_OWNER_RENAME else apply_owner(text, owner)
-        if (base / ".claude/settings.json").exists():
-            new[".claude/settings.json"] = merge_settings(base / ".claude/settings.json", root / ".claude/settings.json")
-        if (base / ".gitignore").exists():
-            new[".gitignore"] = merge_lines(base / ".gitignore", root / ".gitignore")
-        log = root / "docs/LOG.md"
-        rules = section(proj_agents.read_text(), RULES_HEADING) if proj_agents.exists() else ""
-        upgrading = tier == "full" and header_tier(proj_agents.read_text() if proj_agents.exists() else "") == "starter"
-        if upgrading and not log.is_file() and not re.search(r"(?i)project log", rules or "") and log_template(base).exists():
-            zone = header_timezone(new["AGENTS.md"]) or "UTC"
-            stamp = log_stamp(zone)
-            text = re.sub(r"(?m)^> Template: first use fills in.*\n", "", log_template(base).read_text())  # kit-only note, as bootstrap.sh
-            name, _, _ = header_values(new["AGENTS.md"])
-            for key, val in (("PROJECT_NAME", name or "Project"), ("TIMEZONE", zone),
-                             ("DATE", stamp[:10]), ("TIME", stamp[11:])):
-                text = text.replace("{{" + key + "}}", val)
-            new["docs/LOG.md"] = apply_owner(text, owner)
-        if log.is_file():
-            migrated = migrate_arcs(log.read_text())
-            if migrated != log.read_text():
-                new["docs/LOG.md"] = migrated
-        if (base / "LICENSE").exists():
-            new["docs/archimedes_lever-LICENSE.txt"] = (base / "LICENSE").read_text()
-
-
-        changed = []
-        for rel, text in new.items():
-            path = root / rel
-            old = path.read_text() if path.exists() else ""
-            if old == text:
-                continue
-            changed.append(rel)
-            sys.stdout.writelines(difflib.unified_diff(
-                old.splitlines(True), text.splitlines(True), f"a/{rel}", f"b/{rel}"))
-            if not text.endswith("\n"):
-                print()
-
-        if tier == "starter":
-            extra = [f for f in ADVANCED_FILES if (root / f).exists()]
-            if extra:
-                print(f"Tier starter: these advanced files are not synced; delete them by hand if you want: {', '.join(extra)}")
-        old = [f for f in MOVED_FILES if (root / f).exists()]
-        if old:
-            print(f"These files moved to .claude/skills/; delete the old copies by hand: {', '.join(old)}")
+        print(f"Kit baseline: {baseline_sha(base)}. Projects do not keep the sync tools or a .baseline pin (the owner, 2026-11-13).")
+        check_placeholders(root)
+        new, tier = planned_files(base, root, args)
+        changed = show_diff(root, new)
+        report_leftovers(root, tier)
         if not changed:
             print("No changes: the project already matches the baseline.")
             return
@@ -454,15 +507,7 @@ def main():
         if not args.apply:
             print("Dry run: nothing written. Run again with --apply to write.")
             return
-        if git("status", "--porcelain", cwd=root):
-            die("the project has uncommitted changes; commit them first")
-        for rel in changed:
-            path = root / rel
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(new[rel])
-            if rel.endswith((".sh", ".py")) or rel.startswith("scripts/git-hooks/"):
-                shutil.copymode(base / rel, path) if (base / rel).exists() else None
-        print("Written. Review with 'git diff', then commit and push.")
+        write_files(base, root, new, changed)
 
 
 if __name__ == "__main__":
