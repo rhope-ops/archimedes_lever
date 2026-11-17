@@ -21,13 +21,19 @@ jobs:
           # Name denylist, one name per line. Set it in Settings > Secrets and variables > Actions.
           PII_GUARD_DENYLIST: ${{ secrets.PII_GUARD_DENYLIST }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PRIVATE: ${{ github.event.repository.private }}
         run: |
           # Opt-in and allow list come from the PR base, so a PR cannot switch the guard off or widen its allow list.
           # The scripts run from the PR head: a PR that edits scripts/pii_guard.py or scripts/check.sh needs a review by hand.
           ref="${BASE_SHA:-HEAD}"
           if ! git cat-file -e "$ref:.pii-guard" 2>/dev/null; then echo "no .pii-guard file on $ref: guard not enabled"; exit 0; fi
           # No secret (not added, or a fork or Dependabot PR) = the check fails: names must be checked (kit default, 2026-11-11), unless the base .pii-guard has "denylist: warn" (starter tier): then pii_guard.py only warns.
-          if [ -n "$BASE_SHA" ]; then
+          # Private repo (the owner, 2026-11-17): the pull request's commits only. The pre-push hook already scanned every
+          # tracked file, Actions minutes are limited, and GitHub Free gives a private repo no required check; this scan
+          # catches what skipped the hook (a web-UI edit, a clone without core.hooksPath). A manual run scans everything.
+          if [ -n "$BASE_SHA" ] && [ "$PRIVATE" = "true" ]; then
+            python3 scripts/pii_guard.py --require-denylist --range "$BASE_SHA..HEAD" --allow-from "$BASE_SHA"
+          elif [ -n "$BASE_SHA" ]; then
             python3 scripts/pii_guard.py --require-denylist --all --range "$BASE_SHA..HEAD" --allow-from "$BASE_SHA"
           else
             python3 scripts/pii_guard.py --require-denylist --all

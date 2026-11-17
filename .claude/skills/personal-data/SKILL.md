@@ -10,6 +10,7 @@ AGENTS.md "Personal data" points here. What each tier blocks, in full: the heade
 ## State
 
 - On or off: a `.pii-guard` file at the repo root turns the guard on in the pre-push hook and the pull-request Action.
+- Private repo: the pre-push hook (every tracked file) is the gate; the Action scans only the pull request's commits, to catch what skipped the hook (Actions minutes; GitHub Free has no required check on a private repo). Limits: a binary file that enters only through a merge resolution (for example in the web UI), and content already on the base branch, are scanned only by the hook or a manual run of the Action.
 - Check it: `python3 scripts/pii_guard.py --status` prints the denylist source, a count, a fingerprint and the tier. It never prints names.
 - Tiers: minimum (no option line) and DoD (the line `profile: dod` in `.pii-guard`).
 - With the guard on, a push with no name denylist fails. The line `denylist: warn` in `.pii-guard` (starter tier) makes it warn and still check every other pattern.
