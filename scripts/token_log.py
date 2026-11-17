@@ -5,7 +5,8 @@ Kit only: projects do not get a copy. A cloud environment's setup script install
 as a user-level Stop hook, so every repo session is logged (the owner, 2026-11-17).
 
 At each Stop it starts a background push (the end of the turn does not wait) and exits 0. Outside a git repo it
-does nothing (sessions with no repo are not logged). The push:
+does nothing: sessions with no repo are not logged, and the repo is the folder the session started in
+(CLAUDE_PROJECT_DIR, else the hook's cwd), so a session that starts outside a repo is not logged. The push:
   1. Reads the session log and its subagent logs (<session>/**/*.jsonl). The log repeats the same usage on every
      content block of one reply, so each message id gives one row.
   2. Fetches claude/token-usage into a private ref (refs/token-log/remote; --depth 1 only in a shallow clone).
@@ -14,10 +15,11 @@ does nothing (sessions with no repo are not logged). The push:
      new container is caught up by the next push, and no row is counted twice.
   4. Commits with a temporary index and pushes through the normal pre-push hook. The work tree, the index and the
      current branch never change. That hook runs the check lanes on the current work tree, so a failing work tree
-     holds back the log push until it passes; the rows wait in the session log.
+     holds back the log push until it passes; the rows wait in the session log. A failed push is tried again after
+     1 and 5 minutes, so the last turn of a session is not lost to one failure; a race is tried again at once.
 
-One row per API call. Columns: message_id, timestamp (UTC, of the reply), turn (user prompts up to that time; total
-by turn for a per-turn chart), session_id, repo, model, source (main, subagent), input_tokens,
+One row per API call. Columns: message_id, timestamp (UTC, of the reply), turn (prompts up to that time: user messages and
+system wake-ups such as task notifications, not tool results or interrupt markers; total by turn for a chart), session_id, repo, model, source (main, subagent), input_tokens,
 cache_creation_input_tokens, cache_read_input_tokens, output_tokens.
 
 Settings (environment): TOKEN_LOG=off turns it off; TOKEN_LOG_BRANCH (default claude/token-usage); TOKEN_LOG_SYNC=1
@@ -37,6 +39,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import time
 from datetime import datetime, timezone
 
 FIELDS = ["message_id", "timestamp", "turn", "session_id", "repo", "model", "source", "input_tokens",
@@ -44,6 +47,9 @@ FIELDS = ["message_id", "timestamp", "turn", "session_id", "repo", "model", "sou
 USAGE_KEYS = FIELDS[-4:]
 PRIVATE_REF = "refs/token-log/remote"
 NOT_PROMPTS = ("[Request interrupted",)
+RETRY_DELAYS = (0, 60, 300)  # seconds before each push try: the last turn of a session gets more than one chance
+NET_TIMEOUT = 600  # seconds for a fetch or a push (the pre-push hook runs the check lane)
+RACE = ("non-fast-forward", "fetch first", "stale info", "cannot lock ref")
 
 
 def home():
@@ -54,8 +60,8 @@ def branch_name():
     return os.environ.get("TOKEN_LOG_BRANCH") or "claude/token-usage"
 
 
-def git(cwd, *args, env=None, check=True):
-    r = subprocess.run(["git", "-C", cwd, *args], capture_output=True, text=True, env=env)
+def git(cwd, *args, env=None, check=True, timeout=None):
+    r = subprocess.run(["git", "-C", cwd, *args], capture_output=True, text=True, env=env, timeout=timeout)
     if check and r.returncode != 0:
         raise RuntimeError(f"git {args[0]}: {r.stderr.strip()}")
     return r.stdout.strip() if r.returncode == 0 else ""
@@ -134,13 +140,14 @@ def push(root, sid, tpath):
         fcntl.flock(lock, fcntl.LOCK_EX)  # one push per session at a time; a waiting one pushes the newest rows
         for attempt in (1, 2):
             heads = subprocess.run(["git", "-C", root, "ls-remote", "--heads", "origin", ref],
-                                   capture_output=True, text=True)
+                                   capture_output=True, text=True, timeout=NET_TIMEOUT)
             if heads.returncode != 0:
                 raise RuntimeError("ls-remote: " + heads.stderr.strip())
             parent, rows = [], {}
             if heads.stdout.strip():
                 shallow = git(root, "rev-parse", "--is-shallow-repository") == "true"
-                git(root, "fetch", "-q", *(["--depth", "1"] if shallow else []), "origin", f"+refs/heads/{ref}:{PRIVATE_REF}")
+                git(root, "fetch", "-q", "--no-write-fetch-head", *(["--depth", "1"] if shallow else []), "origin",
+                    f"+refs/heads/{ref}:{PRIVATE_REF}", timeout=NET_TIMEOUT)
                 parent = [git(root, "rev-parse", PRIVATE_REF)]
                 old = git(root, "show", f"{parent[0]}:{path}", check=False)
                 rows = {r["message_id"]: r for r in csv.DictReader(io.StringIO(old)) if r.get("message_id")}
@@ -161,21 +168,27 @@ def push(root, sid, tpath):
             args = sum((["-p", p] for p in parent), [])
             commit = git(root, "commit-tree", tree, *args, "-m", f"token log: session {sid}")
             r = subprocess.run(["git", "-C", root, "push", "-q", "origin", f"{commit}:refs/heads/{ref}"],
-                               capture_output=True, text=True)
+                               capture_output=True, text=True, timeout=NET_TIMEOUT)
             if r.returncode == 0:
                 git(root, "update-ref", PRIVATE_REF, commit)
                 return f"pushed {commit[:7]} ({len(rows)} rows)"
-            if attempt == 2:
-                raise RuntimeError("push: " + (r.stderr.strip() or r.stdout.strip())[-500:])
+            err = (r.stderr.strip() or r.stdout.strip())[-500:]
+            if attempt == 2 or not any(x in err for x in RACE):  # only a race with another push is tried at once
+                raise RuntimeError("push: " + err)
     return "not pushed"
 
 
-def push_main(args):
-    stamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
-    try:
-        print(stamp, args[1], push(*args))
-    except Exception as e:
-        print(stamp, args[1], "error:", e)
+def push_main(args, delays=RETRY_DELAYS):
+    """Push, and try again later when it fails (the lock is free while it waits)."""
+    for i, delay in enumerate(delays):
+        time.sleep(delay)
+        stamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        try:
+            print(stamp, args[1], push(*args), flush=True)
+            return True
+        except Exception as e:
+            print(stamp, args[1], f"try {i + 1} of {len(delays)} error:", e, flush=True)
+    return False
 
 
 def hook_main():
@@ -191,7 +204,7 @@ def hook_main():
         return  # not a repo (not logged), or no usable session
     args = [root, sid, tpath]
     if os.environ.get("TOKEN_LOG_SYNC") == "1":
-        push_main(args)
+        push_main(args, delays=(0,))
         return
     os.makedirs(home(), exist_ok=True)
     logf = open(os.path.join(home(), "push.log"), "a")
@@ -316,6 +329,19 @@ def self_test():
         append(t1, msg("m5", "2026-01-01T02:00:06Z"))
         hook(os.path.join(root, "shallow"), "s1", t1, logs)
         expect("shallow clone: pushes", len(remote_rows("s1") or []), 6)
+
+        calls, real_push = [], globals()["push"]
+        def flaky(*a):
+            calls.append(a)
+            if len(calls) == 1:
+                raise RuntimeError("blocked")
+            return "pushed"
+        globals()["push"] = flaky
+        try:
+            ok = push_main(["r", "s", "t"], delays=(0, 0, 0))
+        finally:
+            globals()["push"] = real_push
+        expect("a failed push is tried again, then stops", (ok, len(calls)), (True, 2))
 
         expect("bad input: exit 0", hook(work, "s1", t1, logs, stdin="not json").returncode, 0)
         expect("session id with a slash: ignored", hook(work, "../x", t1, logs).returncode, 0)
