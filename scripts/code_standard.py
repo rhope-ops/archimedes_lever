@@ -57,6 +57,8 @@ LANGS = {'.py': 'python', '.ps1': 'powershell', '.psm1': 'powershell', '.js': 'j
 DIVIDER = re.compile(r'^\s*(#|//)\s*(-{4,}|={4,})')   # a section line, not a function's comment
 MIN_HEADER_CHARS = 60      # a header shorter than this does not say what the file is for
 SAFETY_LABELS = ('Network:', 'Writes:', 'Credentials:')   # C1 safety: what a reviewer must find before a run
+# The opt-in rules: the debt kind of each and the config test that turns it on. Only these can be adopted later.
+OPT_IN = {'docs': lambda c: c.get('c2') == 'full', 'safety': lambda c: bool(c.get('c1_safety'))}
 MIN_DUP_LINES = 4          # a body this short (a one-line wrapper) is not counted as a duplicate
 # A block between these two marker lines is a generated copy of a shared source (for example a task script bundle):
 # its functions are measured once, in the source, so C2, C3 and C5 skip them here.
@@ -472,8 +474,9 @@ def against_main(base):
                   for x in git('diff', ref, '--', 'docs/DECISIONS.md').stdout.split('\n'))
     problems = []
     for kind, items in base.get('debt', {}).items():
-        if kind not in old.get('debt', {}) and decided:
-            continue   # a rule just turned on (--adopt): its first debt list is the owner's decision
+        if kind in OPT_IN and OPT_IN[kind](base.get('config', {})) and not OPT_IN[kind](old.get('config', {})) \
+                and decided:
+            continue   # an opt-in rule off on main and turned on now (--adopt): its first list is the owner's decision
         was = old.get('debt', {}).get(kind, {})
         for key, value in sorted(items.items()):
             if key not in was:
@@ -539,11 +542,12 @@ def main():
 
 
 def adopt(base, now):
-    """Write the debt of each rule kind that the baseline does not list yet (a rule just turned on); refuse when there
-    is none. Kinds already listed are not touched, so this never adds debt to a rule the ratchet already holds."""
-    kinds = [k for k, items in now.items() if k not in base.get('debt', {}) and items]
+    """Write the first debt list of each opt-in rule (OPT_IN) that the config turns on and the baseline holds no debt
+    for yet; refuse when there is none. A core rule is never adopted, and the comparison with main accepts the list
+    only when that option was off on main, so this cannot add debt to a rule the ratchet already holds."""
+    kinds = [k for k, on in OPT_IN.items() if on(base['config']) and not base.get('debt', {}).get(k) and now.get(k)]
     if not kinds:
-        print('CODE-STANDARD fail: no new rule kind to adopt; use --update (it can only lower the baseline)')
+        print('CODE-STANDARD fail: no opt-in rule to adopt; use --update (it can only lower the baseline)')
         return 1
     for k in kinds:
         base.setdefault('debt', {})[k] = now[k]

@@ -81,6 +81,7 @@ def python_missing(facts, def_line):
     if names:
         args = re.split(r'^\s*Args:\s*$', doc, maxsplit=1, flags=re.M)
         listed = args[1] if len(args) == 2 else ''
+        listed = re.split(r'^\s*(?:Returns?|Raises|Yields|Examples?|Notes?):', listed, maxsplit=1, flags=re.M)[0]
         miss += ['Args: ' + n for n in names if not re.search(r'^\s*\*{0,2}%s\b' % re.escape(n), listed, re.M)]
     if returns and not re.search(r'^\s*Returns?:', doc, re.M):
         miss.append('Returns:')
@@ -114,12 +115,17 @@ def js_params(lines, start):
         Names in order; a destructured parameter ({a, b} or [a]) is returned as '' (any @param name covers it).
     """
     text = ' '.join(lines[start - 1:start + 9])
-    open_at = text.find('(')
+    sig = re.split(r'=>|\{', text, maxsplit=1)[0] if '(' not in text.split('=>')[0] else text
+    open_at = sig.find('(')
     if open_at < 0:
         m = re.search(r'=\s*([A-Za-z_$][\w$]*)\s*=>', text)   # `const f = x => ...`
         return [m.group(1)] if m else []
-    depth, out, cur = 0, [], ''
+    depth, out, cur, quote = 0, [], '', None
     for c in text[open_at + 1:]:   # the text after the `(` of the parameter list
+        if quote or c in '"\'`':
+            quote = None if c == quote else (quote or c)
+            cur += c
+            continue
         if depth == 0 and c == ')':
             break
         if depth == 0 and c == ',':
@@ -152,19 +158,45 @@ def js_missing(lines, top, start, body):
     k = top - 2
     if k < 0 or not lines[k].strip().endswith('*/'):
         return ['JSDoc']
-    while k >= 0 and '/**' not in lines[k]:
-        k -= 1
-    if k < 0:
-        return ['JSDoc']
+    while k >= 0 and '/*' not in lines[k]:
+        k -= 1   # the start of the comment block that ends right above the function
+    if k < 0 or '/**' not in lines[k]:
+        return ['JSDoc']   # a plain /* */ comment is not JSDoc
     doc = '\n'.join(lines[k:top - 1])
     tags = re.findall(r'@param\s+(?:\{[^}]*\}\s*)?\[?([\w$.]+)', doc)
     miss = []
     for i, name in enumerate(js_params(lines, start)):
         if (name and name not in tags) or (not name and len([t for t in tags if '.' not in t]) <= i):
             miss.append('@param ' + (name or '#%d' % (i + 1)))
-    if RETURNS_VALUE.search(body) and not re.search(r'@returns?\b', doc):
+    if js_returns_value(body) and not re.search(r'@returns?\b', doc):
         miss.append('@returns')
     return miss
+
+
+def js_returns_value(body):
+    """True when the function body returns a value itself (a `return x` at its own brace level, not in a nested callback).
+
+    Args:
+        body: the function's lines after its signature line, up to its closing brace.
+
+    Returns:
+        True or False.
+    """
+    lines = body.split('\n')
+    depth = -1 if lines and lines[0].strip() == '{' else 0   # the body's `{` on its own line opens level 0
+    quote = None
+    for line in lines:
+        code = line.split('//')[0]
+        for k, c in enumerate(code):
+            if quote:
+                quote = None if c == quote else quote
+            elif c in '"\'`':
+                quote = c
+            elif c in '{}':
+                depth += 1 if c == '{' else -1
+            elif depth == 0 and RETURNS_VALUE.match(code, k) and (k == 0 or not code[k - 1].isalnum()):
+                return True
+    return False
 
 
 def missing(lang, lines, func, extra, py_facts):

@@ -243,6 +243,7 @@ def self_test_docs(cs, root, g, config):
     assert gaps['bare'] == ['Args: x', 'Args: rest', 'Returns:'], 'the report names the missing parts: %s' % gaps
     jgaps = {f['name']: f.get('docs_missing') for f in m['files']['g.js']['functions']}
     assert jgaps['bad'] == ['JSDoc'], 'a plain comment is not JSDoc: %s' % jgaps
+    self_test_docs_forms(cs.docs)
     if PS:
         g('rm', '-q', '--cached', '--', '*.ps1')   # the later steps need no PowerShell: each parser run costs a second
     assert not cs.measure(config)['violations']['docs'], 'without "c2": "full" the rule is off'
@@ -262,5 +263,42 @@ def self_test_docs(cs, root, g, config):
             assert cs.main() == 0, '--adopt lists a rule that was just turned on'
             assert set(json.loads(cs.BASELINE.read_text())['debt']['docs']) == want - {'h.ps1::Get-Bad'}, '--adopt writes its debt'
             assert cs.main() == 1, 'a second --adopt is refused (the kind is listed now)'
+        self_test_adopt_ratchet(cs, root, g, full)
     finally:
         sys.argv = saved
+
+
+def self_test_docs_forms(docs):
+    """Self-test of the parsing edge cases of scripts/code_standard_docs.py (found by the first fresh review): an arrow
+    function's parameter is read from its signature, not its body; a comma in a quoted default is not a separator; a
+    return in a nested callback is not the function's own; a Python Args: section ends at Returns:; a plain /* */
+    comment above a function is not JSDoc."""
+    assert docs.js_params(['const f = x => {', '  foo(q);', '};'], 1) == ['x'], 'arrow parameter from the signature'
+    assert docs.js_params(['function f(a = ",", b) {', '}'], 1) == ['a', 'b'], 'a quoted comma is not a separator'
+    assert not docs.js_returns_value('  a.forEach(v => {\n    return v;\n  });\n}'), 'a nested return is not counted'
+    assert docs.js_returns_value('{\n  return 1;\n}'), 'a return under a `{` on its own line is counted'
+    facts = docs.python_docs('def f(x, value):\n    """Do.\n\n    Args:\n        x: a.\n\n    Returns:\n        value: b.\n    """\n')
+    assert docs.python_missing(facts, 1) == ['Args: value'], 'Args: ends at Returns:'
+    lines = ['/** Other. */', 'function a() {', '}', '/* plain */', 'function b(z) {', '  return z;', '}']
+    assert docs.js_missing(lines, 5, 5, '  return z;\n}') == ['JSDoc'], 'a plain /* */ comment is not JSDoc'
+
+
+def self_test_adopt_ratchet(cs, root, g, full):
+    """Self-test of the ratchet around --adopt: a core rule is never adopted, and the comparison with main accepts a
+    first debt list only for an opt-in rule that was off on main, with a DECISIONS row."""
+    g('add', '.')
+    g('-c', 'user.name=t', '-c', 'user.email=t@example.invalid', 'commit', '-q', '-m', 'base')
+    g('update-ref', 'refs/remotes/origin/main', 'HEAD')
+    base = {'config': dict(full, c2='lean'), 'debt': {}}
+    cs.BASELINE.write_text(json.dumps(base))
+    g('add', '.')
+    g('-c', 'user.name=t', '-c', 'user.email=t@example.invalid', 'commit', '-q', '-m', 'baseline')
+    g('update-ref', 'refs/remotes/origin/main', 'HEAD')
+    (root / 'docs').mkdir(exist_ok=True)
+    (root / 'docs' / 'DECISIONS.md').write_text('| row | names %s |\n' % cs.BASELINE_NAME)
+    hand = dict(base, debt={'length': {'x.py::f': 99}})
+    assert cs.against_main(hand)[0], 'a core rule debt added by hand fails, even with a DECISIONS row'
+    on = {'config': full, 'debt': {'docs': {'f.py::bare': 1}}}
+    assert not cs.against_main(on)[0], 'an opt-in rule turned on now: its first list passes with a DECISIONS row'
+    (root / 'docs' / 'DECISIONS.md').unlink()
+    assert cs.against_main(on)[0], 'the same list fails with no DECISIONS row'
