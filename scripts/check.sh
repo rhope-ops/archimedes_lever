@@ -224,7 +224,7 @@ done
 # A script whose cases or parts live in sibling modules lists them, so the fast lane reruns its self-test when they change.
 selftest bloat_check scripts/bloat_check.py scripts/bloat_check_test.py scripts/bloat_check_skills.py -- python3 scripts/bloat_check.py --test
 selftest token_log scripts/token_log.py scripts/token_log_test.py -- python3 scripts/token_log.py --test
-selftest code_standard scripts/code_standard.py scripts/code_standard_test.py -- python3 scripts/code_standard.py --test
+selftest code_standard scripts/code_standard.py scripts/code_standard_test.py scripts/code_standard_docs.py -- python3 scripts/code_standard.py --test
 selftest timeline scripts/timeline.py scripts/log_check.py -- python3 scripts/timeline.py --test  # it imports log_check
 selftest pii_guard scripts/pii_guard.py scripts/pii_guard_scan.py scripts/pii_guard_hook.py scripts/pii_guard_test.py -- python3 scripts/pii_guard.py --test
 selftest first_use_check scripts/first_use_check.py scripts/pii_guard.py scripts/pii_guard_scan.py -- python3 scripts/first_use_check.py --test
