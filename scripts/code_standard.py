@@ -470,7 +470,8 @@ def main():
     if args.test:
         import code_standard_test   # scripts/code_standard_test.py: kept apart (rule C4)
         return code_standard_test.run(sys.modules[__name__])
-    if not BASELINE.exists():
+    existed = BASELINE.exists()
+    if not existed:
         if not args.init:
             print('CODE-STANDARD fail: no %s; adopt the standard with --init (docs/code-standard.md)' % BASELINE_NAME)
             return 1
@@ -482,7 +483,7 @@ def main():
         print(json.dumps(m, indent=1))
         return 0
     if args.init:
-        if base.get('debt'):
+        if existed:   # a second --init could write new debt into the list; the baseline only shrinks
             print('CODE-STANDARD fail: a baseline exists; use --update (it can only lower it)')
             return 1
         base['debt'] = m['violations']

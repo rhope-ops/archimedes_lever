@@ -18,7 +18,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-import bloat_check_skills as sk
+import bloat_check_skills as skills
 
 LONG = "This line is long enough to count as a duplicate when it shows up in two different files of a repo."
 
@@ -29,33 +29,33 @@ def git_in(folder, *args):
                    capture_output=True)
 
 
-def sample_repo(bc, root):
+def sample_repo(bloat, root):
     """A repo with a duplicate line, a long handoff, a big file and a config with low budgets; returns its config."""
     subprocess.run(["git", "init", "-q", str(root)], check=True)
     (root / "AGENTS.md").write_text(f"# A\n- {LONG}\n")
     (root / "docs").mkdir()
     (root / "docs/NEXT_PROMPT.md").write_text(f"{LONG.upper()}\n" + "x\n" * 45)
     (root / "big.txt").write_text("y" * 3000)
-    (root / bc.CONFIG).write_text(json.dumps({"budgets": {"file_kb": 2, "start_read_tokens": 10},
+    (root / bloat.CONFIG).write_text(json.dumps({"budgets": {"file_kb": 2, "start_read_tokens": 10},
                                               "last_audit": {"date": "2026-01-01"},
                                               "timings": {"t": {"cmd": "true", "seconds": 5}}}))
     subprocess.run(["git", "-C", str(root), "add", "-A"], check=True)
-    return bc.load_config(root)
+    return bloat.load_config(root)
 
 
-def metrics_cases(bc, root, cfg):
+def metrics_cases(bloat, root, cfg):
     """Duplicates, big files, the audit due date by days, and a never-audited repo with no commits."""
-    files = bc.scan_files(root, cfg)
-    assert len(bc.duplicates(root, files)) == 1, "duplicate across files, case and bullets ignored"
-    assert [f for f, _ in bc.big_files(root, files, 2)] == ["big.txt"], "big file"
-    assert "days since" in bc.audit_due(root, cfg, datetime.date(2026, 2, 1)), "due by days"
-    assert bc.audit_due(root, cfg, datetime.date(2026, 1, 5)) == "", "not due"
+    files = bloat.scan_files(root, cfg)
+    assert len(bloat.duplicates(root, files)) == 1, "duplicate across files, case and bullets ignored"
+    assert [f for f, _ in bloat.big_files(root, files, 2)] == ["big.txt"], "big file"
+    assert "days since" in bloat.audit_due(root, cfg, datetime.date(2026, 2, 1)), "due by days"
+    assert bloat.audit_due(root, cfg, datetime.date(2026, 1, 5)) == "", "not due"
     never = {**cfg, "last_audit": None}
-    assert bc.audit_due(root, never, datetime.date(2026, 1, 5)) == "never audited", "no commits: due"
+    assert bloat.audit_due(root, never, datetime.date(2026, 1, 5)) == "never audited", "no commits: due"
     return never
 
 
-def never_audited_cases(bc, never):
+def never_audited_cases(bloat, never):
     """A never-audited repo: not due when new, due by days or commits, and always due as a shallow clone."""
     with tempfile.TemporaryDirectory() as n:
         subprocess.run(["git", "init", "-q", n], check=True)
@@ -63,30 +63,30 @@ def never_audited_cases(bc, never):
         subprocess.run(["git", "-C", n, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "--allow-empty",
                         "-m", "first"], check=True, env=env)
         first = datetime.date(2026, 1, 1)
-        assert bc.audit_due(Path(n), never, first) == "", "never audited, new repo: not due yet"
-        assert bc.audit_due(Path(n), never, first + datetime.timedelta(days=14)).startswith("never audited;"), "due by days"
-        assert bc.audit_due(Path(n), {**never, "every_commits": 1}, first).startswith("never audited;"), "due by commits"
+        assert bloat.audit_due(Path(n), never, first) == "", "never audited, new repo: not due yet"
+        assert bloat.audit_due(Path(n), never, first + datetime.timedelta(days=14)).startswith("never audited;"), "due by days"
+        assert bloat.audit_due(Path(n), {**never, "every_commits": 1}, first).startswith("never audited;"), "due by commits"
         subprocess.run(["git", "-C", n, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "--allow-empty",
                         "-m", "second"], check=True, env=env)
         s = str(Path(n).parent / (Path(n).name + "-shallow"))
         subprocess.run(["git", "clone", "-q", "--depth", "1", "file://" + n, s], check=True, capture_output=True)
         try:
-            assert bc.audit_due(Path(s), never, first) == "never audited", "shallow clone: due"
+            assert bloat.audit_due(Path(s), never, first) == "never audited", "shallow clone: due"
         finally:
             subprocess.run(["rm", "-rf", s], check=True)
 
 
-def strict_cases(bc, root, cfg, strict):
+def strict_cases(bloat, root, cfg, strict):
     """A fast timed command is ok, and --strict fails when a budget is over."""
-    rows, slow = bc.run_timings(root, cfg, record=False)
+    rows, slow = bloat.run_timings(root, cfg, record=False)
     assert not slow and "ok" in rows[0], "fast command is ok"
     with contextlib.redirect_stdout(io.StringIO()):
-        assert bc.report(root, strict, datetime.date(2026, 1, 5)) == 1, "strict fails when over budget"
+        assert bloat.report(root, strict, datetime.date(2026, 1, 5)) == 1, "strict fails when over budget"
 
 
-def rule_count_cases(bc):
+def rule_count_cases(bloat):
     """Rules: count by place; header, Commands, fences, comments, starter blocks, rankings and tables."""
-    rule_lines = bc.rule_lines
+    rule_lines = bloat.rule_lines
     sample = ("# T\n\n- Repo: x\n\n## Git safety\n\n- Rule one.\n- Rule two.\n<!-- starter -->\n- Starter only.\n"
               "<!-- /starter -->\n```\n- in a fence\n```\n\n## Commands\n\n- Build: none.\n\n## Project rules\n\n"
               "<!-- - a comment -->\n- Project rule.\n")
@@ -107,48 +107,48 @@ def rule_count_cases(bc):
     assert "The owner." in every, "ranking lines are still listed when they change"
 
 
-def caps_and_paths_cases(bc, ro, caps):
+def caps_and_paths_cases(bloat, ro, caps):
     """A repo with origin/main: a swap of rule lines is listed, both caps fail, missing paths fail."""
     o = str(ro)
     git_in(o, "init", "-q", "-b", "main")
     (ro / "AGENTS.md").write_text("## A\n\n- Old rule.\n- Kept rule.\n\n## Project rules\n\n")
     git_in(o, "add", "-A"); git_in(o, "commit", "-q", "-m", "a"); git_in(o, "update-ref", "refs/remotes/origin/main", "HEAD")
     (ro / "AGENTS.md").write_text("## A\n\n- New rule.\n- Kept rule.\n\n## Project rules\n\n- P1.\n")
-    rows, problems = bc.rules_report(ro, caps)
+    rows, problems = bloat.rules_report(ro, caps)
     assert not problems, "at the cap is not over"
     assert any(r.startswith("  + New rule.") for r in rows) and any(r.startswith("  - Old rule.") for r in rows), "a swap is listed"
     (ro / "AGENTS.md").write_text("## A\n\n- New rule.\n- Kept rule.\n- Third.\n\n## Project rules\n\n- P1.\n- P2.\n")
-    rows, problems = bc.rules_report(ro, caps)
+    rows, problems = bloat.rules_report(ro, caps)
     assert len(problems) == 2 and "rules over the cap (3 > 2)" in problems[0] and "project rules over" in problems[1], "both caps fail"
     (ro / "AGENTS.md").write_text("## A\n\n- See `.claude/skills/x/SKILL.md` and [doc](docs/gone.md), [web](https://e.example/a), `.claude/skills/<name>/`, `scripts/gone.sh --fast`, `scripts/check.local.sh`, `python3 scripts/gone2.py --test`, `scripts/tool.sh -o docs/out.html`, `scripts/gone2.py:12`, `scripts/gone.sh|tee x`, `bash -x scripts/gone3.sh`, `x --output docs/a.md --out docs/b.md --outline docs/c.md`.\n")
-    rows, problems = bc.rules_report(ro, caps)
+    rows, problems = bloat.rules_report(ro, caps)
     assert problems == ["missing paths named in AGENTS.md: .claude/skills/x/SKILL.md, docs/gone.md, scripts/gone.sh, scripts/gone2.py, scripts/gone3.sh, scripts/tool.sh"], "missing paths (also after a command word, with a line number or a pipe), not URLs, patterns, optional files or option values"
     (ro / ".claude/skills/x").mkdir(parents=True); (ro / ".claude/skills/x/SKILL.md").write_text("x")
     (ro / "docs").mkdir(); (ro / "docs/gone.md").write_text("x")
     (ro / "scripts").mkdir(); (ro / "scripts/gone.sh").write_text("x"); (ro / "scripts/gone2.py").write_text("x"); (ro / "scripts/tool.sh").write_text("x"); (ro / "scripts/gone3.sh").write_text("x")
-    assert bc.rules_report(ro, caps)[1] == [], "paths exist: pass"
+    assert bloat.rules_report(ro, caps)[1] == [], "paths exist: pass"
 
 
-def conflict_gate_cases(bc, ro, caps):
+def conflict_gate_cases(bloat, ro, caps):
     """Conflict gate: changed rule lines need a record that names their hash; without --gate only a WARN line."""
     (ro / "AGENTS.md").write_text("## A\n\n- New rule.\n- Kept rule.\n\n## Project rules\n\n")
-    h = bc.conflict_hash(["New rule."], ["Old rule."])
-    assert h == bc.conflict_hash(["New rule."], ["Old rule."]) != bc.conflict_hash(["Old rule."], ["New rule."]), "the hash keeps + and - apart"
-    rows, problems = bc.rules_report(ro, caps)
+    h = bloat.conflict_hash(["New rule."], ["Old rule."])
+    assert h == bloat.conflict_hash(["New rule."], ["Old rule."]) != bloat.conflict_hash(["Old rule."], ["New rule."]), "the hash keeps + and - apart"
+    rows, problems = bloat.rules_report(ro, caps)
     assert not problems and any(r.startswith("WARN") and h in r for r in rows), "no record, no gate: a WARN line with the hash"
-    rows, problems = bc.rules_report(ro, caps, gate=True)
+    rows, problems = bloat.rules_report(ro, caps, gate=True)
     assert len(problems) == 1 and h in problems[0], "no record, gate: fails"
     (ro / "docs").mkdir(exist_ok=True); (ro / "docs/reviews").mkdir()
     (ro / "docs/reviews/r.md").write_text(f"Result: no conflict.\nrule-conflict-check: {'0' * 12}\n")
-    assert bc.rules_report(ro, caps, gate=True)[1], "a record for other lines does not count"
+    assert bloat.rules_report(ro, caps, gate=True)[1], "a record for other lines does not count"
     (ro / "docs/reviews/r.md").write_text(f"Result: no conflict.\nrule-conflict-check: {h}\n")
-    rows, problems = bc.rules_report(ro, caps, gate=True)
+    rows, problems = bloat.rules_report(ro, caps, gate=True)
     assert not problems and any("conflict check: recorded" in r for r in rows), "a record with the hash passes"
     (ro / "AGENTS.md").write_text("## A\n\n- Old rule.\n- Kept rule.\n\n## Project rules\n\n")
-    assert not bc.rules_report(ro, caps, gate=True)[1], "no changed lines: no gate"
+    assert not bloat.rules_report(ro, caps, gate=True)[1], "no changed lines: no gate"
 
 
-def lint_cases(bc, ro):
+def lint_cases(bloat, ro):
     """Lint: near-duplicates, vague words, untested rules (a section with no scenario, no script named)."""
     (ro / ".claude").mkdir(exist_ok=True)
     (ro / ".claude/rule-tests.md").write_text("| # | Rule tested | Section | Prompt |\n|---|---|---|---|\n| 1 | x | Tested; Other | p |\n")
@@ -157,58 +157,58 @@ def lint_cases(bc, ro):
              ("Tested", "Use the right tool where possible."),
              ("Untested", "Keep the handoff short."), ("Untested", "The hook enforces it: `scripts/x.sh`."),
              ("Other", "Run `git clean` never.")]
-    flags = bc.lint(ro, rules)
+    flags = bloat.lint(ro, rules)
     assert sum("near-duplicate" in f for f in flags) == 1, "one near-duplicate pair"
     assert [f for f in flags if "vague" in f] == ['WARN  rule lint: vague (where possible): "Use the right tool where possible."'], "vague word; text in backticks is not read"
     assert [f for f in flags if "untested" in f] == ['WARN  rule lint: untested (no scenario for "Untested" in .claude/rule-tests.md, no script named): "Keep the handoff short."'], "untested: no scenario and no script; a ';' list of sections counts each"
-    assert bc.lint(ro, rules, only={"Keep the handoff short."}) == [f for f in flags if "handoff" in f], "only: the changed lines"
+    assert bloat.lint(ro, rules, only={"Keep the handoff short."}) == [f for f in flags if "handoff" in f], "only: the changed lines"
     (ro / ".claude/rule-tests.md").unlink()
-    assert not [f for f in bc.lint(ro, rules) if "untested" in f], "no rule-tests file (starter tier): no untested flags"
+    assert not [f for f in bloat.lint(ro, rules) if "untested" in f], "no rule-tests file (starter tier): no untested flags"
     (ro / "AGENTS.md").write_text("## A\n\n- New rule.\n- Kept rule.\n\n## Project rules\n\n- See `.claude/skills/x/SKILL.md` and [doc](docs/gone.md), `scripts/gone.sh`, `scripts/gone2.py`, `scripts/tool.sh`.\n")
     with contextlib.redirect_stdout(io.StringIO()):
-        assert bc.main_rules(ro) == 0, "--rules passes"
-        assert bc.main_lint(ro) == 0, "--lint never fails"
+        assert bloat.main_rules(ro) == 0, "--rules passes"
+        assert bloat.main_lint(ro) == 0, "--lint never fails"
         (ro / "AGENTS.md").write_text("## A\n\n" + "- r.\n" * 36)
-        assert bc.main_rules(ro) == 1, "--rules fails over the default cap of 35"
+        assert bloat.main_rules(ro) == 1, "--rules fails over the default cap of 35"
 
 
-def report_cases(bc, root, cfg, strict):
+def report_cases(bloat, root, cfg, strict):
     """The start-read warning, an unknown audit commit, a bad config, and --time --record."""
-    (root / bc.CONFIG).write_text(json.dumps({"budgets": {"start_read_warn_tokens": 1, "start_read_tokens": 99999},
+    (root / bloat.CONFIG).write_text(json.dumps({"budgets": {"start_read_warn_tokens": 1, "start_read_tokens": 99999},
                                               "last_audit": {"date": "2026-01-01"}}))
     w = io.StringIO()
     with contextlib.redirect_stdout(w):
-        bc.report(root, argparse.Namespace(brief=True, time=False, record=False, strict=False), datetime.date(2026, 1, 5))
+        bloat.report(root, argparse.Namespace(brief=True, time=False, record=False, strict=False), datetime.date(2026, 1, 5))
     assert "over warning" in w.getvalue() and "over: start read" not in w.getvalue(), "warning, not over"
     with contextlib.redirect_stdout(io.StringIO()):
-        assert bc.audit_due(root, {**cfg, "last_audit": {"date": "2026-01-01", "commit": "f" * 40}},
+        assert bloat.audit_due(root, {**cfg, "last_audit": {"date": "2026-01-01", "commit": "f" * 40}},
                             datetime.date(2026, 1, 5)) == "", "unknown commit alone is not due"
-        (root / bc.CONFIG).write_text("{bad")
-        assert bc.report(root, strict, datetime.date(2026, 1, 5)) == 1, "bad config: message, no traceback"
-        (root / bc.CONFIG).write_text(json.dumps({"timings": {"f": {"cmd": "false"}, "t": {"cmd": "true"}}}))
-        bc.report(root, argparse.Namespace(brief=True, time=True, record=True, strict=False))
-    saved = json.loads((root / bc.CONFIG).read_text())["timings"]
+        (root / bloat.CONFIG).write_text("{bad")
+        assert bloat.report(root, strict, datetime.date(2026, 1, 5)) == 1, "bad config: message, no traceback"
+        (root / bloat.CONFIG).write_text(json.dumps({"timings": {"f": {"cmd": "false"}, "t": {"cmd": "true"}}}))
+        bloat.report(root, argparse.Namespace(brief=True, time=True, record=True, strict=False))
+    saved = json.loads((root / bloat.CONFIG).read_text())["timings"]
     assert "seconds" not in saved["f"] and saved["t"]["seconds"] is not None, "record skips failed commands"
 
 
-def compare_cases(bc, root):
+def compare_cases(bloat, root):
     """--compare: within the limit, a slowdown, no baseline, --record, and --time skips a timing with no cmd."""
     tc = {"timings": {"check": {"seconds": 4.0, "steps": {"a": 2.0, "tiny": 0.1}}}}
-    line, slow = bc.compare_times(json.loads(json.dumps(tc)), [("check", 4.4), ("check:a", 2.4), ("check:tiny", 0.3)])
+    line, slow = bloat.compare_times(json.loads(json.dumps(tc)), [("check", 4.4), ("check:a", 2.4), ("check:tiny", 0.3)])
     assert not slow and line.startswith("TIME  baseline: 3 of 3"), "within +25%, or under 0.5 s slower: ok"
-    line, slow = bc.compare_times(json.loads(json.dumps(tc)), [("check", 5.2), ("check:a", 2.0), ("check:new", 1.0)])
+    line, slow = bloat.compare_times(json.loads(json.dumps(tc)), [("check", 5.2), ("check:a", 2.0), ("check:new", 1.0)])
     assert slow == ["check 5.2 s (baseline 4.0 s, +30%)"] and line.startswith("WARN") and "efficiency" in line, "a slowdown warns and names the skill"
-    line, _ = bc.compare_times(json.loads(json.dumps(tc)), [("check:new", 1.0)])
+    line, _ = bloat.compare_times(json.loads(json.dumps(tc)), [("check:new", 1.0)])
     assert "no baseline yet for 1 (check:new)" in line and "Record a baseline" in line, "no baseline: says how to record one"
     rec = json.loads(json.dumps(tc))
-    bc.compare_times(rec, [("check", 3.0), ("check:new", 1.0), ("other", 0.2)], record=True)
+    bloat.compare_times(rec, [("check", 3.0), ("check:new", 1.0), ("other", 0.2)], record=True)
     assert rec["timings"]["check"]["seconds"] == 3.0 and rec["timings"]["check"]["steps"]["new"] == 1.0 and rec["timings"]["other"]["seconds"] == 0.2, "record stores wall, step and a new key"
-    (root / bc.CONFIG).write_text(json.dumps({"budgets": {}, **tc}))
+    (root / bloat.CONFIG).write_text(json.dumps({"budgets": {}, **tc}))
     with contextlib.redirect_stdout(io.StringIO()):
-        assert bc.main_compare(root, ["check:a=9", "bad"], False) == 0, "a bad item: no failure"
-        bc.main_compare(root, ["check:a=1.25"], True)
-    assert json.loads((root / bc.CONFIG).read_text())["timings"]["check"]["steps"]["a"] == 1.2 and "budgets" in json.loads((root / bc.CONFIG).read_text()), "--record keeps the other keys"
-    rows, _ = bc.run_timings(root, {"timings": {"nocmd": {"seconds": 1}}}, record=False)
+        assert bloat.main_compare(root, ["check:a=9", "bad"], False) == 0, "a bad item: no failure"
+        bloat.main_compare(root, ["check:a=1.25"], True)
+    assert json.loads((root / bloat.CONFIG).read_text())["timings"]["check"]["steps"]["a"] == 1.2 and "budgets" in json.loads((root / bloat.CONFIG).read_text()), "--record keeps the other keys"
+    rows, _ = bloat.run_timings(root, {"timings": {"nocmd": {"seconds": 1}}}, record=False)
     assert rows == [], "--time skips a timing with no cmd"
 
 
@@ -224,23 +224,23 @@ def skills_cases(rs):
     good = "---\nname: {}\ndescription: Use when testing.\n---\nbody\n"
     write_skill(rs, "ok", good.format("ok"))
     with contextlib.redirect_stdout(io.StringIO()) as w:
-        assert sk.main_skills(rs) == 0, "clean skill passes"
+        assert skills.main_skills(rs) == 0, "clean skill passes"
     assert w.getvalue().strip() == "SKILLS PASS: 1 skills, 0 warnings", "clean pass line"
     write_skill(rs, "nofm", "no frontmatter\n")
     write_skill(rs, "nodesc", "---\nname: nodesc\n---\n")
     write_skill(rs, "noname", "---\ndescription: Use when x.\n---\n")
     write_skill(rs, "wrongname", "---\nname: other\ndescription: Use when x.\n---\n")
-    rows, fails, _, _ = sk.skills_report(rs)
+    rows, fails, _, _ = skills.skills_report(rs)
     assert fails == 4 and sum(r.startswith("FAIL") for r in rows) == 4, "each FAIL case"
     with contextlib.redirect_stdout(io.StringIO()) as w:
-        assert sk.main_skills(rs) == 1, "a malformed skill fails"
+        assert skills.main_skills(rs) == 1, "a malformed skill fails"
     assert w.getvalue().strip().splitlines()[-1].startswith("SKILLS FAIL:"), "fail line"
     for f in ("nofm", "nodesc", "noname", "wrongname"):
         (rs / ".claude/skills" / f / "SKILL.md").unlink()
     write_skill(rs, "warnone", "---\nname: warnone\ndescription: Does things.\n---\n")
     write_skill(rs, "longone", "---\nname: longone\ndescription: Use before " + "x" * 1030 + "\n---\n" + "l\n" * 150)
     write_skill(rs, "orphan", good.format("orphan"))
-    rows, fails, warns, n = sk.skills_report(rs)
+    rows, fails, warns, n = skills.skills_report(rs)
     txt = "\n".join(rows)
     assert fails == 0 and n == 4 and warns == 4, "four WARN cases, no FAIL"
     assert all(r.startswith("  WARN") for r in rows), "WARN lines are indented"
@@ -248,12 +248,12 @@ def skills_cases(rs):
     assert "longone/SKILL.md: description is 1041 characters" in txt and "longone/SKILL.md: 154 lines" in txt, "WARN: long description and file"
     assert "orphan/SKILL.md: orphan" in txt, "WARN: orphan"
     (rs / ".claude/skills/warnone/SKILL.md").write_text("---\nname: warnone\ndescription: Does things.\n---\nSee orphan.\n")
-    assert "orphan/SKILL.md: orphan" not in "\n".join(sk.skills_report(rs)[0]), "a mention in another SKILL.md is no orphan"
-    assert sk.skill_frontmatter("---\nname: f\ndescription: >\n  Use when folded.\n---\n")["description"] == "Use when folded.", "a folded description keeps no > marker"
+    assert "orphan/SKILL.md: orphan" not in "\n".join(skills.skills_report(rs)[0]), "a mention in another SKILL.md is no orphan"
+    assert skills.skill_frontmatter("---\nname: f\ndescription: >\n  Use when folded.\n---\n")["description"] == "Use when folded.", "a folded description keeps no > marker"
 
 
-def run(bc):
-    """Run every case against the module bc in temporary repos; print BLOAT TEST PASS (an assert stops on a failure)."""
+def run(bloat):
+    """Run every case against the module bloat in temporary repos; print BLOAT TEST PASS (an assert stops on a failure)."""
     # The host's git config (forced signing, -c on the command line) must not change the cases.
     for k in ("GIT_CONFIG_PARAMETERS", "GIT_CONFIG_COUNT"):
         os.environ.pop(k, None)
@@ -261,17 +261,17 @@ def run(bc):
     strict = argparse.Namespace(brief=False, time=False, record=False, strict=True)
     with tempfile.TemporaryDirectory() as d:
         root = Path(d)
-        cfg = sample_repo(bc, root)
-        never_audited_cases(bc, metrics_cases(bc, root, cfg))
-        strict_cases(bc, root, cfg, strict)
-        rule_count_cases(bc)
+        cfg = sample_repo(bloat, root)
+        never_audited_cases(bloat, metrics_cases(bloat, root, cfg))
+        strict_cases(bloat, root, cfg, strict)
+        rule_count_cases(bloat)
         with tempfile.TemporaryDirectory() as o:
-            caps = {"budgets": {**bc.DEFAULTS["budgets"], "rules": 2, "project_rules": 1}}
-            caps_and_paths_cases(bc, Path(o), caps)
-            conflict_gate_cases(bc, Path(o), caps)
-            lint_cases(bc, Path(o))
-        report_cases(bc, root, cfg, strict)
-        compare_cases(bc, root)
+            caps = {"budgets": {**bloat.DEFAULTS["budgets"], "rules": 2, "project_rules": 1}}
+            caps_and_paths_cases(bloat, Path(o), caps)
+            conflict_gate_cases(bloat, Path(o), caps)
+            lint_cases(bloat, Path(o))
+        report_cases(bloat, root, cfg, strict)
+        compare_cases(bloat, root)
     with tempfile.TemporaryDirectory() as d:
         skills_cases(Path(d))
     print("BLOAT TEST PASS")

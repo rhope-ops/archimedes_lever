@@ -162,52 +162,52 @@ def write(path, text):
         f.write(text)
 
 
-def clean_cases(t):
+def clean_cases(repos):
     """Clean checkouts that must pass: at, behind or on the default branch."""
-    run, verdict = t.run, t.verdict
-    w = t.fresh("readonly"); run(w, "checkout", "-q", "-b", "claude/session")
-    out = [("clean session branch at origin/main, never pushed", verdict(w), "pass")]
-    w = t.fresh("behind"); t.commit(w, "b"); run(w, "push", "-q", "origin", "main"); run(w, "checkout", "-q", "-b", "s", "HEAD~1")
-    out.append(("clean branch behind origin/main, never pushed", verdict(w), "pass"))
-    w = t.fresh("master", default="master"); run(w, "checkout", "-q", "-b", "s")
-    out.append(("clean branch at origin/master (no main), never pushed", verdict(w), "pass"))
+    run, verdict = repos.run, repos.verdict
+    work = repos.fresh("readonly"); run(work, "checkout", "-q", "-b", "claude/session")
+    out = [("clean session branch at origin/main, never pushed", verdict(work), "pass")]
+    work = repos.fresh("behind"); repos.commit(work, "b"); run(work, "push", "-q", "origin", "main"); run(work, "checkout", "-q", "-b", "s", "HEAD~1")
+    out.append(("clean branch behind origin/main, never pushed", verdict(work), "pass"))
+    work = repos.fresh("master", default="master"); run(work, "checkout", "-q", "-b", "s")
+    out.append(("clean branch at origin/master (no main), never pushed", verdict(work), "pass"))
     return out
 
 
-def dirty_cases(t):
+def dirty_cases(repos):
     """Uncommitted work that must block: a modified file, an untracked file, a stash."""
-    run, verdict = t.run, t.verdict
-    w = t.fresh("modified"); run(w, "checkout", "-q", "-b", "s")
-    write(os.path.join(w, "a"), "changed")
-    out = [("modified file", verdict(w), "block")]
-    w = t.fresh("untracked"); run(w, "checkout", "-q", "-b", "s"); run(w, "config", "status.showUntrackedFiles", "no")
-    write(os.path.join(w, "new"), "x")
-    out.append(("untracked file, untracked hidden by config", verdict(w), "block"))
-    w = t.fresh("stash"); run(w, "checkout", "-q", "-b", "s")
-    write(os.path.join(w, "a"), "changed")
-    run(w, "stash", "-q")
-    out.append(("stash on a clean branch at origin/main", verdict(w), "block"))
+    run, verdict = repos.run, repos.verdict
+    work = repos.fresh("modified"); run(work, "checkout", "-q", "-b", "s")
+    write(os.path.join(work, "a"), "changed")
+    out = [("modified file", verdict(work), "block")]
+    work = repos.fresh("untracked"); run(work, "checkout", "-q", "-b", "s"); run(work, "config", "status.showUntrackedFiles", "no")
+    write(os.path.join(work, "new"), "x")
+    out.append(("untracked file, untracked hidden by config", verdict(work), "block"))
+    work = repos.fresh("stash"); run(work, "checkout", "-q", "-b", "s")
+    write(os.path.join(work, "a"), "changed")
+    run(work, "stash", "-q")
+    out.append(("stash on a clean branch at origin/main", verdict(work), "block"))
     return out
 
 
-def commit_cases(t):
+def commit_cases(repos):
     """Commits not on GitHub, pushed branches, detached HEAD and the second stop in a row."""
-    run, commit, verdict = t.run, t.commit, t.verdict
-    w = t.fresh("unpushed"); run(w, "checkout", "-q", "-b", "s"); commit(w, "b")
-    out = [("one unpushed commit, branch never pushed", verdict(w), "block")]
-    w = t.fresh("ahead"); run(w, "checkout", "-q", "-b", "s"); commit(w, "b"); run(w, "push", "-q", "-u", "origin", "s"); commit(w, "c")
-    out.append(("pushed branch, one commit ahead of upstream", verdict(w), "block"))
-    w = t.fresh("pushed"); run(w, "checkout", "-q", "-b", "s"); commit(w, "b"); run(w, "push", "-q", "-u", "origin", "s")
-    out.append(("pushed branch, upstream up to date (not on main)", verdict(w), "pass"))
-    write(os.path.join(w, "b"), "changed")
-    run(w, "stash", "-q")
-    out.append(("pushed branch, up to date, plus a stash", verdict(w), "block"))
-    w = t.fresh("detached_ahead"); run(w, "checkout", "-q", "--detach"); commit(w, "b")
-    out.append(("detached HEAD with a commit not on origin/main", verdict(w), "block"))
-    w = t.fresh("detached_on"); run(w, "checkout", "-q", "--detach")
-    out.append(("detached HEAD at origin/main, clean", verdict(w), "pass"))
-    w = t.fresh("active"); run(w, "checkout", "-q", "-b", "s"); commit(w, "b")
-    out.append(("unpushed commit, stop_hook_active", verdict(w, '{"stop_hook_active": true}'), "pass"))
+    run, commit, verdict = repos.run, repos.commit, repos.verdict
+    work = repos.fresh("unpushed"); run(work, "checkout", "-q", "-b", "s"); commit(work, "b")
+    out = [("one unpushed commit, branch never pushed", verdict(work), "block")]
+    work = repos.fresh("ahead"); run(work, "checkout", "-q", "-b", "s"); commit(work, "b"); run(work, "push", "-q", "-u", "origin", "s"); commit(work, "c")
+    out.append(("pushed branch, one commit ahead of upstream", verdict(work), "block"))
+    work = repos.fresh("pushed"); run(work, "checkout", "-q", "-b", "s"); commit(work, "b"); run(work, "push", "-q", "-u", "origin", "s")
+    out.append(("pushed branch, upstream up to date (not on main)", verdict(work), "pass"))
+    write(os.path.join(work, "b"), "changed")
+    run(work, "stash", "-q")
+    out.append(("pushed branch, up to date, plus a stash", verdict(work), "block"))
+    work = repos.fresh("detached_ahead"); run(work, "checkout", "-q", "--detach"); commit(work, "b")
+    out.append(("detached HEAD with a commit not on origin/main", verdict(work), "block"))
+    work = repos.fresh("detached_on"); run(work, "checkout", "-q", "--detach")
+    out.append(("detached HEAD at origin/main, clean", verdict(work), "pass"))
+    work = repos.fresh("active"); run(work, "checkout", "-q", "-b", "s"); commit(work, "b")
+    out.append(("unpushed commit, stop_hook_active", verdict(work, '{"stop_hook_active": true}'), "pass"))
     return out
 
 

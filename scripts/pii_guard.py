@@ -66,9 +66,15 @@ import sys
 
 # denylist_source and warn_mode are not used here: first_use_check.py reads them as pii_guard.denylist_source and
 # pii_guard.warn_mode, so they stay attributes of this module.
-from pii_guard_scan import (MISSING_HELP, UNKNOWN_PROFILE, WARN_OPTION, denylist_source, fingerprint, git,
-                            is_option_line, load_allow, load_denylist, profile_of, push_revs, scan_commits, scan_files,
-                            scan_text, skipped, warn_mode)
+# A copy without its parts must block, not pass: exit 2 also blocks the PreToolUse hook (fail closed).
+try:
+    from pii_guard_scan import (MISSING_HELP, UNKNOWN_PROFILE, WARN_OPTION, denylist_source, fingerprint, git,
+                                is_option_line, load_allow, load_denylist, profile_of, push_revs, scan_commits,
+                                scan_files, scan_text, skipped, warn_mode)
+except ImportError as err:
+    print('PII GUARD FAIL: %s; copy pii_guard_scan.py, pii_guard_hook.py and pii_guard_test.py next to '
+          'pii_guard.py (scripts/sync_baseline.py does this)' % err, file=sys.stderr)
+    sys.exit(2)
 
 
 def report(found, what, deny, dod=False):
