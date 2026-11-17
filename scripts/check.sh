@@ -40,6 +40,7 @@ if [ "$selftest_main" = 1 ]; then
   export CHECK_IN_TEST=1
   export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1  # the host's git config (signing, templates) must not matter
   unset GIT_CONFIG_PARAMETERS GIT_CONFIG_COUNT  # nor "git -c ..." on the command that started this run
+  # git in the test repo, with a fixed author and no signing
   g() { git -C "$t/r" -c user.email=t@t -c user.name=t -c commit.gpgsign=false "$@"; }
   git init -q -b main "$t/r"; mkdir -p "$t/r/scripts"
   cp "$self" "$t/r/scripts/check.sh"
@@ -62,7 +63,9 @@ PY
   printf '%s\n' 'echo "arg=${1:-none}" > "$(git rev-parse --git-dir)/local-arg"' '[ ! -f fail.flag ]' > "$t/r/scripts/check.local.sh"
   g add -A; g commit -q -m a; g update-ref refs/remotes/origin/main HEAD
   fails=0
+  # ok NAME GOT WANT: print ok or FAIL, and remember a failure
   ok() { if [ "$2" = "$3" ]; then echo "ok   $1"; else echo "FAIL $1 (got: $2; want: $3)"; fails=1; fi; }
+  # run the copied check.sh in the test repo with these arguments; stderr joins stdout
   c() { (cd "$t/r" && bash scripts/check.sh "$@" 2>&1); }
   out="$(c)"; ok "full lane passes" "$?" 0
   ok "full lane runs the self-test of an unchanged script" "$(printf '%s\n' "$out" | grep -c '^PASS  stop_check self-test')" 1
@@ -150,7 +153,8 @@ done
 gitdir="$(git rev-parse --git-dir)"
 stamp="$gitdir/check-pass"
 head="$(git rev-parse HEAD 2>/dev/null || echo none)"
-clean() { local s; s="$(git status --porcelain 2>/dev/null)" || return 1; [ -z "$s" ]; }  # a git error is not "clean"
+# true when the work tree has no changes; a git error is not "clean"
+clean() { local s; s="$(git status --porcelain 2>/dev/null)" || return 1; [ -z "$s" ]; }
 if [ "$cached" = 1 ] && [ -f "$stamp" ] && clean; then
   read -r s_lane s_head <"$stamp" || true
   if [ "${s_head:-}" = "$head" ] && { [ "${s_lane:-}" = full ] || [ "$lane" = fast ]; }; then
@@ -159,9 +163,11 @@ if [ "$cached" = 1 ] && [ -f "$stamp" ] && clean; then
   fi
 fi
 
-now() {  # microseconds; whole seconds where bash has no EPOCHREALTIME (bash 3)
+# microseconds; whole seconds where bash has no EPOCHREALTIME (bash 3)
+now() {
   if [ -n "${EPOCHREALTIME:-}" ]; then printf '%s' "${EPOCHREALTIME/[.,]/}"; else printf '%s000000' "$(date +%s)"; fi
 }
+# secs MICROSECONDS: print them as seconds with one decimal
 secs() { printf '%d.%d' $(($1 / 1000000)) $((($1 % 1000000) / 100000)); }
 
 # Fast lane: the files that differ from the merge base with the default branch, uncommitted and untracked ones included.
@@ -174,7 +180,8 @@ if [ "$lane" = fast ]; then
     fi
   done
 fi
-touched() {  # true when the lane is full, the base is unknown, or one of the named files (or this script) changed
+# true when the lane is full, the base is unknown, or one of the named files (or this script) changed
+touched() {
   [ "$changed" = "*all*" ] && return 0
   local p
   for p in scripts/check.sh "$@"; do printf '%s\n' "$changed" | grep -qxF -- "$p" && return 0; done
@@ -187,7 +194,8 @@ n=0 pass=0 fail=0 skip=0 untested=0
 names=()
 t0="$(now)"
 
-run() {  # run NAME COMMAND...: start the check in the background; results are collected below
+# run NAME COMMAND...: start the check in the background; results are collected below
+run() {
   local name="$1" i; shift
   n=$((n + 1)); i=$n; names[i]="$name"
   (
@@ -199,8 +207,10 @@ run() {  # run NAME COMMAND...: start the check in the background; results are c
   return 0
 }
 skips=()
+# skip NAME REASON: record a SKIP line for the summary
 skip() { skips+=("SKIP  $1 ($2)"); skip=$((skip + 1)); }
-selftest() {  # selftest NAME FILE [MORE FILES IT DEPENDS ON...] -- COMMAND...
+# selftest NAME FILE [MORE FILES IT DEPENDS ON...] -- COMMAND...: run a script's self-test when the lane needs it
+selftest() {
   local name="$1" file="$2" deps=(); shift
   while [ "$1" != "--" ]; do deps+=("$1"); shift; done; shift
   [ -f "$file" ] || return 0  # absent: not in this tier

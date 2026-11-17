@@ -30,6 +30,7 @@ PLACEHOLDER = re.compile(r"\{\{(PROJECT_NAME|REPO|PURPOSE|OWNER|TIMEZONE)\}\}")
 
 
 def origin_name(root):
+    """The repo name of the origin remote, lower case ("" when there is no origin)."""
     r = subprocess.run(["git", "remote", "get-url", "origin"], cwd=root, capture_output=True, text=True)
     url = r.stdout.strip() if r.returncode == 0 else ""
     return re.sub(r"\.git$", "", url.rstrip("/")).rsplit("/", 1)[-1].lower()
@@ -43,6 +44,7 @@ def has_denylist():
 
 
 def messages(root):
+    """The session-start lines this repo needs: KIT, FIRST USE and DENYLIST, plus a note for a check that failed."""
     root = pathlib.Path(root)
     out = []
     try:
@@ -88,9 +90,11 @@ def messages(root):
 
 
 def self_test():
+    """Check the messages on a temporary repo through each state (new, kit clone, guard with and without denylist)."""
     ok = True
 
     def expect(name, got, want):
+        """Print ok or FAIL for one case and remember a failure."""
         nonlocal ok
         good = got == want
         print(("ok   " if good else "FAIL ") + f"{name}: {got}")
@@ -139,6 +143,7 @@ def self_test():
 
 
 def main():
+    """Print the messages for the current repo, or run --test; return the exit code."""
     if "--test" in sys.argv[1:]:
         return self_test()
     r = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True)
