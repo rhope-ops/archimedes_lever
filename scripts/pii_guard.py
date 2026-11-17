@@ -291,6 +291,8 @@ def scan_text(text, where, deny, allow, dod=False):
     """Return findings (where, line_no, kind, masked) for one text. dod: also run the DoD checks."""
     found = []
     name_re = re.compile(r"(?i)(?<![A-Za-z0-9])(" + "|".join(re.escape(w) for w in deny) + r")(?![A-Za-z0-9])") if deny else None
+    # Compiled once per call, used only on a line with a name hit (one finditer per allow line per line was slow).
+    allow_res = [re.compile(re.escape(v), re.IGNORECASE) for v in allow if not v.startswith("skip:")] if name_re else []
     hosts_ok = {v.lower() for v in allow} if dod else set()  # a host name has no case
     for n, line in enumerate(text.splitlines(), 1):
         hits = []
@@ -300,7 +302,7 @@ def scan_text(text, where, deny, allow, dod=False):
         for rx in SECRET:
             hits += [("secret", m.group()) for m in rx.finditer(line)]
         for rx in PHONE:
-            hits += [("phone", m.group(m.lastindex or 0)) for m in rx.finditer(line)]
+            hits += [("phone", m.group(m.lastindex or 0).strip(" .-")) for m in rx.finditer(line)]  # allow lines are stripped
         hits += [("id", m.group()) for m in SSN.finditer(line)]
         hits += [("id", m.group(1)) for m in SSN_KW.finditer(line)]
         if dod:
@@ -310,10 +312,10 @@ def scan_text(text, where, deny, allow, dod=False):
                 hits += [("dodid", m.group(1)) for m in rx.finditer(line)]
             for rx in MARKING:
                 hits += [("marking", m.group().strip()) for m in rx.finditer(line)]
-        if name_re:
-            in_allowed = _inside((s.start(), s.end()) for v in allow if not v.startswith("skip:")
-                                 for s in re.finditer(re.escape(v), line, re.IGNORECASE))
-            hits += [("name", m.group(1)) for m in name_re.finditer(line)
+        names = list(name_re.finditer(line)) if name_re else []
+        if names:
+            in_allowed = _inside((s.start(), s.end()) for rx in allow_res for s in rx.finditer(line))
+            hits += [("name", m.group(1)) for m in names
                      if not in_allowed(m.start(1), m.end(1))]  # inside an allowed string
         seen = set()  # values already reported on this line, of any kind (a set: a list scan was quadratic)
         for kind, val in hits:
@@ -635,6 +637,10 @@ def self_test():
     print(("ok   " if good else "FAIL ") + "secrets print as a length only")
     ok = ok and good
     expect("allow list is exact", "call 555-123-" + "4567", ["phone"], allow=["call 555-123-" + "4567 now"])
+    num = "555-123-" + "4567"
+    expect("allowed phone after a keyword and a space", "tel " + num, [], allow=[num])
+    expect("allowed phone after a keyword and a dash", "tel-" + num, [], allow=[num])
+    expect("an allowed phone does not allow another", "tel " + num + ", cell 555-987-" + "6543", ["phone"], allow=[num])
     expect("URL path not a phone", "github.com/x/pull/123-456-" + "7890", [])
     expect("phone keyword, no separators", "tel: 555123" + "4567", ["phone"])
     expect("+1 packed", "+1555123" + "4567", ["phone"])
