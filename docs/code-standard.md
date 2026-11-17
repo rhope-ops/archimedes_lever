@@ -14,7 +14,7 @@ The kit owns this file and the check. A project gets both by sync; it sets its o
 | No. | Rule | How |
 |---|---|---|
 | C1 | Each source file starts with a header comment: what the file is for, its inputs, its outputs and how to run it. Python: the module docstring. | **(check)** at least 60 characters; **(review)** the content |
-| C1 safety | Opt-in: a project sets `"c1_safety": true` in its `.code-standard.json` "config". Then each source file's header also has the three lines `Network:` (the hosts it reaches, or "none"), `Writes:` (the files, lists or sites it changes, or "none") and `Credentials:` (what it asks for and how, or "none"), so a reviewer finds them before a run. | **(check)** the three labels; **(review)** true |
+| C1 safety | Opt-in: a project sets `"c1_safety": true` in its `.code-standard.json` "config". Then each source file's header also has the three labels `Network:` (the hosts it reaches, or "none"), `Writes:` (the files, lists or sites it changes, or "none") and `Credentials:` (what it asks for and how, or "none"), so a reviewer finds them before a run. | **(check)** the three labels; **(review)** true |
 | C2 | Each function has a comment that says what it does. One line is enough; full parameter docs are not required. Python: a docstring, or a `#` line directly above the `def` or before its first statement. Shell and JS: a comment line directly above. The file header and a divider line (`# ----`) do not count. | **(check)** present; **(review)** true and useful |
 | C3 | A function is at most 60 lines long. A longer job is split into named steps, each its own function. | **(check)** |
 | C4 | A file is at most 600 lines long. A larger program is split into modules, one concern each. | **(check)** |
@@ -31,7 +31,7 @@ The kit owns this file and the check. A project gets both by sync; it sets its o
 
 - `.code-standard.json` `debt` lists the violations that existed when a repo adopted the standard (empty in the kit). A violation not in that list fails; a listed function or file that grows fails.
 - A listed item that is fixed also fails until the same change lowers the baseline (`--update`, which refuses new debt). So the list can only shrink.
-- A rule turned on later (for example `"c2": "full"`): `--adopt` lists its current debt once, in the same change as a docs/DECISIONS.md row that names `.code-standard.json`; a second `--adopt` is refused. It never touches the debt of a rule the ratchet already holds.
+- A rule turned on later (for example `"c2": "full"`): `--adopt` lists its current debt once, in the same change as a docs/DECISIONS.md row that names `.code-standard.json`. The comparison with main accepts that list only when the option was off on main, so an option that is already on cannot be adopted again. It never touches the debt of a rule the ratchet already holds.
 - Never add an item to the baseline by hand, raise a cap or add an `exclude` to pass (AGENTS.md "Checks"). The check compares the baseline with the one on the merge base with origin/main; a cap or scope change needs a docs/DECISIONS.md row that names `.code-standard.json`.
 
 ## Commands

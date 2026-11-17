@@ -277,6 +277,11 @@ def self_test_docs_forms(docs):
     assert docs.js_params(['function f(a = ",", b) {', '}'], 1) == ['a', 'b'], 'a quoted comma is not a separator'
     assert not docs.js_returns_value('  a.forEach(v => {\n    return v;\n  });\n}'), 'a nested return is not counted'
     assert docs.js_returns_value('{\n  return 1;\n}'), 'a return under a `{` on its own line is counted'
+    assert docs.js_params(['const h = async x => {', '};'], 1) == ['x'], 'an async arrow parameter is read'
+    assert docs.js_missing(['/** K.', ' * @param {{a: number}} o', ' */', 'function k(o) {', '}'], 4, 4, '}') == [], \
+        'a JSDoc type with nested braces is read'
+    lead = docs.python_docs('def g(a, b):\n    """Do.\n\n    Args:\n        b: the value of\n            a value.\n    """\n    return None\n')
+    assert docs.python_missing(lead, 1) == ['Args: a'], 'a word in a continuation line is not an Args entry; return None is no value'
     facts = docs.python_docs('def f(x, value):\n    """Do.\n\n    Args:\n        x: a.\n\n    Returns:\n        value: b.\n    """\n')
     assert docs.python_missing(facts, 1) == ['Args: value'], 'Args: ends at Returns:'
     lines = ['/** Other. */', 'function a() {', '}', '/* plain */', 'function b(z) {', '  return z;', '}']

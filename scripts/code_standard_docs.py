@@ -14,7 +14,9 @@ What it checks, for a function longer than SHORT_FUNCTION lines (a shorter one k
               returns a value
   Shell       not checked here (no parameter list); the lean C2 comment applies
 Inputs:  one file's text and the functions scripts/code_standard.py found in it. Outputs: the parts that are missing.
-Network: none. Writes: none. Credentials: none.
+Network: none.
+Writes: none.
+Credentials: none.
 Run:     imported by scripts/code_standard.py; proved by `python3 scripts/code_standard.py --test`.
 """
 
@@ -42,6 +44,7 @@ def python_docs(text):
             names += [x.arg for x in (a.vararg, a.kwarg) if x]
             names = [n for n in names if n not in ('self', 'cls')]
             own = [n for n in ast.walk(node) if isinstance(n, ast.Return) and n.value is not None
+                   and not (isinstance(n.value, ast.Constant) and n.value.value is None)
                    and owner_of(node, n)]
             facts[node.lineno] = (names, ast.get_docstring(node) or '', bool(own))
     return facts
@@ -82,7 +85,8 @@ def python_missing(facts, def_line):
         args = re.split(r'^\s*Args:\s*$', doc, maxsplit=1, flags=re.M)
         listed = args[1] if len(args) == 2 else ''
         listed = re.split(r'^\s*(?:Returns?|Raises|Yields|Examples?|Notes?):', listed, maxsplit=1, flags=re.M)[0]
-        miss += ['Args: ' + n for n in names if not re.search(r'^\s*\*{0,2}%s\b' % re.escape(n), listed, re.M)]
+        miss += ['Args: ' + n for n in names
+                 if not re.search(r'^\s*\*{0,2}%s\s*(\(.*\))?:' % re.escape(n), listed, re.M)]   # `name:` or `name (type):`
     if returns and not re.search(r'^\s*Returns?:', doc, re.M):
         miss.append('Returns:')
     return miss
@@ -118,7 +122,7 @@ def js_params(lines, start):
     sig = re.split(r'=>|\{', text, maxsplit=1)[0] if '(' not in text.split('=>')[0] else text
     open_at = sig.find('(')
     if open_at < 0:
-        m = re.search(r'=\s*([A-Za-z_$][\w$]*)\s*=>', text)   # `const f = x => ...`
+        m = re.search(r'=\s*(?:async\s+)?([A-Za-z_$][\w$]*)\s*=>', text)   # `const f = x => ...`, `= async x =>`
         return [m.group(1)] if m else []
     depth, out, cur, quote = 0, [], '', None
     for c in text[open_at + 1:]:   # the text after the `(` of the parameter list
@@ -163,7 +167,7 @@ def js_missing(lines, top, start, body):
     if k < 0 or '/**' not in lines[k]:
         return ['JSDoc']   # a plain /* */ comment is not JSDoc
     doc = '\n'.join(lines[k:top - 1])
-    tags = re.findall(r'@param\s+(?:\{[^}]*\}\s*)?\[?([\w$.]+)', doc)
+    tags = re.findall(r'@param\s+(?:\{(?:[^{}]|\{[^{}]*\})*\}\s*)?\[?([\w$.]+)', doc)   # a type may hold one {} level
     miss = []
     for i, name in enumerate(js_params(lines, start)):
         if (name and name not in tags) or (not name and len([t for t in tags if '.' not in t]) <= i):
