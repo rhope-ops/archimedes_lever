@@ -18,14 +18,15 @@ does nothing: sessions with no repo are not logged, and the repo is the folder t
      holds back the log push until it passes; the rows wait in the session log. A failed push is tried again after
      1 and 5 minutes, so the last turn of a session is not lost to one failure (only while the container still runs);
      a race is tried again at once. Pushes are coalesced: at most one runs and one waits per session. A fetch or
-     push with no answer in TOKEN_LOG_NET_TIMEOUT seconds (default 600) is killed with its pre-push hook.
+     push with no answer in time (TOKEN_LOG_NET_TIMEOUT) is killed with its pre-push hook.
 
 One row per API call. Columns: message_id, timestamp (UTC, of the reply), turn (prompts up to that time: user messages and
 system wake-ups such as task notifications, not tool results or interrupt markers; total by turn for a chart), session_id, repo, model, source (main, subagent), input_tokens,
 cache_creation_input_tokens, cache_read_input_tokens, output_tokens.
 
 Settings (environment): TOKEN_LOG=off turns it off; TOKEN_LOG_BRANCH (default claude/token-usage); TOKEN_LOG_SYNC=1
-pushes in the foreground; TOKEN_LOG_HOME (default ~/.claude/token-log) holds push.log and the lock files.
+pushes in the foreground; TOKEN_LOG_HOME (default ~/.claude/token-log) holds push.log and the lock files;
+TOKEN_LOG_NET_TIMEOUT (seconds, default 600) limits each ls-remote, fetch and push.
 
 Manual push:  python3 scripts/token_log.py --push REPO_DIR SESSION_ID TRANSCRIPT_PATH
 Self-test (temporary repos, no network):  python3 scripts/token_log.py --test
@@ -51,7 +52,11 @@ USAGE_KEYS = FIELDS[-4:]
 PRIVATE_REF = "refs/token-log/remote"
 NOT_PROMPTS = ("[Request interrupted",)
 RETRY_DELAYS = (0, 60, 300)  # seconds before each push try: the last turn of a session gets more than one chance
-NET_TIMEOUT = int(os.environ.get("TOKEN_LOG_NET_TIMEOUT") or 600)  # seconds for ls-remote, fetch or push
+def net_timeout():
+    """Seconds for ls-remote, fetch or push: TOKEN_LOG_NET_TIMEOUT, else 600 (also for a value that is not a whole
+    number of at least 1)."""
+    v = os.environ.get("TOKEN_LOG_NET_TIMEOUT", "")
+    return int(v) if v.isdigit() and int(v) >= 1 else 600
 RACE = ("non-fast-forward", "fetch first", "stale info", "cannot lock ref")
 
 
@@ -73,15 +78,18 @@ def git(cwd, *args, env=None, check=True, timeout=None):
 def git_net(cwd, *args):
     """A git call that uses the network, with a time limit. On timeout the whole process group is killed: git and
     the pre-push hook with the check lane it started. Returns (exit code, stdout, stderr)."""
-    p = subprocess.Popen(["git", "-C", cwd, *args], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
-                         start_new_session=True)
-    try:
-        out, err = p.communicate(timeout=NET_TIMEOUT)
-    except subprocess.TimeoutExpired:
-        os.killpg(p.pid, signal.SIGKILL)
-        p.communicate()
-        raise RuntimeError(f"git {args[0]}: no answer in {NET_TIMEOUT} s")
-    return p.returncode, out.strip(), err.strip()
+    # Output goes to files, not pipes: a hook child that escapes the kill (its own session) cannot keep this waiting.
+    with tempfile.TemporaryFile("w+") as out, tempfile.TemporaryFile("w+") as err:
+        p = subprocess.Popen(["git", "-C", cwd, *args], stdout=out, stderr=err, text=True, start_new_session=True)
+        try:
+            p.wait(timeout=net_timeout())
+        except subprocess.TimeoutExpired:
+            os.killpg(p.pid, signal.SIGKILL)
+            p.wait()
+            raise RuntimeError(f"git {args[0]}: no answer in {net_timeout()} s")
+        out.seek(0)
+        err.seek(0)
+        return p.returncode, out.read().strip(), err.read().strip()
 
 
 def prompt_text(d):
@@ -359,6 +367,9 @@ def self_test():
         hook(os.path.join(root, "shallow"), "s1", t1, logs)
         expect("shallow clone: pushes", len(remote_rows("s1") or []), 6)
 
+        old_home = os.environ.get("TOKEN_LOG_HOME")
+        os.environ["TOKEN_LOG_HOME"] = os.path.join(root, "locks")  # the in-process tests never touch the real home
+        os.makedirs(home())
         calls, real_push = [], globals()["push"]
         def flaky(*a):
             calls.append(a)
@@ -380,10 +391,7 @@ def self_test():
             globals()["push"] = real_push
         expect("3 failed tries: gives up", ok, False)
 
-        old_home = os.environ.get("TOKEN_LOG_HOME")
-        os.environ["TOKEN_LOG_HOME"] = os.path.join(root, "locks")
         try:
-            os.makedirs(home())
             with open(os.path.join(home(), "s.wait"), "w") as held:  # another push is waiting
                 fcntl.flock(held, fcntl.LOCK_EX)
                 expect("a push is waiting: a third one exits at once", locked_push("r", "s", "t"), "coalesced")
@@ -399,12 +407,20 @@ def self_test():
 
         marker = os.path.join(root, "hook-child-ran")
         with open(os.path.join(hooks, "pre-push"), "w") as f:
-            f.write(f"#!/bin/sh\n(sleep 2; touch '{marker}') &\nsleep 30\n")
+            f.write(f"#!/bin/sh\n(sleep 2; touch '{marker}') &\nsetsid sleep 30 &\nsleep 30\n")
         os.chmod(os.path.join(hooks, "pre-push"), 0o755)
         append(t1, msg("m8", "2026-01-01T02:00:09Z"))
+        start = time.time()
         r = hook(work, "s1", t1, logs, extra={"TOKEN_LOG_NET_TIMEOUT": "1"})
+        took = time.time() - start
         time.sleep(2.5)
-        expect("a push with no answer: killed with its hook, exit 0", (r.returncode, os.path.exists(marker)), (0, False))
+        expect("a push with no answer: killed with its hook, not held by an escaped child, exit 0",
+               (r.returncode, os.path.exists(marker), took < 10), (0, False, True))
+        os.environ["TOKEN_LOG_NET_TIMEOUT"] = "x"
+        try:
+            expect("a bad TOKEN_LOG_NET_TIMEOUT: the default", net_timeout(), 600)
+        finally:
+            os.environ.pop("TOKEN_LOG_NET_TIMEOUT")
         os.remove(os.path.join(hooks, "pre-push"))
 
         expect("bad input: exit 0", hook(work, "s1", t1, logs, stdin="not json").returncode, 0)
