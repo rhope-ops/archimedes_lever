@@ -16,7 +16,9 @@ does nothing: sessions with no repo are not logged, and the repo is the folder t
   4. Commits with a temporary index and pushes through the normal pre-push hook. The work tree, the index and the
      current branch never change. That hook runs the check lanes on the current work tree, so a failing work tree
      holds back the log push until it passes; the rows wait in the session log. A failed push is tried again after
-     1 and 5 minutes, so the last turn of a session is not lost to one failure; a race is tried again at once.
+     1 and 5 minutes, so the last turn of a session is not lost to one failure (only while the container still runs);
+     a race is tried again at once. Pushes are coalesced: at most one runs and one waits per session. A fetch or
+     push with no answer in TOKEN_LOG_NET_TIMEOUT seconds (default 600) is killed with its pre-push hook.
 
 One row per API call. Columns: message_id, timestamp (UTC, of the reply), turn (prompts up to that time: user messages and
 system wake-ups such as task notifications, not tool results or interrupt markers; total by turn for a chart), session_id, repo, model, source (main, subagent), input_tokens,
@@ -36,6 +38,7 @@ import glob
 import io
 import json
 import os
+import signal
 import subprocess
 import sys
 import tempfile
@@ -48,7 +51,7 @@ USAGE_KEYS = FIELDS[-4:]
 PRIVATE_REF = "refs/token-log/remote"
 NOT_PROMPTS = ("[Request interrupted",)
 RETRY_DELAYS = (0, 60, 300)  # seconds before each push try: the last turn of a session gets more than one chance
-NET_TIMEOUT = 600  # seconds for a fetch or a push (the pre-push hook runs the check lane)
+NET_TIMEOUT = int(os.environ.get("TOKEN_LOG_NET_TIMEOUT") or 600)  # seconds for ls-remote, fetch or push
 RACE = ("non-fast-forward", "fetch first", "stale info", "cannot lock ref")
 
 
@@ -65,6 +68,20 @@ def git(cwd, *args, env=None, check=True, timeout=None):
     if check and r.returncode != 0:
         raise RuntimeError(f"git {args[0]}: {r.stderr.strip()}")
     return r.stdout.strip() if r.returncode == 0 else ""
+
+
+def git_net(cwd, *args):
+    """A git call that uses the network, with a time limit. On timeout the whole process group is killed: git and
+    the pre-push hook with the check lane it started. Returns (exit code, stdout, stderr)."""
+    p = subprocess.Popen(["git", "-C", cwd, *args], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                         start_new_session=True)
+    try:
+        out, err = p.communicate(timeout=NET_TIMEOUT)
+    except subprocess.TimeoutExpired:
+        os.killpg(p.pid, signal.SIGKILL)
+        p.communicate()
+        raise RuntimeError(f"git {args[0]}: no answer in {NET_TIMEOUT} s")
+    return p.returncode, out.strip(), err.strip()
 
 
 def prompt_text(d):
@@ -133,58 +150,70 @@ def to_csv(rows):
 
 
 def push(root, sid, tpath):
-    """Merge this session's rows into sessions/<sid>.csv on the log branch and push. Retries once on a race."""
+    """Merge this session's rows into sessions/<sid>.csv on the log branch and push. Tries again at once only
+    after a race with another push. The caller holds the session's push lock."""
     ref, path = branch_name(), f"sessions/{sid}.csv"
-    os.makedirs(home(), exist_ok=True)
-    with open(os.path.join(home(), sid + ".lock"), "w") as lock:
-        fcntl.flock(lock, fcntl.LOCK_EX)  # one push per session at a time; a waiting one pushes the newest rows
-        for attempt in (1, 2):
-            heads = subprocess.run(["git", "-C", root, "ls-remote", "--heads", "origin", ref],
-                                   capture_output=True, text=True, timeout=NET_TIMEOUT)
-            if heads.returncode != 0:
-                raise RuntimeError("ls-remote: " + heads.stderr.strip())
-            parent, rows = [], {}
-            if heads.stdout.strip():
-                shallow = git(root, "rev-parse", "--is-shallow-repository") == "true"
-                git(root, "fetch", "-q", "--no-write-fetch-head", *(["--depth", "1"] if shallow else []), "origin",
-                    f"+refs/heads/{ref}:{PRIVATE_REF}", timeout=NET_TIMEOUT)
-                parent = [git(root, "rev-parse", PRIVATE_REF)]
-                old = git(root, "show", f"{parent[0]}:{path}", check=False)
-                rows = {r["message_id"]: r for r in csv.DictReader(io.StringIO(old)) if r.get("message_id")}
-            rows.update(log_rows(sid, tpath, os.path.basename(root)))
-            if not rows:
-                return "nothing to log"
-            with tempfile.TemporaryDirectory() as tmp:
-                f = os.path.join(tmp, "rows.csv")
-                with open(f, "w", encoding="utf-8", newline="") as fh:
-                    fh.write(to_csv(rows))
-                blob = git(root, "hash-object", "-w", f)
-                env = {**os.environ, "GIT_INDEX_FILE": os.path.join(tmp, "index")}
-                git(root, "read-tree", *(parent or ["--empty"]), env=env)
-                git(root, "update-index", "--add", "--cacheinfo", f"100644,{blob},{path}", env=env)
-                tree = git(root, "write-tree", env=env)
-            if parent and git(root, "rev-parse", parent[0] + "^{tree}") == tree:
-                return "up to date"
-            args = sum((["-p", p] for p in parent), [])
-            commit = git(root, "commit-tree", tree, *args, "-m", f"token log: session {sid}")
-            r = subprocess.run(["git", "-C", root, "push", "-q", "origin", f"{commit}:refs/heads/{ref}"],
-                               capture_output=True, text=True, timeout=NET_TIMEOUT)
-            if r.returncode == 0:
-                git(root, "update-ref", PRIVATE_REF, commit)
-                return f"pushed {commit[:7]} ({len(rows)} rows)"
-            err = (r.stderr.strip() or r.stdout.strip())[-500:]
-            if attempt == 2 or not any(x in err for x in RACE):  # only a race with another push is tried at once
-                raise RuntimeError("push: " + err)
+    for attempt in (1, 2):
+        rc, heads, err = git_net(root, "ls-remote", "--heads", "origin", ref)
+        if rc != 0:
+            raise RuntimeError("ls-remote: " + err)
+        parent, rows = [], {}
+        if heads:
+            shallow = git(root, "rev-parse", "--is-shallow-repository") == "true"
+            rc, _, err = git_net(root, "fetch", "-q", "--no-write-fetch-head",
+                                 *(["--depth", "1"] if shallow else []), "origin", f"+refs/heads/{ref}:{PRIVATE_REF}")
+            if rc != 0:
+                raise RuntimeError("fetch: " + err)
+            parent = [git(root, "rev-parse", PRIVATE_REF)]
+            old = git(root, "show", f"{parent[0]}:{path}", check=False)
+            rows = {r["message_id"]: r for r in csv.DictReader(io.StringIO(old)) if r.get("message_id")}
+        rows.update(log_rows(sid, tpath, os.path.basename(root)))
+        if not rows:
+            return "nothing to log"
+        with tempfile.TemporaryDirectory() as tmp:
+            f = os.path.join(tmp, "rows.csv")
+            with open(f, "w", encoding="utf-8", newline="") as fh:
+                fh.write(to_csv(rows))
+            blob = git(root, "hash-object", "-w", f)
+            env = {**os.environ, "GIT_INDEX_FILE": os.path.join(tmp, "index")}
+            git(root, "read-tree", *(parent or ["--empty"]), env=env)
+            git(root, "update-index", "--add", "--cacheinfo", f"100644,{blob},{path}", env=env)
+            tree = git(root, "write-tree", env=env)
+        if parent and git(root, "rev-parse", parent[0] + "^{tree}") == tree:
+            return "up to date"
+        args = sum((["-p", p] for p in parent), [])
+        commit = git(root, "commit-tree", tree, *args, "-m", f"token log: session {sid}")
+        rc, out, err = git_net(root, "push", "-q", "origin", f"{commit}:refs/heads/{ref}")
+        if rc == 0:
+            git(root, "update-ref", PRIVATE_REF, commit)
+            return f"pushed {commit[:7]} ({len(rows)} rows)"
+        err = err or out
+        if attempt == 2 or not any(x in err for x in RACE):  # only a race with another push is tried at once
+            raise RuntimeError("push: " + err[-500:])
     return "not pushed"
 
 
+def locked_push(root, sid, tpath):
+    """Coalesce pushes: at most one runs and one waits per session. The waiting one reads the newest rows when it
+    starts, so a third has nothing to add and exits at once ("coalesced")."""
+    os.makedirs(home(), exist_ok=True)
+    with open(os.path.join(home(), sid + ".wait"), "w") as wait, open(os.path.join(home(), sid + ".lock"), "w") as run:
+        try:
+            fcntl.flock(wait, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return "coalesced"
+        fcntl.flock(run, fcntl.LOCK_EX)
+        fcntl.flock(wait, fcntl.LOCK_UN)  # the next turn's push may wait now
+        return push(root, sid, tpath)
+
+
 def push_main(args, delays=RETRY_DELAYS):
-    """Push, and try again later when it fails (the lock is free while it waits)."""
+    """Push, and try again later when it fails (no lock is held while it waits). Stops when a newer push waits."""
     for i, delay in enumerate(delays):
         time.sleep(delay)
         stamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
         try:
-            print(stamp, args[1], push(*args), flush=True)
+            print(stamp, args[1], locked_push(*args), flush=True)
             return True
         except Exception as e:
             print(stamp, args[1], f"try {i + 1} of {len(delays)} error:", e, flush=True)
@@ -341,13 +370,49 @@ def self_test():
             ok = push_main(["r", "s", "t"], delays=(0, 0, 0))
         finally:
             globals()["push"] = real_push
-        expect("a failed push is tried again, then stops", (ok, len(calls)), (True, 2))
+        expect("a failed push is tried again; a success stops the retries", (ok, len(calls)), (True, 2))
+        def broken(*a):
+            raise RuntimeError("blocked")
+        globals()["push"] = broken
+        try:
+            ok = push_main(["r", "s", "t"], delays=(0, 0, 0))
+        finally:
+            globals()["push"] = real_push
+        expect("3 failed tries: gives up", ok, False)
+
+        old_home = os.environ.get("TOKEN_LOG_HOME")
+        os.environ["TOKEN_LOG_HOME"] = os.path.join(root, "locks")
+        try:
+            os.makedirs(home())
+            with open(os.path.join(home(), "s.wait"), "w") as held:  # another push is waiting
+                fcntl.flock(held, fcntl.LOCK_EX)
+                expect("a push is waiting: a third one exits at once", locked_push("r", "s", "t"), "coalesced")
+        finally:
+            os.environ.pop("TOKEN_LOG_HOME") if old_home is None else os.environ.update(TOKEN_LOG_HOME=old_home)
+
+        fetch_head = os.path.join(work, ".git", "FETCH_HEAD")
+        with open(fetch_head, "w") as f:
+            f.write("marker\n")
+        append(t1, msg("m7", "2026-01-01T02:00:08Z"))
+        hook(work, "s1", t1, logs)
+        expect("the shared FETCH_HEAD is not written", open(fetch_head).read(), "marker\n")
+
+        marker = os.path.join(root, "hook-child-ran")
+        with open(os.path.join(hooks, "pre-push"), "w") as f:
+            f.write(f"#!/bin/sh\n(sleep 2; touch '{marker}') &\nsleep 30\n")
+        os.chmod(os.path.join(hooks, "pre-push"), 0o755)
+        append(t1, msg("m8", "2026-01-01T02:00:09Z"))
+        r = hook(work, "s1", t1, logs, extra={"TOKEN_LOG_NET_TIMEOUT": "1"})
+        time.sleep(2.5)
+        expect("a push with no answer: killed with its hook, exit 0", (r.returncode, os.path.exists(marker)), (0, False))
+        os.remove(os.path.join(hooks, "pre-push"))
 
         expect("bad input: exit 0", hook(work, "s1", t1, logs, stdin="not json").returncode, 0)
         expect("session id with a slash: ignored", hook(work, "../x", t1, logs).returncode, 0)
-        append(t1, msg("m6", "2026-01-01T02:00:07Z"))
+        count = len(remote_rows("s1") or [])
+        append(t1, msg("m9", "2026-01-01T02:00:10Z"))
         hook(work, "s1", t1, logs, extra={"TOKEN_LOG": "off"})
-        expect("TOKEN_LOG=off: nothing pushed", len(remote_rows("s1") or []), 6)
+        expect("TOKEN_LOG=off: nothing pushed", len(remote_rows("s1") or []), count)
     finally:
         shutil.rmtree(root, ignore_errors=True)
     print("TOKEN LOG SELF-TEST " + ("PASS" if not fails else f"FAIL ({fails})"))
