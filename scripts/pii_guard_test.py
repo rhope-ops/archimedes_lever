@@ -490,10 +490,18 @@ def case_missing_parts():
         alone = os.path.join(d, "pii_guard.py")
         with open(ME[1]) as src, open(alone, "w") as dst:
             dst.write(src.read())
-        hook = subprocess.run([sys.executable, alone, "--hook"], input="{}", capture_output=True, text=True)
+        env = {k: v for k, v in os.environ.items() if k != "PYTHONPATH"}   # only the lone copy is importable
+        hook = subprocess.run([sys.executable, alone, "--hook"], input="{}", capture_output=True, text=True, cwd=d,
+                              env=env)
         check("missing parts: the hook blocks (exit 2)", hook.returncode == 2)
-        imp = subprocess.run([sys.executable, "-c", "import sys; sys.path.insert(0, %r)\ntry:\n import pii_guard\n"
-                              "except ImportError:\n print('raised')" % d], capture_output=True, text=True)
+        with open(os.path.join(d, "pii_guard_scan.py"), "w") as part:   # the scan part alone: --hook still blocks
+            part.write(open(os.path.join(os.path.dirname(ME[1]), "pii_guard_scan.py")).read())
+        hook = subprocess.run([sys.executable, alone, "--hook"], input="{}", capture_output=True, text=True, cwd=d,
+                              env=env)
+        check("missing hook part: the hook blocks (exit 2)", hook.returncode == 2)
+        os.remove(os.path.join(d, "pii_guard_scan.py"))
+        imp = subprocess.run([sys.executable, "-c", "try:\n import pii_guard\nexcept ImportError:\n print('raised')"],
+                             capture_output=True, text=True, cwd=d, env=env)
         check("missing parts: an importer gets ImportError, not an exit", imp.stdout.strip() == "raised")
 
 

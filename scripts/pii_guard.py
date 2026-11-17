@@ -66,7 +66,16 @@ import sys
 
 # denylist_source and warn_mode are not used here: first_use_check.py reads them as pii_guard.denylist_source and
 # pii_guard.warn_mode, so they stay attributes of this module.
-# Run as a script, a copy without its parts must block, not pass: exit 2 also blocks the PreToolUse hook.
+
+
+def missing_part(err):
+    """Stop with exit 2 when a part of the guard is missing: a copy without its parts must block, not pass (exit 2
+    also blocks the PreToolUse hook)."""
+    print('PII GUARD FAIL: %s; copy pii_guard_scan.py, pii_guard_hook.py and pii_guard_test.py next to '
+          'pii_guard.py (scripts/sync_baseline.py does this)' % err, file=sys.stderr)
+    sys.exit(2)
+
+
 try:
     from pii_guard_scan import (MISSING_HELP, UNKNOWN_PROFILE, WARN_OPTION, denylist_source, fingerprint, git,
                                 is_option_line, load_allow, load_denylist, profile_of, push_revs, scan_commits,
@@ -74,9 +83,7 @@ try:
 except ImportError as err:
     if __name__ != '__main__':
         raise   # an importer (first_use_check.py) handles it and keeps its other output
-    print('PII GUARD FAIL: %s; copy pii_guard_scan.py, pii_guard_hook.py and pii_guard_test.py next to '
-          'pii_guard.py (scripts/sync_baseline.py does this)' % err, file=sys.stderr)
-    sys.exit(2)
+    missing_part(err)
 
 
 def report(found, what, deny, dod=False):
@@ -165,7 +172,10 @@ def main():
         import pii_guard_test  # scripts/pii_guard_test.py: kept apart (docs/code-standard.md C4)
         return pii_guard_test.run()
     if a.hook:
-        import pii_guard_hook  # scripts/pii_guard_hook.py: loaded only for --hook
+        try:
+            import pii_guard_hook  # scripts/pii_guard_hook.py: loaded only for --hook
+        except ImportError as err:
+            missing_part(err)
         return pii_guard_hook.hook(None)
     if a.status:
         return show_status()
