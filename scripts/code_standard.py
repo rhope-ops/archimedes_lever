@@ -202,6 +202,7 @@ def python_functions(text):
 PS_SCRIPT = r'''
 $ErrorActionPreference = 'Stop'
 $out = @{}
+$full = $env:CODE_STANDARD_FULL -eq '1'   # C2 full is on: read the help of each function longer than 10 lines
 # Doc facts for the opt-in C2 full rule: the parameter names and what the comment-based help documents.
 function Get-DocFacts($node, $help) {
   $ps = @(); if ($node.Parameters) { $ps = @($node.Parameters) } elseif ($node.Body -and $node.Body.ParamBlock) { $ps = @($node.Body.ParamBlock.Parameters) } elseif ($node.ParamBlock) { $ps = @($node.ParamBlock.Parameters) }
@@ -222,7 +223,7 @@ foreach ($path in [Console]::In.ReadToEnd().Split("`n")) {
     $brace = 0; if ($e -gt $s + 1 -and $lines[$s].Trim() -eq '{') { $brace = 1 }   # `{` on its own line after `function`
     $body = $f.Body.Extent; $first = $body.StartLineNumber + 1; $last = $body.EndLineNumber - 1   # the help is first or last in the body
     $inside = @($help | Where-Object { $_[0] -ge $body.StartLineNumber -and $_[1] -le $body.EndLineNumber -and ($_[0] -eq $first -or $_[1] -eq $last) }).Count -gt 0
-    $list += @{ name = $f.Name; start = $s; end = $e; inner = $inside -or (($e -gt $s + 1 + $brace) -and $lines[$s + $brace].Trim() -match '^<?#'); doc = (Get-DocFacts $f $f.GetHelpContent()) }
+    $list += @{ name = $f.Name; start = $s; end = $e; inner = $inside -or (($e -gt $s + 1 + $brace) -and $lines[$s + $brace].Trim() -match '^<?#'); doc = $(if ($full -and $e - $s -ge 10) { Get-DocFacts $f $f.GetHelpContent() }) }
   }
   # A script block kept in a variable or a hashtable key ($ui.Say = { ... }) is a function too: the window code uses
   # them. Any other script block (an argument, such as $b.Add_Click({ ... })) is measured for its length only.
@@ -231,7 +232,7 @@ foreach ($path in [Console]::In.ReadToEnd().Split("`n")) {
     if ($p -is [System.Management.Automation.Language.PipelineAst]) { $p = $p.Parent }
     $s = $b.Extent.StartLineNumber; $e = $b.Extent.EndLineNumber
     if ($p -is [System.Management.Automation.Language.AssignmentStatementAst]) {
-      $list += @{ name = $p.Left.Extent.Text; start = $s; end = $e; inner = ($e -gt $s + 1) -and $lines[$s].Trim() -match '^<?#'; doc = (Get-DocFacts $b.ScriptBlock $b.ScriptBlock.GetHelpContent()) }
+      $list += @{ name = $p.Left.Extent.Text; start = $s; end = $e; inner = ($e -gt $s + 1) -and $lines[$s].Trim() -match '^<?#'; doc = $(if ($full -and $e - $s -ge 10) { Get-DocFacts $b.ScriptBlock $b.ScriptBlock.GetHelpContent() }) }
     } elseif ($e - $s -ge 2) {
       $call = ($b.Parent.Extent.Text -split "`n")[0]; $call = $call.Substring(0, [math]::Min(40, $call.Length)).Trim()
       $blocks += @{ name = '{block in ' + $call + '}'; start = $s; end = $e }
@@ -243,15 +244,16 @@ $out | ConvertTo-Json -Depth 5 -Compress
 '''
 
 
-def powershell_functions(paths):
+def powershell_functions(paths, full=False):
     """Return {path: (functions, blocks, parse errors)} for PowerShell files, from the real PowerShell parser (pwsh).
     Functions are (name, top, first line, last line, has inner comment, body text, doc facts): each function (nested ones too)
     and each script block assigned to a variable or a hashtable key (named by the left side, for example `$ui.Say`).
     Blocks are (name, first line, last line) of the other script blocks, named by the call they are in."""
     if not paths:
         return {}
+    env = dict(os.environ, CODE_STANDARD_FULL='1' if full else '0')
     run = subprocess.run(['pwsh', '-NoProfile', '-NonInteractive', '-Command', PS_SCRIPT],
-                         input='\n'.join(str(ROOT / p) for p in paths), capture_output=True, text=True)
+                         input='\n'.join(str(ROOT / p) for p in paths), capture_output=True, text=True, env=env)
     if run.returncode != 0:
         raise SystemExit('CODE-STANDARD fail: the PowerShell parser did not run: ' + run.stderr.strip()[:300])
     data = json.loads(run.stdout or '{}')
@@ -360,7 +362,7 @@ def measure(config):
     files = tracked_files(config)
     generated = [p for p in files if matches(p, config.get('generated', []))]
     source = [p for p in files if p not in generated]
-    ps = powershell_functions([p for p in source if lang_of(p) == 'powershell'])
+    ps = powershell_functions([p for p in source if lang_of(p) == 'powershell'], config.get('c2') == 'full')
     caps = config['caps']
     report, v = {}, {k: {} for k in RULE}
     bodies = {}
