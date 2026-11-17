@@ -246,6 +246,11 @@ def self_test_docs(cs, root, g, config):
     if PS:
         g('rm', '-q', '--cached', '--', '*.ps1')   # the later steps need no PowerShell: each parser run costs a second
     assert not cs.measure(config)['violations']['docs'], 'without "c2": "full" the rule is off'
+    safety = cs.measure(dict(full, c1_safety=True))['violations']['safety']
+    assert 'f.py' in safety and 'g.js' in safety, 'C1 safety: a header without the three lines fails: %s' % safety
+    text = (root / 'f.py').read_text().replace('a short one."""', 'a short one.\n\nNetwork: none. Writes: none. Credentials: none.\n"""', 1)
+    (root / 'f.py').write_text(text)
+    assert 'f.py' not in cs.measure(dict(full, c1_safety=True))['violations']['safety'], 'C1 safety: the three lines pass'
     cs.BASELINE.write_text(json.dumps({'config': full, 'debt': {}}))
     import contextlib
     import io

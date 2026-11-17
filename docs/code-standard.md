@@ -14,6 +14,7 @@ The kit owns this file and the check. A project gets both by sync; it sets its o
 | No. | Rule | How |
 |---|---|---|
 | C1 | Each source file starts with a header comment: what the file is for, its inputs, its outputs and how to run it. Python: the module docstring. | **(check)** at least 60 characters; **(review)** the content |
+| C1 safety | Opt-in: a project sets `"c1_safety": true` in its `.code-standard.json` "config". Then each source file's header also has the three lines `Network:` (the hosts it reaches, or "none"), `Writes:` (the files, lists or sites it changes, or "none") and `Credentials:` (what it asks for and how, or "none"), so a reviewer finds them before a run. | **(check)** the three labels; **(review)** true |
 | C2 | Each function has a comment that says what it does. One line is enough; full parameter docs are not required. Python: a docstring, or a `#` line directly above the `def` or before its first statement. Shell and JS: a comment line directly above. The file header and a divider line (`# ----`) do not count. | **(check)** present; **(review)** true and useful |
 | C3 | A function is at most 60 lines long. A longer job is split into named steps, each its own function. | **(check)** |
 | C4 | A file is at most 600 lines long. A larger program is split into modules, one concern each. | **(check)** |

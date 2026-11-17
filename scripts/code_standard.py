@@ -7,6 +7,7 @@ file; a project gets it by sync and keeps its own settings (and stricter rules) 
 
 What it measures (the rule numbers are those of docs/code-standard.md):
   C1 header      each source file starts with a header comment that says what the file is for
+  C1 safety      opt-in ("c1_safety": true): the header also has the lines Network:, Writes: and Credentials:
   C2 comment     each function has a comment: a docstring, comment-based help, or a comment line directly above it
                  or as the first line of its body (one line is enough)
   C2 full        opt-in ("c2": "full" in the baseline config): a function longer than 10 lines also documents each
@@ -55,6 +56,7 @@ BASELINE = ROOT / BASELINE_NAME
 LANGS = {'.py': 'python', '.ps1': 'powershell', '.psm1': 'powershell', '.js': 'js', '.mjs': 'js', '.cjs': 'js', '.sh': 'shell'}
 DIVIDER = re.compile(r'^\s*(#|//)\s*(-{4,}|={4,})')   # a section line, not a function's comment
 MIN_HEADER_CHARS = 60      # a header shorter than this does not say what the file is for
+SAFETY_LABELS = ('Network:', 'Writes:', 'Credentials:')   # C1 safety: what a reviewer must find before a run
 MIN_DUP_LINES = 4          # a body this short (a one-line wrapper) is not counted as a duplicate
 # A block between these two marker lines is a generated copy of a shared source (for example a task script bundle):
 # its functions are measured once, in the source, so C2, C3 and C5 skip them here.
@@ -373,6 +375,8 @@ def measure(config):
             v['parse'][p] = len(errors)
         if len(head) < MIN_HEADER_CHARS:
             v['header'][p] = 1
+        if config.get('c1_safety') and not all(x in head for x in SAFETY_LABELS):
+            v['safety'][p] = 1
         if len(lines) > caps['max_file_lines']:
             v['file_size'][p] = len(lines)
         skip = generated_blocks(lines)
@@ -422,6 +426,7 @@ RULE = {'header': 'C1 no header comment', 'comment': 'C2 function without a comm
         'length': 'C3 function longer than %d lines', 'file_size': 'C4 file longer than %d lines',
         'duplicate': 'C5 same body as another function', 'generated': 'C6 generated file without a GENERATED banner',
         'parse': 'C10 PowerShell or Python file that does not parse',
+        'safety': 'C1 safety: header without the Network:, Writes: and Credentials: lines',
         'docs': 'C2 full: function without full docs (--report names the missing parts)'}
 
 
