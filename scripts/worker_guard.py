@@ -51,6 +51,7 @@ def segments(cmd):
 
 
 def current_branch():
+    """The checked-out branch name ("HEAD" when detached, "" outside a repo)."""
     r = subprocess.run(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], capture_output=True, text=True)
     return r.stdout.strip()
 
@@ -146,6 +147,7 @@ SHELLS = {'sh', 'bash', 'zsh', 'dash', 'ksh'}
 
 
 def reason(cmd, branch=None, readonly=False, depth=0):
+    """Why a shell command is blocked, or None; command strings run by a shell or eval are checked too."""
     for seg in segments(cmd):
         for k, w in enumerate(seg):
             # A command string run by a shell (`bash -c "git checkout main"`, `eval "..."`) is checked as a command too.
@@ -176,6 +178,7 @@ def reason(cmd, branch=None, readonly=False, depth=0):
 
 
 def selftest():
+    """Check sample commands that must block and must pass; print the wrong ones and the result."""
     block = ['git push origin main', 'git push -u origin HEAD:main', 'git push origin claude/x:main', 'git push --force origin claude/x',
              'git push -f', 'git push -fu origin claude/x', 'git push origin "+claude/x"', 'git push origin +claude/x',
              'git rebase origin/main', 'cd x && git rebase -i HEAD~2', 'git -C sub rebase main', 'git reset --hard origin/main',
@@ -211,6 +214,7 @@ def selftest():
 
 
 def main():
+    """PreToolUse hook: exit 2 with the reason when a Bash command is blocked; or run --test."""
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     ap.add_argument('--test', action='store_true', help='run the self-test')
     ap.add_argument('--readonly', action='store_true', help='also block git verbs that change the repo (reviewer)')
