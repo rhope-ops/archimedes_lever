@@ -400,11 +400,25 @@ def self_test():
         with open(os.path.join(home(), "s.wait"), "w") as held:  # another push is waiting
             fcntl.flock(held, fcntl.LOCK_EX)
             expect("a push is waiting: a third one exits at once", locked_push("r", "s", "t"), "coalesced")
-            globals()["push"] = broken
-            try:
-                expect("a push is waiting: a retry loop stops at once", push_main(["r", "s", "t"], delays=(0, 0, 0)), True)
-            finally:
-                globals()["push"] = real_push
+
+        newer, tries = [], []
+
+        def fails_while_newer_starts(*a):  # the first try fails; meanwhile a newer push starts waiting
+            tries.append(a)
+            if not newer:
+                w = open(os.path.join(home(), "s.wait"), "w")
+                fcntl.flock(w, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                newer.append(w)
+            raise RuntimeError("blocked")
+
+        globals()["push"] = fails_while_newer_starts
+        try:
+            ok = push_main(["r", "s", "t"], delays=(0, 0, 0))
+        finally:
+            globals()["push"] = real_push
+            for w in newer:
+                w.close()
+        expect("a failed try, then a newer push waits: the retry loop stops (1 push call)", (ok, len(tries)), (True, 1))
 
         fetch_head = os.path.join(work, ".git", "FETCH_HEAD")
         with open(fetch_head, "w") as f:
@@ -437,12 +451,22 @@ def self_test():
             waiter = subprocess.Popen([sys.executable, os.path.abspath(__file__), "--push", work, "s1", t1],
                                       env={**env, "TOKEN_LOG_HOME": logs}, stdout=subprocess.DEVNULL,
                                       stderr=subprocess.DEVNULL)
-            time.sleep(0.5)
+            waiting = False
+            for _ in range(200):  # until the waiter holds the wait lock, so it is blocked on the running push
+                with open(os.path.join(logs, "s1.wait"), "w") as probe:
+                    try:
+                        fcntl.flock(probe, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    except BlockingIOError:
+                        waiting = True
+                        break
+                time.sleep(0.05)
+            expect("the second push waits for the running one", waiting, True)
             append(t1, msg("m10", "2026-01-01T02:00:11Z"))
         try:
             waiter.wait(timeout=30)
         except subprocess.TimeoutExpired:
             waiter.kill()
+            waiter.wait()
         expect("a waiting push carries a row added while it waited",
                "m10" in [x["message_id"] for x in remote_rows("s1") or []], True)
 
