@@ -55,8 +55,13 @@ RETRY_DELAYS = (0, 60, 300)  # seconds before each push try: the last turn of a 
 def net_timeout():
     """Seconds for ls-remote, fetch or push: TOKEN_LOG_NET_TIMEOUT, else 600 (also for a value that is not a whole
     number of at least 1)."""
-    v = os.environ.get("TOKEN_LOG_NET_TIMEOUT", "")
-    return int(v) if v.isdigit() and int(v) >= 1 else 600
+    try:
+        v = int(os.environ.get("TOKEN_LOG_NET_TIMEOUT", ""))
+    except ValueError:
+        return 600
+    return v if v >= 1 else 600
+
+
 RACE = ("non-fast-forward", "fetch first", "stale info", "cannot lock ref")
 
 
@@ -80,7 +85,7 @@ def git_net(cwd, *args):
     the pre-push hook with the check lane it started. Returns (exit code, stdout, stderr)."""
     # Output goes to files, not pipes: a hook child that escapes the kill (its own session) cannot keep this waiting.
     with tempfile.TemporaryFile("w+") as out, tempfile.TemporaryFile("w+") as err:
-        p = subprocess.Popen(["git", "-C", cwd, *args], stdout=out, stderr=err, text=True, start_new_session=True)
+        p = subprocess.Popen(["git", "-C", cwd, *args], stdout=out, stderr=err, start_new_session=True)
         try:
             p.wait(timeout=net_timeout())
         except subprocess.TimeoutExpired:
@@ -256,6 +261,8 @@ def self_test():
                GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1", TOKEN_LOG_SYNC="1")
     env.pop("CLAUDE_PROJECT_DIR", None)
     root = tempfile.mkdtemp(prefix="token_log_test_")
+    saved = {k: os.environ.get(k) for k in ("TOKEN_LOG_HOME", "TOKEN_LOG_NET_TIMEOUT")}  # restored at the end
+    real_push = push
     fails = 0
 
     def sh(cwd, *args):
@@ -367,10 +374,9 @@ def self_test():
         hook(os.path.join(root, "shallow"), "s1", t1, logs)
         expect("shallow clone: pushes", len(remote_rows("s1") or []), 6)
 
-        old_home = os.environ.get("TOKEN_LOG_HOME")
         os.environ["TOKEN_LOG_HOME"] = os.path.join(root, "locks")  # the in-process tests never touch the real home
         os.makedirs(home())
-        calls, real_push = [], globals()["push"]
+        calls = []
         def flaky(*a):
             calls.append(a)
             if len(calls) == 1:
@@ -391,12 +397,28 @@ def self_test():
             globals()["push"] = real_push
         expect("3 failed tries: gives up", ok, False)
 
+        with open(os.path.join(home(), "s.wait"), "w") as held:  # another push is waiting
+            fcntl.flock(held, fcntl.LOCK_EX)
+            expect("a push is waiting: a third one exits at once", locked_push("r", "s", "t"), "coalesced")
+
+        newer, tries = [], []
+
+        def fails_while_newer_starts(*a):  # the first try fails; meanwhile a newer push starts waiting
+            tries.append(a)
+            if not newer:
+                w = open(os.path.join(home(), "s.wait"), "w")
+                fcntl.flock(w, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                newer.append(w)
+            raise RuntimeError("blocked")
+
+        globals()["push"] = fails_while_newer_starts
         try:
-            with open(os.path.join(home(), "s.wait"), "w") as held:  # another push is waiting
-                fcntl.flock(held, fcntl.LOCK_EX)
-                expect("a push is waiting: a third one exits at once", locked_push("r", "s", "t"), "coalesced")
+            ok = push_main(["r", "s", "t"], delays=(0, 0, 0))
         finally:
-            os.environ.pop("TOKEN_LOG_HOME") if old_home is None else os.environ.update(TOKEN_LOG_HOME=old_home)
+            globals()["push"] = real_push
+            for w in newer:
+                w.close()
+        expect("a failed try, then a newer push waits: the retry loop stops (1 push call)", (ok, len(tries)), (True, 1))
 
         fetch_head = os.path.join(work, ".git", "FETCH_HEAD")
         with open(fetch_head, "w") as f:
@@ -405,23 +427,55 @@ def self_test():
         hook(work, "s1", t1, logs)
         expect("the shared FETCH_HEAD is not written", open(fetch_head).read(), "marker\n")
 
-        marker = os.path.join(root, "hook-child-ran")
+        marker, started = os.path.join(root, "hook-child-ran"), os.path.join(root, "hook-started")
         with open(os.path.join(hooks, "pre-push"), "w") as f:
-            f.write(f"#!/bin/sh\n(sleep 2; touch '{marker}') &\nsetsid sleep 30 &\nsleep 30\n")
+            f.write(f"#!/bin/sh\ntouch '{started}'\n(sleep 2; touch '{marker}') &\nsetsid sleep 30 &\nsleep 30\n")
         os.chmod(os.path.join(hooks, "pre-push"), 0o755)
         append(t1, msg("m8", "2026-01-01T02:00:09Z"))
         start = time.time()
         r = hook(work, "s1", t1, logs, extra={"TOKEN_LOG_NET_TIMEOUT": "1"})
         took = time.time() - start
         time.sleep(2.5)
-        expect("a push with no answer: killed with its hook, not held by an escaped child, exit 0",
-               (r.returncode, os.path.exists(marker), took < 10), (0, False, True))
-        os.environ["TOKEN_LOG_NET_TIMEOUT"] = "x"
-        try:
-            expect("a bad TOKEN_LOG_NET_TIMEOUT: the default", net_timeout(), 600)
-        finally:
-            os.environ.pop("TOKEN_LOG_NET_TIMEOUT")
+        expect("a push with no answer: the hook started, then was killed; not held by an escaped child; exit 0",
+               (r.returncode, os.path.exists(started), os.path.exists(marker), took < 10), (0, True, False, True))
+        for bad in ("x", "0", "-5", "\u00b2"):
+            os.environ["TOKEN_LOG_NET_TIMEOUT"] = bad
+            expect(f"TOKEN_LOG_NET_TIMEOUT={bad!r}: the default", net_timeout(), 600)
+        os.environ.pop("TOKEN_LOG_NET_TIMEOUT")
         os.remove(os.path.join(hooks, "pre-push"))
+
+        # A push that waits for the lock reads the log only when it gets the lock, so it carries rows added meanwhile.
+        os.makedirs(logs, exist_ok=True)
+        with open(os.path.join(logs, "s1.lock"), "w") as running:  # a push is running
+            fcntl.flock(running, fcntl.LOCK_EX)
+            waiter = subprocess.Popen([sys.executable, os.path.abspath(__file__), "--push", work, "s1", t1],
+                                      env={**env, "TOKEN_LOG_HOME": logs}, stdout=subprocess.DEVNULL,
+                                      stderr=subprocess.DEVNULL)
+            # Wait until the waiter holds the wait lock (so it is blocked on the running push). Read the kernel's
+            # lock table instead of probing the lock, which could make the waiter exit as "coalesced".
+            inode = os.stat(os.path.join(logs, "s1.wait")).st_ino if os.path.exists(os.path.join(logs, "s1.wait")) else None
+            waiting = not os.path.exists("/proc/locks")  # no lock table (macOS): only a short wait below
+            for _ in range(200):
+                if waiting:
+                    break
+                time.sleep(0.05)
+                if inode is None and os.path.exists(os.path.join(logs, "s1.wait")):
+                    inode = os.stat(os.path.join(logs, "s1.wait")).st_ino
+                with open("/proc/locks") as f:
+                    waiting = inode is not None and any(
+                        f" {waiter.pid} " in line and line.split()[-3].endswith(f":{inode}") and "->" not in line
+                        for line in f)
+            if not os.path.exists("/proc/locks"):
+                time.sleep(0.5)
+            expect("the second push waits for the running one", waiting, True)
+            append(t1, msg("m10", "2026-01-01T02:00:11Z"))
+        try:
+            waiter.wait(timeout=30)
+        except subprocess.TimeoutExpired:
+            waiter.kill()
+            waiter.wait()
+        expect("a waiting push carries a row added while it waited",
+               "m10" in [x["message_id"] for x in remote_rows("s1") or []], True)
 
         expect("bad input: exit 0", hook(work, "s1", t1, logs, stdin="not json").returncode, 0)
         expect("session id with a slash: ignored", hook(work, "../x", t1, logs).returncode, 0)
@@ -430,6 +484,12 @@ def self_test():
         hook(work, "s1", t1, logs, extra={"TOKEN_LOG": "off"})
         expect("TOKEN_LOG=off: nothing pushed", len(remote_rows("s1") or []), count)
     finally:
+        globals()["push"] = real_push
+        for k, v in saved.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
         shutil.rmtree(root, ignore_errors=True)
     print("TOKEN LOG SELF-TEST " + ("PASS" if not fails else f"FAIL ({fails})"))
     return 1 if fails else 0
