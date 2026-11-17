@@ -37,6 +37,7 @@ PROJECT_OWNED = {sb.COMMANDS_HEADING}
 
 
 def norm(text):
+    """text with each run of whitespace made one space, trimmed (so layout changes compare the same)."""
     return re.sub(r"\s+", " ", text).strip()
 
 
@@ -53,6 +54,7 @@ def sections(text, stop=None):
 
 
 def baseline_head(base_text, proj_text, owner):
+    """The baseline AGENTS.md above "## Project rules", with the project's header values, tier and owner applied."""
     cut = sb.find_heading(base_text, sb.RULES_HEADING)
     head = base_text[:cut] if cut >= 0 else base_text
     name, repo, purpose = sb.header_values(proj_text or "")
@@ -64,14 +66,9 @@ def baseline_head(base_text, proj_text, owner):
     return sb.apply_owner(sb.apply_tier(head, tier), owner)
 
 
-def report(project, base, owner=None):
-    """Return (rows, not_same_count). rows = list of (area, item, status, detail)."""
+def agents_rows(proj_text, head):
+    """Rows for each baseline AGENTS.md section: same, changed (with similarity) or missing."""
     rows = []
-    proj_agents = project / "AGENTS.md"
-    proj_text = proj_agents.read_text() if proj_agents.exists() else ""
-    owner = owner or sb.header_owner(proj_text) or sb.BASELINE_OWNER
-    base_text = (base / "AGENTS.md").read_text()
-    head = baseline_head(base_text, proj_text, owner)
     proj_secs = sections(proj_text)
     proj_lines = {norm(l) for l in proj_text.splitlines() if norm(l)}
     if not proj_text:
@@ -94,8 +91,12 @@ def report(project, base, owner=None):
         rows.append(("AGENTS.md", name, "changed", f"{ratio:.0%} similar; {gone}/{len(lines)} baseline lines missing"))
     if sb.find_heading(proj_text, sb.RULES_HEADING) < 0 and proj_text:
         rows.append(("AGENTS.md", "Project rules", "missing", "no baseline layout; sync would migrate the whole file"))
+    return rows
 
-    tier = sb.header_tier(proj_text)
+
+def file_rows(project, base, tier, owner):
+    """Rows for each file sync_baseline.py copies in this tier: same, differs or missing."""
+    rows = []
     copy_files, copy_if_missing = sb.tier_files(tier)
     for rel in copy_files + copy_if_missing:
         src, dst = base / rel, project / rel
@@ -109,7 +110,12 @@ def report(project, base, owner=None):
             want = sb.apply_owner(want, owner)
         rows.append(("file", rel, "same" if want == dst.read_text() else "differs",
                      "may be tuned per project" if rel in sb.COPY_IF_MISSING and want != dst.read_text() else ""))
+    return rows
 
+
+def settings_rows(project, base):
+    """Rows for the .claude/settings.json deny rules and hook events of the baseline."""
+    rows = []
     bset, pset = base / ".claude/settings.json", project / ".claude/settings.json"
     if bset.exists():
         try:
@@ -125,39 +131,61 @@ def report(project, base, owner=None):
                              "project has its own hook for this event" if have else ""))
         except (ValueError, AttributeError) as e:
             rows.append(("settings", ".claude/settings.json", "differs", f"not valid JSON ({e})"))
+    return rows
 
+
+def pin_row(project, base):
+    """The row for the .baseline pin: missing, or same/differs against the baseline's HEAD."""
     pin = project / ".baseline"
     try:
         base_sha = sb.git("rev-parse", "HEAD", cwd=base)
     except subprocess.CalledProcessError:
         base_sha = None
     if not pin.exists():
-        rows.append(("pin", ".baseline", "missing", "never synced"))
-    else:
-        got = pin.read_text().split()
-        sha = got[1] if len(got) > 1 else ""
-        same = bool(base_sha) and base_sha.startswith(sha[:7]) and sha[:7] != ""
-        rows.append(("pin", ".baseline", "same" if same else "differs",
-                     f"pinned {sha[:7] or '?'}, baseline {base_sha[:7] if base_sha else '?'}"))
+        return ("pin", ".baseline", "missing", "never synced")
+    got = pin.read_text().split()
+    sha = got[1] if len(got) > 1 else ""
+    same = bool(base_sha) and base_sha.startswith(sha[:7]) and sha[:7] != ""
+    return ("pin", ".baseline", "same" if same else "differs",
+            f"pinned {sha[:7] or '?'}, baseline {base_sha[:7] if base_sha else '?'}")
 
+
+def log_rows(project, base, proj_text, tier):
+    """The row for docs/LOG.md (none in the starter tier): kept elsewhere, missing, or the log check's verdict."""
     log = project / "docs/LOG.md"
     checker = base / "scripts/log_check.py"
     rules = sb.section(proj_text, sb.RULES_HEADING) or ""
     if tier == "starter":
-        pass  # no project log in the starter tier
-    elif not log.exists() and re.search(r"(?i)project log location", rules):
-        rows.append(("log", "docs/LOG.md", "same", "kept elsewhere, named in Project rules"))
-    elif not log.exists():
-        rows.append(("log", "docs/LOG.md", "missing", "Project rules name no other place"))
-    elif checker.exists():
+        return []  # no project log in the starter tier
+    if not log.exists() and re.search(r"(?i)project log location", rules):
+        return [("log", "docs/LOG.md", "same", "kept elsewhere, named in Project rules")]
+    if not log.exists():
+        return [("log", "docs/LOG.md", "missing", "Project rules name no other place")]
+    if checker.exists():
         r = subprocess.run([sys.executable, str(checker), str(log)], capture_output=True, text=True)
         last = (r.stdout.strip().splitlines() or ["?"])[-1]
-        rows.append(("log", "docs/LOG.md", "same" if r.returncode == 0 else "differs", last))
+        return [("log", "docs/LOG.md", "same" if r.returncode == 0 else "differs", last)]
+    return []
+
+
+def report(project, base, owner=None):
+    """Return (rows, not_same_count). rows = list of (area, item, status, detail)."""
+    proj_agents = project / "AGENTS.md"
+    proj_text = proj_agents.read_text() if proj_agents.exists() else ""
+    owner = owner or sb.header_owner(proj_text) or sb.BASELINE_OWNER
+    base_text = (base / "AGENTS.md").read_text()
+    rows = agents_rows(proj_text, baseline_head(base_text, proj_text, owner))
+    tier = sb.header_tier(proj_text)
+    rows += file_rows(project, base, tier, owner)
+    rows += settings_rows(project, base)
+    rows.append(pin_row(project, base))
+    rows += log_rows(project, base, proj_text, tier)
     not_same = sum(1 for r in rows if r[2] != "same")
     return rows, not_same
 
 
 def print_report(project, rows, not_same):
+    """Print one line per row and the DRIFT summary line."""
     print(f"Drift report: {project}")
     width = max(len(f"{a}: {i}") for a, i, _, _ in rows) if rows else 10
     for area, item, status, detail in rows:
@@ -165,81 +193,100 @@ def print_report(project, rows, not_same):
     print(f"DRIFT: {not_same} of {len(rows)} item(s) not the same as the baseline")
 
 
+def status(proj, base, item):
+    """(status, detail) of one (area, item) in the report of proj, or ("absent", "")."""
+    rows, _ = report(proj, base)
+    return {(a, i): (s, det) for a, i, s, det in rows}.get(item, ("absent", ""))
+
+
+def expect(results, name, got, want):
+    """Print one ok/FAIL line for a (status, detail) against the wanted status; record the result."""
+    good = got[0] == want
+    print(("ok   " if good else "FAIL ") + f"{name}: {got[0]} {got[1]}".rstrip())
+    results.append(good)
+
+
+def filled(text, values):
+    """text with each {{KEY}} placeholder in values replaced."""
+    for k, v in values:
+        text = text.replace("{{" + k + "}}", v)
+    return text
+
+
+def legacy_and_synced_cases(proj, base, results):
+    """A legacy AGENTS.md drifts; a synced one with the owner renamed is the same, also a copied file."""
+    get = lambda item: status(proj, base, item)  # noqa: E731
+    (proj / "AGENTS.md").write_text("# Old rules\n\n## Git safety\n\nBe careful.\n")
+    expect(results, "legacy file: Project rules missing", get(("AGENTS.md", "Project rules")), "missing")
+    expect(results, "changed section", get(("AGENTS.md", "Git safety")), "changed")
+    expect(results, "missing section", get(("AGENTS.md", "Delegation")), "missing")
+    expect(results, "missing copied file", get(("file", "scripts/stop_check.py")), "missing")
+    expect(results, "never synced", get(("pin", ".baseline")), "missing")
+    text = filled((base / "AGENTS.md").read_text(), (("PROJECT_NAME", "Demo"), ("REPO", "D/d"), ("PURPOSE", "P"),
+                  ("OWNER", "the maintainer"), ("TIMEZONE", "Europe/Berlin")))
+    (proj / "AGENTS.md").write_text(sb.apply_owner(sb.apply_tier(text.replace("{{TIER}}", "full"), "full"), "the maintainer"))
+    expect(results, "synced section, owner renamed", get(("AGENTS.md", "Delegation")), "same")
+    expect(results, "Project rules present", get(("AGENTS.md", "Project rules")), "absent")
+    (proj / "scripts").mkdir()
+    (proj / "scripts/stop_check.py").write_text(sb.apply_owner((base / "scripts/stop_check.py").read_text(), "the maintainer"))
+    expect(results, "copied file, owner renamed", get(("file", "scripts/stop_check.py")), "same")
+    text = filled((base / "AGENTS.md").read_text().replace("- Owner: {{OWNER}}\n", ""),
+                  (("PROJECT_NAME", "Demo"), ("REPO", "D/d"), ("PURPOSE", "P"), ("TIMEZONE", "UTC")))
+    (proj / "AGENTS.md").write_text(sb.apply_owner(text, "Sam"))
+    rows, _ = report(proj, base, "Sam")
+    expect(results, "no Owner line, --owner Sam", {(a, i): (s, d) for a, i, s, d in rows}[("AGENTS.md", "Order of authority")], "same")
+
+
+def tier_cases(proj, base, results):
+    """A starter project is not compared with the advanced parts; apply_tier, header_tier and set_tier work."""
+    get = lambda item: status(proj, base, item)  # noqa: E731
+    text = filled((base / "AGENTS.md").read_text(), (("PROJECT_NAME", "Demo"), ("REPO", "D/d"), ("PURPOSE", "P"),
+                  ("OWNER", "the owner"), ("TIMEZONE", "UTC"), ("TIER", "starter")))
+    (proj / "AGENTS.md").write_text(sb.apply_tier(text, "starter"))
+    expect(results, "starter: no Project log section expected", get(("AGENTS.md", "Project log")), "absent")
+    expect(results, "starter: Delegation same", get(("AGENTS.md", "Delegation")), "same")
+    expect(results, "starter: advanced file not expected", get(("file", ".claude/skills/delegate/SKILL.md")), "absent")
+    expect(results, "starter: no log row", get(("log", "docs/LOG.md")), "absent")
+    full = sb.apply_tier(text.replace("- Tier: starter", "- Tier: full"), "full")
+    good = "<!--" not in full.replace("<!-- Fill in", "").replace("<!-- This project", "") and "## Project log" in full
+    print(("ok   " if good else "FAIL ") + "apply_tier full: markers gone, Project log kept")
+    results.append(good)
+    good = sb.header_tier("- Tier: Starter\n") == "starter" and sb.header_tier("# old\n") == "full"
+    print(("ok   " if good else "FAIL ") + "header_tier: any case; no line = full")
+    results.append(good)
+    st = proj / "st"
+    (st / ".claude").mkdir(parents=True)
+    (st / "AGENTS.md").write_text((base / "AGENTS.md").read_text())
+    for rel in sb.ADVANCED_FILES:
+        (st / rel).parent.mkdir(parents=True, exist_ok=True)
+        (st / rel).write_text("x")
+    with __import__("contextlib").redirect_stdout(__import__("io").StringIO()):
+        sb.set_tier(st, "starter")
+    left = [r for r in sb.ADVANCED_FILES if (st / r).exists()]
+    agents = (st / "AGENTS.md").read_text()
+    good = not left and "- Tier: starter" in agents and "## Project log" not in agents and "<!-- full" not in agents
+    print(("ok   " if good else "FAIL ") + f"set_tier starter: advanced files gone ({len(left)} left), AGENTS.md filtered")
+    results.append(good)
+
+
 def self_test():
-    ok = True
+    """Compare sample projects with this baseline repo; prints one line per case and DRIFT TEST PASS or FAIL."""
     base = pathlib.Path(__file__).resolve().parent.parent
     if "{{PROJECT_NAME}}" not in (base / "AGENTS.md").read_text():
         print("DRIFT TEST SKIP: the self-test needs the baseline repo (rhope-ops/archimedes_lever); run it there")
         return 0
+    results = []
     with tempfile.TemporaryDirectory() as d:
         proj = pathlib.Path(d)
-
-        def get(item):
-            rows, _ = report(proj, base)
-            return {(a, i): (s, det) for a, i, s, det in rows}.get(item, ("absent", ""))
-
-        def expect(name, got, want):
-            nonlocal ok
-            good = got[0] == want
-            print(("ok   " if good else "FAIL ") + f"{name}: {got[0]} {got[1]}".rstrip())
-            ok = ok and good
-
-        (proj / "AGENTS.md").write_text("# Old rules\n\n## Git safety\n\nBe careful.\n")
-        expect("legacy file: Project rules missing", get(("AGENTS.md", "Project rules")), "missing")
-        expect("changed section", get(("AGENTS.md", "Git safety")), "changed")
-        expect("missing section", get(("AGENTS.md", "Delegation")), "missing")
-        expect("missing copied file", get(("file", "scripts/stop_check.py")), "missing")
-        expect("never synced", get(("pin", ".baseline")), "missing")
-        text = (base / "AGENTS.md").read_text()
-        for k, v in (("PROJECT_NAME", "Demo"), ("REPO", "D/d"), ("PURPOSE", "P"), ("OWNER", "the maintainer"),
-                     ("TIMEZONE", "Europe/Berlin")):
-            text = text.replace("{{" + k + "}}", v)
-        (proj / "AGENTS.md").write_text(sb.apply_owner(sb.apply_tier(text.replace("{{TIER}}", "full"), "full"), "the maintainer"))
-        expect("synced section, owner renamed", get(("AGENTS.md", "Delegation")), "same")
-        expect("Project rules present", get(("AGENTS.md", "Project rules")), "absent")
-        (proj / "scripts").mkdir()
-        (proj / "scripts/stop_check.py").write_text(sb.apply_owner((base / "scripts/stop_check.py").read_text(), "the maintainer"))
-        expect("copied file, owner renamed", get(("file", "scripts/stop_check.py")), "same")
-        text = (base / "AGENTS.md").read_text().replace("- Owner: {{OWNER}}\n", "")
-        for k, v in (("PROJECT_NAME", "Demo"), ("REPO", "D/d"), ("PURPOSE", "P"), ("TIMEZONE", "UTC")):
-            text = text.replace("{{" + k + "}}", v)
-        (proj / "AGENTS.md").write_text(sb.apply_owner(text, "Sam"))
-        rows, _ = report(proj, base, "Sam")
-        expect("no Owner line, --owner Sam", {(a, i): (s, d) for a, i, s, d in rows}[("AGENTS.md", "Order of authority")], "same")
-        text = (base / "AGENTS.md").read_text()
-        for k, v in (("PROJECT_NAME", "Demo"), ("REPO", "D/d"), ("PURPOSE", "P"), ("OWNER", "the owner"), ("TIMEZONE", "UTC"),
-                     ("TIER", "starter")):
-            text = text.replace("{{" + k + "}}", v)
-        (proj / "AGENTS.md").write_text(sb.apply_tier(text, "starter"))
-        expect("starter: no Project log section expected", get(("AGENTS.md", "Project log")), "absent")
-        expect("starter: Delegation same", get(("AGENTS.md", "Delegation")), "same")
-        expect("starter: advanced file not expected", get(("file", ".claude/skills/delegate/SKILL.md")), "absent")
-        expect("starter: no log row", get(("log", "docs/LOG.md")), "absent")
-        full = sb.apply_tier(text.replace("- Tier: starter", "- Tier: full"), "full")
-        good = "<!--" not in full.replace("<!-- Fill in", "").replace("<!-- This project", "") and "## Project log" in full
-        print(("ok   " if good else "FAIL ") + "apply_tier full: markers gone, Project log kept")
-        ok = ok and good
-        good = sb.header_tier("- Tier: Starter\n") == "starter" and sb.header_tier("# old\n") == "full"
-        print(("ok   " if good else "FAIL ") + "header_tier: any case; no line = full")
-        ok = ok and good
-        st = proj / "st"
-        (st / ".claude").mkdir(parents=True)
-        (st / "AGENTS.md").write_text((base / "AGENTS.md").read_text())
-        for rel in sb.ADVANCED_FILES:
-            (st / rel).parent.mkdir(parents=True, exist_ok=True)
-            (st / rel).write_text("x")
-        with __import__("contextlib").redirect_stdout(__import__("io").StringIO()):
-            sb.set_tier(st, "starter")
-        left = [r for r in sb.ADVANCED_FILES if (st / r).exists()]
-        agents = (st / "AGENTS.md").read_text()
-        good = not left and "- Tier: starter" in agents and "## Project log" not in agents and "<!-- full" not in agents
-        print(("ok   " if good else "FAIL ") + f"set_tier starter: advanced files gone ({len(left)} left), AGENTS.md filtered")
-        ok = ok and good
+        legacy_and_synced_cases(proj, base, results)
+        tier_cases(proj, base, results)
+    ok = all(results)
     print("DRIFT TEST " + ("PASS" if ok else "FAIL"))
     return 0 if ok else 1
 
 
 def main():
+    """Parse the options; run the self-test, or fetch the baseline and print the drift report."""
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--project", default=".", help="project repo folder (default: current folder)")
     ap.add_argument("--baseline", default=sb.DEFAULT_BASELINE, help="baseline folder or git URL")
