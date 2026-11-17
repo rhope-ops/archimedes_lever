@@ -4,7 +4,8 @@ case stays under the 60-line cap of docs/code-standard.md C3).
 
 It builds a bare origin and clones in a temporary folder (no network) and runs the Stop hook on sample session logs:
 one row per API call, turns, subagent rows, a second session, a blocking pre-push hook, a lost local folder, a shallow
-clone, retries, coalescing, FETCH_HEAD, a push with no answer, bad input and TOKEN_LOG=off.
+clone, retries, coalescing, FETCH_HEAD, a push with no answer, a push that waits for the lock, bad input and
+TOKEN_LOG=off.
 Input: the token_log module. Output: one PASS or FAIL line per case and a "TOKEN LOG SELF-TEST" total line; returns
 the exit code (0 pass, 1 fail). Needs git.
 """
@@ -174,13 +175,12 @@ def case_blocked_and_shallow(fx):
     fx.expect("shallow clone: pushes", len(fx.remote_rows("s1") or []), 6)
 
 
-def case_retry_and_coalesce(fx):
-    """In process: retries after a failed push, giving up, and a coalesced third push."""
+def case_retry(fx):
+    """In process: retries after a failed push, and giving up after 3 tries."""
     tl = fx.tl
-    old_home = os.environ.get("TOKEN_LOG_HOME")
     os.environ["TOKEN_LOG_HOME"] = os.path.join(fx.root, "locks")  # the in-process tests never touch the real home
     os.makedirs(tl.home())
-    calls, real_push = [], tl.push
+    calls = []
 
     def flaky(*a):
         """A push that fails once, then succeeds."""
@@ -192,7 +192,7 @@ def case_retry_and_coalesce(fx):
     try:
         ok = tl.push_main(["r", "s", "t"], delays=(0, 0, 0))
     finally:
-        tl.push = real_push
+        tl.push = fx.real_push
     fx.expect("a failed push is tried again; a success stops the retries", (ok, len(calls)), (True, 2))
 
     def broken(*a):
@@ -202,15 +202,34 @@ def case_retry_and_coalesce(fx):
     try:
         ok = tl.push_main(["r", "s", "t"], delays=(0, 0, 0))
     finally:
-        tl.push = real_push
+        tl.push = fx.real_push
     fx.expect("3 failed tries: gives up", ok, False)
 
+
+def case_coalesce(fx):
+    """In process: a third push exits while one waits; a retry loop stops when a newer push starts waiting."""
+    tl = fx.tl
+    with open(os.path.join(tl.home(), "s.wait"), "w") as held:  # another push is waiting
+        fcntl.flock(held, fcntl.LOCK_EX)
+        fx.expect("a push is waiting: a third one exits at once", tl.locked_push("r", "s", "t"), "coalesced")
+    newer, tries = [], []
+
+    def fails_while_newer_starts(*a):
+        """The first try fails; meanwhile a newer push starts waiting."""
+        tries.append(a)
+        if not newer:
+            w = open(os.path.join(tl.home(), "s.wait"), "w")
+            fcntl.flock(w, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            newer.append(w)
+        raise RuntimeError("blocked")
+    tl.push = fails_while_newer_starts
     try:
-        with open(os.path.join(tl.home(), "s.wait"), "w") as held:  # another push is waiting
-            fcntl.flock(held, fcntl.LOCK_EX)
-            fx.expect("a push is waiting: a third one exits at once", tl.locked_push("r", "s", "t"), "coalesced")
+        ok = tl.push_main(["r", "s", "t"], delays=(0, 0, 0))
     finally:
-        os.environ.pop("TOKEN_LOG_HOME") if old_home is None else os.environ.update(TOKEN_LOG_HOME=old_home)
+        tl.push = fx.real_push
+        for w in newer:
+            w.close()
+    fx.expect("a failed try, then a newer push waits: the retry loop stops (1 push call)", (ok, len(tries)), (True, 1))
 
 
 def case_fetch_head_and_timeout(fx):
@@ -223,21 +242,58 @@ def case_fetch_head_and_timeout(fx):
     fx.hook(work, "s1", t1, logs)
     fx.expect("the shared FETCH_HEAD is not written", open(fetch_head).read(), "marker\n")
 
-    marker = os.path.join(root, "hook-child-ran")
-    fx.set_pre_push(f"#!/bin/sh\n(sleep 2; touch '{marker}') &\nsetsid sleep 30 &\nsleep 30\n")
+    marker, started = os.path.join(root, "hook-child-ran"), os.path.join(root, "hook-started")
+    fx.set_pre_push(f"#!/bin/sh\ntouch '{started}'\n(sleep 2; touch '{marker}') &\nsetsid sleep 30 &\nsleep 30\n")
     append(t1, msg("m8", "2026-01-01T02:00:09Z"))
     start = time.time()
     r = fx.hook(work, "s1", t1, logs, extra={"TOKEN_LOG_NET_TIMEOUT": "1"})
     took = time.time() - start
     time.sleep(2.5)
-    fx.expect("a push with no answer: killed with its hook, not held by an escaped child, exit 0",
-              (r.returncode, os.path.exists(marker), took < 10), (0, False, True))
-    os.environ["TOKEN_LOG_NET_TIMEOUT"] = "x"
-    try:
-        fx.expect("a bad TOKEN_LOG_NET_TIMEOUT: the default", fx.tl.net_timeout(), 600)
-    finally:
-        os.environ.pop("TOKEN_LOG_NET_TIMEOUT")
+    fx.expect("a push with no answer: the hook started, then was killed; not held by an escaped child; exit 0",
+              (r.returncode, os.path.exists(started), os.path.exists(marker), took < 10), (0, True, False, True))
+    for bad in ("x", "0", "-5", "\u00b2"):
+        os.environ["TOKEN_LOG_NET_TIMEOUT"] = bad
+        fx.expect(f"TOKEN_LOG_NET_TIMEOUT={bad!r}: the default", fx.tl.net_timeout(), 600)
+    os.environ.pop("TOKEN_LOG_NET_TIMEOUT")
     os.remove(os.path.join(fx.hooks, "pre-push"))
+
+
+def wait_locked(pid, path):
+    """True when process pid holds the lock on path (a blocked waiter), read from the kernel's lock table. Probing
+    the lock instead could make the waiter exit as "coalesced". With no lock table (macOS): a short wait, then True."""
+    if not os.path.exists("/proc/locks"):
+        time.sleep(0.5)
+        return True
+    for _ in range(200):   # up to 10 s
+        time.sleep(0.05)
+        if not os.path.exists(path):
+            continue
+        inode = os.stat(path).st_ino
+        with open("/proc/locks") as f:
+            if any(f" {pid} " in line and line.split()[-3].endswith(f":{inode}") and "->" not in line for line in f):
+                return True
+    return False
+
+
+def case_waiting_push(fx):
+    """A push that waits for the lock reads the log only when it gets the lock, so it carries rows added meanwhile."""
+    work, t1, logs = fx.work, fx.t1, fx.logs
+    os.makedirs(logs, exist_ok=True)
+    with open(os.path.join(logs, "s1.lock"), "w") as running:  # a push is running
+        fcntl.flock(running, fcntl.LOCK_EX)
+        waiter = subprocess.Popen([sys.executable, os.path.abspath(fx.tl.__file__), "--push", work, "s1", t1],
+                                  env={**fx.env, "TOKEN_LOG_HOME": logs}, stdout=subprocess.DEVNULL,
+                                  stderr=subprocess.DEVNULL)
+        fx.expect("the second push waits for the running one", wait_locked(waiter.pid, os.path.join(logs, "s1.wait")),
+                  True)
+        append(t1, msg("m10", "2026-01-01T02:00:11Z"))
+    try:
+        waiter.wait(timeout=30)
+    except subprocess.TimeoutExpired:
+        waiter.kill()
+        waiter.wait()
+    fx.expect("a waiting push carries a row added while it waited",
+              "m10" in [x["message_id"] for x in fx.remote_rows("s1") or []], True)
 
 
 def case_bad_input_and_off(fx):
@@ -254,11 +310,19 @@ def case_bad_input_and_off(fx):
 def run(tl):
     """Run every case in order on one fixture; print the total line and return the exit code."""
     fx = Fixture(tl)
+    fx.real_push = tl.push
+    saved = {k: os.environ.get(k) for k in ("TOKEN_LOG_HOME", "TOKEN_LOG_NET_TIMEOUT")}  # restored at the end
     try:
-        for case in (case_first_turn, case_second_turn, case_blocked_and_shallow, case_retry_and_coalesce,
-                     case_fetch_head_and_timeout, case_bad_input_and_off):
+        for case in (case_first_turn, case_second_turn, case_blocked_and_shallow, case_retry, case_coalesce,
+                     case_fetch_head_and_timeout, case_waiting_push, case_bad_input_and_off):
             case(fx)
     finally:
+        tl.push = fx.real_push
+        for k, v in saved.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
         shutil.rmtree(fx.root, ignore_errors=True)
     print("TOKEN LOG SELF-TEST " + ("PASS" if not fx.fails else f"FAIL ({fx.fails})"))
     return 1 if fx.fails else 0

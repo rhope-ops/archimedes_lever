@@ -55,8 +55,13 @@ RETRY_DELAYS = (0, 60, 300)  # seconds before each push try: the last turn of a 
 def net_timeout():
     """Seconds for ls-remote, fetch or push: TOKEN_LOG_NET_TIMEOUT, else 600 (also for a value that is not a whole
     number of at least 1)."""
-    v = os.environ.get("TOKEN_LOG_NET_TIMEOUT", "")
-    return int(v) if v.isdigit() and int(v) >= 1 else 600
+    try:
+        v = int(os.environ.get("TOKEN_LOG_NET_TIMEOUT", ""))
+    except ValueError:
+        return 600
+    return v if v >= 1 else 600
+
+
 RACE = ("non-fast-forward", "fetch first", "stale info", "cannot lock ref")
 
 
@@ -83,7 +88,7 @@ def git_net(cwd, *args):
     the pre-push hook with the check lane it started. Returns (exit code, stdout, stderr)."""
     # Output goes to files, not pipes: a hook child that escapes the kill (its own session) cannot keep this waiting.
     with tempfile.TemporaryFile("w+") as out, tempfile.TemporaryFile("w+") as err:
-        p = subprocess.Popen(["git", "-C", cwd, *args], stdout=out, stderr=err, text=True, start_new_session=True)
+        p = subprocess.Popen(["git", "-C", cwd, *args], stdout=out, stderr=err, start_new_session=True)
         try:
             p.wait(timeout=net_timeout())
         except subprocess.TimeoutExpired:
