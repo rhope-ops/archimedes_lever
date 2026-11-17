@@ -61,6 +61,7 @@ def run(cs):
         self_test_forms(cs, ROOT, g, config)
         self_test_main(cs, ROOT, g)
         self_test_init(cs, ROOT)
+        self_test_docs(cs, ROOT, g, config)
     print('code standard self-test: pass')
     return 0
 
@@ -209,5 +210,52 @@ def self_test_init(cs, root):
         assert main('--init', '--report') == 0 and not cs.BASELINE.exists(), '--report writes no baseline'
         assert main('--init') == 0 and cs.BASELINE.exists(), '--init writes the first baseline'
         assert main('--init') == 1, 'a second --init is refused'
+    finally:
+        sys.argv = saved
+
+
+def self_test_docs(cs, root, g, config):
+    """Self-test of the opt-in C2 full rule ("c2": "full"): a long function without full docs fails and --report names
+    the missing parts; complete Python, JavaScript and PowerShell docs pass; a short function needs only the lean
+    comment; --adopt lists the new rule's debt once and refuses a second time."""
+    full = dict(config, caps={'max_function_lines': 60, 'max_file_lines': 600}, c2='full')
+    body = '    y = x\n' * 9
+    (root / 'f.py').write_text('"""Sample module for the C2 full self-test: two long functions and a short one."""\n\n\n'
+                               'def bare(x, *rest):\n    """Adds."""\n' + body + '    return y\n\n\n'
+                               'def full(x):\n    """Adds.\n\n    Args:\n        x: a number.\n\n    Returns:\n        y.\n    """\n'
+                               + body + '    return y\n\n\ndef short(x):\n    """Adds."""\n    return x\n')
+    js = '// Sample JavaScript file for the C2 full self-test.\n/**\n * Adds.\n * @param {number} a first\n * @returns {number}\n */\n' \
+         'function good(a) {\n' + '  let y = a;\n' * 9 + '  return y;\n}\n// Adds.\nfunction bad(a, {b}) {\n' \
+         + '  let y = a;\n' * 9 + '  return y;\n}\n'
+    (root / 'g.js').write_text(js)
+    if PS:
+        lines = '  $y = 1\n' * 9
+        (root / 'h.ps1').write_text('<#\n  Sample PowerShell file for the C2 full self-test: one complete and one incomplete.\n#>\n\n'
+                                    '<#\n.SYNOPSIS\n  Adds.\n.PARAMETER Path\n  A path.\n#>\nfunction Get-Good([string]$Path) {\n'
+                                    + lines + '}\n# Adds.\nfunction Get-Bad([string]$Path) {\n' + lines + '}\n')
+    g('add', '.')
+    m = cs.measure(full)
+    docs = m['violations']['docs']
+    want = {'f.py::bare', 'g.js::bad'} | ({'h.ps1::Get-Bad'} if PS else set())
+    assert want <= set(docs) and not {'f.py::full', 'f.py::short', 'g.js::good', 'h.ps1::Get-Good'} & set(docs), \
+        'C2 full finds the long functions without full docs: %s' % docs
+    gaps = {f['name']: f.get('docs_missing') for f in m['files']['f.py']['functions']}
+    assert gaps['bare'] == ['Args: x', 'Args: rest', 'Returns:'], 'the report names the missing parts: %s' % gaps
+    jgaps = {f['name']: f.get('docs_missing') for f in m['files']['g.js']['functions']}
+    assert jgaps['bad'] == ['JSDoc'], 'a plain comment is not JSDoc: %s' % jgaps
+    if PS:
+        g('rm', '-q', '--cached', '--', '*.ps1')   # the later steps need no PowerShell: each parser run costs a second
+    assert not cs.measure(config)['violations']['docs'], 'without "c2": "full" the rule is off'
+    cs.BASELINE.write_text(json.dumps({'config': full, 'debt': {}}))
+    import contextlib
+    import io
+    import sys
+    saved = sys.argv
+    try:
+        sys.argv = ['code_standard.py', '--adopt']
+        with contextlib.redirect_stdout(io.StringIO()):
+            assert cs.main() == 0, '--adopt lists a rule that was just turned on'
+            assert set(json.loads(cs.BASELINE.read_text())['debt']['docs']) == want - {'h.ps1::Get-Bad'}, '--adopt writes its debt'
+            assert cs.main() == 1, 'a second --adopt is refused (the kind is listed now)'
     finally:
         sys.argv = saved
