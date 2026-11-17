@@ -61,14 +61,17 @@ RACE = ("non-fast-forward", "fetch first", "stale info", "cannot lock ref")
 
 
 def home():
+    """The folder for push.log and the lock files: TOKEN_LOG_HOME, else ~/.claude/token-log."""
     return os.environ.get("TOKEN_LOG_HOME") or os.path.expanduser("~/.claude/token-log")
 
 
 def branch_name():
+    """The log branch: TOKEN_LOG_BRANCH, else claude/token-usage."""
     return os.environ.get("TOKEN_LOG_BRANCH") or "claude/token-usage"
 
 
 def git(cwd, *args, env=None, check=True, timeout=None):
+    """Run a local git command; return its stripped stdout ("" on failure when check is False)."""
     r = subprocess.run(["git", "-C", cwd, *args], capture_output=True, text=True, env=env, timeout=timeout)
     if check and r.returncode != 0:
         raise RuntimeError(f"git {args[0]}: {r.stderr.strip()}")
@@ -149,6 +152,7 @@ def log_rows(sid, tpath, repo):
 
 
 def to_csv(rows):
+    """The CSV text of the rows, header first, sorted by timestamp and message id."""
     out = io.StringIO()
     w = csv.DictWriter(out, fieldnames=FIELDS, lineterminator="\n")
     w.writeheader()
@@ -229,6 +233,7 @@ def push_main(args, delays=RETRY_DELAYS):
 
 
 def hook_main():
+    """The Stop hook: read the hook input and start the push in the background (or the foreground with TOKEN_LOG_SYNC=1)."""
     if os.environ.get("TOKEN_LOG", "").lower() == "off":
         return
     hook = json.load(sys.stdin)
@@ -250,189 +255,9 @@ def hook_main():
 
 
 def self_test():
-    import shutil
-    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_") and not k.startswith("TOKEN_LOG")}
-    env.update(GIT_AUTHOR_NAME="t", GIT_AUTHOR_EMAIL="t@t", GIT_COMMITTER_NAME="t", GIT_COMMITTER_EMAIL="t@t",
-               GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1", TOKEN_LOG_SYNC="1")
-    env.pop("CLAUDE_PROJECT_DIR", None)
-    root = tempfile.mkdtemp(prefix="token_log_test_")
-    fails = 0
-
-    def sh(cwd, *args):
-        return subprocess.run(args, cwd=cwd, env=env, capture_output=True, text=True, check=True).stdout.strip()
-
-    def hook(cwd, sid, tpath, logdir, stdin=None, extra=None):
-        data = stdin if stdin is not None else json.dumps({"session_id": sid, "transcript_path": tpath, "cwd": cwd})
-        return subprocess.run([sys.executable, os.path.abspath(__file__)], input=data, capture_output=True,
-                              text=True, env={**env, "TOKEN_LOG_HOME": logdir, **(extra or {})})
-
-    def expect(name, got, want):
-        nonlocal fails
-        ok = got == want
-        fails += not ok
-        print(("PASS  " if ok else "FAIL  ") + name + ("" if ok else f": got {got!r}, want {want!r}"))
-
-    def msg(mid, ts, model="claude-test", side=False, n=1):
-        u = {"input_tokens": n, "cache_creation_input_tokens": 10 * n, "cache_read_input_tokens": 100 * n,
-             "output_tokens": 1000 * n}
-        return json.dumps({"type": "assistant", "timestamp": ts, "isSidechain": side,
-                           "message": {"id": mid, "model": model, "usage": u}})
-
-    def prompt(ts, text="hi"):
-        return json.dumps({"type": "user", "timestamp": ts, "message": {"role": "user", "content": text}})
-
-    def tool_result(ts):
-        return json.dumps({"type": "user", "timestamp": ts, "message": {"content": [{"type": "tool_result", "content": "x"}]}})
-
-    def remote_rows(sid):
-        r = subprocess.run(["git", "--git-dir", origin, "show", f"claude/token-usage:sessions/{sid}.csv"],
-                           capture_output=True, text=True, env=env)
-        return list(csv.DictReader(io.StringIO(r.stdout))) if r.returncode == 0 else None
-
-    def append(path, *lines):
-        with open(path, "a") as f:
-            f.write("\n".join(lines) + "\n")
-
-    def state(repo):
-        return (sh(repo, "git", "status", "--porcelain"), sh(repo, "git", "rev-parse", "HEAD"),
-                sh(repo, "git", "branch", "--show-current"), sh(repo, "git", "rev-parse", "--is-shallow-repository"))
-
-    try:
-        origin = os.path.join(root, "origin.git")
-        work, other = os.path.join(root, "work"), os.path.join(root, "other")
-        sh(root, "git", "init", "-q", "--bare", "-b", "main", origin)
-        sh(root, "git", "clone", "-q", origin, work)
-        append(os.path.join(work, "a.txt"), "a")
-        sh(work, "git", "add", "a.txt")
-        sh(work, "git", "commit", "-q", "-m", "init")
-        sh(work, "git", "push", "-q", "origin", "HEAD:main")
-        append(os.path.join(work, "a.txt"), "work in progress")  # an uncommitted change that must stay as it is
-        sh(work, "git", "add", "a.txt")
-        before = state(work)
-        logs, t1 = os.path.join(root, "logs"), os.path.join(root, "proj", "s1.jsonl")
-        os.makedirs(os.path.dirname(t1))
-        append(t1, prompt("2026-01-01T00:00:00Z"), msg("m1", "2026-01-01T00:00:01Z"), msg("m1", "2026-01-01T00:00:02Z"),
-               tool_result("2026-01-01T00:00:03Z"), msg("m2", "2026-01-01T00:00:04Z"), "not json")
-
-        r = hook(root, "s1", t1, logs)
-        expect("outside a repo: exit 0, nothing pushed", (r.returncode, remote_rows("s1")), (0, None))
-
-        hook(work, "s1", t1, logs)
-        got = remote_rows("s1") or []
-        expect("turn 1: one row per API call (a reply repeated per block counts once)",
-               [(x["message_id"], x["turn"], x["output_tokens"], x["timestamp"]) for x in got],
-               [("m1", "1", "1000", "2026-01-01T00:00:01Z"), ("m2", "1", "1000", "2026-01-01T00:00:04Z")])
-        expect("turn 1: work tree, index, HEAD, branch and shallow state unchanged", state(work), before)
-
-        tip = sh(root, "git", "--git-dir", origin, "rev-parse", "claude/token-usage")
-        hook(work, "s1", t1, logs)
-        expect("no new calls: no new commit", sh(root, "git", "--git-dir", origin, "rev-parse", "claude/token-usage"), tip)
-
-        sh(root, "git", "clone", "-q", origin, other)  # a second session in another clone pushes first
-        t2 = os.path.join(root, "proj", "s2.jsonl")
-        append(t2, prompt("2026-01-01T01:00:00Z"), msg("x1", "2026-01-01T01:00:01Z"))
-        hook(other, "s2", t2, os.path.join(root, "logs2"))
-        append(t1, prompt("2026-01-01T02:00:00Z", "[Request interrupted by user]"), prompt("2026-01-01T02:00:01Z"),
-               msg("m3", "2026-01-01T02:00:02Z", n=2))
-        os.makedirs(os.path.join(root, "proj", "s1", "subagents"))
-        append(os.path.join(root, "proj", "s1", "subagents", "agent-a.jsonl"),
-               msg("sa1", "2026-01-01T02:00:03Z", model="claude-small", side=True, n=3))
-        hook(work, "s1", t1, logs)
-        got = remote_rows("s1") or []
-        expect("turn 2: new main and subagent calls; an interrupt marker is not a turn",
-               [(x["message_id"], x["turn"], x["model"], x["source"]) for x in got[2:]],
-               [("m3", "2", "claude-test", "main"), ("sa1", "2", "claude-small", "subagent")])
-        expect("another session's file stays on the branch", len(remote_rows("s2") or []), 1)
-        expect("turn 2: work tree, index, HEAD, branch and shallow state unchanged", state(work), before)
-
-        hooks = os.path.join(root, "hooks")
-        os.makedirs(hooks)
-        with open(os.path.join(hooks, "pre-push"), "w") as f:
-            f.write("#!/bin/sh\necho blocked >&2\nexit 1\n")
-        os.chmod(os.path.join(hooks, "pre-push"), 0o755)
-        sh(work, "git", "config", "core.hooksPath", hooks)
-        append(t1, msg("m4", "2026-01-01T02:00:05Z"))
-        r = hook(work, "s1", t1, logs)
-        expect("pre-push hook blocks: exit 0, nothing pushed", (r.returncode, len(remote_rows("s1") or [])), (0, 4))
-        os.remove(os.path.join(hooks, "pre-push"))
-        shutil.rmtree(logs)  # a new container: the local folder is gone
-        hook(work, "s1", t1, logs)
-        got = remote_rows("s1") or []
-        expect("next push (local folder lost): carries the waiting call, no row twice",
-               sorted(x["message_id"] for x in got), ["m1", "m2", "m3", "m4", "sa1"])
-
-        sh(root, "git", "clone", "-q", "--depth", "1", "file://" + origin, os.path.join(root, "shallow"))
-        sh(os.path.join(root, "shallow"), "git", "config", "core.hooksPath", hooks)
-        append(t1, msg("m5", "2026-01-01T02:00:06Z"))
-        hook(os.path.join(root, "shallow"), "s1", t1, logs)
-        expect("shallow clone: pushes", len(remote_rows("s1") or []), 6)
-
-        old_home = os.environ.get("TOKEN_LOG_HOME")
-        os.environ["TOKEN_LOG_HOME"] = os.path.join(root, "locks")  # the in-process tests never touch the real home
-        os.makedirs(home())
-        calls, real_push = [], globals()["push"]
-        def flaky(*a):
-            calls.append(a)
-            if len(calls) == 1:
-                raise RuntimeError("blocked")
-            return "pushed"
-        globals()["push"] = flaky
-        try:
-            ok = push_main(["r", "s", "t"], delays=(0, 0, 0))
-        finally:
-            globals()["push"] = real_push
-        expect("a failed push is tried again; a success stops the retries", (ok, len(calls)), (True, 2))
-        def broken(*a):
-            raise RuntimeError("blocked")
-        globals()["push"] = broken
-        try:
-            ok = push_main(["r", "s", "t"], delays=(0, 0, 0))
-        finally:
-            globals()["push"] = real_push
-        expect("3 failed tries: gives up", ok, False)
-
-        try:
-            with open(os.path.join(home(), "s.wait"), "w") as held:  # another push is waiting
-                fcntl.flock(held, fcntl.LOCK_EX)
-                expect("a push is waiting: a third one exits at once", locked_push("r", "s", "t"), "coalesced")
-        finally:
-            os.environ.pop("TOKEN_LOG_HOME") if old_home is None else os.environ.update(TOKEN_LOG_HOME=old_home)
-
-        fetch_head = os.path.join(work, ".git", "FETCH_HEAD")
-        with open(fetch_head, "w") as f:
-            f.write("marker\n")
-        append(t1, msg("m7", "2026-01-01T02:00:08Z"))
-        hook(work, "s1", t1, logs)
-        expect("the shared FETCH_HEAD is not written", open(fetch_head).read(), "marker\n")
-
-        marker = os.path.join(root, "hook-child-ran")
-        with open(os.path.join(hooks, "pre-push"), "w") as f:
-            f.write(f"#!/bin/sh\n(sleep 2; touch '{marker}') &\nsetsid sleep 30 &\nsleep 30\n")
-        os.chmod(os.path.join(hooks, "pre-push"), 0o755)
-        append(t1, msg("m8", "2026-01-01T02:00:09Z"))
-        start = time.time()
-        r = hook(work, "s1", t1, logs, extra={"TOKEN_LOG_NET_TIMEOUT": "1"})
-        took = time.time() - start
-        time.sleep(2.5)
-        expect("a push with no answer: killed with its hook, not held by an escaped child, exit 0",
-               (r.returncode, os.path.exists(marker), took < 10), (0, False, True))
-        os.environ["TOKEN_LOG_NET_TIMEOUT"] = "x"
-        try:
-            expect("a bad TOKEN_LOG_NET_TIMEOUT: the default", net_timeout(), 600)
-        finally:
-            os.environ.pop("TOKEN_LOG_NET_TIMEOUT")
-        os.remove(os.path.join(hooks, "pre-push"))
-
-        expect("bad input: exit 0", hook(work, "s1", t1, logs, stdin="not json").returncode, 0)
-        expect("session id with a slash: ignored", hook(work, "../x", t1, logs).returncode, 0)
-        count = len(remote_rows("s1") or [])
-        append(t1, msg("m9", "2026-01-01T02:00:10Z"))
-        hook(work, "s1", t1, logs, extra={"TOKEN_LOG": "off"})
-        expect("TOKEN_LOG=off: nothing pushed", len(remote_rows("s1") or []), count)
-    finally:
-        shutil.rmtree(root, ignore_errors=True)
-    print("TOKEN LOG SELF-TEST " + ("PASS" if not fails else f"FAIL ({fails})"))
-    return 1 if fails else 0
+    """Run the self-test in scripts/token_log_test.py on this module (temporary repos, no network)."""
+    import token_log_test  # scripts/token_log_test.py: kept apart so each case stays short (rule C3)
+    return token_log_test.run(sys.modules[__name__])
 
 
 if __name__ == "__main__":
