@@ -54,6 +54,8 @@ MIN_DUP_LINES = 4          # a body this short (a one-line wrapper) is not count
 # its functions are measured once, in the source, so C2, C3 and C5 skip them here.
 BLOCK_BEGIN = re.compile(r'^\s*# >>> ([\w-]+): generated from ')
 BLOCK_END = '# <<< '
+# The kit's caps and scope (docs/code-standard.md C3, C4), used by --init when a repo has no baseline yet.
+DEFAULT_CONFIG = {'caps': {'max_file_lines': 600, 'max_function_lines': 60}, 'exclude': [], 'generated': [], 'include': ['*']}
 
 
 # ---------------------------------------------------------------- file list -----------------------------------------
@@ -468,6 +470,11 @@ def main():
     if args.test:
         import code_standard_test   # scripts/code_standard_test.py: kept apart (rule C4)
         return code_standard_test.run(sys.modules[__name__])
+    if not BASELINE.exists():
+        if not args.init:
+            print('CODE-STANDARD fail: no %s; adopt the standard with --init (docs/code-standard.md)' % BASELINE_NAME)
+            return 1
+        BASELINE.write_text(json.dumps({'config': DEFAULT_CONFIG, 'debt': {}}))
     base = json.loads(BASELINE.read_text())
     config = base['config']
     m = measure(config)
