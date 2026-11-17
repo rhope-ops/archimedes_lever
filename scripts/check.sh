@@ -207,7 +207,7 @@ selftest() {  # selftest NAME FILE [MORE FILES IT DEPENDS ON...] -- COMMAND...
   if touched "${deps[@]}"; then run "$name self-test" "$@"; else untested=$((untested + 1)); fi
 }
 
-for s in stop_check worker_guard log_check bloat_check; do
+for s in stop_check worker_guard log_check bloat_check token_log; do
   selftest "$s" "scripts/$s.py" -- python3 "scripts/$s.py" --test
 done
 selftest timeline scripts/timeline.py scripts/log_check.py -- python3 scripts/timeline.py --test  # it imports log_check
