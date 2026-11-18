@@ -4,7 +4,7 @@ Made on 2026-11-18 from scratch copies of the two port branches (RADE 56e61a0, 9
 tree on branch claude/upbeat-bell-uxsavx. Nothing was written into the project clones.
 
 Folders `rade/`, `90-161.z/` and `results/` were in the scratch runs only and were never committed to the kit; they held the project files that the scratch runs used (ready to copy, then review);
-`results/` holds the check output before (`*-ref-*`) and after (`*-new-*`) and the sync dry-run diffs.
+`results/` held the check output before (`*-ref-*`) and after (`*-new-*`) and the sync dry-run diffs.
 
 ## Order of work, both projects
 
