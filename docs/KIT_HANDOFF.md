@@ -2,12 +2,12 @@
 
 The kit's own handoff (AGENTS.md "Handoff"). Kit only: first use deletes it in a project, which uses docs/NEXT_PROMPT.md. Keep it at 40 lines or fewer; evidence goes in docs/reviews/. Times are America/Chicago.
 
-Updated: 2026-11-18 16:50 by the kit owner (session "Archimedes Lever workflow optimization", the owner, 2026-11-18 16:20). Only the kit owner changes the kit and runs kit syncs; other sessions report kit faults here or to it.
+Updated: 2026-11-18 17:40 by the kit owner (session "Archimedes Lever workflow optimization", the owner, 2026-11-18 16:20). Only the kit owner changes the kit and runs kit syncs; other sessions report kit faults here or to it.
 
 ## State
 
-- main: kit 2.0.1 (79540fe; 2.0.0 = 7b80101, tag v2.0.0 by the owner; 1.0.1 was 591b4cd). Fleet page: https://claude.ai/artifact/AWtpGxEqCWrjrPa1Afe7qW (private; the kit owner updates its rows).
-- Synced: RADE, 36-3003.Z, 65-601.Z, SPAR on 2.0.1 (pull requests 108, 8, 8, 13). 90-161.Z sync pull request 155 open, blocked: its own engine-lock test fails (engine-v16, newest engine-v17), also on main; a 90-161.Z session bumps the lock, then 155 merges. Not synced: icf-source, sec-source.
+- main: kit 3.1.0 (88185f0). Tags (feature releases; the owner makes them): v2.0.0 (7b80101), v3.0.0 (67e7766), v3.1.0 (88185f0). Fleet page: https://claude.ai/artifact/AWtpGxEqCWrjrPa1Afe7qW (private; the kit owner updates its rows).
+- On 3.0.0: RADE, 36-3003.Z, 65-601.Z, SPAR, sec-source (3.1.0 adds only an optional setting). 90-161.Z sync PR 155 (3.0.0) is blocked by its own engine-lock test (engine-v16, newest engine-v17), red on main too: a 90-161.Z session bumps the lock. icf-source PR 135 (3.1.0, first sync, green) waits for the other session's PR 134 (owner's order), then main is merged into 135.
 
 ## Approved plan (the owner, 2026-11-18 12:15; updates approved 13:25 and 14:35): lean two-tier rules and the kit as a synced baseline
 
@@ -17,10 +17,10 @@ Full text, proposals 1 to 26, risks and targets: [reviews/2026-11-18-lean-rules-
 - [x] 1. Kit 2026.11.19 and 2026.11.20 merged (pull requests 44 and 45). Rule tests: 10 pass, 1 not valid, of 11 run.
 - [x] 2. Pilot sync merged: 36-3003.Z (pull request 5), 65-601.Z (5), SPAR (10). They keep the tier "full" (the owner, 2026-11-18: the starter tier drops the project log rule).
 - [x] 3. RADE and 90-161.Z synced to 1.0.1 (RADE pull requests 104 and 105; 90-161.Z by the session "90-161.Z: kit 1.0.1 sync").
-- [ ] 4. icf-source and sec-source: convert AGENTS.md to the kit layout, then sync. Lane C.
+- [ ] 4. sec-source converted and synced (PR 15); icf-source PR 135 open (see State). Lane C.
 - [ ] 5. Owner layer: preferences text and the two account skills (ship, turn-summary) done and pasted by the owner (2026-11-18); tag v1.0.0 done; rulesets and secret scanning are the owner's clicks ([github/README.md](github/README.md)); fleet page done (link under "State"); allow list (25) and "not set yet" lines (24) open.
 - [x] 6. Proposal 20 dropped (the owner, 2026-11-18): an import does not lower the context cost.
-- [ ] 7. Kit 2.0.0 (pull request 53) and 2.0.1 (54: shorter descriptions, so RADE and 90-161.Z stay under 5,000 tokens) merged; 4 of 5 repos synced; 90-161.Z open (State). Tag v2.0.0: the owner, from a release link.
+- [x] 7. Kit 2.0.0, 2.0.1, 3.0.0 (private repos skip the PR Action), 3.1.0 (`content-max-bytes`) merged; syncs as under State.
 - [x] 8. Kit 2026.11.20.1 merged (pull request 42, from the session of pull request 41).
 
 ## Open (in order)
