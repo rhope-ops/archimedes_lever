@@ -102,6 +102,28 @@ def own_part(entry):
     return {**entry, "hooks": own}
 
 
+def changed_matchers(replaced, kit_settings):
+    """The matchers of replaced hook entries that the kit's own settings do not have: only those can hold tool
+    names a project added, so only those are worth a note.
+
+    Args:
+        replaced: matchers collected in REPLACED_HOOKS.
+        kit_settings: the path of the kit's .claude/settings.json.
+
+    Returns:
+        The matchers, in order, that no kit hook entry uses.
+    """
+    try:
+        data = json.loads(Path(kit_settings).read_text())
+    except (OSError, ValueError):
+        return list(replaced)
+    hooks = data.get("hooks") if isinstance(data, dict) else None
+    if not isinstance(hooks, dict):
+        return list(replaced)
+    kit = {e.get("matcher") for entries in hooks.values() if isinstance(entries, list) for e in entries if isinstance(e, dict)}
+    return [m for m in replaced if m not in kit]
+
+
 NEW_ARCS = "| Arc | Span | Summary | Problem | Turning point | Outcome | Lesson |"
 
 

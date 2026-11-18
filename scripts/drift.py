@@ -179,7 +179,7 @@ def pin_row(project, base):
             f"pinned {sha[:7] or '?'}, baseline {base_sha[:7] if base_sha else '?'}")
 
 
-LOG_ELSEWHERE_RE = re.compile(r"(?im)^\s*-\s*project log\b[^\n]*?(https?://\S+|(?<![\w/])[\w.~-]*/[\w./~-]+)")
+LOG_ELSEWHERE_RE = re.compile(r"(?im)^\s*-\s*(?:\*\*)?project log\b[^\n]*?(https?://\S+|(?<![\w/])[\w.~-]*/[\w./~-]+)")
 
 
 def log_kept_elsewhere(rules):
@@ -306,6 +306,9 @@ def settings_merge_cases(tmp, base, results):
     same(results, "merge: a mixed entry keeps only the project's command",
            [h["command"] for e in stop[1:] for h in e["hooks"]], ["python3 tools/own_stop.py"])
     same(results, "merge: the matcher of a replaced kit entry is noted", sb.REPLACED_HOOKS, ["^(Agent|mcp__slack__post)$"])
+    kit_matcher = next(e.get("matcher") for e in json.loads((base / ".claude/settings.json").read_text())["hooks"]["PreToolUse"])
+    same(results, "merge: a replaced entry with the kit's own matcher gets no note",
+         sb.changed_matchers(["^(Agent|mcp__slack__post)$", kit_matcher], base / ".claude/settings.json"), ["^(Agent|mcp__slack__post)$"])
     deny = got["permissions"]["deny"]
     same(results, "merge: the kit deny rules first, the project's rule last",
            [deny[:len(sb.check_blocks.DENY)] == sb.check_blocks.DENY, deny[-1]], [True, "Bash(own rule*)"])
@@ -317,6 +320,7 @@ def log_place_cases(results):
     same(results, "log elsewhere: a URL", log_kept_elsewhere("## Project rules\n\n" + line), True)
     same(results, "log elsewhere: a path, any case", log_kept_elsewhere("- project LOG: notes/private/log.md\n"), True)
     same(results, "log elsewhere: the old wording", log_kept_elsewhere("- Project log location: the wiki\n"), True)
+    same(results, "log elsewhere: the bold-label form", log_kept_elsewhere("- **Project log.** https://claude.ai/artifact/XXXX (private).\n"), True)
     same(results, "log elsewhere: a line with no place", log_kept_elsewhere("- Project log: kept short.\n"), False)
     same(results, "log elsewhere: another rule that names a URL", log_kept_elsewhere("- Docs: https://example.com/x\n"), False)
 

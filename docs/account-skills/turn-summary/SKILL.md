@@ -5,7 +5,7 @@ description: Use at the end of every work turn (not for a pure question), before
 
 # End-of-turn summary
 
-An account skill: the owner uploads this file at claude.ai (Settings, Capabilities, Skills). The preferences ("End-of-turn summary") hold the short form; this file holds the details. Keep it short: each line must change what the owner knows or does.
+An account skill: the owner uploads this file at claude.ai (Settings, Capabilities, Skills). The preferences (the last line of "Reporting") hold the short form; this file holds the details. Keep it short: each line must change what the owner knows or does.
 
 1. Status line: "Step X of Y · <status> · Next: <step, who> · <links>".
 2. Questions, only when a decision is open: 1 to 10, most important first, each with 2–4 options, the recommendation first, and **REC:** with the reason. Use question dialogs of 4, one after another; do not repeat them in text. Carry an open question forward with "(open since <date time>)".

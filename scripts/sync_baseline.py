@@ -73,7 +73,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import check_blocks  # noqa: E402 - the deny rules and the placeholder pattern
 import check_lock  # noqa: E402 - the kit lock that a sync writes into the project
-from sync_merge import REPLACED_HOOKS, die, merge_lines, merge_settings, migrate_arcs  # noqa: E402,F401 - scripts/sync_merge.py
+from sync_merge import REPLACED_HOOKS, changed_matchers, die, merge_lines, merge_settings, migrate_arcs  # noqa: E402,F401 - scripts/sync_merge.py
 
 DEFAULT_BASELINE = "https://github.com/rhope-ops/archimedes_lever"
 RULES_HEADING = "## Project rules"
@@ -560,7 +560,7 @@ def main():
         report_leftovers(root, tier)
         for note in COPY_NOTES:
             print(note)
-        for matcher in REPLACED_HOOKS:
+        for matcher in changed_matchers(REPLACED_HOOKS, base / ".claude/settings.json"):
             print("An older kit hook entry is replaced by the kit's. If you had added tool names to its matcher, add a "
                   f"hook entry of your own for them. The old matcher: {matcher}")
         if not changed:
