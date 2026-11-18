@@ -16,7 +16,8 @@ It reports:
                     work, or when it is not clear, ask before changing anything.
     DENYLIST        the repo has a .pii-guard file but this session has no name denylist, so pushes will be blocked.
     RESUMED         the hook input says source "resume" or "compact" (a restart or a compaction, not a new session):
-                    only this line, so the agent continues the approved plan and does not start over (the owner, 2026-11-18).
+                    this line (plus DENYLIST when it applies) instead of KIT and FIRST USE: the agent runs the check-in and
+                    continues the approved plan, without a new plan review (the owner, 2026-11-18).
 The kit repo itself keeps its placeholders on purpose: it gets the KIT line, never FIRST USE.
 Exit 0 always: a session-start hook informs, it never blocks. Standard library only.
 """
@@ -108,21 +109,38 @@ def hook_source(raw):
 
 
 def read_hook_input():
-    """The hook input on stdin; "" for a terminal, or when nothing arrives within 2 s (a manual run must not hang)."""
+    """The hook input on stdin; "" for a terminal or when nothing arrives within 2 s. Stops at 1 MB or 5 s (never hangs)."""
     try:
         if sys.stdin is None or sys.stdin.isatty():
             return ""
         import select
-        fd, chunks, wait = sys.stdin.fileno(), [], 2.0
-        while select.select([fd], [], [], wait)[0]:  # read only what arrives: never wait for an EOF that may not come
+        import time
+        fd, chunks, wait, size, end = sys.stdin.fileno(), [], 2.0, 0, time.monotonic() + 5
+        while size < 1_000_000 and time.monotonic() < end and select.select([fd], [], [], wait)[0]:  # read only what arrives: never wait for an EOF that may not come
             chunk = os.read(fd, 65536)
             if not chunk:
                 break
             chunks.append(chunk)
+            size += len(chunk)
             wait = 0.2
         return b"".join(chunks).decode("utf-8", "replace")
     except Exception:  # no select on this stdin (for example a Windows pipe): treat as a new session
         return ""
+
+
+def hook_cases(d, expect):
+    """Hook-input cases in repo d: the source field, and the real hook on resume, invalid UTF-8 and 3 MB of input."""
+    for raw, want in (('{"source": "resume"}', "resume"), ('{"source": "compact"}', "compact"),
+                      ('{"source": "startup"}', "startup"), ("", ""), ("not json", ""), ("[1]", "")):
+        expect(f"hook source of {raw!r}", hook_source(raw), want)
+    os.environ["PII_GUARD_DENYLIST"] = "Sam"
+    run_hook = lambda data: subprocess.run([sys.executable, os.path.abspath(__file__)], cwd=d, input=data,
+                                           capture_output=True, timeout=20)
+    hook = lambda data: run_hook(data).stdout
+    expect("hook run with source resume: RESUMED only", [l.split(b":")[0] for l in
+           hook(b'{"source": "resume"}').splitlines()], [b"RESUMED"])
+    expect("hook run with invalid UTF-8: a new session", hook(b"\xff\xfe").startswith(b"RESUMED"), False)
+    expect("hook run with 3 MB of input: ends, exit 0", run_hook(b"x" * 3_000_000).returncode, 0)
 
 
 def self_test():
@@ -169,9 +187,7 @@ def self_test():
             ok = ok and good
             pathlib.Path(d, ".pii-guard").unlink()
             expect("set-up project, guard off", kinds(), [])
-            for raw, want in (('{"source": "resume"}', "resume"), ('{"source": "compact"}', "compact"),
-                              ('{"source": "startup"}', "startup"), ("", ""), ("not json", ""), ("[1]", "")):
-                expect(f"hook source of {raw!r}", hook_source(raw), want)
+            hook_cases(d, expect)
     finally:
         for k, v in saved.items():
             os.environ.pop(k, None)

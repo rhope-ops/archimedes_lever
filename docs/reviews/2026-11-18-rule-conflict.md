@@ -16,3 +16,14 @@ Fresh-context check of the rule line changed against origin/main (`.claude/skill
 6. Related, existing: the skill said to skip the start steps after a restart, but AGENTS.md "Start of session" runs the check-in each session. Fixed: the RESUMED line and the skill now run the check-in and skip only the plan review and repeated questions.
 
 rule-conflict-check: b41b0311e421
+
+## Second check: the end changed to "without a new plan review or approval"
+
+The owner approved the change of finding 1 on 2026-11-18. Same reviewer setup (`reviewer`, Opus). Result: no MAJOR finding; the fresh code review (Delegation) is no longer in conflict. MINOR findings, not changed in the rule text because the skill or "Order of authority" settles each one:
+
+1. The kit clone (save in the pull request text, not NEXT_PROMPT): the handoff skill says so.
+2. A new request after a restart: "Order of authority" rank 1 (the owner's current request) wins, and the same bullet says "The current request overrides an older handoff".
+3. A plan over the 40-line cap: the handoff skill puts it in docs/reviews/ with a link.
+4. The same fact is in PREFERENCES.md (the account text, for work outside repos), AGENTS.md and the skill: the owner approved both texts; the skill gives only the steps.
+
+rule-conflict-check: d3b0d2e4b409
