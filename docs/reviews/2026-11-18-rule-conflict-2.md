@@ -45,3 +45,19 @@ rule-conflict-check: f81c2ce9429d
 | 9 | MINOR | "DENYLIST", "word lists", "the words of a list". | Accepted: DENYLIST is the script's output line; "word lists" covers names and terms. |
 | 10 | MINOR | The cap values are in the rule and in the script. | Accepted: the owner approved the text with the values; the script is the enforcement. |
 | 11 | MINOR | Rows not named in "Replaces": "Merge without per-PR approval" (2026-11-13) and the 2026-11-15 rows that name `.pii-guard`. | Done in docs/DECISIONS.md with the final texts. |
+
+## Third check, after the owner approved the fixes of the second check
+
+Same reviewer type, a new fresh context, same input and brief. Head `ee1c0af`.
+
+rule-conflict-check: a53e6dcf241b
+
+| # | Severity | Finding | Action |
+|---|---|---|---|
+| 1 | MAJOR | A clean self-review: "Authority" and "Delivery" say merge without a question; "Delegation" says ask the owner before the merge. | To the owner: the "Delivery" exceptions line names the self-review. |
+| 2 | MINOR | "Checks" forbids "an exemption ... to make a check pass"; "Personal data" allows an allow or skip entry the owner asks for. | Accepted: the owner's own request is not an agent's exemption ("Rules and decisions", second rule). |
+| 3 | MINOR | "Verification" says run the checks in Commands; "Checks" says do not run the fast lane by hand before a push. | Accepted: "verified" needs the full lane, which the agent runs once before the merge. |
+| 4 | MINOR | "once before the merge" when a fix makes a new head commit. | Accepted: the line says "on the head commit". |
+| 5 | MINOR | "Replaces" did not name the texts "its result decides" and "when the full lane is green". | Done in docs/DECISIONS.md with the next row. |
+| 6 | MINOR | The kit handoff file is named in 3 lines; the 40-line cap does not name it. | Accepted: each line needs the name where an agent reads it; docs/KIT_HANDOFF.md states its own cap. |
+| 7 | MINOR | "live or irreversible effects" is in "Authority" and in "Delivery". | Accepted: one is the ask-list, the other the merge step. |
