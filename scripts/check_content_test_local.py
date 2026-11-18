@@ -143,7 +143,8 @@ def case_load_ends(check, scripts, d, path, write):
     with open(path, "w") as f:   # a load that hangs: the hook's own time budget ends it with a block
         f.write("import time\ntime.sleep(20)\n")
     import time
-    for value, label in (("1", "the timer ends it"), ("abc", "a bad timer value still blocks")):
+    for value, label in (("1", "the timer ends it"), ("abc", "a bad timer value still blocks"),
+                         ("\u00b2", "a superscript digit still blocks"), ("9" * 5000, "a very long number still blocks")):
         os.environ["CHECK_HOOK_LOAD_S"] = value
         try:
             t0 = time.monotonic()
@@ -152,7 +153,7 @@ def case_load_ends(check, scripts, d, path, write):
         finally:
             del os.environ["CHECK_HOOK_LOAD_S"]
         # with "1" the load timer must end the process long before the 20 s sleep does; with a bad value it is 8 s
-        check(f"local module that hangs at load: the hook blocks, {label} (exit {code}, {took:.0f} s)",
+        check(f"local module that hangs at load: the hook blocks, {label} (exit {code}, under {5 if value == '1' else 15} s)",
               code == 2 and took < (5 if value == "1" else 15))
 
 
