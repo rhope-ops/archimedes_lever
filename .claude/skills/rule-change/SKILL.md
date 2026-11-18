@@ -38,7 +38,7 @@ Why: <the trigger, with its evidence>. Replaces: <the line it replaces, or "noth
 
 1. Search AGENTS.md (all sections, and the header values such as `- Time zone:`) and docs/DECISIONS.md for the same topic. If a line or a header value exists or conflicts, show both and ask which wins (two rules that disagree make agents act at random).
 2. One line, with its reason in brackets where the reason is not plain.
-3. At the cap, the same change removes a line (one in, one out). Never raise a cap on your own: the caps are the owner's decision (`budgets` in `.bloat-audit.json`).
+3. At a cap (below), the same change removes a line (one in, one out). Never raise a cap on your own: the caps are the owner's decision (`KIT_CAPS` in `scripts/bloat_check.py`).
 4. Record the approval as a row in docs/DECISIONS.md (date, scope, what it replaces).
 5. Full tier: run the scenario in `.claude/rule-tests.md` for the changed rule. Run all scenarios after a switch to a new Claude model family.
 6. After the edit: the rule lint and the conflict check (below).
@@ -63,7 +63,7 @@ When rule lines change against origin/main, `--rules` prints a hash, and the ful
 
 ## The caps
 
-`python3 scripts/bloat_check.py --rules` prints the rule count of AGENTS.md (list items in the kit sections; list items, paragraphs and table rows in "Project rules", where each unindented line counts; a wrapped line belongs to its item only when it is indented) against the caps, each rule line added or removed against origin/main, and each path that AGENTS.md names but that does not exist. `scripts/check.sh` runs it and fails when a cap is passed, a path is missing, or (full lane) the conflict check of changed lines has no record. Starter tier: no script; count by hand, and run the conflict check all the same.
+`python3 scripts/bloat_check.py --rules` prints the line count of AGENTS.md and the session load (the start-read files plus the skill and agent names and descriptions) against their caps, the rule bullet counts (a guide: over 35 or 15 only warns), each rule line added or removed against origin/main, and each path that AGENTS.md names but that does not exist. `scripts/check.sh` runs it and fails when a cap is passed, a path is missing, a skill or agent file states a rule that has its home elsewhere (`SINGLE_HOME` in `scripts/bloat_check_skills.py`), or (full lane) the conflict check of changed lines has no record. A skill holds steps; when a step needs a rule, it names the AGENTS.md section. Starter tier: no script; count by hand, and run the conflict check all the same.
 
 ## Labels
 

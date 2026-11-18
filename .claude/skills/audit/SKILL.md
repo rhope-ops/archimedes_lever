@@ -7,7 +7,7 @@ description: Use when the owner asks for a bloat, drift, rule or speed audit, wh
 
 The full periodic audit that AGENTS.md "Bloat, drift and assumptions" calls for. Claude or a person can run it. Never start it unasked: when the check-in says AUDIT DUE, tell the owner and ask (about 1 hour of agent time).
 
-Due: every 14 days or 300 commits to main, whichever comes first, and before a release. The owner may set other values in `.bloat-audit.json`. One operation slower than its baseline: `.claude/skills/efficiency/SKILL.md`; it proposes this audit when the cause is spread over many files.
+Due: every 14 days or 300 commits to main, whichever comes first, and before a release. The owner may set other values in `.check` (`audit-every-days:`, `audit-every-commits:`). One operation slower than its baseline: `.claude/skills/efficiency/SKILL.md`; it proposes this audit when the cause is spread over many files.
 
 Why: two audits of one project found layered bloat that made a simple operation 5x slower (116.6 s to 23.4 s after the fix). Each layer looked reasonable when an agent added it. Agents add; they seldom remove. This audit finds what to remove and proposes it.
 
@@ -15,7 +15,7 @@ Why: two audits of one project found layered bloat that made a simple operation 
 
 - Measure first, then change. Every finding has evidence: a path and line, a count, a size or a time. No finding from impression.
 - Fix the cause, then apply the same fix everywhere the pattern appears.
-- Removals need the owner's approval. Do not remove, shorten or reword code, a script, a flag, a config, a template, a doc section, a rule, a decision, a test or a feature until the owner approves. Deliver the proposals as a ready pull request that only the owner merges (Step 5.4).
+- Removals need the owner's approval. Do not remove, shorten or reword code, a script, a flag, a config, a template, a doc section, a rule, a decision, a test or a feature until the owner approves. Deliver the proposals as a pull request (Step 5.4).
 - Profile before you prune: a slow check is more often 1 or 2 hot spots than too many tests. Time the steps first.
 - "Nothing in the repo calls it" does not prove a thing is unused. People run tools by hand, from other repos or devices, and from pasted prompts. Agents read only the repo, so a request that lives only in chat is invisible to them.
 - Exceptions (no approval), the only list: (a) files made on this audit's own branch; (b) generated files rebuilt from their source; (c) agent scratch files (debug output, "_old"/"_v2" copies) that nothing references AND whose adding commit names no request or decision; (d) exact duplicates merged into the canonical copy, text kept word for word; (e) reference text moved out of start-read files unchanged, except from instruction and guard files (AGENTS.md "Rules and decisions"), where every change is a proposal. List each in the report.
@@ -28,7 +28,7 @@ Why: two audits of one project found layered bloat that made a simple operation 
 ## Step 1: inventory and baseline (measure before)
 
 1. `python3 scripts/bloat_check.py --time` (full report) and `python3 scripts/bloat_check.py --rules` (rule counts). Copy the numbers into the report. Run `scripts/check.sh` and copy its `TIME` line (wall time and the 3 slowest steps).
-2. If `.bloat-audit.json` has no `timings`, add the 2–4 operations people run most (tests, build, session check-in, the main user task) and run `--time --record` once to set a baseline. Record the machine type: times compare only on the same kind of machine.
+2. If `.check.state.json` has no `timings`, add the 2–4 operations people run most (tests, build, session check-in, the main user task) and run `--time --record` once to set a baseline. Record the machine type: times compare only on the same kind of machine.
 3. List tracked files by size and by last change (`git ls-files`, `git log -1 --format=%cs -- <file>`). Mark files with no change in 90+ days and no reference from any other file.
 4. Count what every session loads: instruction files, imported files, the handoff, the decision log, host prompts, personal preferences, hook output. Express it in tokens (bytes / 4).
 
@@ -78,14 +78,14 @@ Assumptions that nobody checked are drift that has not happened yet.
 1. Make only the fixes in the exceptions list in "Rules for the auditor". Every other removal, shortening or rewording is a proposal for the owner (Step 5.4); make it only after the owner approves.
 2. Run the project's checks (AGENTS.md "Commands"). All must pass as before.
 3. Run `python3 scripts/bloat_check.py --time` again. Report before → after for each number.
-4. Changes to code, checks or scripts get the fresh review that AGENTS.md "Delegation" requires before merge.
+4. AGENTS.md "Delegation" says which changes need the fresh review before the merge.
 
 ## Step 5: record
 
 1. Write `docs/reviews/YYYY-MM-DD-bloat-audit.md` (or the place AGENTS.md "Project rules" names): the before/after table, findings by category with evidence, fixes made, proposals for the owner, the assumption table, the tech-debt register.
-2. Update `.bloat-audit.json`: `last_audit` (date, commit on main after the fixes, report path), new `timings` baselines (`--time --record`; the lanes as `.claude/skills/efficiency/SKILL.md` "Record a baseline" says), and `ignore` globs for generated or reference files that the duplicate scan should skip (each new glob is a proposal: it hides files from the scan).
+2. Update `.check.state.json`: `audit`: `last_audit` (date, commit on main after the fixes, report path) and new `timings` baselines (`--time --record`; the lanes as `.claude/skills/efficiency/SKILL.md` "Record a baseline" says). In `.check`: `audit-ignore:` globs for generated or reference files that the duplicate scan should skip (each new glob is a proposal: it hides files from the scan).
 3. Log the audit in the project log (milestone; a breakthrough when a fix removes a blocker or saves 25%+ time).
-4. Ask the owner the open questions together, each with options and a recommendation. Removal proposals: make the 5 with the largest saving on a second branch and open one pull request for them, one commit for each item, with a table in its text: what, where, why it exists (or "not found"), evidence it is unused, saving, risk. An agent never merges this pull request: the owner's merge is the approval, and the owner can drop a commit. List the other proposals in the report for the next audit; a long list is not approved, so it removes nothing.
+4. Ask the owner the open questions together, each with options and a recommendation. Removal proposals: make the 5 with the largest saving on a second branch and open one pull request for them, one commit for each item, with a table in its text: what, where, why it exists (or "not found"), evidence it is unused, saving, risk. Ask the owner to approve each item in a question dialog, drop the commits that are not approved, then deliver it (`.claude/skills/deliver/SKILL.md`). List the other proposals in the report for the next audit; a long list is not approved, so it removes nothing.
 
 ## Report table (minimum)
 

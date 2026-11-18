@@ -75,3 +75,39 @@ def main_skills(root):
     print("\n".join(rows + [f"SKILLS FAIL: {fails} skill(s) malformed, {n} skills, {warns} warnings" if fails
                            else f"SKILLS PASS: {n} skills, {warns} warnings"]))
     return 1 if fails else 0
+
+
+def listing_bytes(root):
+    """Bytes of the names and descriptions of .claude/skills/*/SKILL.md and .claude/agents/*.md: Claude Code puts
+    them in every session's context, so they count toward the session load."""
+    total = 0
+    for f in sorted((root / ".claude/skills").glob("*/SKILL.md")) + sorted((root / ".claude/agents").glob("*.md")):
+        fm = skill_frontmatter(f.read_text(encoding="utf-8", errors="replace")) or {}
+        total += len((fm.get("name", "") + fm.get("description", "")).encode())
+    return total
+
+
+# One home per rule (the owner, 2026-11-18): a rule that AGENTS.md states must not be stated again, or the other
+# way round, in a skill or an agent file; those files link to it. Each row: (the rule, a pattern that shows a
+# second statement, the files that may hold it). A match in any other skill or agent file fails scripts/check.sh.
+SINGLE_HOME = [
+    ("who merges a pull request", r"only the owner merges|the owner merges\b|never merges this pull request|the owner's merge is the approval", ["AGENTS.md"]),
+    ("no direct push to main", r"merge to main by merge|\bPush main:|git checkout main && git merge|push to main and republish", ["AGENTS.md"]),
+    ("the end-of-turn summary format", r"end-of-turn summary line:", ["AGENTS.md"]),
+]
+
+
+def second_homes(root, table=None):
+    """Problems for each SINGLE_HOME rule found in a skill or agent file that is not its home."""
+    files = sorted((root / ".claude/skills").glob("*/SKILL.md")) + sorted((root / ".claude/agents").glob("*.md"))
+    out = []
+    for label, pattern, homes in (SINGLE_HOME if table is None else table):
+        rx = re.compile(pattern, re.IGNORECASE)
+        for f in files:
+            rel = f.relative_to(root).as_posix()
+            if rel in homes:
+                continue
+            for n, line in enumerate(f.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+                if rx.search(line):
+                    out.append(f"second home of a rule: {rel}:{n} states \"{label}\"; its home is {homes[0]}: link to it")
+    return out

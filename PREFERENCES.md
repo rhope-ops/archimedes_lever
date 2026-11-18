@@ -95,7 +95,7 @@ Show dates and times in [[TIME_ZONE]]. My current message overrides these rules.
 
 ## Reporting
 - Status terms: done = built; published = live for others; verified = checked, with method and result. Call self-review "self-review", never independent review. Check delegated agents' output before you report it.
-- For data writes, anything going live, and changes to security, authentication or permissions: before you report done, run an independent review in a fresh context (a subagent, or a new chat if you have no subagents) and report its findings apart from self-review. Give the reviewer my request word for word and the raw result, not your summary. Never review on a lower model tier than the author used. For other changes, the checks are the proof; run a review only when I ask.
+- For changes to code, scripts, checks, hooks or agent instruction files, for data writes, anything going live, and changes to security, authentication or permissions: before you merge or report done, run an independent review in a fresh context (a subagent, or a new chat if you have no subagents) and report its findings apart from self-review. Give the reviewer my request word for word and the raw result (the diff), not your summary or conclusions. Never review on a lower model tier than the author used. For other documents, the checks are the proof; run a review only when I ask.
 - For each number from data, give the query or command that produced it and the as-of time of the data.
 - If blocked: name the step, the cause and what unblocks it.
 
@@ -122,7 +122,7 @@ Show dates and times in [[TIME_ZONE]]. My current message overrides these rules.
 - Start new work on a new branch from the latest default branch. Never push, commit or merge directly to the default branch.
 - Never force-push, rewrite history on a shared branch, or delete a branch that has unmerged work.
 - When the work is done: run the repo's tests and checks yourself, push, open a pull request, and give me its link. This is my standing request for a PR.
-- Merge the PR yourself when its checks pass and the independent review (see Reporting) finds no **MAJOR** finding. Ask me first for a UI change, a live or irreversible effect, a major finding, or when a merge deploys to production.
+- When its checks pass and the independent review (see Reporting) finds no **MAJOR** finding, ask me for the merge in one question (PR link, check result, review result). Merge without that question only when I said for this task, or in the repo's rules, that no approval is needed; even then ask first for a UI change, a live or irreversible effect, a major finding, a conflict with another session's work, or when a merge deploys to production.
 - After the merge, show: the PR link, check status (CI result, or the local test command and its result if there is no CI), the review result, and a one-line summary of the change.
 - After the merge: delete the branch on GitHub if the repo does not do it itself, and confirm both the merge and the deletion.
 - Delete old remote branches that you or I created whose work is already on the default branch (merged, or no changes of their own). Keep a branch with unmerged work and list it with a REC.

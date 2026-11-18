@@ -9,12 +9,12 @@ AGENTS.md "Bloat, drift and assumptions" points here. A slowdown that nobody loo
 
 ## Where times are compared
 
-| Process | Compared | Baseline in `.bloat-audit.json` |
+| Process | Compared | Baseline in `.check.state.json` |
 |---|---|---|
 | `scripts/check.sh` (full lane) | Wall time and each step | `timings.check.seconds`, `timings.check.steps` |
 | `scripts/check.sh --fast` | Each step (its total depends on what changed) | `timings.check.steps` |
 | `scripts/session_checkin.sh` | Its run time | `timings.checkin.seconds` |
-| Pre-push hook | The personal-data guard run | `timings.push-guard.seconds` |
+| Pre-push hook | The content check run | `timings.push-guard.seconds` |
 | `python3 scripts/bloat_check.py --time` | Each timing with a `cmd` | `timings.<name>.seconds` |
 
 Slower means both: over `max_slowdown` (default +25%) and over `min_slowdown_seconds` (default 0.5 s), per timing. The second limit stops noise on a step of 0.1 s.
@@ -34,11 +34,11 @@ When the cause is spread over many files (layers of small additions), stop and p
 - Check lanes: run the full lane 3 times; `scripts/check.sh --record` after the 3rd pass stores each step; then `python3 scripts/bloat_check.py --compare check=<median wall time> --record` sets the wall time to the median of the 3 runs.
 - One time: `python3 scripts/bloat_check.py --compare NAME=SECONDS --record` (NAME as in the table; `check:<step>` for one step). Use the median of 3 runs.
 - Commands with a `cmd`: `python3 scripts/bloat_check.py --time --record`.
-- Commit the change to `.bloat-audit.json`, with the before and after numbers in the commit message.
+- Commit the change to `.check.state.json`, with the before and after numbers in the commit message.
 - A new baseline after a fix, or for a new step, is routine. A slower baseline with no fix (accepting the cost) needs the owner's approval: put it under Suggest, with the numbers.
 
 ## Time a new repeatable process
 
-- A command people or hooks run: add a timing with its `cmd` to `.bloat-audit.json`, then record it.
+- A command people or hooks run: add a timing with its `cmd` to `timings` in `.check.state.json`, then record it.
 - A script that runs itself (a hook, the check-in): measure the run and call `bloat_check.py --compare NAME=SECONDS`, as `scripts/session_checkin.sh` does.
 - An agent procedure (deliver, a review, an audit): write its start and end time in the report. When it runs a 2nd time, propose a script for it under Suggest.

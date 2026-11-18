@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Cheap bloat and drift metrics for a project repo, and the bloat-audit due date. Report only, unless --record.
+"""Cheap bloat and drift metrics for a project repo, and the audit due date. Report only, unless --record.
 
 Usage:
     python3 scripts/bloat_check.py            # full report
     python3 scripts/bloat_check.py --brief    # one line (scripts/session_checkin.sh runs this)
-    python3 scripts/bloat_check.py --time     # also run each timed command in .bloat-audit.json and compare
+    python3 scripts/bloat_check.py --time     # also run each timed command in .check.state.json and compare
     python3 scripts/bloat_check.py --time --record   # run them and store the new seconds as the baseline
     python3 scripts/bloat_check.py --strict   # exit 1 when a budget is over or the audit is due
     python3 scripts/bloat_check.py --rules    # rule counts against the caps, rule lines added or removed against
@@ -26,9 +26,10 @@ Usage:
     python3 scripts/bloat_check.py --test     # self-test (scripts/bloat_check_test.py); prints BLOAT TEST PASS
 
 It measures:
-    start read    lines, bytes and ~tokens (bytes / 4) of the files every session reads first
-                  (AGENTS.md, CLAUDE.md, docs/NEXT_PROMPT.md, plus "start_read" in the config; docs/DECISIONS.md
-                  is a record that agents read on demand, so it is not counted)
+    session load  bytes and ~tokens (bytes / 4) of what every session loads: AGENTS.md, CLAUDE.md,
+                  docs/NEXT_PROMPT.md, the `audit-start-read:` files, and the skill and agent names and descriptions.
+                  Caps for every repo (KIT_CAPS; a project can lower one, never raise it): 6,000 tokens (warning at
+                  5,000) and 200 lines of AGENTS.md; over a cap fails --rules
     rules         list items in AGENTS.md (any marker, any indent; a wrapped line is part of its item): the kit
                   sections (the header, "## Commands" and the numbered ranking in "## Order of authority" are not
                   counted) and "## Project rules" (there a paragraph or a table row counts too), each against its
@@ -44,42 +45,41 @@ It measures:
     handoff       docs/NEXT_PROMPT.md lines
     duplicates    normalized text lines of 80+ characters found in 2 or more tracked files
     big files     tracked files over the size budget
-    audit due     days and commits on main since the last full audit (.bloat-audit.json "last_audit")
+    audit due     days and commits on main since the last full audit (.check.state.json "audit": "last_audit")
     timings       (--time) wall time of each named command against its recorded baseline; (--compare) times that
                   a script measured itself: NAME is a timings key, NAME:STEP one of its "steps". Slower means over
                   max_slowdown (default +25%) and over min_slowdown_seconds (default 0.5 s), so noise on a small step
                   does not warn. A slowdown starts .claude/skills/efficiency/SKILL.md
 
-.bloat-audit.json (project-owned; the full audit in .claude/skills/audit/SKILL.md writes it). All keys are optional:
-    {"last_audit": {"date": "YYYY-MM-DD", "commit": "<sha>", "report": "<path>"},
-     "every_days": 14, "every_commits": 300,
-     "budgets": {"start_read_tokens": 4500, "start_read_warn_tokens": 3500, "handoff_lines": 40, "file_kb": 500, "duplicate_lines": 20,
-                 "rules": 35, "project_rules": 15},
-     "start_read": [], "ignore": ["ref/**"],
+Settings: the `audit-` lines of `.check` (scripts/check_settings.py reads them and lists the keys; all are optional,
+and a line that is not valid fails --rules):
+    audit-every-days: 14, audit-every-commits: 300, audit-ignore: ref/**, audit-start-read: <path>,
+    audit-budget-<name>: <number> (handoff_lines 40, file_kb 500, duplicate_lines 20, rules 35, project_rules 15)
+State: `.check.state.json` (tools write it; the full audit in .claude/skills/audit/SKILL.md sets "last_audit"):
+    {"audit": {"last_audit": {"date": "YYYY-MM-DD", "commit": "<sha>", "report": "<path>"}},
      "timings": {"tests": {"cmd": "tests/run.sh", "seconds": 20.8, "max_slowdown": 0.25},
-                 "check": {"cmd": "bash scripts/check.sh", "seconds": 4.5, "steps": {"pii_guard self-test": 4.1}},
+                 "check": {"cmd": "bash scripts/check.sh", "seconds": 4.5, "steps": {"check_content self-test": 4.1}},
                  "push-guard": {"seconds": 0.4}}}
 A timing with no "cmd" is only compared (--compare), never run by --time.
-start_read_warn_tokens only warns (never "over", never fails --strict); set it to the cap to turn the warning off.
+The "rules" and "project_rules" bullet counts only warn.
 A repo with no "last_audit" reports AUDIT DUE (never audited) once it is every_days or every_commits past its first
-commit (a new project is not due on day one; an older project synced for the first time usually is). The first audit
-creates the file. Exit 0, unless --strict and something is over (exit 1). Standard library only. Needs git.
+commit (a new project is not due on day one; an older project synced for the first time usually is).
+Exit 0, unless --strict and something is over (exit 1). Standard library only. Needs git.
 """
 import argparse
 import datetime
 import fnmatch
-import json
 import re
 import subprocess
 import sys
 import time
 from pathlib import Path
 
-CONFIG = ".bloat-audit.json"
+import check_settings  # scripts/check_settings.py: the reader of .check and the reader and writer of .check.state.json
+
+STATE = check_settings.STATE
 START_READ = ["AGENTS.md", "CLAUDE.md", "docs/NEXT_PROMPT.md"]
-DEFAULTS = {"every_days": 14, "every_commits": 300,
-            "budgets": {"start_read_tokens": 4500, "start_read_warn_tokens": 3500, "handoff_lines": 40, "file_kb": 500,
-                        "duplicate_lines": 20, "rules": 35, "project_rules": 15}}
+DEFAULTS = check_settings.AUDIT_DEFAULTS  # the settings when .check has no `audit-` line
 RULES_FILE = "AGENTS.md"
 PROJECT_RULES = "## Project rules"
 NOT_RULES = {"## Commands"}  # project-owned settings, not rules
@@ -108,28 +108,22 @@ def git(root, *args):
 
 
 def load_config(root):
-    """The DEFAULTS merged with .bloat-audit.json (budgets merged key by key); ValueError when it is not an object."""
-    cfg = json.loads(json.dumps(DEFAULTS))
-    p = root / CONFIG
-    if p.exists():
-        data = json.loads(p.read_text(encoding="utf-8"))
-        if not isinstance(data, dict):
-            raise ValueError("top level is not an object")
-        budgets = {**cfg["budgets"], **data.get("budgets", {})}
-        cfg.update(data)
-        cfg["budgets"] = budgets
-    return cfg
+    """The audit settings of .check, with "last_audit" and "timings" from .check.state.json; ValueError when a
+    line is not valid or a file cannot be read (scripts/check_settings.py; KIT_CAPS budgets can only be lowered there)."""
+    return check_settings.audit_config(root)
 
 
 def ignored(rel, cfg):
-    """True when rel matches a glob in the config's "ignore" list."""
+    """True when rel matches a glob of an `audit-ignore:` line."""
     return any(fnmatch.fnmatch(rel, g) for g in cfg.get("ignore", []))
 
 
 def start_read(root, cfg):
-    """Return (lines, bytes, ~tokens, [(file, bytes)] largest first) of the files every session reads first."""
-    lines = size = 0
-    files = []
+    """Return (lines, bytes, ~tokens, [(file, bytes)] largest first) of what every session loads: the start-read
+    files, and the names and descriptions of the skills and agents (one entry; Claude Code lists them at start)."""
+    import bloat_check_skills  # scripts/bloat_check_skills.py: kept apart (code standard C4)
+    lines, size = 0, bloat_check_skills.listing_bytes(root)
+    files = [("skill and agent descriptions", size)] if size else []
     for rel in START_READ + cfg.get("start_read", []):
         p = root / rel
         if p.is_file():
@@ -285,12 +279,24 @@ def rules_report(root, cfg, gate=False):
     text = p.read_text(encoding="utf-8", errors="replace")
     b = cfg["budgets"]
     kit, project, every = rule_lines(text)
-    out = [f"rules:       {RULES_FILE} {len(kit)} (cap {b['rules']}) · Project rules {len(project)} (cap {b['project_rules']})"]
+    n_lines, load = len(text.splitlines()), start_read(root, cfg)[2]
+    out = [f"rules:       {RULES_FILE} {n_lines} lines (cap {b['rules_file_lines']}) · session load ~{load:,} tokens "
+           f"(cap {b['session_load_tokens']:,}) · {len(kit)} rule bullets · Project rules {len(project)}"]
     problems = []
+    if n_lines > b["rules_file_lines"]:
+        problems.append(f"{RULES_FILE} over the line cap ({n_lines} > {b['rules_file_lines']})")
+    if load > b["session_load_tokens"]:
+        problems.append(f"session load over the cap (~{load:,} > {b['session_load_tokens']:,} tokens: the start-read files "
+                        "plus the skill and agent descriptions)")
+    elif load > b["session_load_warn_tokens"]:
+        out.append(f"WARN  session load ~{load:,} tokens is over the warning ({b['session_load_warn_tokens']:,}); trim before the cap")
+    # The bullet counts only warn (the owner, 2026-11-18): the line and load caps are the limits.
     if len(kit) > b["rules"]:
-        problems.append(f"rules over the cap ({len(kit)} > {b['rules']})")
+        out.append(f"WARN  {len(kit)} rule bullets (guide {b['rules']})")
     if len(project) > b["project_rules"]:
-        problems.append(f"project rules over the cap ({len(project)} > {b['project_rules']})")
+        out.append(f"WARN  {len(project)} project rule bullets (guide {b['project_rules']})")
+    import bloat_check_skills  # scripts/bloat_check_skills.py: kept apart (code standard C4)
+    problems += bloat_check_skills.second_homes(root)
     old = None
     for ref in ("origin/main", "origin/master"):
         old = git(root, "show", f"{ref}:{RULES_FILE}")
@@ -431,7 +437,7 @@ def compare_times(cfg, pairs, record=False):
             else:
                 entry["seconds"] = secs
     if record:
-        return f"TIME  baseline recorded for {n} time(s) in {CONFIG}", []
+        return f"TIME  baseline recorded for {n} time(s) in {STATE}", []
     if slow:
         return ("WARN  slower than the baseline: " + "; ".join(slow) +
                 ". Next: .claude/skills/efficiency/SKILL.md (a measured slowdown starts it)"), slow
@@ -455,11 +461,8 @@ def main_compare(root, items, record):
 
 
 def save_timings(root, timings):
-    """Write timings into .bloat-audit.json and keep its other keys."""
-    p = root / CONFIG
-    data = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
-    data["timings"] = timings
-    p.write_text(json.dumps(data, indent=2) + "\n")
+    """Write timings into .check.state.json and keep its other parts."""
+    check_settings.save_part(root, "timings", timings)
 
 
 def report(root, args, today=None):
@@ -469,7 +472,7 @@ def report(root, args, today=None):
         cfg = load_config(root)
         due = audit_due(root, cfg, today)
     except (ValueError, TypeError, KeyError) as e:
-        print(f"bloat:       {CONFIG} unreadable ({e}); fix it, then run scripts/bloat_check.py")
+        print(f"bloat:       settings unreadable ({e}); fix it, then run scripts/bloat_check.py")
         return 1 if args.strict else 0
     b = cfg["budgets"]
     files = scan_files(root, cfg)
@@ -479,10 +482,8 @@ def report(root, args, today=None):
     dups = duplicates(root, files)
     big = big_files(root, files, b["file_kb"])
     over = []
-    if s_tok > b["start_read_tokens"]:
-        over.append("start read")
-    # Early warning only (never fails --strict): rule growth shows before the hard cap (kit default, 2026-11-13).
-    warn = "start read over warning" if b.get("start_read_warn_tokens", 0) < s_tok <= b["start_read_tokens"] else ""
+    # The session load cap and its warning are reported by rules_report (they fail scripts/check.sh --rules).
+    warn = "session load over warning" if b.get("session_load_warn_tokens", 0) < s_tok <= b["session_load_tokens"] else ""
     if h_lines > b["handoff_lines"]:
         over.append("handoff")
     if len(dups) > b["duplicate_lines"]:
@@ -499,10 +500,10 @@ def report(root, args, today=None):
     tail = (f"AUDIT DUE ({due}): tell the owner and ask whether to run the audit skill (.claude/skills/audit/SKILL.md, "
             "about 1 hour of agent time); never start it unasked") if due else "audit not due"
     if args.brief:
-        print(f"bloat:       start read ~{s_tok:,} tokens (budget {b['start_read_tokens']:,}) · {r_rows[0][13:]} · duplicate lines "
+        print(f"bloat:       {r_rows[0][13:]} · duplicate lines "
               f"{len(dups)} · big files {len(big)} · over: {', '.join(over) or 'none'}{' · ' + warn if warn else ''} · {tail}")
     else:
-        print(f"start read:  {s_lines} lines, {s_bytes:,} bytes, ~{s_tok:,} tokens (budget {b['start_read_tokens']:,})")
+        print(f"session load: {s_bytes:,} bytes, ~{s_tok:,} tokens (cap {b['session_load_tokens']:,})")
         for rel, size in s_files:
             print(f"  {rel}: {size:,} bytes")
         print(r_rows[0])
@@ -518,7 +519,7 @@ def report(root, args, today=None):
             print("timings:\n" + "\n".join(t_rows))
         print(f"over budget: {', '.join(over) or 'none'}")
         if warn:
-            print(f"warning:     {warn} ({b['start_read_warn_tokens']:,} tokens); trim rules before the cap")
+            print(f"warning:     {warn} ({b['session_load_warn_tokens']:,} tokens); trim rules before the cap")
         print(tail)
     return 1 if args.strict and (over or due) else 0
 
@@ -537,7 +538,7 @@ def main_rules(root, gate=False):
     try:
         cfg = load_config(root)
     except (ValueError, TypeError, KeyError) as e:
-        print(f"rules:       {CONFIG} unreadable ({e}); fix it first")
+        print(f"rules:       settings unreadable ({e}); fix it first")
         return 1
     rows, problems = rules_report(root, cfg, gate)
     print("\n".join(rows))

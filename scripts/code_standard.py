@@ -3,14 +3,14 @@
 
 Why: the owner, 2026-11-17: all code is lean, modular, commented and human-editable, and stays so as work continues.
 A written rule alone is not always obeyed, so this check fails a push or a pull request instead. The kit owns this
-file; a project gets it by sync and keeps its own settings (and stricter rules) in its baseline file.
+file; a project gets it by sync and keeps its own settings (and stricter rules) in its `.check` file.
 
 What it measures (the rule numbers are those of docs/code-standard.md):
   C1 header      each source file starts with a header comment that says what the file is for
-  C1 safety      opt-in ("c1_safety": true): the header also has the lines Network:, Writes: and Credentials:
+  C1 safety      opt-in (`code-c1-safety: on`): the header also has the lines Network:, Writes: and Credentials:
   C2 comment     each function has a comment: a docstring, comment-based help, or a comment line directly above it
                  or as the first line of its body (one line is enough)
-  C2 full        opt-in ("c2": "full" in the baseline config): a function longer than 10 lines also documents each
+  C2 full        opt-in (`code-c2: full`): a function longer than 10 lines also documents each
                  parameter and its return value in its language's help form (scripts/code_standard_docs.py)
   C3 length      each function is at most `max_function_lines` lines long
   C4 file size   each source file is at most `max_file_lines` lines long
@@ -19,20 +19,24 @@ What it measures (the rule numbers are those of docs/code-standard.md):
   C10 parse      each Python and PowerShell file parses
 A comment that is the file header, or a divider line ("# ----", "# ===="), does not count as a function's comment.
 A script block passed as an argument ($b.Add_Click({ ... })) is measured for C3 too, named by the call it is in.
-The ratchet: .code-standard.json lists the debt that existed when the standard started. A violation that is not in
-that list fails. A listed function that grew fails. A listed item that is fixed fails too, until the baseline is
-lowered in the same change (`--update`), so the list can only shrink and always matches the code. The baseline itself
-is compared with the one on the merge base with origin/main: an added item, a raised value or a changed "config"
-fails, unless the same change adds a row to docs/DECISIONS.md that names .code-standard.json (the owner's decision).
+Settings: the `code-` lines of `.check` (caps, scope, opt-in rules; read by scripts/check_settings.py, which lists
+the keys; a line that is not valid fails this check).
+The ratchet: `.check.state.json` ("code_standard": {"debt": ...}) lists the debt that existed when the standard
+started. A violation that is not in that list fails. A listed function that grew fails. A listed item that is fixed
+fails too, until the baseline is lowered in the same change (`--update`), so the list can only shrink and always
+matches the code. The baseline and the settings are compared with those on the merge base with origin/main: an added
+item, a raised value or a changed `code-` setting fails, unless the same change adds a row to docs/DECISIONS.md that
+names `.check` (the owner's decision). A merge base that still has the old .code-standard.json is compared from it.
 
 Inputs:  the files git tracks (git ls-files -z): files with a known extension, and files with no extension whose first
-         line is a shell or Python shebang (for example scripts/git-hooks/pre-push); filtered by the baseline "config".
+         line is a shell or Python shebang (for example scripts/git-hooks/pre-push); filtered by the settings.
 Outputs: one line per problem, then `CODE-STANDARD pass` or `CODE-STANDARD fail`; exit 0 or 1.
 Usage:   python3 scripts/code_standard.py            check (scripts/check.sh runs it in both lanes)
          python3 scripts/code_standard.py --report   print every measurement (function lengths, comments)
          python3 scripts/code_standard.py --update   lower the baseline to the debt that is left; refuses new debt
+         python3 scripts/code_standard.py --init     write the first baseline (only when the repo has none)
          python3 scripts/code_standard.py --adopt    add the debt of a rule the baseline does not list yet (a rule just
-                                                     turned on, such as "c2": "full"); needs a DECISIONS row
+                                                     turned on, such as `code-c2: full`); needs a DECISIONS row
          python3 scripts/code_standard.py --test     prove the check on small sample repos (scripts/code_standard_test.py)
 Needs:   Python 3.8+, git, and pwsh 7 only when the repo has PowerShell files (the parser gives the function list).
 """
@@ -48,11 +52,10 @@ import subprocess
 import sys
 from pathlib import Path
 
+import check_settings as settings   # scripts/check_settings.py: the reader of .check and of .check.state.json
 import code_standard_docs as docs   # scripts/code_standard_docs.py: the opt-in C2 full rule
 
 ROOT = Path(__file__).resolve().parent.parent
-BASELINE_NAME = '.code-standard.json'   # the ratchet file, at the top of the repo
-BASELINE = ROOT / BASELINE_NAME
 LANGS = {'.py': 'python', '.ps1': 'powershell', '.psm1': 'powershell', '.js': 'js', '.mjs': 'js', '.cjs': 'js', '.sh': 'shell'}
 DIVIDER = re.compile(r'^\s*(#|//)\s*(-{4,}|={4,})')   # a section line, not a function's comment
 MIN_HEADER_CHARS = 60      # a header shorter than this does not say what the file is for
@@ -64,8 +67,6 @@ MIN_DUP_LINES = 4          # a body this short (a one-line wrapper) is not count
 # its functions are measured once, in the source, so C2, C3 and C5 skip them here.
 BLOCK_BEGIN = re.compile(r'^\s*# >>> ([\w-]+): generated from ')
 BLOCK_END = '# <<< '
-# The kit's caps and scope (docs/code-standard.md C3, C4), used by --init when a repo has no baseline yet.
-DEFAULT_CONFIG = {'caps': {'max_file_lines': 600, 'max_function_lines': 60}, 'exclude': [], 'generated': [], 'include': ['*']}
 
 
 # ---------------------------------------------------------------- file list -----------------------------------------
@@ -458,37 +459,53 @@ def git(*args):
     return subprocess.run(['git', '-C', str(ROOT), *args], capture_output=True, text=True)
 
 
-def against_main(base):
-    """Compare this baseline with the one on the merge base with origin/main. Returns (problem lines, note). An item
-    added to the debt, a value raised, or a changed "config" is a problem, unless docs/DECISIONS.md gains a line that
-    names .code-standard.json in the same change (the owner's decision)."""
+def against_main(config, debt):
+    """Compare the settings and the debt with those on the merge base with origin/main. Returns (problem lines,
+    note). An item added to the debt, a value raised, or a changed `code-` setting is a problem, unless
+    docs/DECISIONS.md gains a line that names .check in the same change (the owner's decision)."""
     mb = git('merge-base', 'HEAD', 'origin/main')
     if mb.returncode != 0:
         if os.environ.get('CI'):
             return ['FAIL  baseline: no merge base with origin/main, so the baseline cannot be compared'], ''
         return [], 'WARN  baseline not compared with main (no origin/main here)'
     ref = mb.stdout.strip()
-    shown = git('show', ref + ':' + BASELINE_NAME)
-    if shown.returncode != 0:
+    try:
+        old = settings.code_base(ROOT, ref)
+    except ValueError as err:
+        return ['FAIL  baseline: the settings or the baseline on the merge base cannot be read (%s)' % err], ''
+    if old is None:
         return [], 'NOTE  no baseline on main yet: this change starts it'
-    old = json.loads(shown.stdout)
-    decided = any(x.startswith('+') and BASELINE_NAME in x
+    old_config, old_debt = old
+    decided = any(x.startswith('+') and settings.NAMES_CHECK.search(x)
                   for x in git('diff', ref, '--', 'docs/DECISIONS.md').stdout.split('\n'))
     problems = []
-    for kind, items in base.get('debt', {}).items():
-        if kind in OPT_IN and OPT_IN[kind](base.get('config', {})) and not OPT_IN[kind](old.get('config', {})) \
-                and decided:
+    for kind, items in debt.items():
+        if kind in OPT_IN and OPT_IN[kind](config) and not OPT_IN[kind](old_config) and decided:
             continue   # an opt-in rule off on main and turned on now (--adopt): its first list is the owner's decision
-        was = old.get('debt', {}).get(kind, {})
+        was = old_debt.get(kind, {})
         for key, value in sorted(items.items()):
             if key not in was:
                 problems.append('FAIL  baseline: %s item added by hand: %s' % (kind, key))
             elif value > was[key]:
                 problems.append('FAIL  baseline: %s value raised: %s (%d to %d)' % (kind, key, was[key], value))
-    if base.get('config') != old.get('config') and not decided:
-        problems.append('FAIL  baseline: "config" (caps or scope) changed with no docs/DECISIONS.md row that names '
-                        + BASELINE_NAME +' (a cap or scope change is the owner\'s decision)')
+    if config != old_config and not decided:
+        problems.append('FAIL  baseline: a `code-` setting of %s (caps, scope or an opt-in rule) changed with no '
+                        'docs/DECISIONS.md row that names %s (a cap or scope change is the owner\'s decision)'
+                        % (settings.CHECK, settings.CHECK))
     return problems, ''
+
+
+def load():
+    """Return (settings, debt) of this repo; debt is None when the repo has no baseline yet. ValueError when a
+    `code-` line of .check is not valid, the state file cannot be read, or the old .code-standard.json is still here."""
+    config = settings.code_config(ROOT)
+    part = settings.load_state(ROOT).get('code_standard')
+    return config, None if part is None else part.get('debt', {})
+
+
+def save(debt):
+    """Write the debt list into .check.state.json (the parts of the other tools stay as they are)."""
+    settings.save_part(ROOT, 'code_standard', {'debt': debt})
 
 
 def main():
@@ -503,12 +520,16 @@ def main():
     if args.test:
         import code_standard_test   # scripts/code_standard_test.py: kept apart (rule C4)
         return code_standard_test.run(sys.modules[__name__])
-    existed = BASELINE.exists()
-    if not existed and not args.init:
-        print('CODE-STANDARD fail: no %s; adopt the standard with --init (docs/code-standard.md)' % BASELINE_NAME)
+    try:
+        config, debt = load()
+    except ValueError as err:
+        print('CODE-STANDARD fail: %s' % err)
         return 1
-    base = json.loads(BASELINE.read_text()) if existed else {'config': DEFAULT_CONFIG, 'debt': {}}
-    config = base['config']
+    existed = debt is not None
+    if not existed and not args.init:
+        print('CODE-STANDARD fail: no code standard baseline in %s; adopt the standard with --init '
+              '(docs/code-standard.md)' % settings.STATE)
+        return 1
     m = measure(config)
     if args.report:
         print(json.dumps(m, indent=1))
@@ -517,14 +538,13 @@ def main():
         if existed:   # a second --init could write new debt into the list; the baseline only shrinks
             print('CODE-STANDARD fail: a baseline exists; use --update (it can only lower it)')
             return 1
-        base['debt'] = m['violations']
-        BASELINE.write_text(json.dumps(base, indent=1, sort_keys=True) + '\n')
+        save(m['violations'])
         print('CODE-STANDARD baseline written: %s' % summary(m['violations']))
         return 0
     if args.adopt:
-        return adopt(base, m['violations'])
-    new, fixed = compare(m['violations'], base.get('debt', {}), config['caps'])
-    hand, note = against_main(base)
+        return adopt(config, debt, m['violations'])
+    new, fixed = compare(m['violations'], debt, config['caps'])
+    hand, note = against_main(config, debt)
     new += hand
     for line in new + fixed + ([note] if note else []):
         print(line)
@@ -532,8 +552,7 @@ def main():
         if new:
             print('CODE-STANDARD fail: new debt cannot go into the baseline; fix it (docs/code-standard.md)')
             return 1
-        base['debt'] = m['violations']
-        BASELINE.write_text(json.dumps(base, indent=1, sort_keys=True) + '\n')
+        save(m['violations'])
         print('CODE-STANDARD baseline lowered: %s' % summary(m['violations']))
         return 0
     if fixed and not new:
@@ -543,19 +562,17 @@ def main():
     return 1 if new or fixed else 0
 
 
-def adopt(base, now):
-    """Write the first debt list of each opt-in rule (OPT_IN) that the config turns on and the baseline holds no debt
+def adopt(config, debt, now):
+    """Write the first debt list of each opt-in rule (OPT_IN) that the settings turn on and the baseline holds no debt
     for yet; refuse when there is none. A core rule is never adopted, and the comparison with main accepts the list
     only when that option was off on main, so this cannot add debt to a rule the ratchet already holds."""
-    kinds = [k for k, on in OPT_IN.items() if on(base['config']) and not base.get('debt', {}).get(k) and now.get(k)]
+    kinds = [k for k, on in OPT_IN.items() if on(config) and not debt.get(k) and now.get(k)]
     if not kinds:
         print('CODE-STANDARD fail: no opt-in rule to adopt; use --update (it can only lower the baseline)')
         return 1
-    for k in kinds:
-        base.setdefault('debt', {})[k] = now[k]
-    BASELINE.write_text(json.dumps(base, indent=1, sort_keys=True) + '\n')
+    save(dict(debt, **{k: now[k] for k in kinds}))
     print('CODE-STANDARD adopted: %s (add a docs/DECISIONS.md row that names %s)' % (
-        ', '.join('%s %d' % (k, len(now[k])) for k in kinds), BASELINE_NAME))
+        ', '.join('%s %d' % (k, len(now[k])) for k in kinds), settings.CHECK))
     return 0
 
 

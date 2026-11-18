@@ -55,8 +55,8 @@ if [ "$BS_OWNER" != "the owner" ]; then
   # Not renamed on purpose: docs/FIRST_USE.md and scripts/first_use_check.py, whose
   # "the owner" is an option, a role or a literal the script needs.
   owner_files=("${files[@]}" .claude/skills/delegate/SKILL.md .claude/skills/audit/SKILL.md .claude/skills/project-log/SKILL.md .claude/skills/deliver/SKILL.md .claude/skills/personal-data/SKILL.md .claude/skills/rule-change/SKILL.md .claude/skills/efficiency/SKILL.md .claude/skills/handoff/SKILL.md .claude/skills/port/SKILL.md .claude/rule-tests.md scripts/bloat_check.py scripts/session_checkin.sh scripts/stop_check.py scripts/worker_guard.py
-    scripts/log_check.py scripts/timeline.py scripts/pii_guard.py scripts/pii_guard_scan.py scripts/pii_guard_hook.py scripts/pii_guard_test.py
-    scripts/bloat_check_skills.py scripts/bloat_check_test.py scripts/code_standard.py scripts/code_standard_test.py docs/code-standard.md scripts/check.sh scripts/git-hooks/pre-push)
+    scripts/log_check.py scripts/timeline.py scripts/check_content.py scripts/check_content_scan.py scripts/check_content_hook.py scripts/check_content_test.py
+    scripts/bloat_check_skills.py scripts/bloat_check_test.py scripts/check_settings.py scripts/code_standard.py scripts/code_standard_test.py docs/code-standard.md scripts/check.sh scripts/git-hooks/pre-push)
   for f in "${owner_files[@]}"; do
     perl -pi -e 'my $c = ucfirst $ENV{BS_OWNER}; s/\b([Tt])he owner\b/$1 eq "T" ? $c : $ENV{BS_OWNER}/ge' "$f"
   done
@@ -64,8 +64,8 @@ fi
 
 # Tier: AGENTS.md blocks, and in starter the advanced files go (one list: scripts/sync_baseline.py ADVANCED_FILES).
 python3 scripts/sync_baseline.py --set-tier "$BS_TIER"
-if [ "$BS_TIER" = starter ] && [ -f .pii-guard ] && ! grep -qx 'denylist: warn' .pii-guard; then
-  printf '%s\n' '# Starter tier: a missing name denylist warns instead of blocking. Delete this line to block (full tier default).' 'denylist: warn' >> .pii-guard
+if [ "$BS_TIER" = starter ] && [ -f .check ] && ! grep -qx 'denylist: warn' .check; then
+  printf '%s\n' '# Starter tier: a missing name denylist warns instead of blocking. Delete this line to block (full tier default).' 'denylist: warn' >> .check
 fi
 
 log_link=""
@@ -81,24 +81,28 @@ New to working with AI agents? Read [docs/WORKING_WITH_AGENTS.md](docs/WORKING_W
 EOF
 
 present=(); for f in "${files[@]}" README.md; do [ -f "$f" ] && present+=("$f"); done
-if grep -rIn '{{[A-Z_]*}}' "${present[@]}"; then
+if ! python3 scripts/check_blocks.py --placeholders "${present[@]}"; then
   echo "error: placeholders remain (listed above)" >&2
   exit 1
 fi
 
-# The maintainer's preferences template (PREFERENCES.md), the kit's file list (docs/FILES.md) and the kit's audit state (.bloat-audit.json) live only in the template repo. The kit's license moves next to the docs: the copied scripts
+# The maintainer's preferences template (PREFERENCES.md) and the kit's file list (docs/FILES.md) live only in the template repo. The kit's license moves next to the docs: the copied scripts
 # stay under it, and the root LICENSE is the project's own choice (docs/FIRST_USE.md, question 6).
-rm -f -- PREFERENCES.md docs/FILES.md .bloat-audit.json
+rm -f -- PREFERENCES.md docs/FILES.md
+# The kit's state (.check.state.json: its last audit and time baselines) is the kit's own. The project starts with a
+# fresh file: the code standard adopted with no debt (the kit's code meets it), no audit yet and no time baselines.
+printf '%s\n' '{' ' "code_standard": {' '  "debt": {}' ' }' '}' > .check.state.json
 # The kit's own review reports describe the kit, not the project; docs/reviews/README.md stays.
 find docs/reviews -maxdepth 1 -name '20*.md' -delete 2>/dev/null || true
 # Projects do not stay in sync with the kit (the owner, 2026-11-13): the sync tools stay in the kit only.
 # The token log hook is installed from the kit by the cloud setup scripts (the owner, 2026-11-17).
-rm -f -- scripts/sync_baseline.py scripts/drift.py scripts/token_log.py scripts/token_log_test.py .baseline
+python3 scripts/sync_baseline.py --lock-here  # the kit lock (.check.lock) of the new project
+rm -f -- scripts/sync_baseline.py scripts/drift.py scripts/token_log.py scripts/token_log_test.py KIT_VERSION docs/CHANGELOG.md docs/KIT_HANDOFF.md
 if [ -f LICENSE ]; then mv -- LICENSE docs/archimedes_lever-LICENSE.txt; fi
 
 rm -- "$0"
-if [ "$BS_OWNER" != "the owner" ] && [ -f .pii-guard ]; then
-  echo "Note: .pii-guard is on. If \"$BS_OWNER\" is a real name in your denylist, the guard blocks it: remove .pii-guard in a private repo."
+if [ "$BS_OWNER" != "the owner" ] && [ -f .check ]; then
+  echo "Note: the content check is on (.check). If \"$BS_OWNER\" is a real name in your denylist, the check blocks it: remove .check in a private repo."
 fi
 echo "Done. Next: review with 'git diff', then commit and push."
 echo "Then paste the Project text from docs/host-prompts.md into the claude.ai Project instructions."

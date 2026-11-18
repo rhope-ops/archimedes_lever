@@ -1,21 +1,26 @@
 #!/usr/bin/env bash
-# One check command for the repo (AGENTS.md "Commands": Test), in two lanes (.claude/skills/deliver/SKILL.md):
+# One check command for the repo (AGENTS.md "Commands": Test): the one front door of every check and guard.
+# Two lanes (.claude/skills/deliver/SKILL.md):
 #   scripts/check.sh          full lane: everything. Before a merge, on a push to main (pre-push), in the pull-request Action.
 #   scripts/check.sh --fast   fast lane: each push to another branch (pre-push). Self-tests only of the kit scripts that
 #                             changed against origin/main, and scripts/check.local.sh gets --fast.
+# The content check alone (scripts/check_content.py: personal data, secrets, the owner's terms, blocked files):
+#   scripts/check.sh --content ARGS...   for example --all, --stdin, --range A..B or file names
+#   scripts/check.sh --status            the word lists (counts and fingerprints, never the words) and the tier
+#   scripts/check.sh --hook              the Claude Code PreToolUse hook (.claude/settings.json); any error blocks
 # The checks:
 #   1. the self-test of each kit script present (--test; a starter project has fewer), and the code standard
-#      (scripts/code_standard.py, when .code-standard.json exists),
+#      (scripts/code_standard.py, when .check.state.json holds its baseline; settings: the `code-` lines of .check),
 #   2. the rule caps and the paths AGENTS.md names, the lint of changed rule lines (WARN lines), and in the full lane
 #      the conflict-check record for changed rule lines (scripts/bloat_check.py --rules [--gate]; full tier),
 #   3. the project log check (full tier),
-#   4. the personal-data scan of all tracked files (when .pii-guard exists; in GitHub Actions the "checks" workflow's guard step does it;
-#      with --no-pii the caller does it: the pre-push hook scans files and pushed commits in one run),
+#   4. the content check of all tracked files (when the settings file .check exists; in GitHub Actions the "checks" workflow's content step does it;
+#      with --no-content the caller does it: the pre-push hook scans files and pushed commits in one run),
 #   5. scripts/check.local.sh, when it exists: this project's own tests (SKIP when missing: the review gate in
 #      .claude/skills/deliver/SKILL.md then guards main).
 # The checks run in parallel: each one works on its own temporary files. CHECK_SERIAL=1 runs them one at a time.
 # Prints one PASS/FAIL/SKIP line per check, the output of each failed check, a TIME line (wall time and the 3 slowest
-# checks), a line that compares the times with the baselines in .bloat-audit.json (scripts/bloat_check.py --compare:
+# checks), a line that compares the times with the baselines in .check.state.json (scripts/bloat_check.py --compare:
 # the full lane and each step; the fast lane only its steps, as its total depends on what changed; a slowdown is a
 # WARN line, never a failure) and "CHECK PASS" or "CHECK FAIL" last.
 # --record (full lane only): after a pass, store this run's times as the new baselines (commit the change). Exit 0 only when no check failed. Needs bash, git and python3.
@@ -24,6 +29,12 @@
 # Self-test (temporary repos, no network): scripts/check.sh --test
 set -uo pipefail
 self="$(cd "$(dirname "$0")" && pwd -P)/$(basename "$0")"
+# The content check's own modes: before any "cd", so they work from any folder (the hook also runs outside a repo).
+case "${1:-}" in
+  --hook) python3 "$(dirname "$self")/check_content.py" --hook && exit 0; exit 2 ;;  # any failure blocks the tool call
+  --status) exec python3 "$(dirname "$self")/check_content.py" --status ;;
+  --content) shift; exec python3 "$(dirname "$self")/check_content.py" "$@" ;;
+esac
 [ "${1:-}" = "--test" ] && { selftest_main=1; } || selftest_main=0
 # Git gives a hook GIT_DIR and friends (in a linked worktree they point at the real repo). The self-tests make
 # temporary repos with "git init" and "git commit": with those variables set they would write into that repo.
@@ -99,8 +110,8 @@ PY
   ok "a change to log_check also runs the timeline self-test (it imports log_check)" "$(c --fast | grep -c '^PASS  timeline self-test')" 1
   g checkout -q scripts/log_check.py
   g commit -q -am c; rm -f "$t/r/.git/check-pass"
-  c --fast --no-pii >/dev/null
-  ok "--no-pii writes no stamp" "$( [ -f "$t/r/.git/check-pass" ] && echo stamp || echo none)" none
+  c --fast --no-content >/dev/null
+  ok "--no-content writes no stamp" "$( [ -f "$t/r/.git/check-pass" ] && echo stamp || echo none)" none
   c >/dev/null; touch "$t/r/fail.flag"
   c >/dev/null; ok "a failing check fails the run" "$?" 1
   ok "a failed run removes the stamp" "$( [ -f "$t/r/.git/check-pass" ] && echo stamp || echo none)" none
@@ -108,6 +119,17 @@ PY
   g update-ref -d refs/remotes/origin/main
   ok "no default branch ref: the fast lane runs every self-test" "$(c --fast | grep -c '^PASS  stop_check self-test')" 1
   c --bogus >/dev/null 2>&1; ok "an unknown flag exits 2" "$?" 2
+  # The code standard: skipped while nothing holds a baseline; run when the default branch holds one, also a large
+  # one (over 64 KB), although the state file of the work tree is gone.
+  printf '%s\n' 'print("CODE-STANDARD fake")' > "$t/r/scripts/code_standard.py"
+  echo '{"timings": {"check": {"steps": {"code standard": 1}}}}' > "$t/r/.check.state.json"
+  g add -A; g commit -q -m "state without a baseline"; g update-ref refs/remotes/origin/main HEAD
+  ok "no baseline here or on the default branch: the code standard is skipped" "$(c | grep -c '^SKIP  code standard')" 1
+  python3 -c 'import json; print(json.dumps({"code_standard": {"debt": {"length": {"f%d.py::main" % i: 99 for i in range(4000)}}}}, indent=1))' > "$t/r/.check.state.json"
+  g add -A; g commit -q -m "a large baseline"; g update-ref refs/remotes/origin/main HEAD
+  rm "$t/r/.check.state.json"
+  ok "a large baseline on the default branch, state file deleted: the code standard runs" "$(c | grep -c '^PASS  code standard$')" 1
+  g checkout -q .check.state.json; g update-ref -d refs/remotes/origin/main
   # A git error is not a clean tree: with a broken index, a stamp for this commit must not be used.
   c >/dev/null; ok "a stamp exists before the index breaks" "$(cut -d' ' -f2 "$t/r/.git/check-pass")" "$(g rev-parse HEAD)"
   cp "$t/r/.git/index" "$t/index.bak"; echo broken > "$t/r/.git/index"
@@ -144,9 +166,9 @@ for a in "$@"; do
   case "$a" in
     --fast) lane=fast ;;
     --cached) cached=1 ;;
-    --no-pii) pii=0 ;;
+    --no-content) pii=0 ;;
     --record) record=1 ;;
-    *) echo "usage: scripts/check.sh [--fast] [--cached] [--no-pii] [--record]" >&2; exit 2 ;;
+    *) echo "usage: scripts/check.sh [--fast] [--cached] [--no-content] [--record] | --content ARGS... | --status | --hook" >&2; exit 2 ;;
   esac
 done
 [ "$record" = 1 ] && [ "$lane" = fast ] && { echo "usage: --record needs the full lane" >&2; exit 2; }
@@ -222,12 +244,15 @@ for s in stop_check worker_guard log_check; do
   selftest "$s" "scripts/$s.py" -- python3 "scripts/$s.py" --test
 done
 # A script whose cases or parts live in sibling modules lists them, so the fast lane reruns its self-test when they change.
-selftest bloat_check scripts/bloat_check.py scripts/bloat_check_test.py scripts/bloat_check_skills.py -- python3 scripts/bloat_check.py --test
+selftest check_settings scripts/check_settings.py -- python3 scripts/check_settings.py --test
+selftest bloat_check scripts/bloat_check.py scripts/bloat_check_test.py scripts/bloat_check_skills.py scripts/check_settings.py -- python3 scripts/bloat_check.py --test
 selftest token_log scripts/token_log.py scripts/token_log_test.py -- python3 scripts/token_log.py --test
-selftest code_standard scripts/code_standard.py scripts/code_standard_test.py scripts/code_standard_docs.py -- python3 scripts/code_standard.py --test
+selftest code_standard scripts/code_standard.py scripts/code_standard_test.py scripts/code_standard_docs.py scripts/check_settings.py -- python3 scripts/code_standard.py --test
 selftest timeline scripts/timeline.py scripts/log_check.py -- python3 scripts/timeline.py --test  # it imports log_check
-selftest pii_guard scripts/pii_guard.py scripts/pii_guard_scan.py scripts/pii_guard_hook.py scripts/pii_guard_test.py -- python3 scripts/pii_guard.py --test
-selftest first_use_check scripts/first_use_check.py scripts/pii_guard.py scripts/pii_guard_scan.py -- python3 scripts/first_use_check.py --test
+selftest check_content scripts/check_content.py scripts/check_content_scan.py scripts/check_content_hook.py scripts/check_content_test.py scripts/check_content_test_blocks.py -- python3 scripts/check_content.py --test
+selftest check_blocks scripts/check_blocks.py .claude/settings.json -- python3 scripts/check_blocks.py --test
+selftest check_lock scripts/check_lock.py -- python3 scripts/check_lock.py --test
+selftest first_use_check scripts/first_use_check.py scripts/check_blocks.py scripts/check_content.py scripts/check_content_scan.py -- python3 scripts/first_use_check.py --test
 # Kit only: projects have no sync tools. The drift self-test reads the kit's AGENTS.md and stop_check.py.
 selftest drift scripts/drift.py scripts/sync_baseline.py AGENTS.md scripts/stop_check.py -- python3 scripts/drift.py --test
 selftest pre-push scripts/git-hooks/pre-push -- scripts/git-hooks/pre-push --test
@@ -237,10 +262,20 @@ selftest session_checkin scripts/session_checkin.sh -- bash scripts/session_chec
 [ "$untested" -gt 0 ] && skip "$untested self-tests" "fast lane: those scripts did not change; the full lane runs them"
 
 # The code standard (docs/code-standard.md), both lanes: it takes about 0.1 s. A repo that has not adopted it skips.
-if [ -f scripts/code_standard.py ] && [ -f .code-standard.json ]; then
+# Adopted: .check.state.json holds the "code_standard" baseline. A repo that still has the old .code-standard.json
+# runs the check too: it fails there and names the migration, so the old limits are not dropped in silence.
+# Also adopted: the default branch holds a baseline (a deleted state file must fail the check, not skip it).
+# (The state file alone is no baseline: the time baselines and the audit write it too.)
+on_main() {  # on_main FILE [TEXT]: the default branch has FILE (and FILE holds TEXT)
+  local r t; for r in origin/main origin/master; do  # no pipe: with pipefail, grep -q closes a large file early
+    t=$(git show "$r:$1" 2>/dev/null) && grep -q -- "${2:-}" <<<"$t" && return 0
+  done; return 1
+}
+if [ -f scripts/code_standard.py ] && { grep -qs '"code_standard"' .check.state.json || [ -f .code-standard.json ] \
+     || on_main .check.state.json '"code_standard"' || on_main .code-standard.json '"debt"'; }; then
   run "code standard" python3 scripts/code_standard.py
 elif [ -f scripts/code_standard.py ]; then
-  skip "code standard" "no .code-standard.json: adopt it with python3 scripts/code_standard.py --init (docs/code-standard.md)"
+  skip "code standard" "no code standard baseline in .check.state.json: adopt it with python3 scripts/code_standard.py --init (docs/code-standard.md)"
 fi
 
 # Rule caps, paths, the lint of changed rule lines, and (full lane) the conflict-check record for changed rule lines.
@@ -249,10 +284,14 @@ if [ -f scripts/bloat_check.py ]; then
   else run "rule caps and pointers" python3 scripts/bloat_check.py --rules; fi
   run "skills well-formed" python3 scripts/bloat_check.py --skills
 fi
+# The git-safety and key-file deny rules (scripts/check_blocks.py) are all in .claude/settings.json.
+[ -f scripts/check_blocks.py ] && [ -f .claude/settings.json ] && run "deny rules" python3 scripts/check_blocks.py --settings
+# The kit files of a project are as the last sync wrote them (scripts/check_lock.py; the kit itself has no lock).
+[ -f scripts/check_lock.py ] && [ -f .check.lock ] && run "kit lock" python3 scripts/check_lock.py --verify
 
 if [ ! -f scripts/log_check.py ]; then
   :  # starter tier: no project log
-elif grep -q '{{PROJECT_NAME}}' AGENTS.md 2>/dev/null && grep -q '{{PROJECT_NAME}}' docs/LOG.md 2>/dev/null; then
+elif [ -f scripts/check_blocks.py ] && ! python3 scripts/check_blocks.py --placeholders AGENTS.md >/dev/null && ! python3 scripts/check_blocks.py --placeholders docs/LOG.md >/dev/null; then
   skip "project log" "template placeholders: run first use"
 elif [ -f docs/LOG.md ]; then
   run "project log" python3 scripts/log_check.py docs/LOG.md
@@ -260,14 +299,14 @@ else
   skip "project log" "no docs/LOG.md: the log lives in the place AGENTS.md Project rules names"
 fi
 
-if [ ! -f .pii-guard ]; then
-  skip "personal-data scan" "no .pii-guard: guard off"
+if [ ! -f .check ] && [ ! -f .pii-guard ]; then
+  skip "content check" "no .check file: the scan of tracked files is off"
 elif [ "${GITHUB_ACTIONS:-}" = "true" ]; then
-  skip "personal-data scan" "GitHub Actions: the checks workflow's guard step scans with the base allow list"
+  skip "content check" "GitHub Actions: the checks workflow's content step scans with the base settings"
 elif [ "$pii" = 0 ]; then
-  skip "personal-data scan" "the pre-push hook scans the files and the pushed commits next"
+  skip "content check" "the pre-push hook scans the files and the pushed commits next"
 else
-  run "personal-data scan" python3 scripts/pii_guard.py --all
+  run "content check" python3 scripts/check_content.py --all
 fi
 
 if [ -f scripts/check.local.sh ]; then

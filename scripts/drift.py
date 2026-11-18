@@ -14,7 +14,7 @@ applied as sync_baseline.py would; --owner NAME for a repo with no "- Owner:" li
 "## Commands" is project-owned and only checked for presence.
 The project's "- Tier:" line (sync_baseline.header_tier) picks the baseline text and files: a starter project is not
 compared with the advanced parts. For each file sync_baseline.py copies: same, differs or missing. It also checks the .claude/settings.json deny rules
-and hook events, the .baseline pin, and docs/LOG.md (present, and "LOG CHECK PASS" from scripts/log_check.py).
+and hook events, the kit lock (.check.lock), and docs/LOG.md (present, and "LOG CHECK PASS" from scripts/log_check.py).
 
 The numbers say where a repo has drifted, not which side is right: a project may keep its own wording on purpose
 (for example a repo whose rules predate the baseline). Use the report to choose hand edits or a sync.
@@ -126,27 +126,30 @@ def settings_rows(project, base):
             rows.append(("settings", "deny rules", "same" if not deny_missing else "differs",
                          f"{len(deny_missing)} missing: {', '.join(deny_missing)}" if deny_missing else ""))
             for event in (b.get("hooks") or {}):
-                have = event in (p.get("hooks") or {})
-                rows.append(("settings", f"hook {event}", "same" if have else "missing",
-                             "project has its own hook for this event" if have else ""))
+                mine = (p.get("hooks") or {}).get(event) or []
+                gone = [e for e in b["hooks"][event] if e not in mine]
+                rows.append(("settings", f"hook {event}", "missing" if not mine else "differs" if gone else "same",
+                             "the project's entries differ from the kit's hook" if mine and gone else ""))
         except (ValueError, AttributeError) as e:
             rows.append(("settings", ".claude/settings.json", "differs", f"not valid JSON ({e})"))
     return rows
 
 
 def pin_row(project, base):
-    """The row for the .baseline pin: missing, or same/differs against the baseline's HEAD."""
-    pin = project / ".baseline"
+    """The row for the kit lock (.check.lock): missing, or same/differs against the baseline's HEAD."""
     try:
         base_sha = sb.git("rev-parse", "HEAD", cwd=base)
     except subprocess.CalledProcessError:
         base_sha = None
-    if not pin.exists():
-        return ("pin", ".baseline", "missing", "never synced")
-    got = pin.read_text().split()
-    sha = got[1] if len(got) > 1 else ""
+    try:
+        lock = sb.check_lock.load(project)
+    except ValueError:
+        lock = None
+    if lock is None:
+        return ("pin", ".check.lock", "missing", "never synced with the kit lock")
+    sha = str(lock.get("commit", ""))
     same = bool(base_sha) and base_sha.startswith(sha[:7]) and sha[:7] != ""
-    return ("pin", ".baseline", "same" if same else "differs",
+    return ("pin", ".check.lock", "same" if same else "differs",
             f"pinned {sha[:7] or '?'}, baseline {base_sha[:7] if base_sha else '?'}")
 
 
@@ -221,7 +224,7 @@ def legacy_and_synced_cases(proj, base, results):
     expect(results, "changed section", get(("AGENTS.md", "Git safety")), "changed")
     expect(results, "missing section", get(("AGENTS.md", "Delegation")), "missing")
     expect(results, "missing copied file", get(("file", "scripts/stop_check.py")), "missing")
-    expect(results, "never synced", get(("pin", ".baseline")), "missing")
+    expect(results, "never synced", get(("pin", ".check.lock")), "missing")
     text = filled((base / "AGENTS.md").read_text(), (("PROJECT_NAME", "Demo"), ("REPO", "D/d"), ("PURPOSE", "P"),
                   ("OWNER", "the maintainer"), ("TIMEZONE", "Europe/Berlin")))
     (proj / "AGENTS.md").write_text(sb.apply_owner(sb.apply_tier(text.replace("{{TIER}}", "full"), "full"), "the maintainer"))
@@ -235,6 +238,35 @@ def legacy_and_synced_cases(proj, base, results):
     (proj / "AGENTS.md").write_text(sb.apply_owner(text, "Sam"))
     rows, _ = report(proj, base, "Sam")
     expect(results, "no Owner line, --owner Sam", {(a, i): (s, d) for a, i, s, d in rows}[("AGENTS.md", "Order of authority")], "same")
+
+
+def same(results, name, got, want):
+    """Record and print one case of the settings merge: got must equal want."""
+    results.append(got == want)
+    print(("ok   " if got == want else "FAIL ") + name + ("" if got == want else f": got {got}"))
+
+
+def settings_merge_cases(tmp, base, results):
+    """sync merge of .claude/settings.json: the kit's deny rules and hook entries first; the project's own are kept."""
+    kit_cmd = json.loads((base / ".claude/settings.json").read_text())["hooks"]["PreToolUse"][0]
+    own = {"matcher": "^Bash$", "hooks": [{"type": "command", "command": "python3 tools/own_guard.py"}]}
+    mixed = {"hooks": [{"type": "command", "command": "python3 scripts/stop_check.py"},
+                       {"type": "command", "command": "python3 tools/own_stop.py"}]}
+    old_kit = {"matcher": "^(Agent|mcp__slack__post)$", "hooks": [{"type": "command", "command": "python3 scripts/pii_guard.py --hook"}]}
+    path = tmp / "settings.json"
+    path.write_text(json.dumps({"permissions": {"deny": ["Bash(own rule*)"]},
+                                "hooks": {"PreToolUse": [old_kit, own], "Stop": [mixed]}}))
+    sb.REPLACED_HOOKS.clear()
+    got = json.loads(sb.merge_settings(base / ".claude/settings.json", path))
+    pre, stop = got["hooks"]["PreToolUse"], got["hooks"]["Stop"]
+    same(results, "merge: the kit hook first, the project's own entry kept, the older kit copy gone",
+           [pre[0] == kit_cmd, own in pre, old_kit not in pre, len(pre)], [True, True, True, 2])
+    same(results, "merge: a mixed entry keeps only the project's command",
+           [h["command"] for e in stop[1:] for h in e["hooks"]], ["python3 tools/own_stop.py"])
+    same(results, "merge: the matcher of a replaced kit entry is noted", sb.REPLACED_HOOKS, ["^(Agent|mcp__slack__post)$"])
+    deny = got["permissions"]["deny"]
+    same(results, "merge: the kit deny rules first, the project's rule last",
+           [deny[:len(sb.check_blocks.DENY)] == sb.check_blocks.DENY, deny[-1]], [True, "Bash(own rule*)"])
 
 
 def tier_cases(proj, base, results):
@@ -280,6 +312,7 @@ def self_test():
         proj = pathlib.Path(d)
         legacy_and_synced_cases(proj, base, results)
         tier_cases(proj, base, results)
+        settings_merge_cases(proj, base, results)
     ok = all(results)
     print("DRIFT TEST " + ("PASS" if ok else "FAIL"))
     return 0 if ok else 1

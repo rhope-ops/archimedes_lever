@@ -10,7 +10,7 @@ The agent runs this once, before any other work. It starts in one of three ways:
 
 The check runs as the Claude Code SessionStart hook, or as the first step of AGENTS.md "Start of session" where hooks do not run (claude.ai chat).
 
-**Cloud session in the full tier (11B) with the guard on and no denylist** (the check also says DENYLIST; in the URL start, run `python3 scripts/pii_guard.py --status` right after the clone): do step 4 right after step 1, before steps 2 and 3, so no work is lost.
+**Cloud session in the full tier (11B) with the guard on and no denylist** (the check also says DENYLIST; in the URL start, run `python3 scripts/check_content.py --status` right after the clone): do step 4 right after step 1, before steps 2 and 3, so no work is lost.
 
 ## 1. Ask the questions
 
@@ -65,14 +65,14 @@ Rules for the asking agent:
 
 1. Run `scripts/bootstrap.sh "<1>" <owner/repo from git remote get-url origin> "<2>" "<7>" "<3>" <11>`. Give "the owner" as the 4th argument when that is the answer. The 5th argument is the IANA time zone name (UTC for 3B). The 6th is `starter` (11A) or `full` (11B). The script deletes itself when done; keep this file, because step 4 is also what an agent shows when a session reports DENYLIST. It moves the kit's license to docs/archimedes_lever-LICENSE.txt: keep that file, because it covers the kit's scripts.
 2. Project log (answer 12, public repos in the full tier only): for A, make a private Claude doc named "<1> project log" with the Arcs and Log tables of docs/LOG.md, delete docs/LOG.md, and add to AGENTS.md "Project rules": "Project log: <doc link> (the owner, YYYY-MM-DD)". For B, keep docs/LOG.md. For C, delete docs/LOG.md and add to "Project rules": "No project log (the owner, YYYY-MM-DD)".
-3. Guard (answer 8): for B, delete `.pii-guard`; the hook and the Action then skip the guard.
+3. Guard (answer 8): for B, delete `.check`: the pre-push hook and the Action then skip the scan. The tool-call hook still scans.
 4. License (answer 6): for A, copy docs/archimedes_lever-LICENSE.txt to `LICENSE` and change the copyright line to the current year and the GitHub account or organization from `<owner/repo>`, unless the user names another holder (a public repo never uses a real name the user has not given). For B, save the text from https://www.apache.org/licenses/LICENSE-2.0.txt, unchanged, as `LICENSE`. For C, add no LICENSE.
 5. Record the answers as the owner's decisions in docs/DECISIONS.md (with 4A, one row: "Recommended settings" and the list), and add one `decision` row to the project log (full tier only; not for 12C).
 6. Commit with a noreply identity, and run `scripts/session_checkin.sh` (it installs the git hooks). Do not push yet: step 4 comes first.
 
 ## 4. The denylist, then the first push
 
-With the guard on (8A) in the full tier (11B), every push and every pull-request check fails until a name denylist exists. In the starter tier (11A), bootstrap adds `denylist: warn` to `.pii-guard`: a push with no list only warns, and every other check still runs. Ask for the list in both tiers. The user types the names, comma or newline separated: their names, username variants, employer. Run `python3 scripts/pii_guard.py --status`; it prints a count, never the names.
+With the guard on (8A) in the full tier (11B), every push and every pull-request check fails until a name denylist exists. In the starter tier (11A), bootstrap adds `denylist: warn` to `.check`: a push with no list only warns, and every other check still runs. Ask for the list in both tiers. The user types the names, comma or newline separated: their names, username variants, employer. Run `python3 scripts/check_content.py --status`; it prints a count, never the names.
 
 | Place | When | Where the user adds it |
 |---|---|---|
@@ -80,7 +80,9 @@ With the guard on (8A) in the full tier (11B), every push and every pull-request
 | Each Claude cloud environment the repo uses | 9A or 9C | Environment menu in the session title bar > Edit > Environment variables: `PII_GUARD_DENYLIST=Name1,Name2,...`. Only a new session reads it |
 | GitHub pull-request check | always (after the first push is fine) | `https://github.com/<owner/repo>/settings/secrets/actions` > New repository secret > Name `PII_GUARD_DENYLIST` |
 
-One master copy: the user keeps the list in one file in their own Google Drive and edits only that file. A computer with Drive for desktop reads it directly (set `PII_GUARD_DENYLIST_FILE` to the synced path); the cloud variable and the GitHub secret are pasted copies of it. An agent never opens the master file. To find a copy that differs, compare the fingerprint: `python3 scripts/pii_guard.py --status` in each place and the last line of the pull-request check print the same 8 characters when the lists are the same.
+Optional second list, the owner's own blocked terms (words that are not personal data: a client, a code name). Same format and the same three places, under other names: the file `~/.config/check/terms.txt`, the cloud environment variable `CHECK_TERMS`, and the repository secret `CHECK_TERMS`. With no terms list, nothing is missing: the check runs without it. `scripts/check.sh --status` prints the count and a fingerprint of each list, never the words.
+
+One master copy: the user keeps the list in one file in their own Google Drive and edits only that file. A computer with Drive for desktop reads it directly (set `PII_GUARD_DENYLIST_FILE` to the synced path); the cloud variable and the GitHub secret are pasted copies of it. An agent never opens the master file. To find a copy that differs, compare the fingerprint: `python3 scripts/check_content.py --status` in each place and the last line of the pull-request check print the same 8 characters when the lists are the same.
 
 Then:
 
@@ -91,6 +93,6 @@ Then:
 
 ## 5. Verify and hand over
 
-1. Run `python3 scripts/pii_guard.py --status` and `python3 scripts/pii_guard.py --all` (it must print `PII GUARD PASS`), then `scripts/check.sh`. Report the result lines.
+1. Run `python3 scripts/check_content.py --status` and `python3 scripts/check_content.py --all` (it must print `CONTENT CHECK PASS`), then `scripts/check.sh`. Report the result lines.
 2. Give the user the claude.ai Project text from docs/host-prompts.md under Copy, for use in a claude.ai Project.
 3. Tell the user, in plain words: what was set up (with links to the repo and to AGENTS.md); what is left (the GitHub secret, other cloud environments); and how to go on: open the project with any agent and say what they want next; the agent reads docs/NEXT_PROMPT.md first.

@@ -1,12 +1,12 @@
-"""Self-test of scripts/pii_guard.py (run by `python3 scripts/pii_guard.py --test`; kept in its own file so the guard
+"""Self-test of scripts/check_content.py (run by `python3 scripts/check_content.py --test`; kept in its own file so the guard
 stays under the 600-line cap of docs/code-standard.md C4).
 
 It proves every check on built-at-run-time samples (no real address, token, host, mark or ID is in this file): the
-patterns and their speed on long lines, the allow and skip lines, the tiers and the .pii-guard reader, the denylist
+patterns and their speed on long lines, the allow and skip lines, the tiers and the settings-file reader (under its old name .pii-guard), the denylist
 sources, the CLI modes (--all, --push, --status, --stdin, files) in temporary git repos, the commit scan, and the
 PreToolUse hook (in process).
 Input: none (temporary folders only; the host's git config is switched off). Output: one "ok" or "FAIL" line per
-case, then PII GUARD TEST PASS or FAIL; run() returns the exit code 0 or 1. Needs git.
+case, then CONTENT CHECK TEST PASS or FAIL; run() returns the exit code 0 or 1. Needs git.
 """
 import contextlib
 import io
@@ -19,15 +19,15 @@ import sys
 import tempfile
 import time
 
-import pii_guard_hook
-from pii_guard_scan import (MAX_BYTES, OPTION_MAX, denylist_source, dod_mode, fingerprint, git, is_option_line,
+import check_content_hook
+from check_content_scan import (MAX_BYTES, OPTION_MAX, denylist_source, dod_mode, fingerprint, git, is_option_line,
                             load_allow, load_denylist, mask, parse_denylist, profile_of, push_revs, scan_commits,
                             scan_text, skipped, warn_mode)
 
 at, dot = "@", "."  # addresses and hosts are joined at run time, so this file does not flag itself
 x36 = "A1b2C3d4E5" * 3 + "F6g7H8"  # body of the sample secrets
 mil = "portal" + dot + "unit" + dot + "mi" + "l"  # a sample host in the military domain
-ME = [sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "pii_guard.py")]  # the guard's CLI
+ME = [sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "check_content.py")]  # the guard's CLI
 FAILED = []  # labels of the cases that failed
 
 
@@ -266,7 +266,7 @@ def case_cli_profile(d, env):
     pathlib.Path(d, ".pii-guard").write_text("profile: DOD-tier\n")
     r = guard(d, env, "--all")
     r2 = guard(d, env, "--status")
-    good = r.returncode == 1 and "PII GUARD FAIL: unknown profile" in r.stdout and r2.returncode == 1 \
+    good = r.returncode == 1 and "CONTENT CHECK FAIL: unknown profile" in r.stdout and r2.returncode == 1 \
         and "UNKNOWN" in r2.stdout and dod_mode(d) and not warn_mode(d)
     check("unknown profile value: the scan and --status fail (no fall back to minimum)", good)
     pathlib.Path(d, ".pii-guard").write_bytes(b"\xef\xbb\xbfprofile: dod\r\n")
@@ -282,7 +282,7 @@ def case_cli_profile(d, env):
         pathlib.Path(d, ".pii-guard").write_bytes(raw)
         r = guard(d, env, "--all")
         subprocess.run(["git", "add", ".pii-guard"], cwd=d, check=True, capture_output=True)
-        good = r.returncode == 1 and "PII GUARD FAIL: unknown profile" in r.stdout and "Traceback" not in r.stderr \
+        good = r.returncode == 1 and "CONTENT CHECK FAIL: unknown profile" in r.stdout and "Traceback" not in r.stderr \
             and profile_of(load_allow(d, ":0")) == "unknown"
         subprocess.run(["git", "rm", "-q", "--cached", ".pii-guard"], cwd=d, check=True, capture_output=True)
         check(f".pii-guard with {label}: the scan fails (file and git read)", good)
@@ -442,14 +442,14 @@ def run_hook_in_process(d, text, want):
     if want == "dod":  # a DoD-tier project folder for this case only
         pathlib.Path(d, ".pii-guard").write_text("profile: dod\n")
         subprocess.run(["git", "init", "-q"], cwd=d, capture_output=True)
-    cap = pii_guard_hook.HOOK_MAX_BYTES
-    pii_guard_hook.HOOK_MAX_BYTES = 150_000 if want == "cap" else cap
+    cap = check_content_hook.HOOK_MAX_BYTES
+    check_content_hook.HOOK_MAX_BYTES = 150_000 if want == "cap" else cap
     err, t0 = io.StringIO(), time.process_time()  # CPU time of this process, as in case_speed
     try:
         with contextlib.redirect_stderr(err):
-            code = pii_guard_hook.hook(text)
+            code = check_content_hook.hook(text)
     finally:
-        pii_guard_hook.HOOK_MAX_BYTES = cap
+        check_content_hook.HOOK_MAX_BYTES = cap
     out = err.getvalue()
     if want == "dod":
         pathlib.Path(d, ".pii-guard").unlink()
@@ -486,34 +486,38 @@ def case_hook():
 
 
 def case_missing_parts():
-    """A copy of pii_guard.py without its parts blocks when run (exit 2, also in the hook) but only raises on import."""
+    """A copy of check_content.py without its parts blocks when run (exit 2, also in the hook) but only raises on import."""
     with tempfile.TemporaryDirectory() as d:
-        alone = os.path.join(d, "pii_guard.py")
+        alone = os.path.join(d, "check_content.py")
         with open(ME[1]) as src, open(alone, "w") as dst:
             dst.write(src.read())
         env = {k: v for k, v in os.environ.items() if k != "PYTHONPATH"}   # only the lone copy is importable
         hook = subprocess.run([sys.executable, alone, "--hook"], input="{}", capture_output=True, text=True, cwd=d,
                               env=env)
         check("missing parts: the hook blocks (exit 2)", hook.returncode == 2)
-        with open(os.path.join(d, "pii_guard_scan.py"), "w") as part:   # the scan part alone: --hook still blocks
-            part.write(open(os.path.join(os.path.dirname(ME[1]), "pii_guard_scan.py")).read())
+        with open(os.path.join(d, "check_content_scan.py"), "w") as part:   # the scan part alone: --hook still blocks
+            part.write(open(os.path.join(os.path.dirname(ME[1]), "check_content_scan.py")).read())
         hook = subprocess.run([sys.executable, alone, "--hook"], input="{}", capture_output=True, text=True, cwd=d,
                               env=env)
         check("missing hook part: the hook blocks (exit 2)", hook.returncode == 2)
-        os.remove(os.path.join(d, "pii_guard_scan.py"))
-        imp = subprocess.run([sys.executable, "-c", "try:\n import pii_guard\nexcept ImportError:\n print('raised')"],
+        os.remove(os.path.join(d, "check_content_scan.py"))
+        imp = subprocess.run([sys.executable, "-c", "try:\n import check_content\nexcept ImportError:\n print('raised')"],
                              capture_output=True, text=True, cwd=d, env=env)
         check("missing parts: an importer gets ImportError, not an exit", imp.stdout.strip() == "raised")
 
 
 def run():
-    """Run every case in order; print PII GUARD TEST PASS or FAIL and return the exit code."""
+    """Run every case in order; print CONTENT CHECK TEST PASS or FAIL and return the exit code."""
     # The host's git config (forced signing, -c on the command line) must not change the cases.
     for k in ("GIT_CONFIG_PARAMETERS", "GIT_CONFIG_COUNT"):
         os.environ.pop(k, None)
     os.environ.update(GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1")
+    os.environ.pop("CHECK_TERMS", None)  # the host's terms list must not change the cases
+    os.environ["CHECK_TERMS_FILE"] = os.path.join(tempfile.gettempdir(), "no-such-terms-file.txt")
     for case in (case_speed, case_minimum_patterns, case_secrets_and_masks, case_dod_patterns, case_profile_lines,
                  case_denylist_and_fingerprint, case_cli, case_commits, case_hook, case_missing_parts):
         case()
-    print("PII GUARD TEST " + ("FAIL" if FAILED else "PASS"))
+    import check_content_test_blocks  # the cases for terms, block lines, the .check name and the write and Bash tools
+    check_content_test_blocks.run(check)
+    print("CONTENT CHECK TEST " + ("FAIL" if FAILED else "PASS"))
     return 1 if FAILED else 0
