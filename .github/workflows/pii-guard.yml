@@ -1,4 +1,4 @@
-name: pii-guard
+name: checks
 # Repo checks and the personal-data scan in one job (one runner start).
 # The full lane of scripts/check.sh. Pull requests and manual runs only, never on push (.claude/skills/deliver/SKILL.md: Actions minutes).
 on:
@@ -8,6 +8,9 @@ permissions:
   contents: read
 jobs:
   scan:
+    # Shown on GitHub as "checks" (without a name, GitHub shows the job id "scan"). A repo that made "scan" a
+    # required status check must change it to "checks" (Settings > Branches), or its pull requests wait for ever.
+    name: checks
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

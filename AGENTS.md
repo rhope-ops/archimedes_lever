@@ -81,7 +81,7 @@ Nothing else is a rule. docs/DECISIONS.md is the record of what the owner decide
 
 ## Handoff
 
-- Keep status in repo files, never only in chat (the next session cannot see this chat; it reads the files). The current request overrides an older handoff. Keep docs/NEXT_PROMPT.md short (40 lines or fewer) and put detailed evidence in docs/reviews/. Steps: `.claude/skills/handoff/SKILL.md`.
+- Keep status in repo files, never only in chat (the next session cannot see this chat; it reads the files). The current request overrides an older handoff. Keep docs/NEXT_PROMPT.md short (40 lines or fewer) and put detailed evidence in docs/reviews/. Steps: `.claude/skills/handoff/SKILL.md`. When the owner approves a plan, save it in docs/NEXT_PROMPT.md with the approval date and push it before step 1; after a restart or a compaction, continue it without a new plan review or approval.
 
 ## Bloat, drift and assumptions
 

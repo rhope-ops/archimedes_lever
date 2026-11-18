@@ -1,22 +1,19 @@
 ---
 name: turn-summary
-description: Use at the end of every work turn (not for a pure question), before you write the end-of-turn summary. Gives the lines that apply (Proof, Drift, Assumptions, Applied, PII, Delegated, Suggest) and the full form when a decision or work stays open.
+description: Use at the end of every work turn (not for a pure question), before you write the end-of-turn summary. Gives the order (status line, questions, the lines that apply, Notes) and what to add when work stays open.
 ---
 
 # End-of-turn summary
 
-An account skill: the owner uploads this file at claude.ai (Settings, Capabilities, Skills). The one-line default stays in the preferences (PREFERENCES.md, "End-of-turn summary"); this file holds the rest.
+An account skill: the owner uploads this file at claude.ai (Settings, Capabilities, Skills). The preferences ("End-of-turn summary") hold the short form; this file holds the details. Keep it short: each line must change what the owner knows or does.
 
-- Below that line, add only the lines that apply. In a repo, put the same lines in the pull request text.
-  - Proof: the outside evidence, the method and the result. Always, when the work changed something.
-  - Drift: each difference from what I asked for, with the reason.
-  - Assumptions: only those with medium or low confidence.
-  - Applied: each rule or earlier decision that changed the work, with its text in one line and its source.
-  - PII: only when you published, committed, delegated or sent content to an external service, or when you found PII.
-  - Delegated: task · model · reason for the model · how you checked the result.
-  - Suggest: at most 3 proposals (new rule, change, retire, new skill, speed-up), and only after my correction, the same event 2 times, or a measured cost. Each one: the exact text, the trigger, what it replaces. Write nothing until I approve that text.
-- Use the full form only when a decision is open or work stays open after this turn, in this order, leaving out empty parts:
-  1. Decide: numbered questions, options A/B/C, **REC:** with reason. Carry open ones forward with "(open since <date time>)".
-  2. Copy: each text to paste, with "Paste into: <place>" above it.
-  3. Resume in a new chat: one code block, at most 100 words, with a stand-alone prompt: goal, current state, approved decisions, next step, full URLs.
-  4. Table with an empty header, one short line per cell: Step, Status, Risk, Running, Next, Links.
+1. Status line: "Step X of Y · <status> · Next: <step, who> · <links>".
+2. Questions, only when a decision is open: 1 to 10, most important first, each with 2–4 options, the recommendation first, and **REC:** with the reason. Use question dialogs of 4, one after another; do not repeat them in text. Carry an open question forward with "(open since <date time>)".
+3. Only the lines that apply, one line each:
+   - Proof: the outside evidence, the method and the result. Always, when the work changed something.
+   - Drift: each difference from what I asked for, with the reason.
+   - Risks: each risk with a REC.
+   - GAP: practices or standards the work misses (the preferences, "Style").
+   - Suggest: at most 3 rule or process proposals, each with the exact text, the trigger and what it replaces; also asked as a question. Write nothing until I approve that text.
+4. Notes (one line, or the pull request text when there is one): Applied (rule and source), Assumptions (medium or low confidence only), PII (scan result, only when content left this place), Delegated (task · model · how you checked it).
+5. Only when work stays open after this turn: Copy (each text to paste, with "Paste into: <place>"), and a resume prompt in one code block of at most 100 words (goal, state, approved decisions, next step, full URLs).
