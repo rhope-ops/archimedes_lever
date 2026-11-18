@@ -122,7 +122,7 @@ With the guard on in the full kit, every push and every pull-request check fails
 
 ## Update an existing project
 
-Projects don't stay in sync with the kit automatically, and they don't carry the sync tools. To bring a project up to date by hand, start in the project repo with no uncommitted changes:
+Projects don't stay in sync with the kit automatically, and they don't carry the sync tools. A project takes kit changes by sync: [docs/CHANGELOG.md](docs/CHANGELOG.md) has one row for each kit version and says what a project must do. Start in the project repo with no uncommitted changes:
 
 1. Clone this repo next to the project, then run its copy of the sync script:
    ```
@@ -134,9 +134,17 @@ Projects don't stay in sync with the kit automatically, and they don't carry the
 
 An old AGENTS.md that doesn't follow the kit's layout is moved under "Project rules" with a review note. Delete whatever the kit now covers.
 
+The sync replaces every kit file, so a project keeps its own code in its own files, which a sync never touches:
+
+- `scripts/check.local.sh`: the project's own tests (`scripts/check.sh` runs it last).
+- `scripts/check_content_local.py`: its own finders for the content check, for example its own pattern for a kind of finding (the interface: the header of `scripts/check_content_scan.py`).
+- `scripts/code_standard_gate.py`: its own stricter code-standard rules (the interface: the header of `scripts/code_standard.py`; [docs/code-standard.md](docs/code-standard.md) "A project's own gate").
+
+A kit file that the owner wants different in one project is recorded with `python3 scripts/check_lock.py --relock <file>` on the owner's request, and each check run lists it. The steps, the approval of changed rule lines and the before and after proof: [.claude/skills/port/SKILL.md](.claude/skills/port/SKILL.md).
+
 ## Limits
 
-- A project doesn't update when the kit does. The kit keeps no changelog; its history is in git (`git log`).
+- A project doesn't update when the kit does. [docs/CHANGELOG.md](docs/CHANGELOG.md) lists each kit version a project must take; the rest of the history is in git (`git log`).
 - Account-wide preferences apply only to your own Claude account. Every Claude session in the project gets the project rules from AGENTS.md.
 - Setup needs an agent with file access. A chat that can't run commands can only give you text to paste; use "Set up a project by hand".
 - With the guard on, the pull-request check needs the `PII_GUARD_DENYLIST` secret. GitHub doesn't give secrets to pull requests from forks, so a pull request from a fork always fails the check. The maintainer checks it by hand, or copies it to a branch in the repo.

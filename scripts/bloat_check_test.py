@@ -7,6 +7,9 @@ It builds small sample repos in temporary folders and proves each measure: dupli
 paths AGENTS.md names, the conflict gate, the rule lint, the start-read warning, --compare and --record, the settings
 in `.check` and the state in `.check.state.json`, and the skills check (scripts/bloat_check_skills.py).
 Input: the bloat_check module. Output: BLOAT TEST PASS, or an AssertionError naming the case. Needs git.
+Network: none.
+Writes: temporary repos only.
+Credentials: none.
 """
 import argparse
 import contextlib
@@ -37,7 +40,15 @@ def settings(root, lines="", **state):
 
 
 def sample_repo(bloat, root):
-    """A repo with a duplicate line, a long handoff, a big file and settings with low budgets; returns its config."""
+    """A repo with a duplicate line, a long handoff, a big file and settings with low budgets; returns its config.
+
+    Args:
+        bloat: the module under test.
+        root: an empty temporary folder (a Path).
+
+    Returns:
+        The audit settings of the sample repo.
+    """
     subprocess.run(["git", "init", "-q", str(root)], check=True)
     (root / "AGENTS.md").write_text(f"# A\n- {LONG}\n")
     (root / "docs").mkdir()
@@ -47,6 +58,25 @@ def sample_repo(bloat, root):
              audit={"last_audit": {"date": "2026-01-01"}}, timings={"t": {"cmd": "true", "seconds": 5}})
     subprocess.run(["git", "-C", str(root), "add", "-A"], check=True)
     return bloat.load_config(root)
+
+
+def generated_block_cases(bloat, root, cfg):
+    """Duplicates: the lines of a marked generated block are not counted; a line after its end marker is.
+
+    Args:
+        bloat: the module under test.
+        root: the sample repo of sample_repo (a Path); it is left as it was.
+        cfg: its audit settings.
+    """
+    gen = "x = 1\n# >>> blk: generated from src by build (do not edit)\n" + "g" * 90 + "\n# <<< blk\n"
+    (root / "g1.ps1").write_text(gen)
+    (root / "g2.ps1").write_text(gen + "h" * 90 + "\n")
+    (root / "g3.ps1").write_text("h" * 90 + "\n")
+    subprocess.run(["git", "-C", str(root), "add", "-A"], check=True)
+    assert len(bloat.duplicates(root, bloat.scan_files(root, cfg))) == 2, "generated block not counted; a line after its end marker is"
+    for g in ("g1.ps1", "g2.ps1", "g3.ps1"):
+        (root / g).unlink()
+    subprocess.run(["git", "-C", str(root), "add", "-A"], check=True)
 
 
 def metrics_cases(bloat, root, cfg):
@@ -62,7 +92,12 @@ def metrics_cases(bloat, root, cfg):
 
 
 def never_audited_cases(bloat, never):
-    """A never-audited repo: not due when new, due by days or commits, and always due as a shallow clone."""
+    """A never-audited repo: not due when new, due by days or commits, and always due as a shallow clone.
+
+    Args:
+        bloat: the module under test.
+        never: the audit settings of a repo with no last audit.
+    """
     with tempfile.TemporaryDirectory() as n:
         subprocess.run(["git", "init", "-q", n], check=True)
         env = {**os.environ, "GIT_AUTHOR_DATE": "2026-01-01T12:00:00Z", "GIT_COMMITTER_DATE": "2026-01-01T12:00:00Z"}
@@ -91,7 +126,11 @@ def strict_cases(bloat, root, cfg, strict):
 
 
 def rule_count_cases(bloat):
-    """Rules: count by place; header, Commands, fences, comments, starter blocks, rankings and tables."""
+    """Rules: count by place; header, Commands, fences, comments, starter blocks, rankings and tables.
+
+    Args:
+        bloat: the module under test.
+    """
     rule_lines = bloat.rule_lines
     sample = ("# T\n\n- Repo: x\n\n## Git safety\n\n- Rule one.\n- Rule two.\n<!-- starter -->\n- Starter only.\n"
               "<!-- /starter -->\n```\n- in a fence\n```\n\n## Commands\n\n- Build: none.\n\n## Project rules\n\n"
@@ -101,20 +140,29 @@ def rule_count_cases(bloat):
     assert "Build: none." in every, "the list of changed lines also covers sections that are not counted"
     assert rule_lines("## A\n\n- Rule start\n  continues with a | b here.\n")[0] == ["Rule start continues with a | b here."], "a continuation with a pipe stays in its rule (a change to it shows)"
     kit, project, _ = rule_lines("## A\n\n* Star.\n1. Numbered.\n  - Nested.\nA paragraph.\n\n## Project rules\n\n+ Plus.\n  wrapped.\nA rule as a paragraph.\n")
-    assert kit == ["Star.", "Numbered.", "Nested. A paragraph."] and project == ["Plus. wrapped.", "A rule as a paragraph."], "every list marker counts; in the kit a line right below an item continues it, in Project rules only an indented one"
+    assert kit == ["Star.", "Numbered.", "Nested. A paragraph."] and project == ["Plus. wrapped.", "A rule as a paragraph."], \
+        "every list marker counts; in the kit a line right below an item continues it, in Project rules only an indented one"
     _, project, _ = rule_lines("## Project rules\n\nRule one.\nRule two.\nRule three.\n\n- Bullet.\nAfter a bullet.\n\n#1 priority: never do X.\n")
     assert project == ["Rule one.", "Rule two.", "Rule three.", "Bullet.", "After a bullet.", "#1 priority: never do X."], "Project rules: unindented lines are rules each; '#1' is text, not a heading"
     _, project, _ = rule_lines("## Project rules\n\nRule | Why\n--- | ---\nT one | x\nT two | y\n\n| R | W |\n|---|---|\n| T three | z |\n-\n")
     assert project == ["T one | x", "T two | y", "| T three | z |"], "tables without leading pipes: one rule per row; a lone '-' removes no row"
-    kit, project, every = rule_lines("## Order of authority\n\n1. The owner.\n2. This file.\n- A bullet here counts.\n\n## B\n\n- One rule,\n  wrapped.\n~~~\n- in a tilde fence\n~~~\n* * *\n---\n### Sub\n\n"
+    kit, project, every = rule_lines("## Order of authority\n\n1. The owner.\n2. This file.\n- A bullet here counts.\n\n## B\n\n"
+                                     "- One rule,\n  wrapped.\n~~~\n- in a tilde fence\n~~~\n* * *\n---\n### Sub\n\n"
                                      "## Project rules\n\n### Group\n\n- P one,\n  wrapped.\n\nA paragraph rule\nover two lines.\n\n---\n\n| Rule | Why |\n|---|---|\n| T one | x |\n| T two | y |\n")
     assert kit == ["A bullet here counts.", "One rule, wrapped."], "the ranking is not counted, a bullet in that section is; wraps, fences, rules and sub-headings are not rules"
-    assert project == ["P one, wrapped.", "A paragraph rule", "over two lines.", "| T one | x |", "| T two | y |"], "Project rules: wrapped bullet 1, an unindented paragraph line 1 each, table rows without header and separator"
+    assert project == ["P one, wrapped.", "A paragraph rule", "over two lines.", "| T one | x |", "| T two | y |"], \
+        "Project rules: wrapped bullet 1, an unindented paragraph line 1 each, table rows without header and separator"
     assert "The owner." in every, "ranking lines are still listed when they change"
 
 
 def caps_and_paths_cases(bloat, ro, caps):
-    """A repo with origin/main: a swap of rule lines is listed, both caps fail, missing paths fail."""
+    """A repo with origin/main: a swap of rule lines is listed, both caps fail, missing paths fail.
+
+    Args:
+        bloat: the module under test.
+        ro: an empty temporary folder for the sample repo (a Path).
+        caps: audit settings with the default budgets.
+    """
     o = str(ro)
     git_in(o, "init", "-q", "-b", "main")
     (ro / "AGENTS.md").write_text("## A\n\n- Old rule.\n- Kept rule.\n\n## Project rules\n\n")
@@ -146,12 +194,20 @@ def caps_and_paths_cases(bloat, ro, caps):
     assert bloat.start_read(ro, caps)[2] >= 100, "skill names and descriptions count in the session load"
     import bloat_check_skills
     table = [("agents merge", r"never merges", ["AGENTS.md"])]
-    assert bloat_check_skills.second_homes(ro, table) == ['second home of a rule: .claude/skills/s/SKILL.md:5 states "agents merge"; its home is AGENTS.md: link to it'], "a rule stated again in a skill is a problem"
+    assert bloat_check_skills.second_homes(ro, table) == [
+        'second home of a rule: .claude/skills/s/SKILL.md:5 states "agents merge"; its home is AGENTS.md: link to it'], \
+        "a rule stated again in a skill is a problem"
     assert bloat_check_skills.second_homes(ro, [("x", r"never merges", [".claude/skills/s/SKILL.md"])]) == [], "the home file may state it"
     subprocess.run(["rm", "-rf", str(ro / ".claude")], check=True)
-    (ro / "AGENTS.md").write_text("## A\n\n- See `.claude/skills/x/SKILL.md` and [doc](docs/gone.md), [web](https://e.example/a), `.claude/skills/<name>/`, `scripts/gone.sh --fast`, `scripts/check.local.sh`, `python3 scripts/gone2.py --test`, `scripts/tool.sh -o docs/out.html`, `scripts/gone2.py:12`, `scripts/gone.sh|tee x`, `bash -x scripts/gone3.sh`, `x --output docs/a.md --out docs/b.md --outline docs/c.md`.\n")
+    (ro / "AGENTS.md").write_text(
+        "## A\n\n- See `.claude/skills/x/SKILL.md` and [doc](docs/gone.md), [web](https://e.example/a), `.claude/skills/<name>/`, "
+        "`scripts/gone.sh --fast`, `scripts/check.local.sh`, `python3 scripts/gone2.py --test`, `scripts/tool.sh -o docs/out.html`, "
+        "`scripts/gone2.py:12`, `scripts/gone.sh|tee x`, `bash -x scripts/gone3.sh`, "
+        "`x --output docs/a.md --out docs/b.md --outline docs/c.md`.\n")
     rows, problems = bloat.rules_report(ro, caps)
-    assert problems == ["missing paths named in AGENTS.md: .claude/skills/x/SKILL.md, docs/gone.md, scripts/gone.sh, scripts/gone2.py, scripts/gone3.sh, scripts/tool.sh"], "missing paths (also after a command word, with a line number or a pipe), not URLs, patterns, optional files or option values"
+    assert problems == ["missing paths named in AGENTS.md: .claude/skills/x/SKILL.md, docs/gone.md, scripts/gone.sh, "
+                        "scripts/gone2.py, scripts/gone3.sh, scripts/tool.sh"], \
+        "missing paths (also after a command word, with a line number or a pipe), not URLs, patterns, optional files or option values"
     (ro / ".claude/skills/x").mkdir(parents=True); (ro / ".claude/skills/x/SKILL.md").write_text("x")
     (ro / "docs").mkdir(); (ro / "docs/gone.md").write_text("x")
     (ro / "scripts").mkdir(); (ro / "scripts/gone.sh").write_text("x"); (ro / "scripts/gone2.py").write_text("x"); (ro / "scripts/tool.sh").write_text("x"); (ro / "scripts/gone3.sh").write_text("x")
@@ -159,7 +215,13 @@ def caps_and_paths_cases(bloat, ro, caps):
 
 
 def conflict_gate_cases(bloat, ro, caps):
-    """Conflict gate: changed rule lines need a record that names their hash; without --gate only a WARN line."""
+    """Conflict gate: changed rule lines need a record that names their hash; without --gate only a WARN line.
+
+    Args:
+        bloat: the module under test.
+        ro: the sample repo of caps_and_paths_cases (a Path).
+        caps: audit settings with the default budgets.
+    """
     (ro / "AGENTS.md").write_text("## A\n\n- New rule.\n- Kept rule.\n\n## Project rules\n\n")
     h = bloat.conflict_hash(["New rule."], ["Old rule."])
     assert h == bloat.conflict_hash(["New rule."], ["Old rule."]) != bloat.conflict_hash(["Old rule."], ["New rule."]), "the hash keeps + and - apart"
@@ -178,7 +240,12 @@ def conflict_gate_cases(bloat, ro, caps):
 
 
 def lint_cases(bloat, ro):
-    """Lint: near-duplicates, vague words, untested rules (a section with no scenario, no script named)."""
+    """Lint: near-duplicates, vague words, untested rules (a section with no scenario, no script named).
+
+    Args:
+        bloat: the module under test.
+        ro: the sample repo (a Path).
+    """
     (ro / ".claude").mkdir(exist_ok=True)
     (ro / ".claude/rule-tests.md").write_text("| # | Rule tested | Section | Prompt |\n|---|---|---|---|\n| 1 | x | Tested; Other | p |\n")
     rules = [("Tested", "Never push to main without the full check lane passing first."),
@@ -189,11 +256,14 @@ def lint_cases(bloat, ro):
     flags = bloat.lint(ro, rules)
     assert sum("near-duplicate" in f for f in flags) == 1, "one near-duplicate pair"
     assert [f for f in flags if "vague" in f] == ['WARN  rule lint: vague (where possible): "Use the right tool where possible."'], "vague word; text in backticks is not read"
-    assert [f for f in flags if "untested" in f] == ['WARN  rule lint: untested (no scenario for "Untested" in .claude/rule-tests.md, no script named): "Keep the handoff short."'], "untested: no scenario and no script; a ';' list of sections counts each"
+    assert [f for f in flags if "untested" in f] == [
+        'WARN  rule lint: untested (no scenario for "Untested" in .claude/rule-tests.md, no script named): "Keep the handoff short."'], \
+        "untested: no scenario and no script; a ';' list of sections counts each"
     assert bloat.lint(ro, rules, only={"Keep the handoff short."}) == [f for f in flags if "handoff" in f], "only: the changed lines"
     (ro / ".claude/rule-tests.md").unlink()
     assert not [f for f in bloat.lint(ro, rules) if "untested" in f], "no rule-tests file (starter tier): no untested flags"
-    (ro / "AGENTS.md").write_text("## A\n\n- New rule.\n- Kept rule.\n\n## Project rules\n\n- See `.claude/skills/x/SKILL.md` and [doc](docs/gone.md), `scripts/gone.sh`, `scripts/gone2.py`, `scripts/tool.sh`.\n")
+    (ro / "AGENTS.md").write_text("## A\n\n- New rule.\n- Kept rule.\n\n## Project rules\n\n- See `.claude/skills/x/SKILL.md` and "
+                                  "[doc](docs/gone.md), `scripts/gone.sh`, `scripts/gone2.py`, `scripts/tool.sh`.\n")
     with contextlib.redirect_stdout(io.StringIO()):
         assert bloat.main_rules(ro) == 0, "--rules passes"
         assert bloat.main_lint(ro) == 0, "--lint never fails"
@@ -204,7 +274,14 @@ def lint_cases(bloat, ro):
 
 
 def report_cases(bloat, root, cfg, strict):
-    """The start-read warning, an unknown audit commit, a bad config, and --time --record."""
+    """The start-read warning, an unknown audit commit, a bad config, and --time --record.
+
+    Args:
+        bloat: the module under test.
+        root: the sample repo of sample_repo (a Path).
+        cfg: its audit settings.
+        strict: the options of a --strict run (an argparse.Namespace).
+    """
     settings(root, "audit-budget-session_load_warn_tokens: 1\n", audit={"last_audit": {"date": "2026-01-01"}})
     w = io.StringIO()
     with contextlib.redirect_stdout(w):
@@ -229,7 +306,12 @@ def report_cases(bloat, root, cfg, strict):
 
 
 def compare_cases(bloat, root):
-    """--compare: within the limit, a slowdown, no baseline, --record, and --time skips a timing with no cmd."""
+    """--compare: within the limit, a slowdown, no baseline, --record, and --time skips a timing with no cmd.
+
+    Args:
+        bloat: the module under test.
+        root: the sample repo (a Path).
+    """
     tc = {"timings": {"check": {"seconds": 4.0, "steps": {"a": 2.0, "tiny": 0.1}}}}
     line, slow = bloat.compare_times(json.loads(json.dumps(tc)), [("check", 4.4), ("check:a", 2.4), ("check:tiny", 0.3)])
     assert not slow and line.startswith("TIME  baseline: 3 of 3"), "within +25%, or under 0.5 s slower: ok"
@@ -258,7 +340,11 @@ def write_skill(rs, folder, body):
 
 
 def skills_cases(rs):
-    """--skills: a clean pass, each FAIL case, each WARN case, orphans and a folded description."""
+    """--skills: a clean pass, each FAIL case, each WARN case, orphans and a folded description.
+
+    Args:
+        rs: an empty temporary folder for the sample skills (a Path).
+    """
     (rs / "AGENTS.md").write_text("Skills: ok, nodesc, noname, wrongname, nofm, longone, warnone.\n")
     good = "---\nname: {}\ndescription: Use when testing.\n---\nbody\n"
     write_skill(rs, "ok", good.format("ok"))
@@ -292,7 +378,14 @@ def skills_cases(rs):
 
 
 def run(bloat):
-    """Run every case against the module bloat in temporary repos; print BLOAT TEST PASS (an assert stops on a failure)."""
+    """Run every case against the module bloat in temporary repos; print BLOAT TEST PASS (an assert stops on a failure).
+
+    Args:
+        bloat: the module under test (scripts/bloat_check.py).
+
+    Returns:
+        The exit code 0 (an assert stops on a failure).
+    """
     # The host's git config (forced signing, -c on the command line) must not change the cases.
     for k in ("GIT_CONFIG_PARAMETERS", "GIT_CONFIG_COUNT"):
         os.environ.pop(k, None)
@@ -301,6 +394,7 @@ def run(bloat):
     with tempfile.TemporaryDirectory() as d:
         root = Path(d)
         cfg = sample_repo(bloat, root)
+        generated_block_cases(bloat, root, cfg)
         never_audited_cases(bloat, metrics_cases(bloat, root, cfg))
         strict_cases(bloat, root, cfg, strict)
         rule_count_cases(bloat)

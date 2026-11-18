@@ -20,6 +20,9 @@ It reports:
                     continues the approved plan, without a new plan review (the owner, 2026-11-18).
 The kit repo itself keeps its placeholders on purpose: it gets the KIT line, never FIRST USE.
 Exit 0 always: a session-start hook informs, it never blocks. Standard library only.
+Network: none (it runs local git read commands).
+Writes: none (the self-test: a temporary repo).
+Credentials: none; it reads whether a name denylist exists (an environment variable or a file), never its words.
 """
 import json
 import os
@@ -49,7 +52,14 @@ def has_denylist():
 
 
 def messages(root):
-    """The session-start lines this repo needs: KIT, FIRST USE and DENYLIST, plus a note for a check that failed."""
+    """The session-start lines this repo needs: KIT, FIRST USE and DENYLIST, plus a note for a check that failed.
+
+    Args:
+        root: the repo root (a path).
+
+    Returns:
+        A list of lines to print.
+    """
     root = pathlib.Path(root)
     out = []
     try:
@@ -110,7 +120,11 @@ def hook_source(raw):
 
 
 def read_hook_input():
-    """The hook input on stdin; "" for a terminal or when nothing arrives within 2 s. Stops at 1 MB or 5 s (never hangs)."""
+    """The hook input on stdin; "" for a terminal or when nothing arrives within 2 s. Stops at 1 MB or 5 s (never hangs).
+
+    Returns:
+        The input as text, or "".
+    """
     try:
         if sys.stdin is None or sys.stdin.isatty():
             return ""
@@ -130,7 +144,12 @@ def read_hook_input():
 
 
 def hook_cases(d, expect):
-    """Hook-input cases in repo d: the source field, and the real hook on resume, invalid UTF-8 and 3 MB of input."""
+    """Hook-input cases in repo d: the source field, and the real hook on resume, invalid UTF-8 and 3 MB of input.
+
+    Args:
+        d: a temporary git repo.
+        expect: checks one case (label, got, want).
+    """
     for raw, want in (('{"source": "resume"}', "resume"), ('{"source": "compact"}', "compact"),
                       ('{"source": "startup"}', "startup"), ("", ""), ("not json", ""), ("[1]", "")):
         expect(f"hook source of {raw!r}", hook_source(raw), want)
@@ -145,7 +164,11 @@ def hook_cases(d, expect):
 
 
 def self_test():
-    """Check the messages on a temporary repo through each state (new, kit clone, guard with and without denylist)."""
+    """Check the messages on a temporary repo through each state (new, kit clone, guard with and without denylist).
+
+    Returns:
+        The exit code: 0 pass, 1 fail.
+    """
     ok = True
 
     def expect(name, got, want):
@@ -205,7 +228,11 @@ def root():
 
 
 def main():
-    """Print the messages for the current repo, or run --test; return the exit code."""
+    """Print the messages for the current repo, or run --test; return the exit code.
+
+    Returns:
+        The exit code 0, or the exit code of the self-test.
+    """
     if "--test" in sys.argv[1:]:
         return self_test()
     if hook_source(read_hook_input()) in ("resume", "compact"):

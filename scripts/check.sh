@@ -9,13 +9,16 @@
 #   scripts/check.sh --status            the word lists (counts and fingerprints, never the words) and the tier
 #   scripts/check.sh --hook              the Claude Code PreToolUse hook (.claude/settings.json); any error blocks
 # The checks:
-#   1. the self-test of each kit script present (--test; a starter project has fewer), and the code standard
-#      (scripts/code_standard.py, when .check.state.json holds its baseline; settings: the `code-` lines of .check),
+#   1. the self-test of each kit script present (--test; a starter project has fewer), the self-test of a project's
+#      own extension files when they have one (scripts/check_content_local.py and scripts/code_standard_gate.py: the
+#      file names --test; the full lane always, the fast lane when the file or a file it extends changed), and the
+#      code standard (scripts/code_standard.py, when .check.state.json holds its baseline; settings: the `code-` lines of .check),
 #   2. the rule caps and the paths AGENTS.md names, the lint of changed rule lines (WARN lines), and in the full lane
 #      the conflict-check record for changed rule lines (scripts/bloat_check.py --rules [--gate]; full tier),
 #   3. the project log check (full tier),
-#   4. the content check of all tracked files (when the settings file .check exists; in GitHub Actions the "checks" workflow's content step does it;
-#      with --no-content the caller does it: the pre-push hook scans files and pushed commits in one run),
+#   4. the content check of all tracked files (when the settings file .check exists; in GitHub Actions the "checks"
+#      workflow's content step does it; with --no-content the caller does it: the pre-push hook scans files and pushed
+#      commits in one run),
 #   5. scripts/check.local.sh, when it exists: this project's own tests (SKIP when missing: the review gate in
 #      .claude/skills/deliver/SKILL.md then guards main).
 # The checks run in parallel: each one works on its own temporary files. CHECK_SERIAL=1 runs them one at a time.
@@ -23,7 +26,12 @@
 # checks), a line that compares the times with the baselines in .check.state.json (scripts/bloat_check.py --compare:
 # the full lane and each step; the fast lane only its steps, as its total depends on what changed; a slowdown is a
 # WARN line, never a failure) and "CHECK PASS" or "CHECK FAIL" last.
-# --record (full lane only): after a pass, store this run's times as the new baselines (commit the change). Exit 0 only when no check failed. Needs bash, git and python3.
+# --record (full lane only): after a pass, store this run's times as the new baselines (commit the change).
+# Exit 0 only when no check failed. Needs bash, git and python3.
+# Network: none itself; a project's scripts/check.local.sh may use the network for its own tests.
+# Writes: .git/check-pass and .git/check-last (the stamp and the last TIME line); with --record the time baselines in
+#   .check.state.json; temporary folders.
+# Credentials: none; the content check reads the word lists from an environment variable or a file (scripts/check_content.py).
 # Stamp: a lane that passes on a clean tree writes "<lane> <commit>" to .git/check-pass. With --cached, a run on the
 # same commit and a clean tree passes at once (the full stamp covers both lanes). Never write the stamp by hand.
 # Self-test (temporary repos, no network): scripts/check.sh --test
@@ -153,10 +161,27 @@ PY
   # With no temporary folder, check.sh stops at once (a real run and this self-test). A fake mktemp names a folder
   # that does not exist inside $t: if the stop ever breaks, the writes fail there, never outside this test's folder.
   mkdir -p "$t/fakebin"; printf '#!/bin/sh\necho "%s"\n' "$t/missing" > "$t/fakebin/mktemp"; chmod +x "$t/fakebin/mktemp"
-  ok "a real run with no temporary folder fails at once" "$( { cd "$t/r" && PATH="$t/fakebin:$PATH" bash scripts/check.sh 2>&1; echo "rc=$?"; } | tail -n 2)" "CHECK FAIL: no temporary folder (mktemp failed)
+  # nt ARGS...: run the copied check.sh with the fake mktemp; print its last line and its exit code
+  nt() { { cd "$t/r" && PATH="$t/fakebin:$PATH" bash scripts/check.sh "$@" 2>&1; echo "rc=$?"; } | tail -n 2; }
+  ok "a real run with no temporary folder fails at once" "$(nt)" "CHECK FAIL: no temporary folder (mktemp failed)
 rc=1"
-  ok "the self-test with no temporary folder fails at once" "$( { cd "$t/r" && PATH="$t/fakebin:$PATH" bash scripts/check.sh --test 2>&1; echo "rc=$?"; } | tail -n 2)" "CHECK SELF-TEST FAIL: no temporary folder
+  ok "the self-test with no temporary folder fails at once" "$(nt --test)" "CHECK SELF-TEST FAIL: no temporary folder
 rc=1"
+  # A project's own extension files: the self-test of each runs when the file names --test (full lane: always; fast
+  # lane: when the file, or a kit file it extends, changed); a file with no self-test is a SKIP line.
+  g update-ref refs/remotes/origin/main HEAD
+  printf '%s\n' '# usage: --test' 'print("local self-test")' > "$t/r/scripts/check_content_local.py"
+  printf '%s\n' 'print("a gate with no self-test")' > "$t/r/scripts/code_standard_gate.py"
+  out="$(c)"
+  ok "full lane: the self-test of a project's own finders runs" "$(printf '%s\n' "$out" | grep -c '^PASS  check_content_local self-test')" 1
+  ok "an extension file with no self-test is a SKIP line" "$(printf '%s\n' "$out" | grep -c '^SKIP  code_standard_gate self-test')" 1
+  ok "fast lane: a new extension file runs its self-test" "$(c --fast | grep -c '^PASS  check_content_local self-test')" 1
+  g add -A; g commit -q -m "extension files"; g update-ref refs/remotes/origin/main HEAD
+  ok "fast lane: an unchanged extension file is not tested again" "$(c --fast | grep -c 'check_content_local self-test')" 0
+  echo "# changed" >> "$t/r/scripts/check_content_scan.py"
+  ok "fast lane: a change to the kit file it extends runs it" "$(c --fast | grep -c '^PASS  check_content_local self-test')" 1
+  printf '%s\n' '# usage: --test' 'raise SystemExit(1)' > "$t/r/scripts/check_content_local.py"
+  c >/dev/null; ok "a failing self-test of an extension file fails the run" "$?" 1
   [ "$fails" = 0 ] && echo "CHECK SELF-TEST PASS" || { echo "CHECK SELF-TEST FAIL"; exit 1; }
   exit 0
 fi
@@ -244,17 +269,33 @@ for s in stop_check worker_guard log_check; do
   selftest "$s" "scripts/$s.py" -- python3 "scripts/$s.py" --test
 done
 # A script whose cases or parts live in sibling modules lists them, so the fast lane reruns its self-test when they change.
-selftest check_settings scripts/check_settings.py -- python3 scripts/check_settings.py --test
-selftest bloat_check scripts/bloat_check.py scripts/bloat_check_test.py scripts/bloat_check_skills.py scripts/check_settings.py -- python3 scripts/bloat_check.py --test
+selftest check_settings scripts/check_settings.py scripts/check_settings_test.py -- python3 scripts/check_settings.py --test
+selftest bloat_check scripts/bloat_check.py scripts/bloat_check_test.py scripts/bloat_check_skills.py scripts/bloat_check_rules.py \
+  scripts/check_settings.py -- python3 scripts/bloat_check.py --test
 selftest token_log scripts/token_log.py scripts/token_log_test.py -- python3 scripts/token_log.py --test
-selftest code_standard scripts/code_standard.py scripts/code_standard_test.py scripts/code_standard_docs.py scripts/check_settings.py -- python3 scripts/code_standard.py --test
+selftest code_standard scripts/code_standard.py scripts/code_standard_test.py scripts/code_standard_docs.py \
+  scripts/code_standard_parse.py scripts/check_settings.py -- python3 scripts/code_standard.py --test
 selftest timeline scripts/timeline.py scripts/log_check.py -- python3 scripts/timeline.py --test  # it imports log_check
-selftest check_content scripts/check_content.py scripts/check_content_scan.py scripts/check_content_hook.py scripts/check_content_test.py scripts/check_content_test_blocks.py -- python3 scripts/check_content.py --test
+selftest check_content scripts/check_content.py scripts/check_content_scan.py scripts/check_content_finders.py \
+  scripts/check_content_hook.py scripts/check_content_test.py scripts/check_content_test_blocks.py \
+  scripts/check_content_test_local.py -- python3 scripts/check_content.py --test
+# A project's own extension files (the kit has none): each proves itself when it has a self-test. The deps are the
+# file, its sibling files (for example its test cases: scripts/check_content_local_test.py) and the kit files it extends.
+# extension NAME FILE [KIT FILES IT EXTENDS...]: run "python3 FILE --test" when FILE names --test; else a SKIP line
+extension() {
+  local name="$1" file="$2"; shift 2
+  [ -f "$file" ] || return 0
+  if grep -q -- '--test' "$file"; then selftest "$name" "$file" "${file%.py}"*.py "$@" -- python3 "$file" --test
+  else skip "$name self-test" "$file has no self-test (a file that names --test is run with it)"; fi
+}
+extension check_content_local scripts/check_content_local.py scripts/check_content_scan.py scripts/check_content_finders.py
+extension code_standard_gate scripts/code_standard_gate.py scripts/code_standard.py scripts/code_standard_parse.py \
+  scripts/code_standard_docs.py scripts/check_settings.py
 selftest check_blocks scripts/check_blocks.py .claude/settings.json -- python3 scripts/check_blocks.py --test
 selftest check_lock scripts/check_lock.py -- python3 scripts/check_lock.py --test
 selftest first_use_check scripts/first_use_check.py scripts/check_blocks.py scripts/check_content.py scripts/check_content_scan.py -- python3 scripts/first_use_check.py --test
 # Kit only: projects have no sync tools. The drift self-test reads the kit's AGENTS.md and stop_check.py.
-selftest drift scripts/drift.py scripts/sync_baseline.py AGENTS.md scripts/stop_check.py -- python3 scripts/drift.py --test
+selftest drift scripts/drift.py scripts/sync_baseline.py scripts/sync_merge.py AGENTS.md scripts/stop_check.py -- python3 scripts/drift.py --test
 selftest pre-push scripts/git-hooks/pre-push -- scripts/git-hooks/pre-push --test
 selftest session_checkin scripts/session_checkin.sh -- bash scripts/session_checkin.sh --test
 # This script's own self-test (not inside that self-test: it runs this script in temporary repos).

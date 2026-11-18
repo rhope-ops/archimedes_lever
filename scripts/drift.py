@@ -13,19 +13,26 @@ applied as sync_baseline.py would; --owner NAME for a repo with no "- Owner:" li
     missing    no section with that heading
 "## Commands" is project-owned and only checked for presence.
 The project's "- Tier:" line (sync_baseline.header_tier) picks the baseline text and files: a starter project is not
-compared with the advanced parts. For each file sync_baseline.py copies: same, differs or missing. It also checks the .claude/settings.json deny rules
-and hook events, the kit lock (.check.lock), and docs/LOG.md (present, and "LOG CHECK PASS" from scripts/log_check.py).
+compared with the advanced parts. For each file sync_baseline.py copies: same, differs or missing. For a file a
+project may tune (sync_baseline.COPY_IF_MISSING): same, older (an earlier kit version that the project never changed:
+a sync replaces it), tuned (the project changed it: a sync keeps it) or differs (the baseline has no git history to
+tell which). It also checks the .claude/settings.json deny rules and hook events, the kit lock (.check.lock), and
+docs/LOG.md (present, and "LOG CHECK PASS" from scripts/log_check.py).
 
 The numbers say where a repo has drifted, not which side is right: a project may keep its own wording on purpose
 (for example a repo whose rules predate the baseline). Use the report to choose hand edits or a sync.
 Exit 0 always, unless --strict and something is not "same" (exit 1).
 Standard library only; it imports sync_baseline.py from this folder for the shared parsing.
+Network: the baseline repo, only when --baseline is a URL (one git clone); none for a local folder and in the self-test.
+Writes: none (the self-test: temporary folders).
+Credentials: none itself; a clone uses the credentials git already has.
 """
 import argparse
 import difflib
 import json
 import pathlib
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -94,11 +101,28 @@ def agents_rows(proj_text, head):
     return rows
 
 
+TUNABLE = {"same": ("same", ""), "missing": ("missing", ""),
+           "older": ("older", "an earlier kit version, never changed here: a sync replaces it"),
+           "tuned": ("tuned", "changed by this project: a sync keeps it"),
+           "unknown": ("differs", "may be tuned per project (the baseline has no git history to tell)")}
+
+
 def file_rows(project, base, tier, owner):
-    """Rows for each file sync_baseline.py copies in this tier: same, differs or missing."""
+    """Rows for each file sync_baseline.py copies in this tier.
+
+    Args:
+        project: the project folder.
+        base: the baseline folder.
+        tier: the project's tier.
+        owner: the project's owner word.
+
+    Returns:
+        A list of ("file", path, status, detail): same, differs or missing; for a file a project may tune: same,
+        older, tuned, differs or missing (sync_baseline.copy_state).
+    """
     rows = []
     copy_files, copy_if_missing = sb.tier_files(tier)
-    for rel in copy_files + copy_if_missing:
+    for rel in copy_files:
         src, dst = base / rel, project / rel
         if not src.exists():
             continue
@@ -108,8 +132,10 @@ def file_rows(project, base, tier, owner):
         want = src.read_text()
         if rel not in sb.NO_OWNER_RENAME:
             want = sb.apply_owner(want, owner)
-        rows.append(("file", rel, "same" if want == dst.read_text() else "differs",
-                     "may be tuned per project" if rel in sb.COPY_IF_MISSING and want != dst.read_text() else ""))
+        rows.append(("file", rel, "same" if want == dst.read_text() else "differs", ""))
+    for rel in copy_if_missing:
+        if (base / rel).exists():
+            rows.append(("file", rel, *TUNABLE[sb.copy_state(base, project, rel, owner)[0]]))
     return rows
 
 
@@ -301,6 +327,55 @@ def tier_cases(proj, base, results):
     results.append(good)
 
 
+def tunable_cases(tmp, results):
+    """The files a project may tune, against a small baseline repo with two commits: a sync adds a missing file,
+    replaces an earlier kit version (with or without the owner word applied), keeps a tuned file and says how to
+    compare; the drift report gives the same states.
+
+    Args:
+        tmp: an empty temporary folder.
+        results: the list that gets True or False for each case.
+    """
+    base, proj = tmp / "kit", tmp / "proj"
+    rels = [".claude/agents/reviewer.md", ".claude/agents/scout.md", "docs/FIRST_USE.md"]
+    run = lambda *a: subprocess.run(["git", "-C", str(base), "-c", "user.email=t@example.invalid", "-c", "user.name=t",  # noqa: E731
+                                     "-c", "commit.gpgsign=false", *a], check=True, capture_output=True)
+    for version in ("one", "two"):
+        for rel in rels:
+            (base / rel).parent.mkdir(parents=True, exist_ok=True)
+            (base / rel).write_text(f"Version {version} of {rel}. Ask the owner.\n")
+        if version == "one":
+            run("init", "-q")
+        run("add", "-A")
+        run("commit", "-q", "-m", version)
+    v1 = lambda rel: f"Version one of {rel}. Ask the owner.\n"  # noqa: E731
+    put = lambda rel, text: ((proj / rel).parent.mkdir(parents=True, exist_ok=True), (proj / rel).write_text(text))  # noqa: E731
+    put(rels[0], sb.apply_owner(v1(rels[0]), "the maintainer"))   # an earlier kit version, as a sync wrote it
+    put(rels[2], v1(rels[2]) + "Our own place for the list.\n")    # tuned
+    new, notes = sb.plan_if_missing(base, proj, rels, "the maintainer")
+    same(results, "tunable: an earlier kit version is replaced, a missing file is added, a tuned file is kept",
+         new, {rels[0]: f"Version two of {rels[0]}. Ask the maintainer.\n", rels[1]: f"Version two of {rels[1]}. Ask the maintainer.\n"})
+    same(results, "tunable: one line for the replaced file, one for the kept file with the compare command",
+         [n.split(":")[0] for n in notes] + [notes[1].endswith(f"Compare: diff {base}/{rels[2]} {rels[2]}"), "replaced" in notes[0]],
+         [rels[0], rels[2], True, True])
+    state = lambda rel: status_of(proj, base, rel)  # noqa: E731
+    same(results, "tunable: drift names the three states and a missing file",
+         [state(r) for r in rels], ["older", "missing", "tuned"])
+    put(rels[2], v1(rels[2]))   # FIRST_USE.md is never renamed: the plain earlier version is an older copy too
+    put(rels[1], f"Version two of {rels[1]}. Ask the maintainer.\n")
+    same(results, "tunable: the plain earlier version is older; the current version is the same",
+         [state(rels[2]), state(rels[1]), sorted(sb.plan_if_missing(base, proj, rels, "the maintainer")[0])], ["older", "same", [rels[0], rels[2]]])
+    shutil.rmtree(base / ".git")
+    new, notes = sb.plan_if_missing(base, proj, rels, "the maintainer")
+    same(results, "tunable: a baseline with no git history keeps each file that differs, and says so",
+         [new, len(notes), all("no git history" in n for n in notes), state(rels[0])], [{}, 2, True, "differs"])
+
+
+def status_of(proj, base, rel):
+    """The status of one file row of the drift report (the files only, so the sample baseline needs no AGENTS.md)."""
+    return {item: s for _, item, s, _ in file_rows(proj, base, "full", "the maintainer")}.get(rel, "absent")
+
+
 def self_test():
     """Compare sample projects with this baseline repo; prints one line per case and DRIFT TEST PASS or FAIL."""
     base = pathlib.Path(__file__).resolve().parent.parent
@@ -313,6 +388,8 @@ def self_test():
         legacy_and_synced_cases(proj, base, results)
         tier_cases(proj, base, results)
         settings_merge_cases(proj, base, results)
+    with tempfile.TemporaryDirectory() as d:
+        tunable_cases(pathlib.Path(d), results)
     ok = all(results)
     print("DRIFT TEST " + ("PASS" if ok else "FAIL"))
     return 0 if ok else 1

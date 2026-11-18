@@ -66,8 +66,14 @@ spelling or a wrong file encoding cannot lower the tier in silence. Limit: a lin
 misspelt is not seen as a tier line; `--status` and the result line always print the tier in use.
 Matches are printed masked (names, terms and secrets as a length only), so CI logs do not repeat them. Exit 1 when anything is found.
 Standard library only. Needs git (except for FILE mode).
-The code is split by concern into modules next to this file: check_content_scan.py (the patterns and scans),
-check_content_hook.py (--hook) and check_content_test.py (--test).
+A project's own finders: a file scripts/check_content_local.py replaces or adds finders for a finding kind (the
+interface: the header of check_content_scan.py). The result line and --status say when it is active; when it cannot
+be loaded, every scan fails and the hook blocks.
+The code is split by concern into modules next to this file: check_content_scan.py (the settings and the scans),
+check_content_finders.py (the patterns and finders), check_content_hook.py (--hook) and check_content_test.py (--test).
+Network: none (it runs local git read commands).
+Writes: none (findings go to stdout or stderr; the self-test uses temporary folders).
+Credentials: none; it reads the name denylist and the terms list (environment variable or file) and never prints an entry.
 """
 import argparse
 import os
@@ -81,12 +87,13 @@ import sys
 def missing_part(err):
     """Stop with exit 2 when a part of the guard is missing: a copy without its parts must block, not pass (exit 2
     also blocks the PreToolUse hook)."""
-    print('CONTENT CHECK FAIL: %s; copy check_content_scan.py, check_content_hook.py and check_content_test.py next to '
-          'check_content.py (scripts/sync_baseline.py does this)' % err, file=sys.stderr)
+    print('CONTENT CHECK FAIL: %s; copy check_content_scan.py, check_content_finders.py, check_content_hook.py and '
+          'the check_content_test*.py files next to check_content.py (scripts/sync_baseline.py does this)' % err, file=sys.stderr)
     sys.exit(2)
 
 
 try:
+    import check_content_scan as scan   # for the state of a project's own finders (LOCAL, LOCAL_ERROR)
     from check_content_scan import (MISSING_HELP, UNKNOWN_PROFILE, WARN_OPTION, denylist_source, fingerprint, git,
                                     is_option_line, load_allow, load_denylist, load_terms, profile_of, push_revs,
                                     scan_commits, scan_files, scan_text, skipped, terms_source, warn_mode)
@@ -97,7 +104,18 @@ except ImportError as err:
 
 
 def report(found, what, deny, dod=False, terms=()):
-    """Print each finding and the PASS or FAIL line; return the exit code."""
+    """Print each finding and the PASS or FAIL line; return the exit code.
+
+    Args:
+        found: the findings, each (where, line number, kind, masked value).
+        what: what was scanned, for the result line.
+        deny: the names of the denylist.
+        dod: True in the DoD tier.
+        terms: the owner's own blocked words.
+
+    Returns:
+        The exit code: 0 pass, 1 fail.
+    """
     for where, n, kind, val in found:
         print(f"check: {where}:{n}: {kind}: {val}")
     names = (f"names checked ({len(deny)} denylist entries, fingerprint {fingerprint(deny)})" if deny
@@ -105,12 +123,16 @@ def report(found, what, deny, dod=False, terms=()):
     if terms:
         names += f"; {len(terms)} terms checked (fingerprint {fingerprint(terms)})"
     print(f"CONTENT CHECK {'FAIL' if found else 'PASS'}: {len(found)} finding(s) in {what}; {names}; "
-          f"profile {'dod' if dod else 'minimum'}")
+          f"profile {'dod' if dod else 'minimum'}" + (f"; {scan.LOCAL}" if scan.LOCAL else ""))
     return 1 if found else 0
 
 
 def parse_args():
-    """Read the command line; stop with a usage error when no mode or target is given."""
+    """Read the command line; stop with a usage error when no mode or target is given.
+
+    Returns:
+        The parsed arguments (argparse namespace).
+    """
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("files", nargs="*")
     ap.add_argument("--all", action="store_true", help="scan every tracked file")
@@ -138,7 +160,11 @@ def repo_root():
 
 
 def show_status():
-    """--status: print the denylist source, entry count and fingerprint (never the names), and the tier."""
+    """--status: print the denylist source, entry count and fingerprint (never the names), and the tier.
+
+    Returns:
+        The exit code: 0 when a denylist exists and the tier line is valid, else 1.
+    """
     _, src = denylist_source()
     deny = load_denylist()
     n = len(deny)
@@ -150,11 +176,26 @@ def show_status():
         print(f"terms: {len(terms)} entries from {tsrc}; fingerprint {fingerprint(terms)}")
     prof = profile_of(load_allow(top))
     print("profile: " + (prof if prof != "unknown" else "UNKNOWN (" + UNKNOWN_PROFILE + ")"))
-    return 0 if n and prof != "unknown" else 1
+    if scan.LOCAL or scan.LOCAL_ERROR:
+        print("finders: " + (scan.LOCAL or "FAIL (" + scan.LOCAL_ERROR + ")"))
+    return 0 if n and prof != "unknown" and not scan.LOCAL_ERROR else 1
 
 
 def scan_targets(a, root, deny, allow, dod, revsets, terms=()):
-    """Scan what the command line names (tracked files, files, stdin, commits); return (findings, what parts)."""
+    """Scan what the command line names (tracked files, files, stdin, commits); return (findings, what parts).
+
+    Args:
+        a: the parsed arguments (parse_args).
+        root: the repo root (a folder path).
+        deny: the names of the denylist.
+        allow: the lines of the settings file (load_allow).
+        dod: True in the DoD tier: also run the DoD checks.
+        revsets: the git rev-list argument lists of the commits to scan.
+        terms: the owner's own blocked words.
+
+    Returns:
+        (findings, the list of what was scanned).
+    """
     found, what = [], []
     if a.all:
         files = git("ls-files", "-z", root=root).split("\0")
@@ -181,7 +222,11 @@ def scan_targets(a, root, deny, allow, dod, revsets, terms=()):
 
 
 def main():
-    """Run the mode the command line asks for and return its exit code."""
+    """Run the mode the command line asks for and return its exit code.
+
+    Returns:
+        The exit code: 0 pass, 1 fail; in hook mode 0 lets the call run and 2 blocks it.
+    """
     a = parse_args()
     if a.test:
         import check_content_test  # scripts/check_content_test.py: kept apart (docs/code-standard.md C4)
@@ -194,6 +239,9 @@ def main():
         return check_content_hook.hook(None)
     if a.status:
         return show_status()
+    if scan.LOCAL_ERROR:   # a project's own finders cannot be used: no scan runs, and none passes
+        print("CONTENT CHECK FAIL: " + scan.LOCAL_ERROR)
+        return 1
     root = repo_root()
     deny, terms, allow = load_denylist(), load_terms(), load_allow(root, a.allow_from)
     prof = profile_of(allow)

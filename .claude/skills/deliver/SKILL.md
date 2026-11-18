@@ -9,7 +9,7 @@ AGENTS.md "Delivery" and "Checks" point here. The rules are there; this file hol
 
 ## Steps
 
-1. Commit on a branch (the branch the host requires, else `claude/<topic>`), with a noreply identity.
+1. Commit on a branch (the branch the host requires, else `claude/<topic>`), with a noreply identity. Write a commit message that names a blocked git form (stash, restore, hooksPath, the hook-skip flag) to a file and commit with `git commit -F <file>`; the deny rules match the whole command.
 2. Push. The pre-push hook runs the fast lane; do not run it by hand first.
 3. Open a pull request for the branch (one per branch). When the work is ready to merge: run the full lane one time on the head commit (`scripts/check.sh`), and get the fresh review on that head commit when AGENTS.md "Delegation" requires one.
 4. When the lane, the Action and the review are clean: ask the owner for the merge with one question that gives the pull request link, the check result and the review result; or merge at once when AGENTS.md "Delivery" says no approval is needed. Merge with a merge commit. If the base moved, update the branch by merge first; a conflict with another session's work goes to the owner.
@@ -51,3 +51,5 @@ Private repos share 2,000 Actions minutes a month. Trigger workflows on `pull_re
 
 - A scheduled task needs a prompt that stands alone and permission to commit, push and open a pull request without a person, and the owner's waiver when it must also merge.
 - Background work stops at the usage limit. Say when that can interrupt it.
+- Before unattended work starts, the session makes a dry-run push to each repo it needs. If one fails, it stops at once and says which repo and why.
+- A plan or brief names a required status check by the name a real check run shows (the job name), never by the workflow file's name.

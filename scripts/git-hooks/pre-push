@@ -1,14 +1,19 @@
 #!/usr/bin/env bash
 # Git pre-push hook for Claude, any git client, and people.
-# Install once per clone: git config core.hooksPath <the folder of this file> (scripts/session_checkin.sh or a SessionStart hook does it).
+# Install once per clone: git config core.hooksPath <the folder of this file> (scripts/session_checkin.sh or a
+# SessionStart hook does it).
 # Also runs scripts/check.sh (when present): the full lane for a push to main, master or the default branch (the
 # remote's HEAD, init.defaultBranch, or each name in the git config key check.fullLaneBranch), the fast lane for any other
 # branch (.claude/skills/deliver/SKILL.md), and the content check (scripts/check_content.py) on the tracked files and the
 # pushed commits (when the repo root has the settings file .check, or .pii-guard, its old name).
-# Blocks: a push that git runs outside the repo's own work tree (own_tree), a push that is not a fast-forward (every force-push form, including --force-with-lease),
-# deleting main or master on the remote, and pushing a remote commit this clone has not fetched.
+# Blocks: a push that git runs outside the repo's own work tree (own_tree), a push that is not a fast-forward (every
+# force-push form, including --force-with-lease), deleting main or master on the remote, and pushing a remote commit
+# this clone has not fetched.
 # A person who truly needs to override runs the push with --no-verify; agents never do (AGENTS.md "Git safety").
 # Self-test: bash scripts/git-hooks/pre-push --test
+# Network: none itself (git opens the connection of the push; a project's scripts/check.local.sh may use the network).
+# Writes: none itself; scripts/check.sh writes its stamp in .git; the self-test: temporary repos.
+# Credentials: none; the content check reads the word lists from an environment variable or a file.
 set -u
 zero=0000000000000000000000000000000000000000
 # true for an all-zero ID: SHA-1 (40) or SHA-256 (64)
@@ -119,7 +124,9 @@ refs/heads/main $b refs/heads/main $a"
   eq "init.defaultBranch adds a name" "$(default_branches https://example.invalid/r.git)" "dev"
   eq "push to init.defaultBranch: full lane" "$(printf '%s\n' "refs/heads/x $c refs/heads/dev $a" | lane_of $(default_branches https://example.invalid/r.git))" full
   git config --unset init.defaultBranch
-  eq "a push shows TIME, WARN and CHECK lines, also an indented WARN" "$(printf '%s\n' 'PASS  a' '      WARN  rule lint: x' 'TIME  full' 'WARN  slower' 'CHECK PASS' '      rules: y' 'PASS  x WARN y' | shown | tr '\n' '|')" "      WARN  rule lint: x|TIME  full|WARN  slower|CHECK PASS|"
+  lines="$(printf '%s\n' 'PASS  a' '      WARN  rule lint: x' 'TIME  full' 'WARN  slower' 'CHECK PASS' '      rules: y' 'PASS  x WARN y')"
+  eq "a push shows TIME, WARN and CHECK lines, also an indented WARN" "$(printf '%s\n' "$lines" | shown | tr '\n' '|')" \
+    "      WARN  rule lint: x|TIME  full|WARN  slower|CHECK PASS|"
   o=$(mktemp -d); git -C "$o" init -q -b main  # another repo: the folder a "git --git-dir=..." push may start in
   eq "own work tree: the top folder" "$(own_tree)" "$(pwd -P)"
   eq "from a subfolder: the top folder" "$(mkdir -p sub && cd sub && own_tree)" "$(pwd -P)"
@@ -139,7 +146,8 @@ out=$(printf '%s\n' "$input" | check) || { echo "$out" >&2; exit 1; }
 
 top="$(own_tree)"
 if [ -z "$top" ]; then
-  echo "pre-push: blocked: git runs this push outside the repo's own work tree (for example \"git --git-dir=<repo>/.git push\" from another folder), so the checks cannot run. Run the push from inside the repo folder." >&2
+  echo "pre-push: blocked: git runs this push outside the repo's own work tree (for example \"git --git-dir=<repo>/.git push\"" \
+    "from another folder), so the checks cannot run. Run the push from inside the repo folder." >&2
   exit 1
 fi
 cd "$top" || exit 1

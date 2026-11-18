@@ -16,6 +16,9 @@ Configured in .claude/settings.json ("hooks" > "Stop"). Manual run:
 Self-test (temporary repos, no network):
     python3 scripts/stop_check.py --test
 Standard library only.
+Network: the git remote "origin": at most one fetch of the default branch, and only when a clean branch looks ahead of it.
+Writes: none (the fetch updates the remote-tracking branch; the self-test: temporary repos).
+Credentials: none itself; the fetch uses the credentials git already has for origin.
 """
 import json
 import os
@@ -48,7 +51,14 @@ def default_ref():
 def on_default_branch(fetch=False):
     """True when HEAD has no commits that origin/main (or origin/master) lacks. A local copy of that branch can be
     old: with fetch, when the first comparison fails, fetch the branch once (at most FETCH_TIMEOUT_S seconds) and
-    compare again."""
+    compare again.
+
+    Args:
+        fetch: True: fetch the branch once when the first comparison fails.
+
+    Returns:
+        True or False.
+    """
     ref = default_ref()
     if ref is None:
         return False
@@ -68,7 +78,11 @@ def on_default_branch(fetch=False):
 
 
 def problems():
-    """Return why the turn may not end yet; empty for a clean read-only checkout or work that is on GitHub."""
+    """Return why the turn may not end yet; empty for a clean read-only checkout or work that is on GitHub.
+
+    Returns:
+        A list of reasons (texts); empty when the turn may end.
+    """
     found = []
     dirty = git("status", "--porcelain", "--untracked-files=all")
     stashed = git("stash", "list")
@@ -101,7 +115,11 @@ def problems():
 
 
 def main():
-    """Read the Stop hook input on stdin; return 2 (reason on stderr) when work is not on GitHub, else 0."""
+    """Read the Stop hook input on stdin; return 2 (reason on stderr) when work is not on GitHub, else 0.
+
+    Returns:
+        The exit code: 0 lets the turn end, 2 blocks it.
+    """
     try:
         data = json.load(sys.stdin)
     except (json.JSONDecodeError, ValueError):
@@ -147,7 +165,15 @@ class TestRepos:
         self.run(cwd, "commit", "-q", "-m", name)
 
     def fresh(self, name, default="main"):
-        """A bare origin and a clone with one commit pushed to the default branch; returns the clone's path."""
+        """A bare origin and a clone with one commit pushed to the default branch; returns the clone's path.
+
+        Args:
+            name: the name of the sample repo.
+            default: the name of its default branch.
+
+        Returns:
+            The path of the clone.
+        """
         origin = os.path.join(self.root, name + ".git")
         self.run(self.root, "init", "-q", "--bare", "-b", default, origin)
         work = os.path.join(self.root, name)
@@ -159,7 +185,15 @@ class TestRepos:
         return work
 
     def verdict(self, work, data="{}"):
-        """Run the hook on work with data on stdin; "block" or "pass"."""
+        """Run the hook on work with data on stdin; "block" or "pass".
+
+        Args:
+            work: the path of the clone to run the hook in.
+            data: the hook input (JSON text) for stdin.
+
+        Returns:
+            "block" or "pass".
+        """
         import io
         global REPO_DIR
         saved_env = dict(os.environ)
@@ -181,7 +215,14 @@ def write(path, text):
 
 
 def clean_cases(repos):
-    """Clean checkouts that must pass: at, behind or on the default branch."""
+    """Clean checkouts that must pass: at, behind or on the default branch.
+
+    Args:
+        repos: the helper that makes the sample repos.
+
+    Returns:
+        A list of (label, verdict, wanted verdict).
+    """
     run, verdict = repos.run, repos.verdict
     work = repos.fresh("readonly"); run(work, "checkout", "-q", "-b", "claude/session")
     out = [("clean session branch at origin/main, never pushed", verdict(work), "pass")]
@@ -197,7 +238,14 @@ def clean_cases(repos):
 
 
 def dirty_cases(repos):
-    """Uncommitted work that must block: a modified file, an untracked file, a stash."""
+    """Uncommitted work that must block: a modified file, an untracked file, a stash.
+
+    Args:
+        repos: the TestRepos helper.
+
+    Returns:
+        A list of (case name, verdict, wanted verdict).
+    """
     run, verdict = repos.run, repos.verdict
     work = repos.fresh("modified"); run(work, "checkout", "-q", "-b", "s")
     write(os.path.join(work, "a"), "changed")
@@ -213,7 +261,14 @@ def dirty_cases(repos):
 
 
 def commit_cases(repos):
-    """Commits not on GitHub, pushed branches, detached HEAD and the second stop in a row."""
+    """Commits not on GitHub, pushed branches, detached HEAD and the second stop in a row.
+
+    Args:
+        repos: the TestRepos helper.
+
+    Returns:
+        A list of (case name, verdict, wanted verdict).
+    """
     run, commit, verdict = repos.run, repos.commit, repos.verdict
     work = repos.fresh("unpushed"); run(work, "checkout", "-q", "-b", "s"); commit(work, "b")
     out = [("one unpushed commit, branch never pushed", verdict(work), "block")]
@@ -234,7 +289,11 @@ def commit_cases(repos):
 
 
 def self_test():
-    """Build throwaway repos and check each case. Prints one line per case; exit 0 = all pass."""
+    """Build throwaway repos and check each case. Prints one line per case; exit 0 = all pass.
+
+    Returns:
+        The exit code: 0 pass, 1 fail.
+    """
     import shutil
     import tempfile
     root = tempfile.mkdtemp(prefix="stop_check_test_")
