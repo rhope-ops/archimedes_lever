@@ -42,7 +42,7 @@ GIT_OUT = frozenset(("commit", "commit-tree", "merge", "tag", "notes", "push", "
 def outgoing(cmd):
     """True when a Bash command can send something out: it names a network client or a URL, or one of its simple
     commands (split on newline ; | &) has the word git and a publishing verb. One pass per part (no slow pattern)."""
-    cmd = cmd.replace("\\\n", "")  # the shell deletes a backslash at a line end: "cu\<newline>rl" runs curl
+    cmd = cmd.replace("\\\r\n", "").replace("\\\n", "")  # the shell deletes a backslash at a line end: "cu\<newline>rl" runs curl
     if CLIENTS.search(cmd):
         return True
     for part in re.split(r"[\n;|&]", cmd):

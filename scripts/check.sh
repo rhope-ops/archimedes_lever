@@ -119,6 +119,17 @@ PY
   g update-ref -d refs/remotes/origin/main
   ok "no default branch ref: the fast lane runs every self-test" "$(c --fast | grep -c '^PASS  stop_check self-test')" 1
   c --bogus >/dev/null 2>&1; ok "an unknown flag exits 2" "$?" 2
+  # The code standard: skipped while nothing holds a baseline; run when the default branch holds one, also a large
+  # one (over 64 KB), although the state file of the work tree is gone.
+  printf '%s\n' 'print("CODE-STANDARD fake")' > "$t/r/scripts/code_standard.py"
+  echo '{"timings": {"check": {"steps": {"code standard": 1}}}}' > "$t/r/.check.state.json"
+  g add -A; g commit -q -m "state without a baseline"; g update-ref refs/remotes/origin/main HEAD
+  ok "no baseline here or on the default branch: the code standard is skipped" "$(c | grep -c '^SKIP  code standard')" 1
+  python3 -c 'import json; print(json.dumps({"code_standard": {"debt": {"length": {"f%d.py::main" % i: 99 for i in range(4000)}}}}))' > "$t/r/.check.state.json"
+  g add -A; g commit -q -m "a large baseline"; g update-ref refs/remotes/origin/main HEAD
+  rm "$t/r/.check.state.json"
+  ok "a large baseline on the default branch, state file deleted: the code standard runs" "$(c | grep -c '^PASS  code standard$')" 1
+  g checkout -q .check.state.json; g update-ref -d refs/remotes/origin/main
   # A git error is not a clean tree: with a broken index, a stamp for this commit must not be used.
   c >/dev/null; ok "a stamp exists before the index breaks" "$(cut -d' ' -f2 "$t/r/.git/check-pass")" "$(g rev-parse HEAD)"
   cp "$t/r/.git/index" "$t/index.bak"; echo broken > "$t/r/.git/index"
@@ -256,8 +267,8 @@ selftest session_checkin scripts/session_checkin.sh -- bash scripts/session_chec
 # Also adopted: the default branch holds a baseline (a deleted state file must fail the check, not skip it).
 # (The state file alone is no baseline: the time baselines and the audit write it too.)
 on_main() {  # on_main FILE [TEXT]: the default branch has FILE (and FILE holds TEXT)
-  local r; for r in origin/main origin/master; do
-    git show "$r:$1" 2>/dev/null | grep -q -- "${2:-}" && return 0
+  local r t; for r in origin/main origin/master; do  # no pipe: with pipefail, grep -q closes a large file early
+    t=$(git show "$r:$1" 2>/dev/null) && grep -q -- "${2:-}" <<<"$t" && return 0
   done; return 1
 }
 if [ -f scripts/code_standard.py ] && { grep -qs '"code_standard"' .check.state.json || [ -f .code-standard.json ] \
