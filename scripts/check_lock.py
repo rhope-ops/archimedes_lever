@@ -57,12 +57,14 @@ def file_hash(root, rel):
 
 
 def kit_text_locked(root):
-    """True when the kit's part of this project's AGENTS.md is the text its lock records: the kit checked those lines."""
+    """True when the kit's part of this project's AGENTS.md is the text its lock records and no override covers it:
+    the kit checked those lines. A relocked kit part is the project's own text again, so it is not locked."""
     try:
         data = load(root)
     except ValueError:
         return False
-    return bool(data) and data["files"].get(KIT_PART) == file_hash(root, KIT_PART)
+    return (bool(data) and KIT_PART not in data.get("overrides", [])
+            and data["files"].get(KIT_PART) == file_hash(root, KIT_PART))
 
 
 def build(root, files, version, commit, overrides=()):
@@ -164,6 +166,7 @@ def self_test():
         ok("relock accepts the file", relock(root, ["scripts/a.py"]) == 0)
         lines, bad = verify(root)
         ok("after a relock: passes, and the override is listed", not bad and any(l.startswith("WARN  kit file with a project override") for l in lines))
+        ok("a relocked kit part is not locked text", relock(root, [KIT_PART]) == 0 and not verify(root)[1] and not kit_text_locked(root))
         (root / "scripts/a.py").unlink()
         ok("a missing kit file fails", verify(root)[0][0] == "FAIL  kit file missing: scripts/a.py")
         (root / LOCK).write_text("[]")
