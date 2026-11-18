@@ -6,8 +6,8 @@ What is scanned, by tool:
     Write, Edit, NotebookEdit   the new text only (content, new_string, new_source), also under a `skip:` line,
                                 and the path against the `block:` lines. The old text of an edit is not scanned: an edit must be able to
                                 remove a finding. The target file is not read and need not exist.
-    Bash                        the command, only when it can send something out (outgoing(): a network client, a
-                                URL, or git commit, tag, notes, push or send-email). A local command passes
+    Bash                        the command, only when it can send something out (outgoing(): a client in
+                                CLIENTS, a URL, or a git verb in GIT_OUT). A local command passes
                                 unread. Limit: a payload that a script or an interpreter builds at run time.
     every other tool            every string of the input, and the files it names.
 Output: exit 0 lets the tool call run; exit 2 blocks it, and the masked findings go to stderr. Any error blocks.
@@ -32,9 +32,9 @@ HOOK_RECIPIENT_KEYS = ("to", "cc", "bcc")  # Gmail, top level: an address here i
 WRITE_KEYS = {"Write": ("content",), "Edit": ("new_string",), "NotebookEdit": ("new_source",)}
 # A Bash command is scanned only when it sends something out of the workspace.
 # Programs that send their arguments or input to another host. A path before the name still counts (/usr/bin/curl).
-CLIENTS = re.compile(r"(?<![\w.-])(?:curl|wget|gh|glab|scp|sftp|rsync|rclone|ssh|nc|ncat|netcat|socat|telnet|ftp|mail|mailx"
+CLIENTS = re.compile(r"(?<![\w.-])(?:curl|wget|wget2|xh|gh|glab|scp|sftp|lftp|rsync|rclone|ssh|nc|ncat|netcat|socat|telnet|ftp|mail|mailx"
                      r"|mutt|msmtp|sendmail|http|https|openssl|aws|s3cmd|gsutil|gcloud|bq|az|kubectl|docker|podman|npm|npx"
-                     r"|pnpm|yarn|cargo|gem|poetry|uv|twine|pip|pip3|psql|mysql|hg|svn|claude)(?![\w-])|https?://|/dev/tcp/")
+                     r"|pnpm|yarn|cargo|gem|poetry|uv|twine|pip|pip3|psql|mysql|hg|svn|claude)(?![\w-])|https?://|/dev/(?:tcp|udp)/")
 # git verbs that publish text
 GIT_OUT = frozenset(("commit", "commit-tree", "merge", "tag", "notes", "push", "send-email", "imap-send"))
 
@@ -42,9 +42,10 @@ GIT_OUT = frozenset(("commit", "commit-tree", "merge", "tag", "notes", "push", "
 def outgoing(cmd):
     """True when a Bash command can send something out: it names a network client or a URL, or one of its simple
     commands (split on newline ; | &) has the word git and a publishing verb. One pass per part (no slow pattern)."""
+    cmd = cmd.replace("\\\n", "")  # the shell deletes a backslash at a line end: "cu\<newline>rl" runs curl
     if CLIENTS.search(cmd):
         return True
-    for part in re.split(r"[\n;|&]", cmd.replace("\\\n", " ")):  # a line that ends in a backslash continues
+    for part in re.split(r"[\n;|&]", cmd):
         words = set(re.findall(r"[A-Za-z-]+", part))
         if "git" in words and words & GIT_OUT:
             return True

@@ -254,9 +254,14 @@ selftest session_checkin scripts/session_checkin.sh -- bash scripts/session_chec
 # Adopted: .check.state.json holds the "code_standard" baseline. A repo that still has the old .code-standard.json
 # runs the check too: it fails there and names the migration, so the old limits are not dropped in silence.
 # Also adopted: the default branch holds a baseline (a deleted state file must fail the check, not skip it).
-on_main() { git cat-file -e "origin/main:$1" 2>/dev/null || git cat-file -e "origin/master:$1" 2>/dev/null; }
+# (The state file alone is no baseline: the time baselines and the audit write it too.)
+on_main() {  # on_main FILE [TEXT]: the default branch has FILE (and FILE holds TEXT)
+  local r; for r in origin/main origin/master; do
+    git show "$r:$1" 2>/dev/null | grep -q -- "${2:-}" && return 0
+  done; return 1
+}
 if [ -f scripts/code_standard.py ] && { grep -qs '"code_standard"' .check.state.json || [ -f .code-standard.json ] \
-     || on_main .check.state.json || on_main .code-standard.json; }; then
+     || on_main .check.state.json '"code_standard"' || on_main .code-standard.json '"debt"'; }; then
   run "code standard" python3 scripts/code_standard.py
 elif [ -f scripts/code_standard.py ]; then
   skip "code standard" "no code standard baseline in .check.state.json: adopt it with python3 scripts/code_standard.py --init (docs/code-standard.md)"

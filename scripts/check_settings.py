@@ -55,11 +55,11 @@ KIT_CAPS = ("session_load_tokens", "session_load_warn_tokens", "rules_file_lines
 CODE_LISTS = ("include", "exclude", "generated")
 AUDIT_LISTS = ("ignore", "start_read")
 SETTING_LINE = re.compile(r"(?i)^((?:code|audit)-[A-Za-z0-9_-]+)\s*:\s*(.*)$")
-# A line that was meant as a setting: a key with `_`, `=` in place of `:`, or a known key with no colon. An allowed
-# string such as "code-name Bluebird" (no colon, not a known key) stays an allowed string.
-LOOKS_LIKE_SETTING = re.compile(r"(?i)^(?:(?:code|audit)[-_][a-z0-9_-]*[a-z0-9]\s*[:=]"
-                                r"|(?:code[-_](?:max|include|exclude|generated|c1|c2)|audit[-_](?:every|budget|ignore|start))"
-                                r"[a-z0-9_-]*\s+\S)")
+# A line that was meant as a setting: a known key written with `_`, with `=` in place of `:`, or with no colon.
+# An allowed string that only starts with those letters ("code-name Bluebird", "code-included in price") is not one.
+_KEY = (r"(?:code[-_](?:max[-_]file[-_]lines|max[-_]function[-_]lines|include|exclude|generated|c1[-_]safety|c2)"
+        r"|audit[-_](?:every[-_]days|every[-_]commits|ignore|start[-_]read|budget[-_][a-z_]+))")
+LOOKS_LIKE_SETTING = re.compile(r"(?i)^" + _KEY + r"(?:\s*[:=]|\s+\S)")
 # A docs/DECISIONS.md row "names .check" with the file name itself, not .check.lock or .check.state.json.
 NAMES_CHECK = re.compile(r"(?<![\w.])\.check(?!\.(?:lock|state)|\w)")
 STATE_PARTS = ("code_standard", "audit", "timings")
@@ -405,6 +405,10 @@ def test_settings(root, git):
                       ("code_exclude: scripts/*", "looks like a setting"), ("audit_ignore: x", "looks like a setting")):
         (root / CHECK).write_text(line + "\n")
         assert why in fails(code_config, root), "a code- line that is not valid fails: " + line
+    for line in ("code-name Bluebird", "audit-trail.example.org", "codeword", "Code-Maximus Ltd", "code-included in price",
+                 "audit-everything GmbH", "audit-starter kit", "code-name=Bluebird"):
+        (root / CHECK).write_text(line + "\n")
+        assert code_config(root) == code_config(root / "none"), "an allowed string is not a setting: " + line
     for line, why in (("audit-every-day: 1", "unknown setting"), ("audit-budget-nope: 1", "unknown setting"),
                       ("audit-every-days: 1.5", "whole number"), ("audit-budget-session_load_tokens: 6001", "never raise")):
         (root / CHECK).write_text(line + "\n")
