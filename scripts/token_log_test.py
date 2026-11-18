@@ -8,6 +8,9 @@ clone, retries, coalescing, FETCH_HEAD, a push with no answer, a push that waits
 TOKEN_LOG=off.
 Input: the token_log module. Output: one PASS or FAIL line per case and a "TOKEN LOG SELF-TEST" total line; returns
 the exit code (0 pass, 1 fail). Needs git.
+Network: none.
+Writes: temporary repos only.
+Credentials: none.
 """
 import csv
 import fcntl

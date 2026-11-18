@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Session check-in: run at the start and the end of each session.
 # Self-test of the hooks-path setup (temporary repos, no network): bash scripts/session_checkin.sh --test
+# Network: the git remote "origin" (one fetch of origin/main); none in the self-test.
+# Writes: the git config key core.hooksPath of this clone (the kit's hooks folder); the self-test: temporary repos.
+# Credentials: none itself; the fetch uses the credentials git already has for origin.
 set -uo pipefail
 t0=$(date +%s%N 2>/dev/null)  # nanoseconds where date has %N (GNU); the run's time is compared with its baseline below
 

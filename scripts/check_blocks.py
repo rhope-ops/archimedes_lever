@@ -13,6 +13,9 @@ Usage:
     python3 scripts/check_blocks.py --placeholders          # the same for every tracked text file (not the kit's own tools)
     python3 scripts/check_blocks.py --test                  # self-test; prints BLOCKS TEST PASS
 Input: the files named, or the repo at the current folder. Output: findings on stdout. Standard library only.
+Network: none.
+Writes: none (the self-test writes temporary files only).
+Credentials: none.
 """
 import json
 import pathlib
@@ -53,7 +56,14 @@ def missing_deny(settings_path):
 
 
 def placeholders(paths):
-    """(path, line number, placeholder) for each {{PLACEHOLDER}} in these files; a file that is not text is skipped."""
+    """(path, line number, placeholder) for each {{PLACEHOLDER}} in these files; a file that is not text is skipped.
+
+    Args:
+        paths: the files to read.
+
+    Returns:
+        A list of (path, line number, placeholder).
+    """
     found = []
     for p in paths:
         try:
@@ -72,7 +82,11 @@ def tracked(root="."):
 
 
 def self_test():
-    """Check the deny comparison and the placeholder scan on temporary files."""
+    """Check the deny comparison and the placeholder scan on temporary files.
+
+    Returns:
+        The exit code: 0 pass, 1 fail.
+    """
     fails = []
 
     def ok(label, good):
@@ -106,7 +120,14 @@ def self_test():
 
 
 def main(argv):
-    """Run the mode the command line names; return the exit code."""
+    """Run the mode the command line names; return the exit code.
+
+    Args:
+        argv: the command-line arguments, without the script name.
+
+    Returns:
+        The exit code: 0 pass, 1 fail, 2 for a usage error.
+    """
     if argv[:1] == ["--test"]:
         return self_test()
     if argv[:1] == ["--settings"]:
