@@ -7,6 +7,9 @@ sources, the CLI modes (--all, --push, --status, --stdin, files) in temporary gi
 PreToolUse hook (in process).
 Input: none (temporary folders only; the host's git config is switched off). Output: one "ok" or "FAIL" line per
 case, then CONTENT CHECK TEST PASS or FAIL; run() returns the exit code 0 or 1. Needs git.
+Network: none.
+Writes: temporary folders only.
+Credentials: none (the sample secrets are built at run time and are not real).
 """
 import contextlib
 import io
@@ -14,12 +17,14 @@ import json
 import os
 import pathlib
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
 import time
 
 import check_content_hook
+import check_content_scan
 from check_content_scan import (MAX_BYTES, OPTION_MAX, denylist_source, dod_mode, fingerprint, git, is_option_line,
                             load_allow, load_denylist, mask, parse_denylist, profile_of, push_revs, scan_commits,
                             scan_text, skipped, warn_mode)
@@ -229,7 +234,12 @@ def guard(d, env, *args):
 
 
 def case_cli_denylist(d, env):
-    """CLI: the denylist file, --push with no denylist, and `denylist: warn` (minimum and DoD tier)."""
+    """CLI: the denylist file, --push with no denylist, and `denylist: warn` (minimum and DoD tier).
+
+    Args:
+        d: a temporary folder (the sample repo).
+        env: the environment for the git and CLI runs.
+    """
     f = pathlib.Path(d, "deny.txt")
     f.write_text("Alex\n")
     env["PII_GUARD_DENYLIST_FILE"] = str(f)
@@ -261,7 +271,12 @@ def case_cli_denylist(d, env):
 
 
 def case_cli_profile(d, env):
-    """CLI: an unknown tier line, a byte-order mark, a wrong encoding and a zero-width space in .pii-guard."""
+    """CLI: an unknown tier line, a byte-order mark, a wrong encoding and a zero-width space in .pii-guard.
+
+    Args:
+        d: a temporary folder (the sample repo).
+        env: the environment for the git and CLI runs.
+    """
     env["PII_GUARD_DENYLIST"] = "Alex"
     pathlib.Path(d, ".pii-guard").write_text("profile: DOD-tier\n")
     r = guard(d, env, "--all")
@@ -295,7 +310,12 @@ def case_cli_profile(d, env):
 
 
 def case_cli_dod_files(d, env):
-    """DoD tier on files and commits: a PDF, a binary file, a host and a file over the size limit block; skip clears."""
+    """DoD tier on files and commits: a PDF, a binary file, a host and a file over the size limit block; skip clears.
+
+    Args:
+        d: a temporary folder (the sample repo).
+        env: the environment for the git and CLI runs.
+    """
     pathlib.Path(d, "doc.pdf").write_bytes(b"%PDF-1.4 x")
     pathlib.Path(d, "blob.dat").write_bytes(b"a\0b")
     pathlib.Path(d, "notes.txt").write_text("see " + mil + "\n")
@@ -348,7 +368,15 @@ def commit_env():
 
 
 def case_commit_range(d, run):
-    """Commit scan: a range finds the added line and the message; an added '++ ' line is content."""
+    """Commit scan: a range finds the added line and the message; an added '++ ' line is content.
+
+    Args:
+        d: a temporary folder (the sample repo).
+        run: runs one git command in d.
+
+    Returns:
+        The commit in the middle of the sample history (a later case scans from it).
+    """
     run("init", "-q", "-b", "main")
     pathlib.Path(d, "a.txt").write_text("clean\n")
     run("add", "."); run("commit", "-q", "-m", "clean")
@@ -368,7 +396,14 @@ def case_commit_range(d, run):
 
 
 def case_commit_merge_push(d, run, env, mid):
-    """Commit scan: a merge commit keeps its file names, the author email is scanned, and pre-push lines parse."""
+    """Commit scan: a merge commit keeps its file names, the author email is scanned, and pre-push lines parse.
+
+    Args:
+        d: a temporary folder (the sample repo).
+        run: runs one git command in d.
+        env: the environment for the git and CLI runs.
+        mid: the commit case_commit_range gives.
+    """
     run("checkout", "-q", "-b", "side", mid)
     pathlib.Path(d, "c.txt").write_text("side\n")
     run("add", "."); run("commit", "-q", "-m", "side")
@@ -402,7 +437,16 @@ def case_commits():
 
 
 def hook_cases(d, mail, tok):
-    """The sample files and the (name, CLI args, input, wanted exit) cases for --hook, --stdin and named files."""
+    """The sample files and the (name, CLI args, input, wanted exit) cases for --hook, --stdin and named files.
+
+    Args:
+        d: a temporary folder (the sample repo).
+        mail: a sample address, built at run time.
+        tok: a sample token, built at run time.
+
+    Returns:
+        The list of cases.
+    """
     pathlib.Path(d, "page.html").write_text("<p>" + mail + "</p>")
     pathlib.Path(d, "clean.html").write_text("<p>hello</p>")
     pathlib.Path(d, "a.pdf").write_bytes(b"%PDF-1.4 fake")
@@ -413,13 +457,15 @@ def hook_cases(d, mail, tok):
         ("hook: email in a nested list blocks", ["--hook"], {"tool_name": "x", "cwd": d, "tool_input": {"a": [{"b": mail}]}}, 2),
         ("hook: file named by file_path is read", ["--hook"], {"tool_name": "Artifact", "cwd": d, "tool_input": {"file_path": "page.html"}}, 2),
         ("hook: clean file passes", ["--hook"], {"tool_name": "Artifact", "cwd": d, "tool_input": {"file_path": "clean.html"}}, 0),
-        ("hook: files map source {from} is read", ["--hook"], {"tool_name": "Artifact", "cwd": d, "tool_input": {"file_path": "clean.html", "files": {"p/x.html": {"from": os.path.join(d, "page.html")}}}}, 2),
+        ("hook: files map source {from} is read", ["--hook"], {"tool_name": "Artifact", "cwd": d, "tool_input": {
+            "file_path": "clean.html", "files": {"p/x.html": {"from": os.path.join(d, "page.html")}}}}, 2),
         ("hook: file_paths list is read", ["--hook"], {"tool_name": "SendUserFile", "cwd": d, "tool_input": {"file_paths": ["clean.html", "page.html"]}}, 2),
         ("hook: bad JSON blocks", ["--hook"], "{not json", 2),
         ("hook: the project's DoD tier holds with a cwd outside it", ["--hook"], {"tool_name": "Agent", "cwd": "/", "tool_input": {"prompt": "see " + "x" + dot + "af" + dot + "mi" + "l"}}, "dod"),
         ("hook: a crash blocks (deep nesting)", ["--hook"], '{"tool_input": {"prompt": "x", "a": ' + "[" * 3000 + "]" * 3000 + "}}", 2),
         ("hook: a crash blocks (cwd of a wrong type)", ["--hook"], {"tool_name": "Agent", "cwd": 5, "tool_input": {"prompt": "x"}}, 2),
-        ("hook: mail recipients are not scanned, the body is", ["--hook"], {"tool_name": "mcp__Gmail__send_message", "cwd": d, "tool_input": {"to": [mail], "cc": mail, "subject": "hi", "body": "fix the bug"}}, 0),
+        ("hook: mail recipients are not scanned, the body is", ["--hook"], {"tool_name": "mcp__Gmail__send_message", "cwd": d,
+                                                                           "tool_input": {"to": [mail], "cc": mail, "subject": "hi", "body": "fix the bug"}}, 0),
         ("hook: a token in a mail recipient field blocks", ["--hook"], {"tool_name": "mcp__Gmail__send_message", "cwd": d, "tool_input": {"to": [mail, tok]}}, 2),
         ("hook: a 'to' key in a non-mail tool is scanned", ["--hook"], {"tool_name": "mcp__Claude_Docs__batch", "cwd": d, "tool_input": {"blocks": {"to": mail}}}, 2),
         ("hook: a nested 'to' key in a mail call is scanned", ["--hook"], {"tool_name": "mcp__Gmail__send_message", "cwd": d, "tool_input": {"body": {"to": mail}}}, 2),
@@ -438,7 +484,16 @@ def hook_cases(d, mail, tok):
 
 def run_hook_in_process(d, text, want):
     """Run the hook in this process (a new Python per case would double the test time); return (exit, stderr, want).
-    want "cap" lowers the size cap for the case; want "dod" makes d a DoD-tier project for the case."""
+    want "cap" lowers the size cap for the case; want "dod" makes d a DoD-tier project for the case.
+
+    Args:
+        d: a temporary folder (the sample repo).
+        text: the hook input.
+        want: the wanted exit code, or "cap" or "dod" (see above).
+
+    Returns:
+        (exit code, stderr text, the wanted exit code).
+    """
     if want == "dod":  # a DoD-tier project folder for this case only
         pathlib.Path(d, ".pii-guard").write_text("profile: dod\n")
         subprocess.run(["git", "init", "-q"], cwd=d, capture_output=True)
@@ -485,39 +540,43 @@ def case_hook():
             os.environ.update(saved)
 
 
-def case_missing_parts():
-    """A copy of check_content.py without its parts blocks when run (exit 2, also in the hook) but only raises on import."""
-    with tempfile.TemporaryDirectory() as d:
-        alone = os.path.join(d, "check_content.py")
-        with open(ME[1]) as src, open(alone, "w") as dst:
-            dst.write(src.read())
-        env = {k: v for k, v in os.environ.items() if k != "PYTHONPATH"}   # only the lone copy is importable
-        hook = subprocess.run([sys.executable, alone, "--hook"], input="{}", capture_output=True, text=True, cwd=d,
-                              env=env)
-        check("missing parts: the hook blocks (exit 2)", hook.returncode == 2)
-        with open(os.path.join(d, "check_content_scan.py"), "w") as part:   # the scan part alone: --hook still blocks
-            part.write(open(os.path.join(os.path.dirname(ME[1]), "check_content_scan.py")).read())
-        hook = subprocess.run([sys.executable, alone, "--hook"], input="{}", capture_output=True, text=True, cwd=d,
-                              env=env)
-        check("missing hook part: the hook blocks (exit 2)", hook.returncode == 2)
-        os.remove(os.path.join(d, "check_content_scan.py"))
-        imp = subprocess.run([sys.executable, "-c", "try:\n import check_content\nexcept ImportError:\n print('raised')"],
-                             capture_output=True, text=True, cwd=d, env=env)
-        check("missing parts: an importer gets ImportError, not an exit", imp.stdout.strip() == "raised")
+def without_local(kit, blocks):
+    """Make the cases prove the kit's own patterns, also in a project that has its own finders: copy the scripts of
+    the content check, without the project's module, into `kit`, point the command line of the cases at that copy, and
+    set the finders of this process to the kit's. (The project's module proves itself: its own --test.)
+
+    Args:
+        kit: an empty temporary folder.
+        blocks: the module check_content_test_blocks (it has its own command line for the cases).
+    """
+    here = os.path.dirname(os.path.abspath(__file__))
+    for name in os.listdir(here):
+        if name.startswith("check_content") and name.endswith(".py") and name != check_content_scan.LOCAL_FILE.name:
+            shutil.copy(os.path.join(here, name), kit)
+    ME[1] = blocks.ME[1] = os.path.join(kit, "check_content.py")
+    check_content_scan.use_local(os.path.join(kit, check_content_scan.LOCAL_FILE.name))   # no such file: the kit's finders
 
 
 def run():
-    """Run every case in order; print CONTENT CHECK TEST PASS or FAIL and return the exit code."""
+    """Run every case in order; print CONTENT CHECK TEST PASS or FAIL and return the exit code.
+
+    Returns:
+        The exit code: 0 pass, 1 fail.
+    """
     # The host's git config (forced signing, -c on the command line) must not change the cases.
     for k in ("GIT_CONFIG_PARAMETERS", "GIT_CONFIG_COUNT"):
         os.environ.pop(k, None)
     os.environ.update(GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1")
     os.environ.pop("CHECK_TERMS", None)  # the host's terms list must not change the cases
     os.environ["CHECK_TERMS_FILE"] = os.path.join(tempfile.gettempdir(), "no-such-terms-file.txt")
-    for case in (case_speed, case_minimum_patterns, case_secrets_and_masks, case_dod_patterns, case_profile_lines,
-                 case_denylist_and_fingerprint, case_cli, case_commits, case_hook, case_missing_parts):
-        case()
     import check_content_test_blocks  # the cases for terms, block lines, the .check name and the write and Bash tools
-    check_content_test_blocks.run(check)
+    import check_content_test_local   # the cases for a project's own finders (scripts/check_content_local.py)
+    with tempfile.TemporaryDirectory() as kit:
+        without_local(kit, check_content_test_blocks)
+        for case in (case_speed, case_minimum_patterns, case_secrets_and_masks, case_dod_patterns, case_profile_lines,
+                     case_denylist_and_fingerprint, case_cli, case_commits, case_hook):
+            case()
+        check_content_test_blocks.run(check)
+        check_content_test_local.run(check, kit)
     print("CONTENT CHECK TEST " + ("FAIL" if FAILED else "PASS"))
     return 1 if FAILED else 0

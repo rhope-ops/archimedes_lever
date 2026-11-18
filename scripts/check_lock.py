@@ -14,6 +14,8 @@ Usage:
     python3 scripts/check_lock.py --test            # self-test; prints LOCK TEST PASS
 Input: the repo at the current folder (or --project DIR). Output: PASS, FAIL and WARN lines on stdout.
 Writes: .check.lock (--relock only). Standard library only.
+Network: none.
+Credentials: none.
 """
 import argparse
 import hashlib
@@ -35,7 +37,14 @@ def sha(text):
 
 def kit_sections(text):
     """The kit's part of an AGENTS.md: every `## ` section before "## Project rules" except "## Commands". The
-    header above the first section holds the project's own values, so it is not part of it."""
+    header above the first section holds the project's own values, so it is not part of it.
+
+    Args:
+        text: the text of an AGENTS.md.
+
+    Returns:
+        The kit sections as one text.
+    """
     out, keep = [], False
     for ln in text.splitlines():
         if ln.startswith("## "):
@@ -91,7 +100,14 @@ def load(root):
 
 
 def verify(root):
-    """Return (lines, failed): one FAIL line for each kit file that is missing or differs from the lock."""
+    """Return (lines, failed): one FAIL line for each kit file that is missing or differs from the lock.
+
+    Args:
+        root: the repo root (a folder path).
+
+    Returns:
+        (lines to print, True when a file is missing or differs).
+    """
     try:
         data = load(root)
     except ValueError as e:
@@ -114,7 +130,15 @@ def verify(root):
 
 
 def relock(root, files):
-    """Accept the named kit files as they are now and list them as overrides; return the exit code."""
+    """Accept the named kit files as they are now and list them as overrides; return the exit code.
+
+    Args:
+        root: the repo root (a folder path).
+        files: the repo-relative paths of the kit files to accept.
+
+    Returns:
+        The exit code: 0 pass, 1 fail.
+    """
     data = load(root)
     if data is None:
         print(f"no {LOCK}: nothing to relock")
@@ -132,7 +156,11 @@ def relock(root, files):
 
 
 def self_test():
-    """Lock a temporary project, then change, remove and relock files."""
+    """Lock a temporary project, then change, remove and relock files.
+
+    Returns:
+        The exit code: 0 pass, 1 fail.
+    """
     fails = []
 
     def ok(label, good):
@@ -176,7 +204,11 @@ def self_test():
 
 
 def main():
-    """Run the mode the command line names; return the exit code."""
+    """Run the mode the command line names; return the exit code.
+
+    Returns:
+        The exit code: 0 pass, 1 fail.
+    """
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0], allow_abbrev=False)
     ap.add_argument("--verify", action="store_true")
     ap.add_argument("--status", action="store_true")

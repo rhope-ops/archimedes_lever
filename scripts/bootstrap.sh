@@ -7,6 +7,10 @@
 # Tier (default starter): starter keeps the core rules, hooks and checks, and the name denylist only warns when missing;
 # full adds orchestration, the project log, the bloat audit and the rule tests (scripts/sync_baseline.py ADVANCED_FILES).
 # The script deletes itself when it finishes. Review the result, then commit and push.
+# Network: none.
+# Writes: the files of this repo: it fills the placeholders, renames the owner word, applies the tier, writes README.md,
+#   .check.state.json and .check.lock, and deletes the kit-only files and itself.
+# Credentials: none.
 set -euo pipefail
 
 if [ $# -lt 3 ] || [ $# -gt 6 ]; then
@@ -46,17 +50,20 @@ rm -rf -- docs/templates
 
 files=(AGENTS.md docs/NEXT_PROMPT.md docs/DECISIONS.md docs/host-prompts.md docs/LOG.md)
 for f in "${files[@]}"; do
-  perl -pi -e 's/\{\{PROJECT_NAME\}\}/$ENV{BS_NAME}/g; s/\{\{REPO\}\}/$ENV{BS_REPO}/g; s/\{\{PURPOSE\}\}/$ENV{BS_PURPOSE}/g; s/\{\{DATE\}\}/$ENV{BS_DATE}/g; s/\{\{TIME\}\}/$ENV{BS_TIME}/g; s/\{\{TIMEZONE\}\}/$ENV{BS_TZ}/g; s/\{\{OWNER\}\}/the owner/g; $_ = "" if /^> Template: first use fills in/' "$f"
+  perl -pi -e 's/\{\{PROJECT_NAME\}\}/$ENV{BS_NAME}/g; s/\{\{REPO\}\}/$ENV{BS_REPO}/g; s/\{\{PURPOSE\}\}/$ENV{BS_PURPOSE}/g;
+    s/\{\{DATE\}\}/$ENV{BS_DATE}/g; s/\{\{TIME\}\}/$ENV{BS_TIME}/g; s/\{\{TIMEZONE\}\}/$ENV{BS_TZ}/g; s/\{\{OWNER\}\}/the owner/g;
+    $_ = "" if /^> Template: first use fills in/' "$f"
 done
 
 # Replace the role word "the owner" / "The owner".
 if [ "$BS_OWNER" != "the owner" ]; then
-  # The same files sync_baseline.py renames (its COPY_FILES; data-change and verify hold no owner word), so a sync right after bootstrap changes nothing.
+  # The same files sync_baseline.py renames (those of its COPY_FILES that hold the owner word), so a sync right after bootstrap changes nothing.
   # Not renamed on purpose: docs/FIRST_USE.md and scripts/first_use_check.py, whose
   # "the owner" is an option, a role or a literal the script needs.
-  owner_files=("${files[@]}" .claude/skills/delegate/SKILL.md .claude/skills/audit/SKILL.md .claude/skills/project-log/SKILL.md .claude/skills/deliver/SKILL.md .claude/skills/personal-data/SKILL.md .claude/skills/rule-change/SKILL.md .claude/skills/efficiency/SKILL.md .claude/skills/handoff/SKILL.md .claude/skills/kit-update/SKILL.md .claude/rule-tests.md scripts/bloat_check.py scripts/session_checkin.sh scripts/stop_check.py scripts/worker_guard.py
-    scripts/log_check.py scripts/timeline.py scripts/check_content.py scripts/check_content_scan.py scripts/check_content_hook.py scripts/check_content_test.py
-    scripts/bloat_check_skills.py scripts/bloat_check_test.py scripts/check_settings.py scripts/code_standard.py scripts/code_standard_test.py docs/code-standard.md scripts/check.sh scripts/git-hooks/pre-push)
+  owner_files=("${files[@]}" .claude/skills/delegate/SKILL.md .claude/skills/audit/SKILL.md .claude/skills/project-log/SKILL.md .claude/skills/deliver/SKILL.md .claude/skills/personal-data/SKILL.md .claude/skills/rule-change/SKILL.md .claude/skills/efficiency/SKILL.md .claude/skills/handoff/SKILL.md .claude/skills/kit-update/SKILL.md .claude/skills/data-change/SKILL.md .claude/skills/verify/SKILL.md
+    .claude/agents/reviewer.md .github/workflows/check.yml .claude/rule-tests.md scripts/bloat_check.py scripts/bloat_check_rules.py scripts/session_checkin.sh scripts/stop_check.py scripts/worker_guard.py scripts/check_lock.py
+    scripts/log_check.py scripts/timeline.py scripts/check_content.py scripts/check_content_scan.py scripts/check_content_hook.py scripts/check_content_test.py scripts/check_content_test_blocks.py
+    scripts/bloat_check_skills.py scripts/bloat_check_test.py scripts/check_settings.py scripts/code_standard.py scripts/code_standard_test.py scripts/code_standard_docs.py docs/code-standard.md scripts/check.sh scripts/git-hooks/pre-push)
   for f in "${owner_files[@]}"; do
     perl -pi -e 'my $c = ucfirst $ENV{BS_OWNER}; s/\b([Tt])he owner\b/$1 eq "T" ? $c : $ENV{BS_OWNER}/ge' "$f"
   done
@@ -97,7 +104,8 @@ find docs/reviews -maxdepth 1 -name '20*.md' -delete 2>/dev/null || true
 # Projects do not stay in sync with the kit (the owner, 2026-11-13): the sync tools stay in the kit only.
 # The token log hook is installed from the kit by the cloud setup scripts (the owner, 2026-11-17).
 python3 scripts/sync_baseline.py --lock-here  # the kit lock (.check.lock) of the new project
-rm -f -- scripts/sync_baseline.py scripts/drift.py scripts/token_log.py scripts/token_log_test.py KIT_VERSION docs/CHANGELOG.md docs/KIT_HANDOFF.md
+rm -f -- scripts/sync_baseline.py scripts/sync_merge.py scripts/drift.py scripts/token_log.py scripts/token_log_test.py \
+  KIT_VERSION docs/CHANGELOG.md docs/KIT_HANDOFF.md
 if [ -f LICENSE ]; then mv -- LICENSE docs/archimedes_lever-LICENSE.txt; fi
 
 rm -- "$0"

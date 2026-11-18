@@ -31,6 +31,10 @@ TOKEN_LOG_NET_TIMEOUT (seconds, default 600) limits each ls-remote, fetch and pu
 Manual push:  python3 scripts/token_log.py --push REPO_DIR SESSION_ID TRANSCRIPT_PATH
 Self-test (temporary repos, no network):  python3 scripts/token_log.py --test
 Standard library only.
+Network: the git remote "origin" of the repo (fetch and push of the branch claude/token-usage); none in the self-test.
+Writes: the branch claude/token-usage (one CSV file for each session), through a temporary index; push.log and lock
+files in TOKEN_LOG_HOME; never the work tree.
+Credentials: none itself; the push uses the credentials git already has for origin.
 """
 import bisect
 import csv

@@ -5,12 +5,22 @@ check stays under the 600-line cap of docs/code-standard.md C4).
 Input: the repo root; it reads each .claude/skills/*/SKILL.md and AGENTS.md. Output: FAIL lines (no frontmatter, no
 name or description, a name that differs from its folder), indented WARN lines (description start or length, file
 length, orphan skill) and the last line SKILLS PASS or SKILLS FAIL; exit 1 on a FAIL. Standard library only.
+Network: none.
+Writes: none.
+Credentials: none.
 """
 import re
 
 
 def skill_frontmatter(text):
-    """Returns {key: value} of the YAML frontmatter (simple `key: value`, indented continuation lines), or None."""
+    """Returns {key: value} of the YAML frontmatter (simple `key: value`, indented continuation lines), or None.
+
+    Args:
+        text: the text of a SKILL.md file.
+
+    Returns:
+        A dict {key: value}, or None when the file has no frontmatter.
+    """
     lines = text.splitlines()
     if not lines or lines[0].strip() != "---":
         return None
@@ -33,7 +43,14 @@ def skill_frontmatter(text):
 
 
 def skills_report(root):
-    """Returns (lines, fails, warns, count) for .claude/skills/*/SKILL.md."""
+    """Returns (lines, fails, warns, count) for .claude/skills/*/SKILL.md.
+
+    Args:
+        root: the repo root (a Path).
+
+    Returns:
+        (lines to print, the number of FAIL lines, the number of WARN lines, the number of skills).
+    """
     files = sorted((root / ".claude/skills").glob("*/SKILL.md"))
     texts = {f.parent.name: f.read_text(encoding="utf-8", errors="replace") for f in files}
     agents = (root / "AGENTS.md").read_text(encoding="utf-8", errors="replace") if (root / "AGENTS.md").is_file() else ""
@@ -108,7 +125,15 @@ SINGLE_HOME = [
 
 
 def second_homes(root, table=None):
-    """Problems for each SINGLE_HOME rule found in a skill or agent file that is not its home."""
+    """Problems for each SINGLE_HOME rule found in a skill or agent file that is not its home.
+
+    Args:
+        root: the repo root (a folder path).
+        table: the rules to look for, as (label, pattern, home files); None = SINGLE_HOME.
+
+    Returns:
+        One problem line for each place found.
+    """
     files = sorted((root / ".claude/skills").glob("*/SKILL.md")) + sorted((root / ".claude/agents").glob("*.md"))
     out = []
     for label, pattern, homes in (SINGLE_HOME if table is None else table):

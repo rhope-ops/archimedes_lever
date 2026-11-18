@@ -10,8 +10,12 @@ What is scanned, by tool:
                                 CLIENTS, a URL, or a git verb in GIT_OUT). A local command passes
                                 unread. Limit: a payload that a script or an interpreter builds at run time.
     every other tool            every string of the input, and the files it names.
-Output: exit 0 lets the tool call run; exit 2 blocks it, and the masked findings go to stderr. Any error blocks.
+Output: exit 0 lets the tool call run; exit 2 blocks it, and the masked findings go to stderr. Any error blocks: also
+a project's own finders (scripts/check_content_local.py) that cannot be loaded block every call that is scanned.
 Run: check_content.py imports it for --hook; not run alone.
+Network: none.
+Writes: none.
+Credentials: none; it reads the word lists through check_content_scan.py and never prints an entry.
 """
 import json
 import os
@@ -20,7 +24,7 @@ import signal
 import subprocess
 import sys
 
-from check_content_scan import (BLOCKED, UNKNOWN_PROFILE, blocked, git, is_option_line, load_allow, load_denylist,
+from check_content_scan import (BLOCKED, UNKNOWN_PROFILE, LocalError, blocked, git, is_option_line, load_allow, load_denylist,
                                 load_terms, profile_of, scan_files, scan_text)
 
 
@@ -42,7 +46,14 @@ GIT_OUT = frozenset(("commit", "commit-tree", "merge", "tag", "notes", "push", "
 def outgoing(cmd):
     """True when a Bash command can send something out: it names a network client or a URL, one of its simple
     commands (split on newline ; | &) has the word git and a publishing verb, or a line ends in a backslash. One pass
-    (no slow pattern)."""
+    (no slow pattern).
+
+    Args:
+        cmd: the Bash command text.
+
+    Returns:
+        True when the command can send something out.
+    """
     # A backslash at a line end can join two lines into one word ("cu\<newline>rl" runs curl), and where the shell
     # joins depends on comments and quotes. The hook does not copy those rules: such a command is always scanned.
     if "\\\n" in cmd or "\\\r" in cmd or CLIENTS.search(cmd):
@@ -62,12 +73,26 @@ def hook_parts(tool_input, tool_name=""):
     """(texts, recipient texts, file paths, strict paths) of a PreToolUse tool_input. Every string value is scanned;
     the values of the file keys are also read as files (an Artifact or SendUserFile call sends a file's content).
     Recipient texts: the top-level recipient keys of a Gmail call only; they are scanned, but an email address there
-    is no finding. Strict paths (file_path, file_paths) must exist: a named file the hook cannot read blocks."""
+    is no finding. Strict paths (file_path, file_paths) must exist: a named file the hook cannot read blocks.
+
+    Args:
+        tool_input: the tool_input object of the hook input.
+        tool_name: the tool name (a Gmail call has recipient keys).
+
+    Returns:
+        (texts, recipient texts, file paths, strict paths), each a list.
+    """
     texts, recipients, paths, strict = [], [], [], []
     mail = tool_name.startswith("mcp__Gmail__")
 
     def walk(v, key="", out=texts):
-        """Add each string in v to out; key is the nearest named key above it (file keys win)."""
+        """Add each string in v to out; key is the nearest named key above it (file keys win).
+
+        Args:
+            v: a value of the tool input (string, list or object).
+            key: the nearest named key above v.
+            out: the list that gets the strings.
+        """
         if isinstance(v, str):
             out.append(v)
             if key in HOOK_FILE_KEYS:
@@ -90,7 +115,14 @@ def hook_parts(tool_input, tool_name=""):
 
 def hook(stdin_text):
     """PreToolUse hook entry: any error blocks the call. Claude Code runs the call on any exit other than 2, so an
-    exception (deep nesting, a wrong type) must not end the script with exit 1."""
+    exception (deep nesting, a wrong type) must not end the script with exit 1.
+
+    Args:
+        stdin_text: the hook input as text; None = read it from stdin.
+
+    Returns:
+        The exit code: 0 lets the call run, 2 blocks it.
+    """
     def too_slow(*_):  # exit here: an exception could escape between the except block and the finally block
         sys.stdout.flush()
         os.write(2, b"check hook: blocked: the scan took longer than its own time budget; fail closed.\n")
@@ -101,7 +133,8 @@ def hook(stdin_text):
     try:
         return _hook(sys.stdin.read() if stdin_text is None else stdin_text)
     except BaseException as e:  # noqa: B036 - fail closed, whatever went wrong
-        print(f"check hook: blocked: the scan failed ({e.__class__.__name__}); fail closed.", file=sys.stderr)
+        why = str(e) if isinstance(e, LocalError) else f"the scan failed ({e.__class__.__name__})"   # a broken local module is named
+        print(f"check hook: blocked: {why}; fail closed.", file=sys.stderr)
         return 2
     finally:
         if hasattr(signal, "SIGALRM"):
@@ -110,7 +143,12 @@ def hook(stdin_text):
 
 def _hook(stdin_text):
     """PreToolUse hook. Exit 0 lets the call run; exit 2 blocks it and shows stderr to Claude. Bad input blocks
-    (fail closed). Names are checked only when a denylist exists; the hook never blocks for a missing list."""
+    (fail closed). Names are checked only when a denylist exists; the hook never blocks for a missing list.
+    Args:
+        stdin_text: the hook input as text (JSON).
+    Returns:
+        The exit code: 0 lets the call run, 2 blocks it.
+    """
     try:
         event = json.loads(stdin_text)
         tool_input = event.get("tool_input", {})
@@ -162,7 +200,21 @@ def _hook(stdin_text):
 
 
 def scan_write(name, tool_input, full, root, deny, allow, dod, terms):
-    """Findings for a Write, Edit or NotebookEdit call: the new text, and the target path against the block lines."""
+    """Findings for a Write, Edit or NotebookEdit call: the new text, and the target path against the block lines.
+
+    Args:
+        name: the tool name (a key of WRITE_KEYS).
+        tool_input: the tool_input object of the hook input.
+        full: a function that turns a path of the call into a full path.
+        root: the repo root (a folder path).
+        deny: the names of the denylist.
+        allow: the lines of the settings file (load_allow).
+        dod: True in the DoD tier: also run the DoD checks.
+        terms: the owner's own blocked words.
+
+    Returns:
+        The findings, each (where, line number, kind, masked value).
+    """
     new = [v for k in WRITE_KEYS[name] for v in [tool_input.get(k)] if isinstance(v, str)]
     path = tool_input.get("file_path") or tool_input.get("notebook_path")
     rel = None

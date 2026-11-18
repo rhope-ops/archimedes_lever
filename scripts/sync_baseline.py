@@ -31,7 +31,11 @@ What it changes:
     scripts/session_checkin.sh, scripts/stop_check.py, scripts/worker_guard.py,
     .claude/skills/ (every kit skill), .claude/agents/worker.md, scout.md, reviewer.md
                            Replaced with the baseline copies.
-    docs/FIRST_USE.md      Added only when missing (it holds the denylist places that the session-start check names).
+    docs/FIRST_USE.md      Added when missing. A project may tune it (it holds the denylist places that the
+                           session-start check names), so a copy the project changed is kept, with one line that
+                           says it differs and how to compare. A copy that is byte for byte an earlier kit version
+                           of the file was never tuned: it is replaced. This needs the baseline's git history; with
+                           a baseline folder that is no git repo, a copy that differs is kept.
     scripts/log_check.py, scripts/timeline.py, scripts/check_content*.py, scripts/first_use_check.py,
     scripts/check.sh, scripts/bloat_check*.py, scripts/code_standard*.py, docs/code-standard.md, scripts/git-hooks/pre-push,
     .claude/rule-tests.md
@@ -49,13 +53,16 @@ What it changes:
                            script), "the owner" becomes the project owner ("The owner" becomes the owner with a capital
                            first letter). Project text is never renamed. A private repo may keep a real name
                            (--owner NAME); a public repo uses a role. Owner: letters, digits, space . _ , ( ) -
-What it never changes: README.md, docs/ (except adding a missing docs/FIRST_USE.md and updating the kit license),
-.check and all other files.
+What it never changes: README.md, docs/ (except docs/FIRST_USE.md as said above, docs/code-standard.md and the kit
+license), .check and all other files. A project's own code lives in its own files (scripts/check.local.sh,
+scripts/check_content_local.py, scripts/code_standard_gate.py), which a sync never touches.
 Standard library only. Needs git.
+Network: the baseline repo, only when --baseline is a URL (one git clone); none for a local folder.
+Writes: with --apply, the kit files of the project and its kit lock .check.lock (the list: "What it changes" above); without it, nothing.
+Credentials: none itself; a clone uses the credentials git already has.
 """
 import argparse
 import difflib
-import json
 import re
 import shutil
 import subprocess
@@ -66,6 +73,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import check_blocks  # noqa: E402 - the deny rules and the placeholder pattern
 import check_lock  # noqa: E402 - the kit lock that a sync writes into the project
+from sync_merge import REPLACED_HOOKS, die, merge_lines, merge_settings, migrate_arcs  # noqa: E402,F401 - scripts/sync_merge.py
 
 DEFAULT_BASELINE = "https://github.com/rhope-ops/archimedes_lever"
 RULES_HEADING = "## Project rules"
@@ -73,17 +81,22 @@ COMMANDS_HEADING = "## Commands"
 COPY_FILES = ["scripts/session_checkin.sh", "scripts/stop_check.py", "scripts/check_blocks.py", "scripts/check_lock.py", "scripts/check_content_test_blocks.py",
               "scripts/worker_guard.py", "scripts/log_check.py", "scripts/timeline.py", "scripts/check_content.py", "scripts/first_use_check.py",
               "scripts/check_content_scan.py", "scripts/check_content_hook.py", "scripts/check_content_test.py",
+              "scripts/check_content_finders.py", "scripts/check_content_test_local.py", "scripts/check_settings_test.py",
               "scripts/check.sh", "scripts/check_settings.py", "scripts/bloat_check.py", "scripts/bloat_check_skills.py", "scripts/bloat_check_test.py",
-              "scripts/code_standard.py", "scripts/code_standard_test.py", "scripts/code_standard_docs.py", "docs/code-standard.md", "scripts/git-hooks/pre-push",
+              "scripts/bloat_check_rules.py",
+              "scripts/code_standard.py", "scripts/code_standard_test.py", "scripts/code_standard_docs.py", "scripts/code_standard_parse.py",
+              "docs/code-standard.md", "scripts/git-hooks/pre-push",
               ".claude/skills/delegate/SKILL.md", ".claude/skills/audit/SKILL.md", ".claude/skills/project-log/SKILL.md", ".claude/rule-tests.md", ".github/workflows/check.yml",
               ".claude/skills/deliver/SKILL.md", ".claude/skills/personal-data/SKILL.md", ".claude/skills/rule-change/SKILL.md",
               ".claude/skills/data-change/SKILL.md", ".claude/skills/verify/SKILL.md", ".claude/skills/verify/measure.mjs",
               ".claude/skills/efficiency/SKILL.md", ".claude/skills/handoff/SKILL.md",
               ".claude/skills/kit-update/SKILL.md",
               ".claude/agents/worker.md", ".claude/agents/scout.md", ".claude/agents/reviewer.md"]
-# Copied only when the project has no file with that name. (The kit's agent files are kit files since 2026-11-18:
-# an old copy can restate a rule; a project adds an agent of its own under its own name.)
+# A file a project may tune: added when missing, replaced when the project's copy is an earlier kit version, else kept
+# (copy_state). (The kit's agent files are kit files since 2026-11-18: an old copy can restate a rule; a project adds
+# an agent of its own under its own name.)
 COPY_IF_MISSING = ["docs/FIRST_USE.md"]
+COPY_NOTES = []  # one line for each COPY_IF_MISSING file that a sync replaces or keeps (main() prints them)
 BASELINE_OWNER = "the owner"  # role word in baseline text; no real name lives in the baseline
 # Never rename the owner inside this script: it holds BASELINE_OWNER as a literal.
 # first_use_check.py and docs/FIRST_USE.md use "the owner" as an answer option and a role: keep them as written
@@ -97,7 +110,7 @@ def log_template(base):
 # Advanced parts: a starter project has none of these (one list for bootstrap, sync and drift).
 ADVANCED_FILES = [".claude/skills/delegate/SKILL.md", ".claude/agents/scout.md", ".claude/agents/worker.md",
                   ".claude/skills/project-log/SKILL.md", "docs/LOG.md", "scripts/log_check.py", "scripts/timeline.py",
-                  ".claude/skills/audit/SKILL.md", "scripts/bloat_check.py", "scripts/bloat_check_skills.py",
+                  ".claude/skills/audit/SKILL.md", "scripts/bloat_check.py", "scripts/bloat_check_skills.py", "scripts/bloat_check_rules.py",
                   "scripts/bloat_check_test.py", ".claude/rule-tests.md",
                   ".claude/skills/efficiency/SKILL.md"]
 # Moved or renamed in the kit (to .claude/skills/ on 2026-11-16; the guard to check_content on 2026-11-18; run-verify
@@ -113,25 +126,20 @@ NO_OWNER_RENAME = {"scripts/sync_baseline.py", "scripts/first_use_check.py", "do
 OWNER_RE = r"[A-Za-z0-9 ._,()-]+"  # safe inside Python strings, JSON and Markdown
 
 
-def die(msg):
-    """Print the error to stderr and exit 1."""
-    print(f"error: {msg}", file=sys.stderr)
-    sys.exit(1)
-
-
 def git(*args, cwd=None):
     """Run git and return its stripped stdout; raise on failure."""
     return subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True, text=True).stdout.strip()
 
 
 def get_baseline(src, tmp):
-    """The baseline folder: `src` itself when it is a folder, else a shallow clone of it in `tmp`."""
+    """The baseline folder: `src` itself when it is a folder, else a clone of it in `tmp` (with its history: an older
+    kit copy of a file is known by it, copy_state)."""
     path = Path(src)
     if path.is_dir():
         return path.resolve()
     dest = Path(tmp) / "baseline"
     try:
-        git("clone", "--quiet", "--depth", "1", src, str(dest))
+        git("clone", "--quiet", src, str(dest))
     except subprocess.CalledProcessError as e:
         die(f"cannot clone baseline {src}: {e.stderr.strip()}")
     return dest
@@ -250,6 +258,92 @@ def apply_owner(text, owner):
     return re.sub(r"\b([Tt])he owner\b", lambda m: cap if m.group(1) == "T" else owner, text)
 
 
+def kit_history(base, rel):
+    """The earlier versions of a baseline file, from the baseline's git history.
+
+    Args:
+        base: the baseline folder.
+        rel: the file's path in it.
+
+    Returns:
+        A list of the file's bytes at each commit that changed it, newest first; None when the baseline folder is
+        not the top of a git repo (no history to read).
+    """
+    try:
+        if Path(git("rev-parse", "--show-toplevel", cwd=base)).resolve() != Path(base).resolve():
+            return None
+        shas = git("log", "--format=%H", "--", rel, cwd=base).split()
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return None
+    shown = [subprocess.run(["git", "show", f"{sha}:{rel}"], cwd=base, capture_output=True) for sha in shas]
+    return [r.stdout for r in shown if r.returncode == 0]   # a commit that deleted the file has no version
+
+
+def copy_state(base, root, rel, owner):
+    """The state of a project's copy of a COPY_IF_MISSING file against the kit.
+
+    Args:
+        base: the baseline folder.
+        root: the project folder.
+        rel: the file's path.
+        owner: the project's owner word.
+
+    Returns:
+        (state, text): text is the kit's file as a sync writes it (owner word applied), state is one of
+        "missing" (the project has no copy), "same" (its copy is the kit's file), "older" (its copy is byte for byte
+        an earlier kit version, with or without the owner word applied: never tuned), "tuned" (anything else) and
+        "unknown" (it differs, and the baseline has no git history to tell an older copy from a tuned one).
+    """
+    text = (base / rel).read_text()
+    text = text if rel in NO_OWNER_RENAME else apply_owner(text, owner)
+    path = root / rel
+    if not path.exists():
+        return "missing", text
+    mine = path.read_bytes()
+    if mine == text.encode():
+        return "same", text
+    old = kit_history(base, rel)
+    if old is None:
+        return "unknown", text
+    forms = set()
+    for data in old:
+        forms.add(data)
+        forms.add(apply_owner(data.decode("utf-8", "replace"), owner).encode())   # as an earlier sync wrote it
+    return ("older" if mine in forms else "tuned"), text
+
+
+def plan_if_missing(base, root, rels, owner, src=None):
+    """What a sync does with the files a project may tune (COPY_IF_MISSING).
+
+    Args:
+        base: the baseline folder.
+        root: the project folder.
+        rels: the paths to look at.
+        owner: the project's owner word.
+        src: the --baseline value, for the compare command (None: the baseline folder).
+
+    Returns:
+        (new, notes): new maps each path to write (missing, or an older kit copy) to its text; notes has one line
+        for each file that is replaced or kept although it differs.
+    """
+    new, notes = {}, []
+    there = Path(src).is_dir() if src else True
+    kit = str(Path(src).resolve() if src and there else base) if there else "<a clone of the kit>"
+    for rel in rels:
+        if not (base / rel).exists():
+            continue
+        state, text = copy_state(base, root, rel, owner)
+        if state in ("missing", "older"):
+            new[rel] = text
+        if state == "older":
+            notes.append(f"{rel}: the project's copy is an earlier kit version that was never changed here; it is replaced.")
+        elif state in ("tuned", "unknown"):
+            why = ("this project changed it" if state == "tuned" else
+                   "the baseline folder has no git history, so an older kit copy cannot be told from a tuned one")
+            notes.append(f"{rel}: kept; it differs from the kit's file ({why}). Compare: diff {kit}/{rel} {rel}")
+    return new, notes
+
+
 def build_agents(base_text, proj_text, args, owner, tier="full"):
     """The new AGENTS.md: baseline text with this project's header values, Commands section and Project rules."""
     found = header_values(proj_text) if proj_text else (None, None, None)
@@ -289,98 +383,6 @@ def build_agents(base_text, proj_text, args, owner, tier="full"):
             tail += "<!-- Migrated from the old AGENTS.md by sync_baseline.py. Review it: delete what the baseline now covers. -->\n\n"
             tail += proj_text.strip() + "\n"
     return head + tail
-
-
-def merge_settings(base_path, proj_path):
-    """The project settings.json plus the baseline deny rules, missing hook events and sandbox block."""
-    base = json.loads(base_path.read_text())
-    try:
-        proj = json.loads(proj_path.read_text()) if proj_path.exists() else {}
-    except json.JSONDecodeError as e:
-        die(f".claude/settings.json is not valid JSON ({e}); fix it first")
-    if not isinstance(proj, dict):
-        die(".claude/settings.json must be a JSON object; fix it first")
-    if not isinstance(proj.get("permissions"), dict):
-        if proj.get("permissions") not in (None,):
-            die('.claude/settings.json "permissions" must be an object; fix it first')
-        proj["permissions"] = {}
-    deny = proj["permissions"].get("deny")
-    if deny is None:
-        deny = proj["permissions"]["deny"] = []
-    if not isinstance(deny, list):
-        die('.claude/settings.json "permissions.deny" must be a list; fix it first')
-    # The kit's deny rules (scripts/check_blocks.py DENY) come first, in the kit's order; the project's own follow.
-    kit = check_blocks.DENY + [r for r in base.get("permissions", {}).get("deny", []) if r not in check_blocks.DENY]
-    deny[:] = kit + [r for r in deny if r not in kit]
-    # Sandbox: add the baseline block only when the project has none (a project's own block is kept whole).
-    if "sandbox" in base and "sandbox" not in proj:
-        proj["sandbox"] = base["sandbox"]
-    # Hooks: add a baseline hook event only when the project has no hook for that event.
-    base_hooks = base.get("hooks") or {}
-    if base_hooks:
-        hooks = proj.get("hooks")
-        if hooks is None:
-            hooks = proj["hooks"] = {}
-        if not isinstance(hooks, dict):
-            die('.claude/settings.json "hooks" must be an object; fix it first')
-        # The kit's hook entries come first and replace older copies of themselves; the project's own entries follow.
-        for event, entries in base_hooks.items():
-            hooks[event] = entries + [e for e in map(own_part, hooks.get(event) or []) if e and e not in entries]
-    return json.dumps(proj, indent=2, ensure_ascii=False) + "\n"
-
-
-KIT_HOOK_COMMANDS = ("scripts/pii_guard.py", "scripts/check_content.py", "scripts/check.sh --hook",
-                     "scripts/stop_check.py", "scripts/first_use_check.py")
-REPLACED_HOOKS = []  # matchers of older kit hook entries that a sync replaced (main() prints them)
-
-
-def own_part(entry):
-    """The project's own part of a settings.json hook entry: the entry without the commands that run a kit script
-    (the kit's entry runs those). None when nothing is left: an older copy of a kit hook. Its matcher is noted, so
-    the project can see tool names it had added to it."""
-    if not isinstance(entry, dict) or not isinstance(entry.get("hooks"), list):
-        return entry
-    own = [h for h in entry["hooks"] if not any(k in json.dumps(h) for k in KIT_HOOK_COMMANDS)]
-    if len(own) == len(entry["hooks"]):
-        return entry
-    if not own:
-        if entry.get("matcher"):
-            REPLACED_HOOKS.append(entry["matcher"])
-        return None
-    return {**entry, "hooks": own}
-
-
-NEW_ARCS = "| Arc | Span | Summary | Problem | Turning point | Outcome | Lesson |"
-
-
-def migrate_arcs(text):
-    """Add the story columns to an old 4-column Arcs table; return the text unchanged when there is none."""
-    lines = text.split("\n")
-    for i, line in enumerate(lines):
-        head = [c.strip().lower() for c in line.strip().strip("|").split("|")]
-        if head != [c.lower() for c in ("Arc", "Span", "Summary", "Outcome")]:
-            continue
-        lines[i] = NEW_ARCS
-        j = i + 1
-        if j < len(lines) and re.fullmatch(r"\s*\|(\s*:?-+:?\s*\|){4}\s*", lines[j]):
-            lines[j] = "|---|---|---|---|---|---|---|"
-            j += 1
-        while j < len(lines) and lines[j].strip().startswith("|"):
-            cells = re.split(r"(?<!\\)\|", lines[j].strip())[1:-1]
-            if len(cells) == 4:
-                a, span, summary, outcome = (c.strip() for c in cells)
-                lines[j] = f"| {a} | {span} | {summary} | - | - | {outcome} | - |"
-            j += 1
-        break
-    return "\n".join(lines)
-
-
-def merge_lines(base_path, proj_path):
-    """The project .gitignore with the baseline lines it lacks added at the top."""
-    lines = proj_path.read_text().splitlines() if proj_path.exists() else []
-    add = [l for l in base_path.read_text().splitlines() if l.strip() and l not in lines]
-    # Baseline lines go first, so a later project exception (for example "!.env.example") still wins.
-    return "\n".join(add + lines) + "\n"
 
 
 def parse_args():
@@ -460,10 +462,13 @@ def planned_files(base, root, args):
     old_claude = claude.read_text() if claude.exists() else ""
     if not any(l.strip() == "@AGENTS.md" for l in old_claude.splitlines()):
         new["CLAUDE.md"] = "@AGENTS.md\n" + ("\n" + old_claude if old_claude.strip() else "")
-    for rel in copy_files + [r for r in copy_if_missing if not (root / r).exists()]:
+    for rel in copy_files:
         if (base / rel).exists():
             text = (base / rel).read_text()
             new[rel] = text if rel in NO_OWNER_RENAME else apply_owner(text, owner)
+    tuned, notes = plan_if_missing(base, root, copy_if_missing, owner, args.baseline)
+    new.update(tuned)
+    COPY_NOTES[:] = notes
     if (base / ".claude/settings.json").exists():
         new[".claude/settings.json"] = merge_settings(base / ".claude/settings.json", root / ".claude/settings.json")
     if (base / ".gitignore").exists():
@@ -553,6 +558,8 @@ def main():
         new, tier = planned_files(base, root, args)
         changed = show_diff(root, new)
         report_leftovers(root, tier)
+        for note in COPY_NOTES:
+            print(note)
         for matcher in REPLACED_HOOKS:
             print("An older kit hook entry is replaced by the kit's. If you had added tool names to its matcher, add a "
                   f"hook entry of your own for them. The old matcher: {matcher}")

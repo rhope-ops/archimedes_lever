@@ -4,6 +4,9 @@
 
 Input: none (temporary folders; samples are built at run time, so this file does not flag itself).
 Output: one "ok" or "FAIL" line per case through the check() function that run() gets. Needs git.
+Network: none.
+Writes: temporary folders only.
+Credentials: none (the samples are built at run time and are not real).
 """
 import contextlib
 import io
@@ -28,7 +31,11 @@ def kinds(text, deny=(), allow=(), terms=()):
 
 
 def case_terms(check):
-    """The owner's terms: whole word, any case, masked, kind term; a name stays a name; an allowed string wins."""
+    """The owner's terms: whole word, any case, masked, kind term; a name stays a name; an allowed string wins.
+
+    Args:
+        check: prints one result line and remembers a failure (label, good).
+    """
     check("term: found as a whole word, any case", kinds("the BLUEBIRD plan", terms=["bluebird"]) == ["term"])
     check("term: not inside another word", kinds("bluebirds fly", terms=["bluebird"]) == [])
     check("term and name in one line keep their kinds", kinds("Alex and Bluebird", ["Alex"], terms=["Bluebird"]) == ["name", "term"])
@@ -59,7 +66,11 @@ def case_terms(check):
 
 
 def case_block_lines(check):
-    """`block:` lines: a glob, a file-name glob in any folder, a folder; bare stars are ignored; block wins over skip."""
+    """`block:` lines: a glob, a file-name glob in any folder, a folder; bare stars are ignored; block wins over skip.
+
+    Args:
+        check: prints one result line and remembers a failure (label, good).
+    """
     allow = {"block: *.xlsx", "block: exports/", "block: data/raw-*.csv", "block: *", "skip: exports/"}
     for path, want in (("a.xlsx", True), ("deep/dir/b.xlsx", True), ("exports/x.txt", True), ("data/raw-1.csv", True),
                        ("data/clean.csv", False), ("notes.md", False), ("xlsx", False), ("Deep/B.XLSX", True),
@@ -82,7 +93,11 @@ def git(d, *args):
 
 
 def case_check_file(check):
-    """The settings file is `.check`; `.pii-guard` is read only when `.check` is absent; a commit of a blocked file fails."""
+    """The settings file is `.check`; `.pii-guard` is read only when `.check` is absent; a commit of a blocked file fails.
+
+    Args:
+        check: prints one result line and remembers a failure (label, good).
+    """
     with tempfile.TemporaryDirectory() as d:
         env = {k: v for k, v in os.environ.items() if not k.startswith(("PII_GUARD", "GIT_"))}
         env["PII_GUARD_DENYLIST"] = "Alex"
@@ -122,7 +137,9 @@ def hook(d, tool, tool_input):
 
 
 def case_hook_tools(check):
-    """The hook for Write, Edit, NotebookEdit and Bash."""
+    """The hook for Write, Edit, NotebookEdit and Bash.
+    Args:
+        check: prints one result line and remembers a failure (label, good)."""
     mail = "jane" + at + "corp" + dot + "io"
     with tempfile.TemporaryDirectory() as d:
         pathlib.Path(d, ".check").write_text("block: *.xlsx\nblock: data/*.csv\nskip: ref/\n")
@@ -183,7 +200,11 @@ def case_hook_tools(check):
 
 def case_setting_lines(check):
     """The `code-` and `audit-` lines of `.check` (scripts/check_settings.py reads them): option lines, never allowed
-    values and never tier lines; every other line keeps its meaning, and the tier line still fails closed."""
+    values and never tier lines; every other line keeps its meaning, and the tier line still fails closed.
+
+    Args:
+        check: prints one result line and remembers a failure (label, good).
+    """
     settings = ["code-max-file-lines: 600", "code-exclude: Alex/*", "audit-ignore: ref/**", "audit-budget-file_kb: 100",
                 "Code-C2: full", "code-c2 : dod", "audit-x: dod"]
     check("setting lines are option lines", all(is_option_line(v) for v in settings))
