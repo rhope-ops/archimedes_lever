@@ -19,8 +19,8 @@ A sync (`scripts/sync_baseline.py`, README "Update an existing project") replace
 2. Measure before, in the project: `python3 scripts/bloat_check.py --brief` and `--rules`, the `TIME` line of `scripts/check.sh`, and the drift report.
 3. Plan each kit file: copy as is, merge by hand, or skip (with the reason). Keep the project's header values, "Commands", owner word (for example "the Administrator"), "Project rules" and its own tests. A file the kit moved (`MOVED_FILES` in the kit's `scripts/sync_baseline.py`) is deleted in the project only after its text is in the new place.
 4. Rule lines: each changed line in a kit section of AGENTS.md and each new "Project rules" line is a rule change. Show the exact texts to the owner in one dialog and wait for approval of each (`.claude/skills/rule-change/SKILL.md`). Then run the conflict check of that skill.
-5. Copy and merge on a branch. Do not edit `.baseline` by hand (a sync writes it). Never copy the kit's docs/DECISIONS.md, docs/LOG.md or reviews: the project has its own.
+5. Copy and merge on a branch. Do not edit `.check.lock` by hand (a sync writes it). Never copy the kit's docs/DECISIONS.md, docs/LOG.md or reviews: the project has its own.
 6. Project tests: when the port brings the two check lanes, make `scripts/check.local.sh` accept `--fast` (check each changed file in full, and that generated files are not stale). Profile before you change a test (`.claude/skills/efficiency/SKILL.md`); keep the same tests and the same PASS lines.
 7. Prove it: the full lane passes; give the numbers of step 2 before and after, and the drift report after.
 8. Record: a row in the project's docs/DECISIONS.md ("ported kit pull request N, date; skipped: ..."), and a project log row when it is a milestone.
-9. Deliver as a pull request (`.claude/skills/deliver/SKILL.md`). A port changes guard files, so it needs the fresh review; the owner merges.
+9. Deliver it (`.claude/skills/deliver/SKILL.md`).

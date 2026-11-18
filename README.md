@@ -104,14 +104,14 @@ For people who know git and don't want an agent to do the setup, or who only hav
    ```
    scripts/bootstrap.sh "Project Name" YOUR_USER/NEW_NAME "One-line purpose" "the owner" "Europe/Berlin" starter
    ```
-   The 4th argument is what agents call you (default "the owner"). A public repo should use a role, such as `"the maintainer"`. A private repo can use your first name, but only with the guard turned off (delete `.pii-guard`), because the guard blocks every push that contains a name on your list. The 5th argument is your time zone for project log times, as an IANA name (default UTC). The 6th is the tier: `starter` (default) or `full`.
+   The 4th argument is what agents call you (default "the owner"). A public repo should use a role, such as `"the maintainer"`. A private repo can use your first name, but only with the guard turned off (delete `.check`), because the guard blocks every push that contains a name on your list. The 5th argument is your time zone for project log times, as an IANA name (default UTC). The 6th is the tier: `starter` (default) or `full`.
    Bootstrap moves the kit's MIT license to docs/archimedes_lever-LICENSE.txt. Keep that file: it covers the kit's scripts. Add your own `LICENSE` if you want one.
 3. Set up your name list (next section), run `scripts/session_checkin.sh` (it installs the git hooks), then commit and push.
 4. If you use a claude.ai Project, paste the text from `docs/host-prompts.md` into its instructions.
 
 ## Keep personal data out
 
-With the guard on in the full kit, every push and every pull-request check fails until your name list exists. In the starter kit, `.pii-guard` has the line `denylist: warn`: a push without the list warns, and every other check still runs; delete that line to block. The guard only runs in a repo that has a `.pii-guard` file at its root; that file also lists exact strings you want to allow. A private repo that names you on purpose can delete it.
+With the guard on in the full kit, every push and every pull-request check fails until your name list exists. In the starter kit, `.check` has the line `denylist: warn`: a push without the list warns, and every other check still runs; delete that line to block. The guard only runs in a repo that has a `.check` file at its root; that file also lists exact strings you want to allow. A private repo that names you on purpose can delete it.
 
 1. Commit with your GitHub noreply address. On GitHub, go to **Settings → Emails** and turn on "Keep my email addresses private" and "Block command line pushes that expose my email". Then run:
    ```
@@ -128,7 +128,7 @@ Projects don't stay in sync with the kit automatically, and they don't carry the
    ```
    python3 ../archimedes_lever/scripts/sync_baseline.py --baseline ../archimedes_lever
    ```
-   To move a starter project to the full kit, add `--tier full` (it adds the advanced files and docs/LOG.md; to make the name guard block, delete the `denylist: warn` line in `.pii-guard` yourself). Add `--name`, `--repo` and `--purpose` if the project's AGENTS.md has no header values, `--owner NAME` if it has no `- Owner:` line, and `--timezone ZONE` (an IANA name) if it has no `- Time zone:` line.
+   To move a starter project to the full kit, add `--tier full` (it adds the advanced files and docs/LOG.md; to make the name guard block, delete the `denylist: warn` line in `.check` yourself). Add `--name`, `--repo` and `--purpose` if the project's AGENTS.md has no header values, `--owner NAME` if it has no `- Owner:` line, and `--timezone ZONE` (an IANA name) if it has no `- Time zone:` line.
 2. Read the diff. Nothing has been written yet.
 3. Run the same command with `--apply`, review `git diff`, then commit and push.
 

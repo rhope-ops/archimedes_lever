@@ -65,14 +65,14 @@ Rules for the asking agent:
 
 1. Run `scripts/bootstrap.sh "<1>" <owner/repo from git remote get-url origin> "<2>" "<7>" "<3>" <11>`. Give "the owner" as the 4th argument when that is the answer. The 5th argument is the IANA time zone name (UTC for 3B). The 6th is `starter` (11A) or `full` (11B). The script deletes itself when done; keep this file, because step 4 is also what an agent shows when a session reports DENYLIST. It moves the kit's license to docs/archimedes_lever-LICENSE.txt: keep that file, because it covers the kit's scripts.
 2. Project log (answer 12, public repos in the full tier only): for A, make a private Claude doc named "<1> project log" with the Arcs and Log tables of docs/LOG.md, delete docs/LOG.md, and add to AGENTS.md "Project rules": "Project log: <doc link> (the owner, YYYY-MM-DD)". For B, keep docs/LOG.md. For C, delete docs/LOG.md and add to "Project rules": "No project log (the owner, YYYY-MM-DD)".
-3. Guard (answer 8): for B, delete `.pii-guard`; the hook and the Action then skip the guard.
+3. Guard (answer 8): for B, delete `.check`: the pre-push hook and the Action then skip the scan. The tool-call hook still scans.
 4. License (answer 6): for A, copy docs/archimedes_lever-LICENSE.txt to `LICENSE` and change the copyright line to the current year and the GitHub account or organization from `<owner/repo>`, unless the user names another holder (a public repo never uses a real name the user has not given). For B, save the text from https://www.apache.org/licenses/LICENSE-2.0.txt, unchanged, as `LICENSE`. For C, add no LICENSE.
 5. Record the answers as the owner's decisions in docs/DECISIONS.md (with 4A, one row: "Recommended settings" and the list), and add one `decision` row to the project log (full tier only; not for 12C).
 6. Commit with a noreply identity, and run `scripts/session_checkin.sh` (it installs the git hooks). Do not push yet: step 4 comes first.
 
 ## 4. The denylist, then the first push
 
-With the guard on (8A) in the full tier (11B), every push and every pull-request check fails until a name denylist exists. In the starter tier (11A), bootstrap adds `denylist: warn` to `.pii-guard`: a push with no list only warns, and every other check still runs. Ask for the list in both tiers. The user types the names, comma or newline separated: their names, username variants, employer. Run `python3 scripts/check_content.py --status`; it prints a count, never the names.
+With the guard on (8A) in the full tier (11B), every push and every pull-request check fails until a name denylist exists. In the starter tier (11A), bootstrap adds `denylist: warn` to `.check`: a push with no list only warns, and every other check still runs. Ask for the list in both tiers. The user types the names, comma or newline separated: their names, username variants, employer. Run `python3 scripts/check_content.py --status`; it prints a count, never the names.
 
 | Place | When | Where the user adds it |
 |---|---|---|

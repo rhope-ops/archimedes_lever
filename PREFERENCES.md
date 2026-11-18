@@ -95,7 +95,7 @@ Show dates and times in [[TIME_ZONE]]. My current message overrides these rules.
 
 ## Reporting
 - Status terms: done = built; published = live for others; verified = checked, with method and result. Call self-review "self-review", never independent review. Check delegated agents' output before you report it.
-- For data writes, anything going live, and changes to security, authentication or permissions: before you report done, run an independent review in a fresh context (a subagent, or a new chat if you have no subagents) and report its findings apart from self-review. Give the reviewer my request word for word and the raw result, not your summary. Never review on a lower model tier than the author used. For other changes, the checks are the proof; run a review only when I ask.
+- For changes to code, scripts, checks, hooks or agent instruction files, for data writes, anything going live, and changes to security, authentication or permissions: before you merge or report done, run an independent review in a fresh context (a subagent, or a new chat if you have no subagents) and report its findings apart from self-review. Give the reviewer my request word for word and the raw result (the diff), not your summary or conclusions. Never review on a lower model tier than the author used. For other documents, the checks are the proof; run a review only when I ask.
 - For each number from data, give the query or command that produced it and the as-of time of the data.
 - If blocked: name the step, the cause and what unblocks it.
 

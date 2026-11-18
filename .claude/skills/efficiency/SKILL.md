@@ -14,7 +14,7 @@ AGENTS.md "Bloat, drift and assumptions" points here. A slowdown that nobody loo
 | `scripts/check.sh` (full lane) | Wall time and each step | `timings.check.seconds`, `timings.check.steps` |
 | `scripts/check.sh --fast` | Each step (its total depends on what changed) | `timings.check.steps` |
 | `scripts/session_checkin.sh` | Its run time | `timings.checkin.seconds` |
-| Pre-push hook | The personal-data guard run | `timings.push-guard.seconds` |
+| Pre-push hook | The content check run | `timings.push-guard.seconds` |
 | `python3 scripts/bloat_check.py --time` | Each timing with a `cmd` | `timings.<name>.seconds` |
 
 Slower means both: over `max_slowdown` (default +25%) and over `min_slowdown_seconds` (default 0.5 s), per timing. The second limit stops noise on a step of 0.1 s.
