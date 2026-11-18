@@ -153,6 +153,15 @@ def pin_row(project, base):
             f"pinned {sha[:7] or '?'}, baseline {base_sha[:7] if base_sha else '?'}")
 
 
+LOG_ELSEWHERE_RE = re.compile(r"(?im)^\s*-\s*project log\b[^\n]*?(https?://\S+|(?<![\w/])[\w.~-]*/[\w./~-]+)")
+
+
+def log_kept_elsewhere(rules):
+    """True when the Project rules name another place for the log: a line "- Project log ..." with a URL or a path
+    (or, as before 2026-11-18, the words "project log location")."""
+    return bool(LOG_ELSEWHERE_RE.search(rules) or re.search(r"(?i)project log location", rules))
+
+
 def log_rows(project, base, proj_text, tier):
     """The row for docs/LOG.md (none in the starter tier): kept elsewhere, missing, or the log check's verdict."""
     log = project / "docs/LOG.md"
@@ -160,7 +169,7 @@ def log_rows(project, base, proj_text, tier):
     rules = sb.section(proj_text, sb.RULES_HEADING) or ""
     if tier == "starter":
         return []  # no project log in the starter tier
-    if not log.exists() and re.search(r"(?i)project log location", rules):
+    if not log.exists() and log_kept_elsewhere(rules):
         return [("log", "docs/LOG.md", "same", "kept elsewhere, named in Project rules")]
     if not log.exists():
         return [("log", "docs/LOG.md", "missing", "Project rules name no other place")]
@@ -216,19 +225,26 @@ def filled(text, values):
     return text
 
 
+def last_section(base):
+    """Name of the last baseline AGENTS.md section above "Project rules" that is neither the first nor project-owned."""
+    names = [h[3:] for h in sections((base / "AGENTS.md").read_text(), sb.RULES_HEADING)]
+    return [n for n in names if n not in ("Order of authority", sb.COMMANDS_HEADING[3:])][-1]
+
+
 def legacy_and_synced_cases(proj, base, results):
     """A legacy AGENTS.md drifts; a synced one with the owner renamed is the same, also a copied file."""
     get = lambda item: status(proj, base, item)  # noqa: E731
-    (proj / "AGENTS.md").write_text("# Old rules\n\n## Git safety\n\nBe careful.\n")
+    last = last_section(base)
+    (proj / "AGENTS.md").write_text("# Old rules\n\n## Order of authority\n\nBe careful.\n")
     expect(results, "legacy file: Project rules missing", get(("AGENTS.md", "Project rules")), "missing")
-    expect(results, "changed section", get(("AGENTS.md", "Git safety")), "changed")
-    expect(results, "missing section", get(("AGENTS.md", "Delegation")), "missing")
+    expect(results, "changed section", get(("AGENTS.md", "Order of authority")), "changed")
+    expect(results, "missing section", get(("AGENTS.md", last)), "missing")
     expect(results, "missing copied file", get(("file", "scripts/stop_check.py")), "missing")
     expect(results, "never synced", get(("pin", ".check.lock")), "missing")
     text = filled((base / "AGENTS.md").read_text(), (("PROJECT_NAME", "Demo"), ("REPO", "D/d"), ("PURPOSE", "P"),
                   ("OWNER", "the maintainer"), ("TIMEZONE", "Europe/Berlin")))
     (proj / "AGENTS.md").write_text(sb.apply_owner(sb.apply_tier(text.replace("{{TIER}}", "full"), "full"), "the maintainer"))
-    expect(results, "synced section, owner renamed", get(("AGENTS.md", "Delegation")), "same")
+    expect(results, "synced section, owner renamed", get(("AGENTS.md", last)), "same")
     expect(results, "Project rules present", get(("AGENTS.md", "Project rules")), "absent")
     (proj / "scripts").mkdir()
     (proj / "scripts/stop_check.py").write_text(sb.apply_owner((base / "scripts/stop_check.py").read_text(), "the maintainer"))
@@ -269,6 +285,43 @@ def settings_merge_cases(tmp, base, results):
            [deny[:len(sb.check_blocks.DENY)] == sb.check_blocks.DENY, deny[-1]], [True, "Bash(own rule*)"])
 
 
+def log_place_cases(results):
+    """The log row: a "- Project log" line that names a URL or a path means the log is kept elsewhere."""
+    line = "- Project log: https://claude.ai/artifact/XXXX (private Claude doc; the Administrator, 2026-11-14). Never in this repo.\n"
+    same(results, "log elsewhere: a URL", log_kept_elsewhere("## Project rules\n\n" + line), True)
+    same(results, "log elsewhere: a path, any case", log_kept_elsewhere("- project LOG: notes/private/log.md\n"), True)
+    same(results, "log elsewhere: the old wording", log_kept_elsewhere("- Project log location: the wiki\n"), True)
+    same(results, "log elsewhere: a line with no place", log_kept_elsewhere("- Project log: kept short.\n"), False)
+    same(results, "log elsewhere: another rule that names a URL", log_kept_elsewhere("- Docs: https://example.com/x\n"), False)
+
+
+def run_apply(proj, base):
+    """Run sync_baseline.py --apply in the project folder, with no GIT_* variables; return the exit code."""
+    env = {k: v for k, v in __import__("os").environ.items() if not k.startswith("GIT_")}
+    r = subprocess.run([sys.executable, str(pathlib.Path(sb.__file__)), "--apply", "--baseline", str(base)],
+                       cwd=proj, env=env, capture_output=True, text=True)
+    return r.returncode
+
+
+def apply_keeps_project_files_case(tmp, base, results):
+    """A sync --apply keeps a skill's PROJECT.md and the project's own hook entry in settings.json, unchanged."""
+    proj = tmp / "apply"
+    (proj / ".claude/skills/deliver").mkdir(parents=True)
+    project_md = proj / ".claude/skills/deliver/PROJECT.md"
+    project_md.write_text("Project addition to the deliver skill.\n")
+    own = {"matcher": "^Bash$", "hooks": [{"type": "command", "command": "python3 tools/own_hook.py"}]}
+    (proj / ".claude/settings.json").write_text(json.dumps({"hooks": {"PostToolUse": [own]}}))
+    (proj / "AGENTS.md").write_text("# Demo: agent instructions\n\n- Repo: D/d\n- Purpose: P\n- Owner: the maintainer\n"
+                                    "- Time zone: UTC\n- Tier: full\n\n## Commands\n\n- Test: none.\n\n## Project rules\n\n- Own rule.\n")
+    git = ["git", "-c", "user.name=t", "-c", "user.email=t" + "@" + "users.noreply.github.com"]
+    for cmd in (["init", "-q"], ["add", "-A"], ["commit", "-q", "-m", "start"]):
+        subprocess.run(git + cmd, cwd=proj, check=True, capture_output=True)
+    code = run_apply(proj, base)
+    got = json.loads((proj / ".claude/settings.json").read_text())["hooks"]["PostToolUse"]
+    same(results, "apply: exit 0, PROJECT.md and the own hook entry kept",
+         [code, project_md.read_text(), own in got], [0, "Project addition to the deliver skill.\n", True])
+
+
 def tier_cases(proj, base, results):
     """A starter project is not compared with the advanced parts; apply_tier, header_tier and set_tier work."""
     get = lambda item: status(proj, base, item)  # noqa: E731
@@ -276,11 +329,12 @@ def tier_cases(proj, base, results):
                   ("OWNER", "the owner"), ("TIMEZONE", "UTC"), ("TIER", "starter")))
     (proj / "AGENTS.md").write_text(sb.apply_tier(text, "starter"))
     expect(results, "starter: no Project log section expected", get(("AGENTS.md", "Project log")), "absent")
-    expect(results, "starter: Delegation same", get(("AGENTS.md", "Delegation")), "same")
+    same(results, "starter: no Project log bullet", "**Project log.**" in (proj / "AGENTS.md").read_text(), False)
+    expect(results, "starter: last section same", get(("AGENTS.md", last_section(base))), "same")
     expect(results, "starter: advanced file not expected", get(("file", ".claude/skills/delegate/SKILL.md")), "absent")
     expect(results, "starter: no log row", get(("log", "docs/LOG.md")), "absent")
     full = sb.apply_tier(text.replace("- Tier: starter", "- Tier: full"), "full")
-    good = "<!--" not in full.replace("<!-- Fill in", "").replace("<!-- This project", "") and "## Project log" in full
+    good = "<!--" not in full.replace("<!-- Fill in", "").replace("<!-- This project", "") and ("## Project log" in full or "**Project log.**" in full)
     print(("ok   " if good else "FAIL ") + "apply_tier full: markers gone, Project log kept")
     results.append(good)
     good = sb.header_tier("- Tier: Starter\n") == "starter" and sb.header_tier("# old\n") == "full"
@@ -296,7 +350,7 @@ def tier_cases(proj, base, results):
         sb.set_tier(st, "starter")
     left = [r for r in sb.ADVANCED_FILES if (st / r).exists()]
     agents = (st / "AGENTS.md").read_text()
-    good = not left and "- Tier: starter" in agents and "## Project log" not in agents and "<!-- full" not in agents
+    good = not left and "- Tier: starter" in agents and "## Project log" not in agents and "**Project log.**" not in agents and "<!-- full" not in agents
     print(("ok   " if good else "FAIL ") + f"set_tier starter: advanced files gone ({len(left)} left), AGENTS.md filtered")
     results.append(good)
 
@@ -313,6 +367,8 @@ def self_test():
         legacy_and_synced_cases(proj, base, results)
         tier_cases(proj, base, results)
         settings_merge_cases(proj, base, results)
+        log_place_cases(results)
+        apply_keeps_project_files_case(proj, base, results)
     ok = all(results)
     print("DRIFT TEST " + ("PASS" if ok else "FAIL"))
     return 0 if ok else 1

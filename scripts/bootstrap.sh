@@ -51,10 +51,10 @@ done
 
 # Replace the role word "the owner" / "The owner".
 if [ "$BS_OWNER" != "the owner" ]; then
-  # The same files sync_baseline.py renames (its COPY_FILES; data-change, run-verify and ui-verify hold no owner word), so a sync right after bootstrap changes nothing.
+  # The same files sync_baseline.py renames (its COPY_FILES; data-change and verify hold no owner word), so a sync right after bootstrap changes nothing.
   # Not renamed on purpose: docs/FIRST_USE.md and scripts/first_use_check.py, whose
   # "the owner" is an option, a role or a literal the script needs.
-  owner_files=("${files[@]}" .claude/skills/delegate/SKILL.md .claude/skills/audit/SKILL.md .claude/skills/project-log/SKILL.md .claude/skills/deliver/SKILL.md .claude/skills/personal-data/SKILL.md .claude/skills/rule-change/SKILL.md .claude/skills/efficiency/SKILL.md .claude/skills/handoff/SKILL.md .claude/skills/port/SKILL.md .claude/rule-tests.md scripts/bloat_check.py scripts/session_checkin.sh scripts/stop_check.py scripts/worker_guard.py
+  owner_files=("${files[@]}" .claude/skills/delegate/SKILL.md .claude/skills/audit/SKILL.md .claude/skills/project-log/SKILL.md .claude/skills/deliver/SKILL.md .claude/skills/personal-data/SKILL.md .claude/skills/rule-change/SKILL.md .claude/skills/efficiency/SKILL.md .claude/skills/handoff/SKILL.md .claude/skills/kit-update/SKILL.md .claude/rule-tests.md scripts/bloat_check.py scripts/session_checkin.sh scripts/stop_check.py scripts/worker_guard.py
     scripts/log_check.py scripts/timeline.py scripts/check_content.py scripts/check_content_scan.py scripts/check_content_hook.py scripts/check_content_test.py
     scripts/bloat_check_skills.py scripts/bloat_check_test.py scripts/check_settings.py scripts/code_standard.py scripts/code_standard_test.py docs/code-standard.md scripts/check.sh scripts/git-hooks/pre-push)
   for f in "${owner_files[@]}"; do
