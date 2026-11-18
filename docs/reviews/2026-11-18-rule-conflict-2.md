@@ -61,3 +61,16 @@ rule-conflict-check: a53e6dcf241b
 | 5 | MINOR | "Replaces" did not name the texts "its result decides" and "when the full lane is green". | Done in docs/DECISIONS.md with the next row. |
 | 6 | MINOR | The kit handoff file is named in 3 lines; the 40-line cap does not name it. | Accepted: each line needs the name where an agent reads it; docs/KIT_HANDOFF.md states its own cap. |
 | 7 | MINOR | "live or irreversible effects" is in "Authority" and in "Delivery". | Accepted: one is the ask-list, the other the merge step. |
+
+## Fourth check, after the merge rule changed to "ask the owner by default"
+
+Same reviewer type, a new fresh context, same input and brief. Result: 0 MAJOR, 4 MINOR. No rule text changes.
+
+rule-conflict-check: 3a1860d54c5f
+
+| # | Severity | Finding | Action |
+|---|---|---|---|
+| 1 | MINOR | Reach of the merge waiver: with a waiver in "Project rules", "Delivery" rule 1 says merge, while rule 3 (UI, live or irreversible) and the self-review clause of "Delegation" say ask. | Recorded. Reading until the owner changes the text: the more specific lines win, so those cases stay ask-cases under a waiver. Offered to the owner once as a wording proposal. |
+| 2 | MINOR | An agent can read a plan approval ("Handoff") as "no approval is needed" for the merges of that plan. | Recorded. Reading: a plan approval is not a merge approval unless the plan says so. Offered to the owner once with finding 1. |
+| 3 | MINOR | "ask before the merge" is stated in "Delivery" rule 1, rule 3 and "Delegation". | Recorded; closed by the wording of finding 1 if the owner takes it. |
+| 4 | MINOR | The 2026-11-16 rows "Two check lanes" and "Check stamp kept" still describe a push to main as the place of the full lane. | Done: the newest row of docs/DECISIONS.md names both in "Replaces". |
