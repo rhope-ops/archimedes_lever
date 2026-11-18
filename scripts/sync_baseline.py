@@ -29,9 +29,9 @@ What it changes:
                            An AGENTS.md without the baseline layout goes under "## Project rules" as it is.
     CLAUDE.md              Adds "@AGENTS.md" at the top if it is missing. Keeps the rest.
     scripts/session_checkin.sh, scripts/stop_check.py, scripts/worker_guard.py,
-    .claude/skills/ (every kit skill)   Replaced with the baseline copies.
-    .claude/agents/worker.md, scout.md, reviewer.md, docs/FIRST_USE.md   Added only when missing (a project
-                           may tune them; FIRST_USE.md holds the denylist places that the session-start check names).
+    .claude/skills/ (every kit skill), .claude/agents/worker.md, scout.md, reviewer.md
+                           Replaced with the baseline copies.
+    docs/FIRST_USE.md      Added only when missing (it holds the denylist places that the session-start check names).
     scripts/log_check.py, scripts/timeline.py, scripts/check_content*.py, scripts/first_use_check.py,
     scripts/check.sh, scripts/bloat_check*.py, scripts/code_standard*.py, docs/code-standard.md, scripts/git-hooks/pre-push,
     .claude/rule-tests.md
@@ -79,10 +79,11 @@ COPY_FILES = ["scripts/session_checkin.sh", "scripts/stop_check.py", "scripts/ch
               ".claude/skills/deliver/SKILL.md", ".claude/skills/personal-data/SKILL.md", ".claude/skills/rule-change/SKILL.md",
               ".claude/skills/data-change/SKILL.md", ".claude/skills/verify/SKILL.md", ".claude/skills/verify/measure.mjs",
               ".claude/skills/efficiency/SKILL.md", ".claude/skills/handoff/SKILL.md",
-              ".claude/skills/kit-update/SKILL.md"]
-# Agent definitions: copied only when the project has no file with that name (projects may tune them).
-COPY_IF_MISSING = [".claude/agents/worker.md", ".claude/agents/scout.md", ".claude/agents/reviewer.md",
-                   "docs/FIRST_USE.md"]
+              ".claude/skills/kit-update/SKILL.md",
+              ".claude/agents/worker.md", ".claude/agents/scout.md", ".claude/agents/reviewer.md"]
+# Copied only when the project has no file with that name. (The kit's agent files are kit files since 2026-11-18:
+# an old copy can restate a rule; a project adds an agent of its own under its own name.)
+COPY_IF_MISSING = ["docs/FIRST_USE.md"]
 BASELINE_OWNER = "the owner"  # role word in baseline text; no real name lives in the baseline
 # Never rename the owner inside this script: it holds BASELINE_OWNER as a literal.
 # first_use_check.py and docs/FIRST_USE.md use "the owner" as an answer option and a role: keep them as written

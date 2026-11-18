@@ -56,6 +56,15 @@ def file_hash(root, rel):
     return sha(kit_sections(text) if rel == KIT_PART else text)
 
 
+def kit_text_locked(root):
+    """True when the kit's part of this project's AGENTS.md is the text its lock records: the kit checked those lines."""
+    try:
+        data = load(root)
+    except ValueError:
+        return False
+    return bool(data) and data["files"].get(KIT_PART) == file_hash(root, KIT_PART)
+
+
 def build(root, files, version, commit, overrides=()):
     """The lock data for these kit files as they are in the project now."""
     entries = {rel: file_hash(root, rel) for rel in [KIT_PART, *sorted(files)]}
@@ -143,9 +152,11 @@ def self_test():
         ok("a fresh lock passes and counts 2 entries", not bad and lines[-1].startswith("LOCK PASS: 2 kit files, kit version 1 (abcdef1)"))
         (root / RULES).write_text(agents.replace("- Test: a", "- Test: b").replace("- Mine.", "- Mine.\n- More.").replace("Owner: x", "Owner: y"))
         ok("a change to the header, Commands or Project rules passes", not verify(root)[1])
+        ok("the kit text is the locked text", kit_text_locked(root))
         (root / RULES).write_text(agents.replace("- Kit rule.", "- Kit rule, weaker."))
         lines, bad = verify(root)
         ok("a changed kit rule fails and is named", bad and lines[0] == f"FAIL  kit file changed in this project: {KIT_PART}")
+        ok("a changed kit rule: the kit text is not the locked text", not kit_text_locked(root))
         (root / RULES).write_text(agents)
         (root / "scripts/a.py").write_text("print(2)\n")
         ok("a changed kit script fails", verify(root)[0][0] == "FAIL  kit file changed in this project: scripts/a.py")
