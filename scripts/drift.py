@@ -306,6 +306,9 @@ def settings_merge_cases(tmp, base, results):
     same(results, "merge: a mixed entry keeps only the project's command",
            [h["command"] for e in stop[1:] for h in e["hooks"]], ["python3 tools/own_stop.py"])
     same(results, "merge: the matcher of a replaced kit entry is noted", sb.REPLACED_HOOKS, ["^(Agent|mcp__slack__post)$"])
+    kit_matcher = next(e.get("matcher") for e in json.loads((base / ".claude/settings.json").read_text())["hooks"]["PreToolUse"])
+    same(results, "merge: a replaced entry with the kit's own matcher gets no note",
+         sb.changed_matchers(["^(Agent|mcp__slack__post)$", kit_matcher], base / ".claude/settings.json"), ["^(Agent|mcp__slack__post)$"])
     deny = got["permissions"]["deny"]
     same(results, "merge: the kit deny rules first, the project's rule last",
            [deny[:len(sb.check_blocks.DENY)] == sb.check_blocks.DENY, deny[-1]], [True, "Bash(own rule*)"])
