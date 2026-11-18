@@ -7,7 +7,7 @@ Updated: 2026-11-18 12:20 by the session that wrote the plan below.
 ## State
 
 - main: `d226ea3` (kit 2026.11.20.1: two rule tiers, three merge lanes, layered sync, extension files for project code; pull requests 42 to 46).
-- Synced and locked to d226ea3 on their main: 36-3003.Z, 65-601.Z, SPAR (drift 0 of 56 each; second sync merged by pull requests 6, 6 and 11). Not synced: RADE, 90-161.Z, icf-source, sec-source.
+- Synced and locked to d226ea3 on their main: 36-3003.Z, 65-601.Z, SPAR (drift 0 of 56 each; second sync merged by pull requests 6, 6 and 11). RADE synced to 1.0.1 (fecf36d; RADE pull request 104, merged 2026-11-18; drift 0 of 56; session load ~4,975 tokens, 25 under the cap). Not synced: 90-161.Z, icf-source, sec-source.
 
 ## Approved plan (the owner, 2026-11-18 12:15; updates approved 13:25 and 14:35): lean two-tier rules and the kit as a synced baseline
 
@@ -16,7 +16,7 @@ Full text, proposals 1 to 26, risks and targets: [reviews/2026-11-18-lean-rules-
 - [x] 0. Plan saved; toggles set (all Yes).
 - [x] 1. Kit 2026.11.19 and 2026.11.20 merged (pull requests 44 and 45). Rule tests: 10 pass, 1 not valid, of 11 run.
 - [x] 2. Pilot sync merged: 36-3003.Z (pull request 5), 65-601.Z (5), SPAR (10). They keep the tier "full" (the owner, 2026-11-18: the starter tier drops the project log rule).
-- [ ] 3. RADE and 90-161.Z, one session each (a RADE session does not edit an app repo): steps in `.claude/skills/kit-update/SKILL.md`. First give each project guard a home (PROJECT.md, `scripts/check.local.sh`, `.check`); 90-161.Z tuned `reviewer.md` (now a kit file); both are over the 5,000-token session load. Lane C: ask the owner for each merge. Their own scanner and code-standard code go to `scripts/check_content_local.py` and `scripts/code_standard_gate.py`; notes: docs/reviews/2026-11-18-port-notes/.
+- [ ] 3. (RADE done 2026-11-18: RADE pull request 104; kit fix 1.0.1 = pull request 50; tag v1.0.1 for the owner.) RADE and 90-161.Z, one session each (a RADE session does not edit an app repo): steps in `.claude/skills/kit-update/SKILL.md`. First give each project guard a home (PROJECT.md, `scripts/check.local.sh`, `.check`); 90-161.Z tuned `reviewer.md` (now a kit file); both are over the 5,000-token session load. Lane C: ask the owner for each merge. Their own scanner and code-standard code go to `scripts/check_content_local.py` and `scripts/code_standard_gate.py`; notes: docs/reviews/2026-11-18-port-notes/.
 - [ ] 4. icf-source and sec-source: convert AGENTS.md to the kit layout, then sync. Lane C.
 - [ ] 5. Owner layer and server side: PREFERENCES.md rewrite (draft in pull request 48, waits for the owner's approval of its text); rulesets and secret scanning (the owner's clicks: [github/README.md](github/README.md); RADE and 90-161.Z switch `scan` to `checks` at their sync); fleet status page done: https://claude.ai/artifact/AWtpGxEqCWrjrPa1Afe7qW (private; rows in its database, collection `repos`, doc `meta/kit`; the session that syncs a repo updates its row with `ArtifactData`); allow list (25); "not set yet" lines (24); release tags: semantic versions from 1.0.0, tag `v1.0.0` (8; plugin and CODEOWNERS dropped, docs/DECISIONS.md).
 - [x] 6. Proposal 20 dropped (the owner, 2026-11-18): an import does not lower the context cost.
