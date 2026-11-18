@@ -393,38 +393,40 @@ def tunable_cases(tmp, results):
     base, proj = tmp / "kit", tmp / "proj"
     rels = ["docs/A_SAMPLE.md", "docs/B_SAMPLE.md", "docs/FIRST_USE.md"]  # two sample names and the kit's one tunable file
     kept, sb.COPY_IF_MISSING = sb.COPY_IF_MISSING, rels  # the drift report reads this list
-    run = lambda *a: subprocess.run(["git", "-C", str(base), "-c", "user.email=t@example.invalid", "-c", "user.name=t",  # noqa: E731
-                                     "-c", "commit.gpgsign=false", *a], check=True, capture_output=True)
-    for version in ("one", "two"):
-        for rel in rels:
-            (base / rel).parent.mkdir(parents=True, exist_ok=True)
-            (base / rel).write_text(f"Version {version} of {rel}. Ask the owner.\n")
-        if version == "one":
-            run("init", "-q")
-        run("add", "-A")
-        run("commit", "-q", "-m", version)
-    v1 = lambda rel: f"Version one of {rel}. Ask the owner.\n"  # noqa: E731
-    put = lambda rel, text: ((proj / rel).parent.mkdir(parents=True, exist_ok=True), (proj / rel).write_text(text))  # noqa: E731
-    put(rels[0], sb.apply_owner(v1(rels[0]), "the maintainer"))   # an earlier kit version, as a sync wrote it
-    put(rels[2], v1(rels[2]) + "Our own place for the list.\n")    # tuned
-    new, notes = sb.plan_if_missing(base, proj, rels, "the maintainer")
-    same(results, "tunable: an earlier kit version is replaced, a missing file is added, a tuned file is kept",
-         new, {rels[0]: f"Version two of {rels[0]}. Ask the maintainer.\n", rels[1]: f"Version two of {rels[1]}. Ask the maintainer.\n"})
-    same(results, "tunable: one line for the replaced file, one for the kept file with the compare command",
-         [n.split(":")[0] for n in notes] + [notes[1].endswith(f"Compare: diff {base}/{rels[2]} {rels[2]}"), "replaced" in notes[0]],
-         [rels[0], rels[2], True, True])
-    state = lambda rel: status_of(proj, base, rel)  # noqa: E731
-    same(results, "tunable: drift names the three states and a missing file",
-         [state(r) for r in rels], ["older", "missing", "tuned"])
-    put(rels[2], v1(rels[2]))   # FIRST_USE.md is never renamed: the plain earlier version is an older copy too
-    put(rels[1], f"Version two of {rels[1]}. Ask the maintainer.\n")
-    same(results, "tunable: the plain earlier version is older; the current version is the same",
-         [state(rels[2]), state(rels[1]), sorted(sb.plan_if_missing(base, proj, rels, "the maintainer")[0])], ["older", "same", [rels[0], rels[2]]])
-    shutil.rmtree(base / ".git")
-    new, notes = sb.plan_if_missing(base, proj, rels, "the maintainer")
-    same(results, "tunable: a baseline with no git history keeps each file that differs, and says so",
-         [new, len(notes), all("no git history" in n for n in notes), state(rels[0])], [{}, 2, True, "differs"])
-    sb.COPY_IF_MISSING = kept
+    try:
+        run = lambda *a: subprocess.run(["git", "-C", str(base), "-c", "user.email=t@example.invalid", "-c", "user.name=t",  # noqa: E731
+                                         "-c", "commit.gpgsign=false", *a], check=True, capture_output=True)
+        for version in ("one", "two"):
+            for rel in rels:
+                (base / rel).parent.mkdir(parents=True, exist_ok=True)
+                (base / rel).write_text(f"Version {version} of {rel}. Ask the owner.\n")
+            if version == "one":
+                run("init", "-q")
+            run("add", "-A")
+            run("commit", "-q", "-m", version)
+        v1 = lambda rel: f"Version one of {rel}. Ask the owner.\n"  # noqa: E731
+        put = lambda rel, text: ((proj / rel).parent.mkdir(parents=True, exist_ok=True), (proj / rel).write_text(text))  # noqa: E731
+        put(rels[0], sb.apply_owner(v1(rels[0]), "the maintainer"))   # an earlier kit version, as a sync wrote it
+        put(rels[2], v1(rels[2]) + "Our own place for the list.\n")    # tuned
+        new, notes = sb.plan_if_missing(base, proj, rels, "the maintainer")
+        same(results, "tunable: an earlier kit version is replaced, a missing file is added, a tuned file is kept",
+             new, {rels[0]: f"Version two of {rels[0]}. Ask the maintainer.\n", rels[1]: f"Version two of {rels[1]}. Ask the maintainer.\n"})
+        same(results, "tunable: one line for the replaced file, one for the kept file with the compare command",
+             [n.split(":")[0] for n in notes] + [notes[1].endswith(f"Compare: diff {base}/{rels[2]} {rels[2]}"), "replaced" in notes[0]],
+             [rels[0], rels[2], True, True])
+        state = lambda rel: status_of(proj, base, rel)  # noqa: E731
+        same(results, "tunable: drift names the three states and a missing file",
+             [state(r) for r in rels], ["older", "missing", "tuned"])
+        put(rels[2], v1(rels[2]))   # FIRST_USE.md is never renamed: the plain earlier version is an older copy too
+        put(rels[1], f"Version two of {rels[1]}. Ask the maintainer.\n")
+        same(results, "tunable: the plain earlier version is older; the current version is the same",
+             [state(rels[2]), state(rels[1]), sorted(sb.plan_if_missing(base, proj, rels, "the maintainer")[0])], ["older", "same", [rels[0], rels[2]]])
+        shutil.rmtree(base / ".git")
+        new, notes = sb.plan_if_missing(base, proj, rels, "the maintainer")
+        same(results, "tunable: a baseline with no git history keeps each file that differs, and says so",
+             [new, len(notes), all("no git history" in n for n in notes), state(rels[0])], [{}, 2, True, "differs"])
+    finally:
+        sb.COPY_IF_MISSING = kept
 
 
 def status_of(proj, base, rel):
