@@ -24,7 +24,7 @@ Take the highest lane that any file or effect of the pull request falls in.
 
 | Lane | What | Merge |
 |---|---|---|
-| A | Docs that are not rules: README, docs/, handoff, reviews, decisions and log rows | When green, no question |
+| A | Docs that are not rules: README, docs/, handoff, reviews, decisions and log rows; other files that are not code, scripts, checks or rules | When green, no question |
 | B | Code, scripts, checks and tests | When green and the fresh review has no MAJOR finding, no question |
 | C | Instruction and guard files (the list in AGENTS.md "Guards and checks"); a merge with a live or irreversible effect (a deploy, a data write); a security change; a UI or design change the owner has not approved; a MAJOR finding you cannot fix | Ask the owner, with one question that gives the pull request link, the check result and the review result |
 

@@ -25,7 +25,7 @@ One entry per line, `#` comments:
     denylist: warn          with no name denylist, --require-denylist warns instead of failing (starter projects)
     profile: dod            the DoD tier (below)
 Only the owner adds an allowed string or a skip line; agents never add one to get past a block (AGENTS.md
-"Personal data").
+"Secrets and personal data").
 
 Two tiers (the owner, 2026-11-15):
     minimum    no profile line: the checks under "Checks".
