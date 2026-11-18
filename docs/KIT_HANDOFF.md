@@ -7,7 +7,7 @@ Updated: 2026-11-18 12:20 by the session that wrote the plan below.
 ## State
 
 - main: `d226ea3` (kit 2026.11.20.1: two rule tiers, three merge lanes, layered sync, extension files for project code; pull requests 42 to 46).
-- Synced: 36-3003.Z, 65-601.Z, SPAR on kit 2026.11.20 (730b726) on their main; the second sync to d226ea3 is open as pull requests 6, 6 and 11 (drift 0 of 56 each on the branch). Not synced: RADE, 90-161.Z, icf-source, sec-source.
+- Synced and locked to d226ea3 on their main: 36-3003.Z, 65-601.Z, SPAR (drift 0 of 56 each; second sync merged by pull requests 6, 6 and 11). Not synced: RADE, 90-161.Z, icf-source, sec-source.
 
 ## Approved plan (the owner, 2026-11-18 12:15; updates approved 13:25 and 14:35): lean two-tier rules and the kit as a synced baseline
 
