@@ -25,7 +25,7 @@ import time
 
 import check_content_hook
 import check_content_scan
-from check_content_scan import (MAX_BYTES, OPTION_MAX, denylist_source, dod_mode, fingerprint, git, is_option_line,
+from check_content_scan import (MAX_BYTES, max_bytes_of, OPTION_MAX, denylist_source, dod_mode, fingerprint, git, is_option_line,
                             load_allow, load_denylist, mask, parse_denylist, profile_of, push_revs, scan_commits,
                             scan_text, skipped, warn_mode)
 
@@ -342,8 +342,11 @@ def case_cli_dod_files(d, env):
     subprocess.run(["git", *idn, "commit", "-q", "-m", "big"], cwd=d, check=True, capture_output=True)
     found, _ = scan_commits(["HEAD~1..HEAD"], d, [], set(), dod=True)
     good = [(w.split()[-1], k) for w, _, k, _ in found] == [("big.txt", "unscanned")] \
-        and scan_commits(["HEAD~1..HEAD"], d, [], {"skip: big.txt"}, dod=True)[0] == []
-    check("dod commits: a text file over the size limit blocks; skip clears", good)
+        and scan_commits(["HEAD~1..HEAD"], d, [], {"skip: big.txt"}, dod=True)[0] == [] \
+        and scan_commits(["HEAD~1..HEAD"], d, [], {f"content-max-bytes: {MAX_BYTES * 2}"}, dod=True)[0] == [] \
+        and max_bytes_of({"content-max-bytes: 10"}) == MAX_BYTES and max_bytes_of({"content-max-bytes: x"}) == MAX_BYTES \
+        and max_bytes_of({"content-max-bytes: 999999999"}) == MAX_BYTES and is_option_line("content-max-bytes: 8000000")
+    check("dod commits: a text file over the size limit blocks; skip or content-max-bytes clears", good)
 
 
 def case_cli():

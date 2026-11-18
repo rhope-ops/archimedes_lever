@@ -141,9 +141,32 @@ _TIER = r"[\W_]*(?:profile(?![A-Za-z0-9._/-])|(?!skip\b|block\b|denylist\b)[A-Za
 PROFILE_LINE = re.compile(r"(?i)^" + _TIER)
 # A setting of the code standard or the audit (`code-max-file-lines: 600`, `audit-ignore: ref/**`): `code-` or `audit-`,
 # a key and a colon. scripts/check_settings.py reads these lines; here they are option lines and never tier lines.
-SETTING_LINE = re.compile(r"(?i)^(?:code|audit)-[A-Za-z0-9_-]+\s*:")
+SETTING_LINE = re.compile(r"(?i)^(?:code|audit|content)-[A-Za-z0-9_-]+\s*:")
 OPTION_LINE = re.compile(r"(?i)^(?:" + _TIER + r"|denylist\s*:)")  # option lines, never allowed values
 OPTION_MAX = 200  # a longer line is never an option line: the patterns above only ever see short lines (no slow match)
+
+
+MAX_BYTES_LINE = re.compile(r"(?i)^content-max-bytes\s*:\s*([0-9]{1,9})\s*$")
+MAX_BYTES_CEILING = 50_000_000  # a larger value is ignored: the scan of one file must stay fast
+
+
+def max_bytes_of(allow):
+    """The size limit of one scanned file: the `content-max-bytes: <number>` line of the settings file, else MAX_BYTES.
+
+    A project raises it so that its large text files are scanned instead of reported as unscanned (a higher limit
+    scans more, so it never weakens the check). A value below MAX_BYTES, above MAX_BYTES_CEILING or not a number is
+    ignored, and MAX_BYTES applies.
+
+    Args:
+        allow: the lines of the settings file (load_allow).
+    Returns:
+        The limit in bytes.
+    """
+    for v in allow:
+        m = MAX_BYTES_LINE.match(v) if len(v) <= OPTION_MAX else None
+        if m and MAX_BYTES <= int(m.group(1)) <= MAX_BYTES_CEILING:
+            return int(m.group(1))
+    return MAX_BYTES
 
 
 def is_tier_line(v):
@@ -152,7 +175,7 @@ def is_tier_line(v):
 
 
 def is_option_line(v):
-    """True when this settings line is an option line (tier, denylist, or a `code-` or `audit-` setting), never an
+    """True when this settings line is an option line (tier, denylist, or a `code-`, `audit-` or `content-` setting), never an
     allowed value."""
     return len(v) <= OPTION_MAX and bool(OPTION_LINE.match(v) or SETTING_LINE.match(v))
 BOTH_FILES = "profile: <both .check and .pii-guard exist>"  # load_allow adds it; it reads as an unknown tier line
@@ -372,8 +395,8 @@ def scan_files(paths, root, deny, allow, dod=False, named=False, terms=()):
         why = None
         if f.suffix.lower() in SKIP_SUFFIX:
             why = f"file type {f.suffix.lower()} is not scanned"
-        elif f.stat().st_size > MAX_BYTES:
-            why = f"larger than {MAX_BYTES} bytes"
+        elif f.stat().st_size > max_bytes_of(allow):
+            why = f"larger than {max_bytes_of(allow)} bytes"
         else:
             data = f.read_bytes()
             if b"\0" in data[:8192]:
@@ -431,9 +454,9 @@ def unscanned_in_commit(sha, root, allow, unscanned):
         parts = rec.split("\t", 2)
         if len(parts) != 3 or skipped(parts[2], allow):
             continue
-        if sizes.get(parts[2], 0) > MAX_BYTES:
+        if sizes.get(parts[2], 0) > max_bytes_of(allow):
             unscanned.add(parts[2])
-            found.append((f"commit {short} {parts[2]}", "+", "unscanned", f"larger than {MAX_BYTES} bytes"))
+            found.append((f"commit {short} {parts[2]}", "+", "unscanned", f"larger than {max_bytes_of(allow)} bytes"))
         elif parts[2].lower().endswith(SKIP_SUFFIX):
             found.append((f"commit {short} {parts[2]}", "+", "unscanned", "file type is not scanned"))
         elif parts[0] == "-":
