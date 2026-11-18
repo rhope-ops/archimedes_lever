@@ -65,6 +65,17 @@ def file_hash(root, rel):
     return sha(kit_sections(text) if rel == KIT_PART else text)
 
 
+def kit_text_locked(root):
+    """True when the kit's part of this project's AGENTS.md is the text its lock records and no override covers it:
+    the kit checked those lines. A relocked kit part is the project's own text again, so it is not locked."""
+    try:
+        data = load(root)
+    except ValueError:
+        return False
+    return (bool(data) and KIT_PART not in data.get("overrides", [])
+            and data["files"].get(KIT_PART) == file_hash(root, KIT_PART))
+
+
 def build(root, files, version, commit, overrides=()):
     """The lock data for these kit files as they are in the project now."""
     entries = {rel: file_hash(root, rel) for rel in [KIT_PART, *sorted(files)]}
@@ -171,9 +182,11 @@ def self_test():
         ok("a fresh lock passes and counts 2 entries", not bad and lines[-1].startswith("LOCK PASS: 2 kit files, kit version 1 (abcdef1)"))
         (root / RULES).write_text(agents.replace("- Test: a", "- Test: b").replace("- Mine.", "- Mine.\n- More.").replace("Owner: x", "Owner: y"))
         ok("a change to the header, Commands or Project rules passes", not verify(root)[1])
+        ok("the kit text is the locked text", kit_text_locked(root))
         (root / RULES).write_text(agents.replace("- Kit rule.", "- Kit rule, weaker."))
         lines, bad = verify(root)
         ok("a changed kit rule fails and is named", bad and lines[0] == f"FAIL  kit file changed in this project: {KIT_PART}")
+        ok("a changed kit rule: the kit text is not the locked text", not kit_text_locked(root))
         (root / RULES).write_text(agents)
         (root / "scripts/a.py").write_text("print(2)\n")
         ok("a changed kit script fails", verify(root)[0][0] == "FAIL  kit file changed in this project: scripts/a.py")
@@ -181,6 +194,7 @@ def self_test():
         ok("relock accepts the file", relock(root, ["scripts/a.py"]) == 0)
         lines, bad = verify(root)
         ok("after a relock: passes, and the override is listed", not bad and any(l.startswith("WARN  kit file with a project override") for l in lines))
+        ok("a relocked kit part is not locked text", relock(root, [KIT_PART]) == 0 and not verify(root)[1] and not kit_text_locked(root))
         (root / "scripts/a.py").unlink()
         ok("a missing kit file fails", verify(root)[0][0] == "FAIL  kit file missing: scripts/a.py")
         (root / LOCK).write_text("[]")

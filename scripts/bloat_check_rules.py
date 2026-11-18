@@ -76,8 +76,19 @@ HEADING = re.compile(r"^\s*#{1,6}(\s|$)")                    # "### Sub"; "#1 pr
 EMPTY_ITEM = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s*$")         # a marker with no text
 
 
+BOLD_LABEL = re.compile(r"^\s*\*\*([^*]+?)\.?\*\*")  # "**Delivery.** text": the label of a rule bullet
+
+
+def bold_label(text):
+    """The bold label that starts a rule bullet, without its trailing dot ("Delivery"), or None."""
+    m = BOLD_LABEL.match(text)
+    return m.group(1).strip() if m else None
+
+
 def rule_lines(text, with_sections=False):
     """Return (kit, project, every): the rule lines of an AGENTS.md text, by where they are.
+    With with_sections: [(key, text)], where key is the bold label of a bullet ("**Delivery.** ..." gives "Delivery"),
+    else the "## " heading name; the lint matches it to the "Section" column of .claude/rule-tests.md.
 
     A rule line is a list item with any marker ("- ", "* ", "+ ", "1. ") at any indent; a line that follows it with
     no blank line between is its continuation, not a new rule. kit = items under a "## " heading above
@@ -92,14 +103,14 @@ def rule_lines(text, with_sections=False):
 
     Args:
         text: the text of an AGENTS.md.
-        with_sections: True to get (section, line) pairs of every rule line instead.
+        with_sections: True to get (key, line) pairs of every rule line instead.
 
     Returns:
-        (kit, project, every), each a list of rule lines; with with_sections a list of (section, line).
+        (kit, project, every), each a list of rule lines; with with_sections a list of (key, line).
     """
     text = re.sub(r"(?ms)^<!-- starter -->\n.*?^<!-- /starter -->\n", "", text)
     text = re.sub(r"(?s)<!--.*?-->", "", text)
-    rows, sec, fenced, open_item = [], None, False, False  # rows: [section, text, counted]
+    rows, sec, fenced, open_item = [], None, False, False  # rows: [section, text, counted, lint key]
     for line in text.splitlines():
         if line.lstrip().startswith(("```", "~~~")):
             fenced, open_item = not fenced, False
@@ -120,18 +131,18 @@ def rule_lines(text, with_sections=False):
             indented = line[:1] in (" ", "\t")
             if m:
                 counted = sec not in NOT_RULES and not (sec in RANKED and m.group(1))
-                rows.append([sec, m.group(2).strip(), counted])
+                rows.append([sec, m.group(2).strip(), counted, bold_label(m.group(2)) or sec[3:].strip()])
                 open_item = True
             elif open_item and not line.lstrip().startswith("|") and (indented or sec != PROJECT_RULES):
                 rows[-1][1] += " " + line.strip()  # a wrapped line belongs to the item above it
             elif sec == PROJECT_RULES:
-                rows.append([sec, line.strip(), True])
+                rows.append([sec, line.strip(), True, bold_label(line) or sec[3:].strip()])
                 open_item = True
     if with_sections:
-        return [(s_[3:].strip(), t) for s_, t, c in rows if c]
-    kit = [t for s_, t, c in rows if c and s_ != PROJECT_RULES]
-    project = [t for s_, t, c in rows if c and s_ == PROJECT_RULES]
-    return kit, project, [t for _, t, _ in rows]
+        return [(key, t) for _, t, c, key in rows if c]
+    kit = [t for s_, t, c, _ in rows if c and s_ != PROJECT_RULES]
+    project = [t for s_, t, c, _ in rows if c and s_ == PROJECT_RULES]
+    return kit, project, [r[1] for r in rows]
 
 
 def words(line):
@@ -140,13 +151,13 @@ def words(line):
 
 
 def tested_sections(root):
-    """Sections of AGENTS.md that have a scenario: the "Section" column of the table in .claude/rule-tests.md.
+    """Rule keys that have a scenario: the "Section" column of .claude/rule-tests.md (a bold bullet label, else a heading).
 
     Args:
         root: the repo root (a Path).
 
     Returns:
-        The set of section names, or None when there is no rule-tests file.
+        The set of rule keys, or None when there is no rule-tests file.
     """
     p = root / RULE_TESTS
     if not p.is_file():
@@ -236,14 +247,14 @@ def missing_pointers(root, text):
     return sorted(n for n in names if n and not re.search(r"[<>*{]", n) and not (root / n).exists())
 
 
-def changed_rules(root, text, every, gate):
+def changed_rules(root, text, parts, gate):
     """The part of the rules report on rule lines that changed against the default branch: the lines, the state of
     their conflict check, and the lint of the added ones.
 
     Args:
         root: the repo root (a Path).
         text: the text of AGENTS.md now.
-        every: every rule line of that text.
+        parts: (kit, project, every), the rule lines of that text (rule_lines).
         gate: True in the full lane: a missing conflict-check record is a problem, not a WARN line.
 
     Returns:
@@ -256,7 +267,10 @@ def changed_rules(root, text, every, gate):
             break
     if old is None:
         return out, problems
-    was = set(rule_lines(old)[2])
+    import check_lock  # in a synced project the kit checked the locked kit lines: only "Project rules" count here
+    part = 1 if check_lock.kit_text_locked(root) else 2
+    every = parts[part]
+    was = set(rule_lines(old)[part])
     now = set(every)
     added, removed = [l for l in every if l not in was], sorted(was - now)
     for mark, lines in (("+", added), ("-", removed)):
@@ -313,7 +327,7 @@ def rules_report(root, cfg, gate=False):
         out.append(f"WARN  {len(project)} project rule bullets (guide {b['project_rules']})")
     import bloat_check_skills  # scripts/bloat_check_skills.py: kept apart (code standard C4)
     problems += bloat_check_skills.second_homes(root)
-    rows, found = changed_rules(root, text, every, gate)
+    rows, found = changed_rules(root, text, (kit, project, every), gate)
     out += rows
     problems += found
     gone = missing_pointers(root, text)

@@ -60,8 +60,8 @@ CODE_DEFAULTS = {"caps": {"max_file_lines": 600, "max_function_lines": 60}, "inc
 OPT_IN_CAPS = ("max_line_chars",)   # caps that are off (no key in "caps") until `.check` has their line; a gate enforces them
 STRICT = "strict"                   # the value of "c1_safety" for `code-c1-safety: strict` (False = off, True = on)
 AUDIT_DEFAULTS = {"every_days": 14, "every_commits": 300, "start_read": [], "ignore": [],
-                  "budgets": {"session_load_tokens": 6000, "session_load_warn_tokens": 5000, "rules_file_lines": 200,
-                              "handoff_lines": 40, "file_kb": 500, "duplicate_lines": 20, "rules": 35,
+                  "budgets": {"session_load_tokens": 5000, "session_load_warn_tokens": 4500, "rules_file_lines": 200,
+                              "handoff_lines": 40, "file_kb": 500, "duplicate_lines": 20, "rules": 28,
                               "project_rules": 15}}
 # The owner's caps for every repo (2026-11-18): a project can lower one of these budgets, never raise it.
 KIT_CAPS = ("session_load_tokens", "session_load_warn_tokens", "rules_file_lines")

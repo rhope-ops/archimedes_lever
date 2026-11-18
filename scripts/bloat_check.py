@@ -28,8 +28,8 @@ Usage:
 It measures:
     session load  bytes and ~tokens (bytes / 4) of what every session loads: AGENTS.md, CLAUDE.md,
                   docs/NEXT_PROMPT.md, the `audit-start-read:` files, and the skill and agent names and descriptions.
-                  Caps for every repo (KIT_CAPS; a project can lower one, never raise it): 6,000 tokens (warning at
-                  5,000) and 200 lines of AGENTS.md; over a cap fails --rules
+                  Caps for every repo (KIT_CAPS; a project can lower one, never raise it): 5,000 tokens (warning at
+                  4,500) and 200 lines of AGENTS.md; over a cap fails --rules
     rules         list items in AGENTS.md (any marker, any indent; a wrapped line is part of its item): the kit
                   sections (the header, "## Commands" and the numbered ranking in "## Order of authority" are not
                   counted) and "## Project rules" (there a paragraph or a table row counts too), each against its
@@ -55,7 +55,7 @@ It measures:
 Settings: the `audit-` lines of `.check` (scripts/check_settings.py reads them and lists the keys; all are optional,
 and a line that is not valid fails --rules):
     audit-every-days: 14, audit-every-commits: 300, audit-ignore: ref/**, audit-start-read: <path>,
-    audit-budget-<name>: <number> (handoff_lines 40, file_kb 500, duplicate_lines 20, rules 35, project_rules 15)
+    audit-budget-<name>: <number> (handoff_lines 40, file_kb 500, duplicate_lines 20, rules 28, project_rules 15)
 State: `.check.state.json` (tools write it; the full audit in .claude/skills/audit/SKILL.md sets "last_audit"):
     {"audit": {"last_audit": {"date": "YYYY-MM-DD", "commit": "<sha>", "report": "<path>"}},
      "timings": {"tests": {"cmd": "tests/run.sh", "seconds": 20.8, "max_slowdown": 0.25},

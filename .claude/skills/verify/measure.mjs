@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// UI measurement for the ui-verify skill (.claude/skills/ui-verify/SKILL.md).
+// UI measurement for the verify skill (.claude/skills/verify/SKILL.md).
 // Usage: node measure.mjs <url-or-file> [out-dir]   (default out-dir: a new folder in the system temp dir, never the repo)
 // For each width (375, 1440) and scheme (light, dark): saves a screenshot and checks
 //   - horizontal page scroll (scrollWidth > viewport width)
@@ -24,7 +24,7 @@ try { ({ chromium } = require('playwright')); } catch {
   catch { console.error('Playwright not found: install it, or run where require("playwright") resolves.'); process.exit(2); }
 }
 
-const [target, outDir = `${tmpdir()}/ui-verify-${Date.now()}`] = process.argv.slice(2);  // default: outside the repo
+const [target, outDir = `${tmpdir()}/verify-${Date.now()}`] = process.argv.slice(2);  // default: outside the repo
 if (!target) { console.error('Usage: node measure.mjs <url-or-file> [out-dir]'); process.exit(2); }
 const url = /^[a-z]+:\/\//i.test(target) ? target : pathToFileURL(resolve(target)).href;
 mkdirSync(outDir, { recursive: true });

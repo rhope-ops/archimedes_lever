@@ -29,13 +29,13 @@ What it changes:
                            An AGENTS.md without the baseline layout goes under "## Project rules" as it is.
     CLAUDE.md              Adds "@AGENTS.md" at the top if it is missing. Keeps the rest.
     scripts/session_checkin.sh, scripts/stop_check.py, scripts/worker_guard.py,
-    .claude/skills/ (every kit skill)   Replaced with the baseline copies.
-    .claude/agents/worker.md, scout.md, reviewer.md, docs/FIRST_USE.md   Added when missing. A project may tune
-                           them (FIRST_USE.md holds the denylist places that the session-start check names), so a
-                           copy the project changed is kept, with one line that says it differs and how to compare.
-                           A copy that is byte for byte an earlier kit version of the file (with or without the
-                           owner name applied) was never tuned: it is replaced. This needs the baseline's git
-                           history; with a baseline folder that is no git repo, every copy that differs is kept.
+    .claude/skills/ (every kit skill), .claude/agents/worker.md, scout.md, reviewer.md
+                           Replaced with the baseline copies.
+    docs/FIRST_USE.md      Added when missing. A project may tune it (it holds the denylist places that the
+                           session-start check names), so a copy the project changed is kept, with one line that
+                           says it differs and how to compare. A copy that is byte for byte an earlier kit version
+                           of the file was never tuned: it is replaced. This needs the baseline's git history; with
+                           a baseline folder that is no git repo, a copy that differs is kept.
     scripts/log_check.py, scripts/timeline.py, scripts/check_content*.py, scripts/first_use_check.py,
     scripts/check.sh, scripts/bloat_check*.py, scripts/code_standard*.py, docs/code-standard.md, scripts/git-hooks/pre-push,
     .claude/rule-tests.md
@@ -88,13 +88,14 @@ COPY_FILES = ["scripts/session_checkin.sh", "scripts/stop_check.py", "scripts/ch
               "docs/code-standard.md", "scripts/git-hooks/pre-push",
               ".claude/skills/delegate/SKILL.md", ".claude/skills/audit/SKILL.md", ".claude/skills/project-log/SKILL.md", ".claude/rule-tests.md", ".github/workflows/check.yml",
               ".claude/skills/deliver/SKILL.md", ".claude/skills/personal-data/SKILL.md", ".claude/skills/rule-change/SKILL.md",
-              ".claude/skills/data-change/SKILL.md", ".claude/skills/ui-verify/SKILL.md", ".claude/skills/ui-verify/measure.mjs",
-              ".claude/skills/run-verify/SKILL.md", ".claude/skills/efficiency/SKILL.md", ".claude/skills/handoff/SKILL.md",
-              ".claude/skills/port/SKILL.md"]
-# Files a project may tune: added when missing, replaced when the project's copy is an earlier kit version, else kept
-# (copy_state).
-COPY_IF_MISSING = [".claude/agents/worker.md", ".claude/agents/scout.md", ".claude/agents/reviewer.md",
-                   "docs/FIRST_USE.md"]
+              ".claude/skills/data-change/SKILL.md", ".claude/skills/verify/SKILL.md", ".claude/skills/verify/measure.mjs",
+              ".claude/skills/efficiency/SKILL.md", ".claude/skills/handoff/SKILL.md",
+              ".claude/skills/kit-update/SKILL.md",
+              ".claude/agents/worker.md", ".claude/agents/scout.md", ".claude/agents/reviewer.md"]
+# A file a project may tune: added when missing, replaced when the project's copy is an earlier kit version, else kept
+# (copy_state). (The kit's agent files are kit files since 2026-11-18: an old copy can restate a rule; a project adds
+# an agent of its own under its own name.)
+COPY_IF_MISSING = ["docs/FIRST_USE.md"]
 COPY_NOTES = []  # one line for each COPY_IF_MISSING file that a sync replaces or keeps (main() prints them)
 BASELINE_OWNER = "the owner"  # role word in baseline text; no real name lives in the baseline
 # Never rename the owner inside this script: it holds BASELINE_OWNER as a literal.
@@ -112,11 +113,14 @@ ADVANCED_FILES = [".claude/skills/delegate/SKILL.md", ".claude/agents/scout.md",
                   ".claude/skills/audit/SKILL.md", "scripts/bloat_check.py", "scripts/bloat_check_skills.py", "scripts/bloat_check_rules.py",
                   "scripts/bloat_check_test.py", ".claude/rule-tests.md",
                   ".claude/skills/efficiency/SKILL.md"]
-# Moved or renamed in the kit (to .claude/skills/ on 2026-11-16; the guard to check_content on 2026-11-18): a
-# project synced before then still has the old copies.
+# Moved or renamed in the kit (to .claude/skills/ on 2026-11-16; the guard to check_content on 2026-11-18; run-verify
+# and ui-verify merged into verify, and port renamed kit-update, on 2026-11-18): a project synced before then still
+# has the old copies.
 MOVED_FILES = [".claude/orchestration.md", ".claude/bloat-audit.md", ".claude/project-log.md",
                "scripts/pii_guard.py", "scripts/pii_guard_scan.py", "scripts/pii_guard_hook.py",
-               "scripts/pii_guard_test.py", ".github/workflows/pii-guard.yml"]
+               "scripts/pii_guard_test.py", ".github/workflows/pii-guard.yml",
+               ".claude/skills/run-verify/SKILL.md", ".claude/skills/ui-verify/SKILL.md",
+               ".claude/skills/ui-verify/measure.mjs", ".claude/skills/port/SKILL.md"]
 TIERS = ("starter", "full")
 NO_OWNER_RENAME = {"scripts/sync_baseline.py", "scripts/first_use_check.py", "docs/FIRST_USE.md"}
 OWNER_RE = r"[A-Za-z0-9 ._,()-]+"  # safe inside Python strings, JSON and Markdown

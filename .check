@@ -8,4 +8,4 @@
 #   audit-<key>: <value>    a setting of the audit, for example `audit-ignore: ref/**`
 #                           (the keys and their defaults: the header of scripts/check_settings.py; a `code-` change
 #                           needs a docs/DECISIONS.md row that names this file)
-# An allowed string or a skip line is added only on the owner's request, never by an agent to get past a block (AGENTS.md "Personal data").
+# An allowed string or a skip line is added only on the owner's request, never by an agent to get past a block (AGENTS.md "Guards and checks").

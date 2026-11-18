@@ -111,7 +111,7 @@ def check_git(args, branch, readonly=False):
     if readonly and sub in WRITE_VERBS:
         return f'reviewers are read-only: no git {sub}'
     if sub == 'rebase':
-        return 'no rebase; update a branch by merging (AGENTS.md "Git safety")'
+        return 'no rebase; update a branch by merging (AGENTS.md "Git history")'
     if sub == 'reset' and '--hard' in rest:
         return 'no reset --hard; ask the orchestrator'
     if sub == 'clean':
@@ -128,7 +128,7 @@ def check_git(args, branch, readonly=False):
             continue
         if w.startswith('--'):
             if w in ('--force', '--mirror', '--all', '--delete', '--prune') or w.startswith('--force-with-lease'):
-                return f'workers may not push with {w} (AGENTS.md "Git safety")'
+                return f'workers may not push with {w} (AGENTS.md "Git history")'
         elif w.startswith('-') and len(w) > 1:
             if 'f' in w[1:] or 'd' in w[1:]:
                 return f'workers may not push with {w} (force or delete)'
