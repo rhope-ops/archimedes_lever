@@ -68,7 +68,8 @@ Matches are printed masked (names, terms and secrets as a length only), so CI lo
 Standard library only. Needs git (except for FILE mode).
 A project's own finders: a file scripts/check_content_local.py replaces or adds finders for a finding kind (the
 interface: the header of check_content_scan.py). The result line and --status say when it is active; when it cannot
-be loaded, every scan fails and the hook blocks.
+be loaded, every scan fails and the hook blocks. Limit: that file is the project's own trusted code, like any script
+a hook runs; a file that ends the process itself while it loads (os._exit) ends the scan with its own exit code.
 The code is split by concern into modules next to this file: check_content_scan.py (the settings and the scans),
 check_content_finders.py (the patterns and finders), check_content_hook.py (--hook) and check_content_test.py (--test).
 Network: none (it runs local git read commands).
@@ -84,7 +85,8 @@ if "--hook" in sys.argv[1:]:   # before the scanner (and a project's own module)
     import signal
     if hasattr(signal, "SIGALRM"):
         signal.signal(signal.SIGALRM, lambda *_: os._exit(2))   # exit 2 blocks the tool call
-        signal.alarm(min(8, max(1, int(os.environ.get("CHECK_HOOK_LOAD_S", "8") or 8))))   # seconds, 8 at most (a test sets less)
+        _load_s = os.environ.get("CHECK_HOOK_LOAD_S", "")   # a test sets less than 8; any other text means 8
+        signal.alarm(min(8, int(_load_s)) if _load_s.isdigit() and int(_load_s) >= 1 else 8)
 
 # denylist_source and warn_mode are not used here: first_use_check.py reads them as check_content.denylist_source and
 # check_content.warn_mode, so they stay attributes of this module.

@@ -167,12 +167,19 @@ def case_cli(check, d, kit_scripts):
         check(f"local module that exits at load ({label}): a scan fails", code == 1 and "CONTENT CHECK FAIL" in out)
         check(f"local module that exits at load ({label}): the hook blocks (exit 2)", cli(scripts, d, ["--hook"], write)[0] == 2)
     with open(path, "w") as f:   # a load that hangs: the hook's own time budget ends it with a block
-        f.write("import time\ntime.sleep(60)\n")
-    os.environ["CHECK_HOOK_LOAD_S"] = "1"
-    try:
-        check("local module that hangs at load: the hook blocks (exit 2)", cli(scripts, d, ["--hook"], write)[0] == 2)
-    finally:
-        del os.environ["CHECK_HOOK_LOAD_S"]
+        f.write("import time\ntime.sleep(20)\n")
+    import time
+    for value, label in (("1", "the timer ends it"), ("abc", "a bad timer value still blocks")):
+        os.environ["CHECK_HOOK_LOAD_S"] = value
+        try:
+            t0 = time.monotonic()
+            code = cli(scripts, d, ["--hook"], write)[0]
+            took = time.monotonic() - t0
+        finally:
+            del os.environ["CHECK_HOOK_LOAD_S"]
+        # with "1" the load timer must end the process long before the 20 s sleep does; with a bad value it is 8 s
+        check(f"local module that hangs at load: the hook blocks, {label} (exit {code}, {took:.0f} s)",
+              code == 2 and took < (5 if value == "1" else 15))
     with open(path, "w") as f:   # the shape is right, but the finder fails when it runs
         f.write("def bad(line):\n    raise RuntimeError('boom')\n\n\nADD = {'email': [bad]}\n")
     code, out = cli(scripts, d, ["--stdin"], "clean text")
