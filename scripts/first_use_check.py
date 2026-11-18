@@ -92,10 +92,10 @@ def messages(root):
     return out
 
 
-RESUMED = ("RESUMED: this session restarted or its context was compacted; it is not a new session. Do not run the "
-           "start-of-session steps again and do not ask questions the owner already answered. Continue the approved plan "
-           "in docs/NEXT_PROMPT.md (or the plan in the summary above) from the first step that is not done; check its "
-           "state in git first.")
+RESUMED = ("RESUMED: this session restarted or its context was compacted; it is not a new session. Run "
+           "scripts/session_checkin.sh for the git state, then continue the approved plan in docs/NEXT_PROMPT.md (or the "
+           "pull request text, or the plan in the summary above) from the first step that is not done. Do not review the "
+           "plan again and do not ask questions the owner already answered; code reviews and checks still apply.")
 
 
 def hook_source(raw):
@@ -113,7 +113,14 @@ def read_hook_input():
         if sys.stdin is None or sys.stdin.isatty():
             return ""
         import select
-        return sys.stdin.read() if select.select([sys.stdin], [], [], 2)[0] else ""
+        fd, chunks, wait = sys.stdin.fileno(), [], 2.0
+        while select.select([fd], [], [], wait)[0]:  # read only what arrives: never wait for an EOF that may not come
+            chunk = os.read(fd, 65536)
+            if not chunk:
+                break
+            chunks.append(chunk)
+            wait = 0.2
+        return b"".join(chunks).decode("utf-8", "replace")
     except Exception:  # no select on this stdin (for example a Windows pipe): treat as a new session
         return ""
 
@@ -174,16 +181,23 @@ def self_test():
     return 0 if ok else 1
 
 
+def root():
+    """The repo root (git), else CLAUDE_PROJECT_DIR, else the current directory."""
+    r = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True)
+    return r.stdout.strip() if r.returncode == 0 else os.environ.get("CLAUDE_PROJECT_DIR", ".")
+
+
 def main():
     """Print the messages for the current repo, or run --test; return the exit code."""
     if "--test" in sys.argv[1:]:
         return self_test()
     if hook_source(read_hook_input()) in ("resume", "compact"):
         print(RESUMED)
+        for m in messages(root()):  # a resumed shell can lack the denylist: keep that warning
+            if m.startswith("DENYLIST"):
+                print(m)
         return 0
-    r = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True)
-    root = r.stdout.strip() if r.returncode == 0 else os.environ.get("CLAUDE_PROJECT_DIR", ".")
-    for m in messages(root):
+    for m in messages(root()):
         print(m)
     return 0
 
