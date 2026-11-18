@@ -22,6 +22,7 @@ Decisions and approved rule texts: the 2026-11-18 rows of [DECISIONS.md](DECISIO
 - [x] 6. Projects attached and measured (clones next to the kit). 5 kit projects: RADE and 90-161.Z (47 of 64 items differ; session load about 7,084 and 8,269 tokens, over the cap), SPAR, 65-601.Z, 36-3003.Z (56 of 64; older kit). icf-source and sec-source have their own layout.
 - [ ] 7. Port to those 7 (the owner's scope): one worker and one pull request per repo (sync or hand port, `check_settings.py --migrate`, delete the renamed files, lock; trim the two large ones under the cap). A project rule that conflicts with a kit rule goes to the owner in one dialog. The owner merges each, unless waived.
 - [ ] 8. A paste block of the revised PREFERENCES.md for the owner's account.
+- [ ] 9. Setup guide for the owner (asked 2026-11-18): how to configure each Claude cloud environment and each GitHub repo for the new `check` (word lists, Actions secrets, the required check `checks`), one deep link per step.
 
 ## Open (in order)
 
