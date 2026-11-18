@@ -80,6 +80,12 @@ import os
 import subprocess
 import sys
 
+if "--hook" in sys.argv[1:]:   # before the scanner (and a project's own module) loads: a load that hangs must block
+    import signal
+    if hasattr(signal, "SIGALRM"):
+        signal.signal(signal.SIGALRM, lambda *_: os._exit(2))   # exit 2 blocks the tool call
+        signal.alarm(min(8, max(1, int(os.environ.get("CHECK_HOOK_LOAD_S", "8") or 8))))   # seconds, 8 at most (a test sets less)
+
 # denylist_source and warn_mode are not used here: first_use_check.py reads them as check_content.denylist_source and
 # check_content.warn_mode, so they stay attributes of this module.
 

@@ -166,6 +166,7 @@ def self_test_gate(cs, root, g):
         assert main(cs) == 1, 'and the check fails: ' + line
     cs.GATE_FILE.parent.mkdir()
     for bad, why in (('import no_such_module_anywhere\n', 'cannot be loaded'), ('def f(:\n', 'cannot be loaded'),
+                     ('import sys\nsys.exit(0)\n', 'cannot be loaded'), ('raise SystemExit(1)\n', 'cannot be loaded'),
                      (SAMPLE_GATE.replace('def decided', 'def undecided'), 'lacks decided'),
                      (SAMPLE_GATE.replace("OPT_IN = {'line': lambda c: 1 if c['caps'].get('max_line_chars') else 0}", 'OPT_IN = []'), 'wrong shape'),
                      (SAMPLE_GATE.replace("('C4 line longer than %d characters', 'max_line_chars')", "'C4 line'"), 'wrong shape')):
@@ -216,6 +217,20 @@ def self_test_gate_ratchet(cs, root, config, now):
     assert main(cs, '--adopt') == 1, 'a second --adopt is refused'
     assert main(cs) == 0, 'the check passes with the adopted list and the decision'
     (root / 'OWNER-YES').unlink()
+    # The gate file is removed while main still holds debt of its kind: the rule would go in silence.
+    real_base, gate, decisions = cs.settings.code_base, cs.GATE, (root / 'docs' / 'DECISIONS.md')
+    kept = decisions.read_text()
+    cs.settings.code_base, cs.GATE = (lambda r, ref: ({}, {'line': {'a.py': 126}, 'length': {}})), None
+    try:
+        decisions.write_text('# Decisions\n')
+        gone = cs.against_main({}, {})[0]
+        assert len(gone) == 1 and 'main holds line debt, but no rule here knows that kind' in gone[0], \
+            'a debt kind of main that no rule knows fails (the gate is gone): %s' % gone
+        decisions.write_text('# Decisions\n| the gate is retired | `.check` |\n')
+        assert cs.against_main({}, {})[0] == [], "with the owner's row, removing the gate's rule passes"
+    finally:
+        cs.settings.code_base, cs.GATE = real_base, gate
+        decisions.write_text(kept)
 
 
 def fails(call, *args):

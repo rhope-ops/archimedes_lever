@@ -159,6 +159,20 @@ def case_cli(check, d, kit_scripts):
         code, out = cli(scripts, d, ["--status"], "")
         check(f"broken local module ({label}): --status fails and says why", code == 1 and "finders: FAIL" in out and why in out)
     check("broken local module: a local Bash command is not scanned, so it can repair the file", cli(scripts, d, ["--hook"], local_bash)[0] == 0)
+    for label, text in (("exit 0", "import sys\nsys.exit(0)\n"), ("exit 1", "import sys\nsys.exit(1)\n"),
+                        ("a self-test with no main guard", "ADD = {}\nprint('LOCAL TEST PASS')\nraise SystemExit(0)\n")):
+        with open(path, "w") as f:   # a file that ends the process while it loads must not end the scan with its code
+            f.write(text)
+        code, out = cli(scripts, d, ["--stdin"], "clean text")
+        check(f"local module that exits at load ({label}): a scan fails", code == 1 and "CONTENT CHECK FAIL" in out)
+        check(f"local module that exits at load ({label}): the hook blocks (exit 2)", cli(scripts, d, ["--hook"], write)[0] == 2)
+    with open(path, "w") as f:   # a load that hangs: the hook's own time budget ends it with a block
+        f.write("import time\ntime.sleep(60)\n")
+    os.environ["CHECK_HOOK_LOAD_S"] = "1"
+    try:
+        check("local module that hangs at load: the hook blocks (exit 2)", cli(scripts, d, ["--hook"], write)[0] == 2)
+    finally:
+        del os.environ["CHECK_HOOK_LOAD_S"]
     with open(path, "w") as f:   # the shape is right, but the finder fails when it runs
         f.write("def bad(line):\n    raise RuntimeError('boom')\n\n\nADD = {'email': [bad]}\n")
     code, out = cli(scripts, d, ["--stdin"], "clean text")

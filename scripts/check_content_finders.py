@@ -195,7 +195,8 @@ def load_local(path):
         spec = importlib.util.spec_from_file_location("check_content_local", str(path))
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
-    except Exception as err:   # any error in the project's file: no scan runs on the kit's default in silence
+    except BaseException as err:   # noqa: B036 - any error or exit of the project's file (a sys.exit at import too):
+        # no scan runs on the kit's default in silence, and the process does not end with the file's exit code
         raise LocalError(f"{LOCAL_NAME} cannot be loaded ({err.__class__.__name__}: {err})") from None
     replace, add = local_lists(mod, "REPLACE", True), local_lists(mod, "ADD", False)
     if not replace and not any(add.values()):

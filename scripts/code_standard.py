@@ -110,7 +110,7 @@ def load_gate(path=None):
         spec = importlib.util.spec_from_file_location('code_standard_gate', str(path))
         gate = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(gate)
-    except Exception as err:   # any error of the project's file: the check fails with its name
+    except BaseException as err:   # noqa: B036 - any error or exit of the project's file: the check fails with its name
         raise ValueError('the gate %s cannot be loaded (%s: %s)' % (path.name, err.__class__.__name__, err)) from None
     lacks = [n for n in GATE_NAMES if not hasattr(gate, n)]
     if lacks:
@@ -427,7 +427,11 @@ def against_main(config, debt):
         return [], 'NOTE  no baseline on main yet: this change starts it'
     old_config, old_debt = old
     decided, refusals = decided_at(ref)
-    problems = []
+    # A debt kind that main holds and no rule here knows: the gate that owned it is gone, and its rule with it.
+    orphans = sorted(k for k, items in old_debt.items() if items and k not in rules())
+    problems = ['FAIL  baseline: main holds %s debt, but no rule here knows that kind (is %s missing?); removing a '
+                'rule needs a docs/DECISIONS.md row that names %s' % (k, GATE_FILE.name, settings.CHECK)
+                for k in orphans if not decided]
     for kind, items in debt.items():
         adopting = level(kind, config) > level(kind, old_config)
         was = old_debt.get(kind, {})

@@ -170,8 +170,8 @@ rc=1"
   # A project's own extension files: the self-test of each runs when the file names --test (full lane: always; fast
   # lane: when the file, or a kit file it extends, changed); a file with no self-test is a SKIP line.
   g update-ref refs/remotes/origin/main HEAD
-  printf '%s\n' '# usage: --test' 'print("local self-test")' > "$t/r/scripts/check_content_local.py"
-  printf '%s\n' 'print("a gate with no self-test")' > "$t/r/scripts/code_standard_gate.py"
+  printf '%s\n' 'import sys' 'if "--test" in sys.argv:' '    print("local self-test")' > "$t/r/scripts/check_content_local.py"
+  printf '%s\n' '# --test is named only in this comment' 'print("a gate with no self-test")' > "$t/r/scripts/code_standard_gate.py"
   out="$(c)"
   ok "full lane: the self-test of a project's own finders runs" "$(printf '%s\n' "$out" | grep -c '^PASS  check_content_local self-test')" 1
   ok "an extension file with no self-test is a SKIP line" "$(printf '%s\n' "$out" | grep -c '^SKIP  code_standard_gate self-test')" 1
@@ -180,7 +180,7 @@ rc=1"
   ok "fast lane: an unchanged extension file is not tested again" "$(c --fast | grep -c 'check_content_local self-test')" 0
   echo "# changed" >> "$t/r/scripts/check_content_scan.py"
   ok "fast lane: a change to the kit file it extends runs it" "$(c --fast | grep -c '^PASS  check_content_local self-test')" 1
-  printf '%s\n' '# usage: --test' 'raise SystemExit(1)' > "$t/r/scripts/check_content_local.py"
+  printf '%s\n' 'import sys' 'if "--test" in sys.argv:' '    raise SystemExit(1)' > "$t/r/scripts/check_content_local.py"
   c >/dev/null; ok "a failing self-test of an extension file fails the run" "$?" 1
   [ "$fails" = 0 ] && echo "CHECK SELF-TEST PASS" || { echo "CHECK SELF-TEST FAIL"; exit 1; }
   exit 0
@@ -281,11 +281,11 @@ selftest check_content scripts/check_content.py scripts/check_content_scan.py sc
   scripts/check_content_test_local.py -- python3 scripts/check_content.py --test
 # A project's own extension files (the kit has none): each proves itself when it has a self-test. The deps are the
 # file, its sibling files (for example its test cases: scripts/check_content_local_test.py) and the kit files it extends.
-# extension NAME FILE [KIT FILES IT EXTENDS...]: run "python3 FILE --test" when FILE names --test; else a SKIP line
+# extension NAME FILE [KIT FILES IT EXTENDS...]: run "python3 FILE --test" when its code names "--test" (not only a comment); else a SKIP line
 extension() {
   local name="$1" file="$2"; shift 2
   [ -f "$file" ] || return 0
-  if grep -q -- '--test' "$file"; then selftest "$name" "$file" "${file%.py}"*.py "$@" -- python3 "$file" --test
+  if grep -Eq -- "^[^#]*[\"']--test[\"']" "$file"; then selftest "$name" "$file" "${file%.py}"*.py "$@" -- python3 "$file" --test
   else skip "$name self-test" "$file has no self-test (a file that names --test is run with it)"; fi
 }
 extension check_content_local scripts/check_content_local.py scripts/check_content_scan.py scripts/check_content_finders.py
