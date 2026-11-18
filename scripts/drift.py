@@ -179,7 +179,7 @@ def pin_row(project, base):
             f"pinned {sha[:7] or '?'}, baseline {base_sha[:7] if base_sha else '?'}")
 
 
-LOG_ELSEWHERE_RE = re.compile(r"(?im)^\s*-\s*project log\b[^\n]*?(https?://\S+|(?<![\w/])[\w.~-]*/[\w./~-]+)")
+LOG_ELSEWHERE_RE = re.compile(r"(?im)^\s*-\s*(?:\*\*)?project log\b[^\n]*?(https?://\S+|(?<![\w/])[\w.~-]*/[\w./~-]+)")
 
 
 def log_kept_elsewhere(rules):
@@ -320,6 +320,7 @@ def log_place_cases(results):
     same(results, "log elsewhere: a URL", log_kept_elsewhere("## Project rules\n\n" + line), True)
     same(results, "log elsewhere: a path, any case", log_kept_elsewhere("- project LOG: notes/private/log.md\n"), True)
     same(results, "log elsewhere: the old wording", log_kept_elsewhere("- Project log location: the wiki\n"), True)
+    same(results, "log elsewhere: the bold-label form", log_kept_elsewhere("- **Project log.** https://claude.ai/artifact/XXXX (private).\n"), True)
     same(results, "log elsewhere: a line with no place", log_kept_elsewhere("- Project log: kept short.\n"), False)
     same(results, "log elsewhere: another rule that names a URL", log_kept_elsewhere("- Docs: https://example.com/x\n"), False)
 
