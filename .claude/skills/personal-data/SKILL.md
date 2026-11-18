@@ -21,7 +21,7 @@ In Claude Code a PreToolUse hook (`.claude/settings.json`: `scripts/check.sh --h
 
 | Tool | What is scanned |
 |---|---|
-| Write, Edit, NotebookEdit | The new text, and the path against the `block:` lines. The old text of an edit is not scanned, so an edit can remove a finding. |
+| Write, Edit, NotebookEdit | The new text (also in a file that a `skip:` line names), and the path against the `block:` lines. The old text of an edit is not scanned, so an edit can remove a finding. |
 | Bash | The command, only when it sends something out: a network client (`curl`, `wget`, `gh`, `ssh`, `scp`, `rsync`), a URL, or `git commit`, `tag`, `notes` or `push`. |
 | Agent, SendMessage, task and session messages, scheduled tasks, environment scripts | Every string of the call. |
 | Artifact, SendUserFile | Every string, and the files the call names (a file over 2 MB, a PDF or a binary blocks; so do named files over 8 MB in total and a `file_path` that does not exist). |

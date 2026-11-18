@@ -3,8 +3,8 @@
 Input: the hook event as JSON on stdin (tool_name, cwd, tool_input); the files the call names (file_path,
 file_paths, files); the project's settings file (.check) and the word lists.
 What is scanned, by tool:
-    Write, Edit, NotebookEdit   the new text only (content, new_string, new_source), and the path against the
-                                `block:` lines. The old text of an edit is not scanned: an edit must be able to
+    Write, Edit, NotebookEdit   the new text only (content, new_string, new_source), also under a `skip:` line,
+                                and the path against the `block:` lines. The old text of an edit is not scanned: an edit must be able to
                                 remove a finding. The target file is not read and need not exist.
     Bash                        the command, only when it can send something out (outgoing(): a network client, a
                                 URL, or git commit, tag, notes, push or send-email). A local command passes
@@ -21,7 +21,7 @@ import subprocess
 import sys
 
 from check_content_scan import (BLOCKED, UNKNOWN_PROFILE, blocked, git, is_option_line, load_allow, load_denylist,
-                                load_terms, profile_of, scan_files, scan_text, skipped)
+                                load_terms, profile_of, scan_files, scan_text)
 
 
 HOOK_FILE_KEYS = ("file_path", "file_paths", "files")
@@ -32,9 +32,11 @@ HOOK_RECIPIENT_KEYS = ("to", "cc", "bcc")  # Gmail, top level: an address here i
 WRITE_KEYS = {"Write": ("content",), "Edit": ("new_string",), "NotebookEdit": ("new_source",)}
 # A Bash command is scanned only when it sends something out of the workspace.
 # Programs that send their arguments or input to another host. A path before the name still counts (/usr/bin/curl).
-CLIENTS = re.compile(r"(?<![\w.-])(?:curl|wget|gh|scp|sftp|rsync|ssh|nc|ncat|telnet|ftp|mail|mailx|sendmail|http|https|aws"
-                     r"|gsutil|gcloud|bq|az|docker|podman|npm|pnpm|yarn|twine|pip|pip3)(?![\w-])|https?://")
-GIT_OUT = frozenset(("commit", "tag", "notes", "push", "send-email"))  # git verbs that publish text
+CLIENTS = re.compile(r"(?<![\w.-])(?:curl|wget|gh|glab|scp|sftp|rsync|rclone|ssh|nc|ncat|netcat|socat|telnet|ftp|mail|mailx"
+                     r"|mutt|msmtp|sendmail|http|https|openssl|aws|s3cmd|gsutil|gcloud|bq|az|kubectl|docker|podman|npm|npx"
+                     r"|pnpm|yarn|cargo|gem|poetry|uv|twine|pip|pip3|psql|mysql|hg|svn|claude)(?![\w-])|https?://|/dev/tcp/")
+# git verbs that publish text
+GIT_OUT = frozenset(("commit", "commit-tree", "merge", "tag", "notes", "push", "send-email", "imap-send"))
 
 
 def outgoing(cmd):
@@ -42,7 +44,7 @@ def outgoing(cmd):
     commands (split on newline ; | &) has the word git and a publishing verb. One pass per part (no slow pattern)."""
     if CLIENTS.search(cmd):
         return True
-    for part in re.split(r"[\n;|&]", cmd):
+    for part in re.split(r"[\n;|&]", cmd.replace("\\\n", " ")):  # a line that ends in a backslash continues
         words = set(re.findall(r"[A-Za-z-]+", part))
         if "git" in words and words & GIT_OUT:
             return True
@@ -165,8 +167,8 @@ def scan_write(name, tool_input, full, root, deny, allow, dod, terms):
         rel = os.path.relpath(os.path.realpath(full(path)), os.path.realpath(root)).replace(os.sep, "/")
         if blocked(rel, allow):
             return [(path, 0, "blocked", BLOCKED)]
-    if rel and skipped(rel, allow):  # the owner's skip line covers this file: its text is not scanned, as in a push
-        return []
+    # New text is scanned also under a `skip:` line: the line could be new in this working tree, and the push scan of
+    # the pull request reads the skip lines of the base. A skipped reference file is changed by the owner's request.
     return scan_text("\n".join(new), "new text", deny, allow, dod, terms)
 
 

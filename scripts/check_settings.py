@@ -55,6 +55,11 @@ KIT_CAPS = ("session_load_tokens", "session_load_warn_tokens", "rules_file_lines
 CODE_LISTS = ("include", "exclude", "generated")
 AUDIT_LISTS = ("ignore", "start_read")
 SETTING_LINE = re.compile(r"(?i)^((?:code|audit)-[A-Za-z0-9_-]+)\s*:\s*(.*)$")
+# A line that was meant as a setting: a key with `_`, `=` in place of `:`, or a known key with no colon. An allowed
+# string such as "code-name Bluebird" (no colon, not a known key) stays an allowed string.
+LOOKS_LIKE_SETTING = re.compile(r"(?i)^(?:(?:code|audit)[-_][a-z0-9_-]*[a-z0-9]\s*[:=]"
+                                r"|(?:code[-_](?:max|include|exclude|generated|c1|c2)|audit[-_](?:every|budget|ignore|start))"
+                                r"[a-z0-9_-]*\s+\S)")
 # A docs/DECISIONS.md row "names .check" with the file name itself, not .check.lock or .check.state.json.
 NAMES_CHECK = re.compile(r"(?<![\w.])\.check(?!\.(?:lock|state)|\w)")
 STATE_PARTS = ("code_standard", "audit", "timings")
@@ -81,9 +86,13 @@ def pairs(data):
     out = []
     for raw in text.splitlines():
         line = "".join(c for c in raw if unicodedata.category(c) != "Cf")
-        m = SETTING_LINE.match(re.split(r"(?:^|\s)#", line, maxsplit=1)[0].strip())
+        body = re.split(r"(?:^|\s)#", line, maxsplit=1)[0].strip()
+        m = SETTING_LINE.match(body)
         if m:
             out.append((m.group(1), m.group(2).strip()))
+        elif LOOKS_LIKE_SETTING.match(body):  # code_exclude: x, code-exclude x, code-max-file-lines = 5
+            raise ValueError(f"{CHECK}: `{body[:60]}` looks like a setting but is not `code-<key>: <value>` or "
+                             "`audit-<key>: <value>` (the keys: the header of scripts/check_settings.py)")
     return out
 
 
@@ -391,7 +400,9 @@ def test_settings(root, git):
     for line, why in (("code-max-file-line: 900", "unknown setting"), ("Code-max-file-lines: 900", "unknown setting"),
                       ("code-max-file-lines: many", "whole number"), ("code-max-file-lines: 0", "whole number"),
                       ("code-max-file-lines:", "no value"), ("code-c2: ful", "use full or lean"),
-                      ("code-c1-safety: yes", "use on or off"), ("code-c2: full\ncode-c2: lean", "two lines")):
+                      ("code-c1-safety: yes", "use on or off"), ("code-c2: full\ncode-c2: lean", "two lines"),
+                      ("code-max-function-lines = 500", "looks like a setting"), ("code-exclude scripts/*", "looks like a setting"),
+                      ("code_exclude: scripts/*", "looks like a setting"), ("audit_ignore: x", "looks like a setting")):
         (root / CHECK).write_text(line + "\n")
         assert why in fails(code_config, root), "a code- line that is not valid fails: " + line
     for line, why in (("audit-every-day: 1", "unknown setting"), ("audit-budget-nope: 1", "unknown setting"),

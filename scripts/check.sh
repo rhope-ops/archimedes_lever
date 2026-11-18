@@ -253,7 +253,10 @@ selftest session_checkin scripts/session_checkin.sh -- bash scripts/session_chec
 # The code standard (docs/code-standard.md), both lanes: it takes about 0.1 s. A repo that has not adopted it skips.
 # Adopted: .check.state.json holds the "code_standard" baseline. A repo that still has the old .code-standard.json
 # runs the check too: it fails there and names the migration, so the old limits are not dropped in silence.
-if [ -f scripts/code_standard.py ] && { grep -qs '"code_standard"' .check.state.json || [ -f .code-standard.json ]; }; then
+# Also adopted: the default branch holds a baseline (a deleted state file must fail the check, not skip it).
+on_main() { git cat-file -e "origin/main:$1" 2>/dev/null || git cat-file -e "origin/master:$1" 2>/dev/null; }
+if [ -f scripts/code_standard.py ] && { grep -qs '"code_standard"' .check.state.json || [ -f .code-standard.json ] \
+     || on_main .check.state.json || on_main .code-standard.json; }; then
   run "code standard" python3 scripts/code_standard.py
 elif [ -f scripts/code_standard.py ]; then
   skip "code standard" "no code standard baseline in .check.state.json: adopt it with python3 scripts/code_standard.py --init (docs/code-standard.md)"
