@@ -30,7 +30,7 @@ Something that does not fit: change the kit so that it fits (below). Do not edit
 5. Apply on a branch: the same command with `--apply`. Do not edit `.check.lock` by hand: the sync writes it.
 6. After: the full lane passes; `drift.py --strict` shows 0 kit items different; `python3 scripts/check_lock.py --status` shows the new version. Give the numbers of step 1 before and after.
 7. Record a row in the project's docs/DECISIONS.md ("kit <version>, date; kept: ..."), and a project log row when it is a milestone. Do not copy the kit's docs/DECISIONS.md, docs/LOG.md or reviews: the project has its own.
-8. Deliver it (`.claude/skills/deliver/SKILL.md`). A kit update changes instruction and guard files, so it is lane C: the owner merges it. The pull request text lists each kit rule line that changed.
+8. Deliver it (`.claude/skills/deliver/SKILL.md`). A kit update changes instruction and guard files, so it is lane C. The pull request text lists each kit rule line that changed.
 
 ## Change the kit from a project
 

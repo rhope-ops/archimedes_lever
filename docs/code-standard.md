@@ -32,7 +32,7 @@ The kit owns this file and the check. A project gets both by sync, or by a hand 
 - `.check.state.json` (`code_standard`: `debt`) lists the violations that existed when a repo adopted the standard (empty in the kit). A violation not in that list fails; a listed function or file that grows fails.
 - A listed item that is fixed also fails until the same change lowers the baseline (`--update`, which refuses new debt). So the list can only shrink.
 - A rule turned on later (for example `code-c2: full`): `--adopt` lists its current debt once, in the same change as a docs/DECISIONS.md row that names `.check`. The comparison with main accepts that list only when the option was off on main, so an option that is already on cannot be adopted again. It never touches the debt of a rule the ratchet already holds.
-- Never add an item to the baseline by hand, raise a cap or add an `exclude` to pass (AGENTS.md "Checks"). The check compares the baseline and the `code-` lines of `.check` with those on the merge base with origin/main; a cap or scope change (a `code-` line added, removed or changed) needs a docs/DECISIONS.md row that names `.check`. A `code-` key the check does not know, or a value that is not valid, fails the check.
+- Never add an item to the baseline by hand, raise a cap or add an `exclude` to pass (AGENTS.md "Guards and checks"). The check compares the baseline and the `code-` lines of `.check` with those on the merge base with origin/main; a cap or scope change (a `code-` line added, removed or changed) needs a docs/DECISIONS.md row that names `.check`. A `code-` key the check does not know, or a value that is not valid, fails the check.
 
 ## Commands
 
