@@ -36,7 +36,7 @@ def sample_repo(bloat, root):
     (root / "docs").mkdir()
     (root / "docs/NEXT_PROMPT.md").write_text(f"{LONG.upper()}\n" + "x\n" * 45)
     (root / "big.txt").write_text("y" * 3000)
-    (root / bloat.CONFIG).write_text(json.dumps({"budgets": {"file_kb": 2, "start_read_tokens": 10},
+    (root / bloat.CONFIG).write_text(json.dumps({"budgets": {"file_kb": 2, "session_load_tokens": 10},
                                               "last_audit": {"date": "2026-01-01"},
                                               "timings": {"t": {"cmd": "true", "seconds": 5}}}))
     subprocess.run(["git", "-C", str(root), "add", "-A"], check=True)
@@ -119,7 +119,24 @@ def caps_and_paths_cases(bloat, ro, caps):
     assert any(r.startswith("  + New rule.") for r in rows) and any(r.startswith("  - Old rule.") for r in rows), "a swap is listed"
     (ro / "AGENTS.md").write_text("## A\n\n- New rule.\n- Kept rule.\n- Third.\n\n## Project rules\n\n- P1.\n- P2.\n")
     rows, problems = bloat.rules_report(ro, caps)
-    assert len(problems) == 2 and "rules over the cap (3 > 2)" in problems[0] and "project rules over" in problems[1], "both caps fail"
+    assert not problems and sum(r.startswith("WARN  ") and "rule bullets (guide" in r for r in rows) == 2, "the bullet counts only warn"
+    tight = {"budgets": {**caps["budgets"], "rules_file_lines": 3, "session_load_tokens": 5}}
+    rows, problems = bloat.rules_report(ro, tight)
+    assert len(problems) == 2 and "over the line cap (10 > 3)" in problems[0] and "session load over the cap" in problems[1], "the line cap and the load cap fail"
+    warned = {"budgets": {**caps["budgets"], "session_load_warn_tokens": 5}}
+    assert any("over the warning" in r for r in bloat.rules_report(ro, warned)[0]) and not bloat.rules_report(ro, warned)[1], "the load warning only warns"
+    (ro / bloat.CONFIG).write_text(json.dumps({"budgets": {"session_load_tokens": 999999, "rules_file_lines": 50}}))
+    b = bloat.load_config(ro)["budgets"]
+    assert b["session_load_tokens"] == 6000 and b["rules_file_lines"] == 50, "a project can lower a kit cap, never raise it"
+    (ro / bloat.CONFIG).unlink()
+    skill = ro / ".claude/skills/s"; skill.mkdir(parents=True)
+    (skill / "SKILL.md").write_text("---\nname: s\ndescription: " + "d" * 400 + "\n---\nAn agent never merges this.\n")
+    assert bloat.start_read(ro, caps)[2] >= 100, "skill names and descriptions count in the session load"
+    import bloat_check_skills
+    table = [("agents merge", r"never merges", ["AGENTS.md"])]
+    assert bloat_check_skills.second_homes(ro, table) == ['second home of a rule: .claude/skills/s/SKILL.md:5 states "agents merge"; its home is AGENTS.md: link to it'], "a rule stated again in a skill is a problem"
+    assert bloat_check_skills.second_homes(ro, [("x", r"never merges", [".claude/skills/s/SKILL.md"])]) == [], "the home file may state it"
+    subprocess.run(["rm", "-rf", str(ro / ".claude")], check=True)
     (ro / "AGENTS.md").write_text("## A\n\n- See `.claude/skills/x/SKILL.md` and [doc](docs/gone.md), [web](https://e.example/a), `.claude/skills/<name>/`, `scripts/gone.sh --fast`, `scripts/check.local.sh`, `python3 scripts/gone2.py --test`, `scripts/tool.sh -o docs/out.html`, `scripts/gone2.py:12`, `scripts/gone.sh|tee x`, `bash -x scripts/gone3.sh`, `x --output docs/a.md --out docs/b.md --outline docs/c.md`.\n")
     rows, problems = bloat.rules_report(ro, caps)
     assert problems == ["missing paths named in AGENTS.md: .claude/skills/x/SKILL.md, docs/gone.md, scripts/gone.sh, scripts/gone2.py, scripts/gone3.sh, scripts/tool.sh"], "missing paths (also after a command word, with a line number or a pipe), not URLs, patterns, optional files or option values"
@@ -169,17 +186,19 @@ def lint_cases(bloat, ro):
         assert bloat.main_rules(ro) == 0, "--rules passes"
         assert bloat.main_lint(ro) == 0, "--lint never fails"
         (ro / "AGENTS.md").write_text("## A\n\n" + "- r.\n" * 36)
-        assert bloat.main_rules(ro) == 1, "--rules fails over the default cap of 35"
+        assert bloat.main_rules(ro) == 0, "--rules passes over the bullet guide of 35 (a warning)"
+        (ro / "AGENTS.md").write_text("## A\n\n" + "- r.\n" * 199)
+        assert bloat.main_rules(ro) == 1, "--rules fails over the default cap of 200 lines"
 
 
 def report_cases(bloat, root, cfg, strict):
     """The start-read warning, an unknown audit commit, a bad config, and --time --record."""
-    (root / bloat.CONFIG).write_text(json.dumps({"budgets": {"start_read_warn_tokens": 1, "start_read_tokens": 99999},
+    (root / bloat.CONFIG).write_text(json.dumps({"budgets": {"session_load_warn_tokens": 1, "session_load_tokens": 99999},
                                               "last_audit": {"date": "2026-01-01"}}))
     w = io.StringIO()
     with contextlib.redirect_stdout(w):
         bloat.report(root, argparse.Namespace(brief=True, time=False, record=False, strict=False), datetime.date(2026, 1, 5))
-    assert "over warning" in w.getvalue() and "over: start read" not in w.getvalue(), "warning, not over"
+    assert "over warning" in w.getvalue() and "over: session load" not in w.getvalue(), "warning, not over"
     with contextlib.redirect_stdout(io.StringIO()):
         assert bloat.audit_due(root, {**cfg, "last_audit": {"date": "2026-01-01", "commit": "f" * 40}},
                             datetime.date(2026, 1, 5)) == "", "unknown commit alone is not due"
