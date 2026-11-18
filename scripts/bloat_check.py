@@ -57,7 +57,7 @@ It measures:
                  "rules": 35, "project_rules": 15},
      "start_read": [], "ignore": ["ref/**"],
      "timings": {"tests": {"cmd": "tests/run.sh", "seconds": 20.8, "max_slowdown": 0.25},
-                 "check": {"cmd": "bash scripts/check.sh", "seconds": 4.5, "steps": {"pii_guard self-test": 4.1}},
+                 "check": {"cmd": "bash scripts/check.sh", "seconds": 4.5, "steps": {"check_content self-test": 4.1}},
                  "push-guard": {"seconds": 0.4}}}
 A timing with no "cmd" is only compared (--compare), never run by --time.
 start_read_warn_tokens only warns (never "over", never fails --strict); set it to the cap to turn the warning off.

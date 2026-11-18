@@ -3,8 +3,8 @@
 # Install once per clone: git config core.hooksPath <the folder of this file> (scripts/session_checkin.sh or a SessionStart hook does it).
 # Also runs scripts/check.sh (when present): the full lane for a push to main, master or the default branch (the
 # remote's HEAD, init.defaultBranch, or each name in the git config key check.fullLaneBranch), the fast lane for any other
-# branch (.claude/skills/deliver/SKILL.md), and scripts/pii_guard.py on the tracked files and the pushed commits (when
-# the repo root has a .pii-guard file).
+# branch (.claude/skills/deliver/SKILL.md), and the content check (scripts/check_content.py) on the tracked files and the
+# pushed commits (when the repo root has the settings file .check, or .pii-guard, its old name).
 # Blocks: a push that git runs outside the repo's own work tree (own_tree), a push that is not a fast-forward (every force-push form, including --force-with-lease),
 # deleting main or master on the remote, and pushing a remote commit this clone has not fetched.
 # A person who truly needs to override runs the push with --no-verify; agents never do (AGENTS.md "Git safety").
@@ -139,7 +139,7 @@ out=$(printf '%s\n' "$input" | check) || { echo "$out" >&2; exit 1; }
 
 top="$(own_tree)"
 if [ -z "$top" ]; then
-  echo "pre-push: blocked: git runs this push outside the repo's own work tree (for example \"git --git-dir=<repo>/.git push\" from another folder), so the checks and the personal-data guard cannot run. Run the push from inside the repo folder." >&2
+  echo "pre-push: blocked: git runs this push outside the repo's own work tree (for example \"git --git-dir=<repo>/.git push\" from another folder), so the checks cannot run. Run the push from inside the repo folder." >&2
   exit 1
 fi
 cd "$top" || exit 1
@@ -148,14 +148,14 @@ cd "$top" || exit 1
 # so an agent cannot sign off its own work (AGENTS.md "Git safety"). A push that only deletes branches skips it.
 # Lane: full for main, master or a default branch (default_branches), so nothing reaches it on a fast-lane pass; fast for other branches.
 # --cached: a lane that already passed on this commit with a clean tree is not run again.
-# --no-pii: with the guard on, the guard step below scans the tracked files and the pushed commits in one run.
+# --no-content: with the content check on, the guard step below scans the tracked files and the pushed commits in one run.
 carries=0
 printf '%s\n' "$input" | awk 'NF>=4 && $2 !~ /^0+$/ {f=1} END {exit !f}' && carries=1
 if [ -f "$top/scripts/check.sh" ] && [ "$carries" = 1 ]; then
   args=(--cached)
   # shellcheck disable=SC2046  # the names are split on purpose
   [ "$(printf '%s\n' "$input" | lane_of $(default_branches "${1:-origin}"))" = fast ] && args+=(--fast)
-  [ -f "$top/.pii-guard" ] && args+=(--no-pii)
+  { [ -f "$top/.check" ] || [ -f "$top/.pii-guard" ]; } && args+=(--no-content)
   cout=$(bash "$top/scripts/check.sh" "${args[@]}" 2>&1); crc=$?
   if [ "$crc" -ne 0 ]; then
     printf '%s\n' "$cout" >&2
@@ -165,14 +165,14 @@ if [ -f "$top/scripts/check.sh" ] && [ "$carries" = 1 ]; then
   printf '%s\n' "$cout" | shown >&2
 fi
 
-# Personal-data guard: runs only in a repo that opts in with a .pii-guard file at its root (AGENTS.md "Personal data").
-if [ -f "$top/.pii-guard" ]; then
+# Content check: runs only in a repo that has the settings file .check at its root (AGENTS.md "Personal data").
+if [ -f "$top/.check" ] || [ -f "$top/.pii-guard" ]; then
   guard=""
-  for g in "$(cd "$(dirname "$0")/.." && pwd -P)/pii_guard.py" "$top/scripts/pii_guard.py" "$top/tools/pii_guard.py"; do
+  for g in "$(cd "$(dirname "$0")/.." && pwd -P)/check_content.py" "$top/scripts/check_content.py" "$top/tools/check_content.py"; do
     [ -f "$g" ] && { guard="$g"; break; }
   done
   if [ -z "$guard" ]; then
-    echo "pre-push: blocked: .pii-guard is on but pii_guard.py was not found (scripts/ or tools/)." >&2; exit 1
+    echo "pre-push: blocked: .check is on but check_content.py was not found (scripts/ or tools/)." >&2; exit 1
   fi
   gargs=(--push --require-denylist)
   [ "$carries" = 1 ] && gargs=(--all "${gargs[@]}")  # one run: every tracked file, and the pushed commits
@@ -183,10 +183,10 @@ if [ -f "$top/.pii-guard" ]; then
   case "$g0" in *N|'') ;; *) [ -f "$top/scripts/bloat_check.py" ] && [ "$carries" = 1 ] && python3 "$top/scripts/bloat_check.py" \
     --project "$top" --compare "push-guard=$(awk -v a="$g0" -v b="$(date +%s%N)" 'BEGIN {printf "%.1f", (b - a) / 1e9}')" 2>&1 | tail -n 1 >&2 ;; esac
   if [ "$rc" -ne 0 ]; then
-    if printf '%s' "$pout" | grep -q "PII GUARD FAIL: no denylist found"; then
+    if printf '%s' "$pout" | grep -q "CONTENT CHECK FAIL: no denylist found"; then
       echo "pre-push: blocked: this session has no name denylist, so the guard cannot check names. Add it (docs/FIRST_USE.md step 4), then push again." >&2
     else
-      echo "pre-push: blocked by pii_guard.py: personal data or a secret is in a tracked file or in this push (listed above, masked). Remove it, then push again." >&2
+      echo "pre-push: blocked by the content check: personal data, a secret or blocked content is in a tracked file or in this push (listed above, masked). Remove it, then push again." >&2
     fi
     exit 1
   fi

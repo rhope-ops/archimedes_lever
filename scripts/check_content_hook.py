@@ -1,24 +1,37 @@
-"""The Claude Code PreToolUse hook of pii_guard.py (`python3 scripts/pii_guard.py --hook`).
+"""The Claude Code PreToolUse hook of check_content.py (`python3 scripts/check_content.py --hook`).
 
 Input: the hook event as JSON on stdin (tool_name, cwd, tool_input); the files the call names (file_path,
-file_paths, files); .pii-guard of the project and the denylist.
+file_paths, files); the project's settings file (.check) and the word lists.
+What is scanned, by tool:
+    Write, Edit, NotebookEdit   the new text only (content, new_string, new_source), and the path against the
+                                `block:` lines. The old text of an edit is not scanned: an edit must be able to
+                                remove a finding. The target file is not read and need not exist.
+    Bash                        the command, only when it sends something out (OUTGOING: a network client, gh, or a
+                                git commit, tag, notes or push). A local command passes unread.
+    every other tool            every string of the input, and the files it names.
 Output: exit 0 lets the tool call run; exit 2 blocks it, and the masked findings go to stderr. Any error blocks.
-Run: pii_guard.py imports it for --hook; not run alone.
+Run: check_content.py imports it for --hook; not run alone.
 """
 import json
 import os
+import re
 import signal
 import subprocess
 import sys
 
-from pii_guard_scan import (UNKNOWN_PROFILE, git, is_option_line, load_allow, load_denylist, profile_of, scan_files,
-                            scan_text)
+from check_content_scan import (BLOCKED, UNKNOWN_PROFILE, blocked, git, is_option_line, load_allow, load_denylist,
+                                load_terms, profile_of, scan_files, scan_text)
 
 
 HOOK_FILE_KEYS = ("file_path", "file_paths", "files")
 HOOK_RECIPIENT_KEYS = ("to", "cc", "bcc")  # Gmail, top level: an address here is no finding
 
 
+# Tools that write a local file: the keys that hold the new text. Only these are scanned.
+WRITE_KEYS = {"Write": ("content",), "Edit": ("new_string",), "NotebookEdit": ("new_source",)}
+# A Bash command is scanned only when it sends something out of the workspace.
+OUTGOING = re.compile(r"(?<![\w./-])(?:curl|wget|gh|scp|sftp|rsync|ssh|nc|ncat|telnet|ftp|mail|mailx|sendmail|http|https"
+                      r"|git\s+(?:-\S+\s+(?:[^-\s]\S*\s+)?)*(?:commit|tag|notes|push))(?![\w-])|https?://")
 HOOK_MAX_BYTES = 8_000_000  # named files above this total block: the scan must end well inside the hook timeout
 HOOK_BUDGET_S = 8  # seconds; the hook timeout in .claude/settings.json is 10
 
@@ -58,7 +71,7 @@ def hook(stdin_text):
     exception (deep nesting, a wrong type) must not end the script with exit 1."""
     def too_slow(*_):  # exit here: an exception could escape between the except block and the finally block
         sys.stdout.flush()
-        os.write(2, b"pii-guard hook: blocked: the scan took longer than its own time budget; fail closed.\n")
+        os.write(2, b"check hook: blocked: the scan took longer than its own time budget; fail closed.\n")
         os._exit(2)
     if hasattr(signal, "SIGALRM"):  # a hook timeout lets the call run: stop first, and block
         signal.signal(signal.SIGALRM, too_slow)
@@ -66,7 +79,7 @@ def hook(stdin_text):
     try:
         return _hook(sys.stdin.read() if stdin_text is None else stdin_text)
     except BaseException as e:  # noqa: B036 - fail closed, whatever went wrong
-        print(f"pii-guard hook: blocked: the scan failed ({e.__class__.__name__}); fail closed.", file=sys.stderr)
+        print(f"check hook: blocked: the scan failed ({e.__class__.__name__}); fail closed.", file=sys.stderr)
         return 2
     finally:
         if hasattr(signal, "SIGALRM"):
@@ -82,13 +95,13 @@ def _hook(stdin_text):
         if not isinstance(tool_input, (dict, list, str)):
             raise ValueError("tool_input")
     except (ValueError, AttributeError) as e:
-        print(f"pii-guard hook: blocked: cannot read the hook input ({e.__class__.__name__}); fail closed.", file=sys.stderr)
+        print(f"check hook: blocked: cannot read the hook input ({e.__class__.__name__}); fail closed.", file=sys.stderr)
         return 2
     project = os.environ.get("CLAUDE_PROJECT_DIR") or ""
     cwd = event.get("cwd") or project or "."  # relative paths in the call resolve here
     if not isinstance(cwd, str):
         raise TypeError("cwd is not text")  # bad input blocks (hook() turns any error into exit 2)
-    root = None  # the repo whose .pii-guard sets the tier: the project folder first, so a cwd outside it cannot
+    root = None  # the repo whose settings file sets the tier: the project folder first, so a cwd outside it cannot
     for where in (project, cwd):  # drop the tier (fail-open)
         if where and os.path.isdir(where):
             try:
@@ -100,29 +113,52 @@ def _hook(stdin_text):
     allow = load_allow(root)
     prof = profile_of(allow)
     if prof == "unknown":
-        print("pii-guard hook: blocked: " + UNKNOWN_PROFILE, file=sys.stderr)
+        print("check hook: blocked: " + UNKNOWN_PROFILE, file=sys.stderr)
         return 2
     dod = prof == "dod"
     allow = {v for v in allow if not is_option_line(v)}
-    deny = load_denylist()
-    texts, recipients, paths, strict = hook_parts(tool_input, str(event.get("tool_name", "")))
-    found = scan_text("\n".join(texts), "tool input", deny, allow, dod)
-    found += [f for f in scan_text("\n".join(recipients), "mail recipients", deny, allow, dod) if f[2] != "email"]
+    deny, terms = load_denylist(), load_terms()
+    name = str(event.get("tool_name", ""))
     full = lambda p: os.path.join(cwd, os.path.expanduser(p))  # an absolute path stays as it is
+    if name in WRITE_KEYS and isinstance(tool_input, dict):
+        return verdict(scan_write(name, tool_input, full, root, deny, allow, dod, terms), name)
+    if name == "Bash" and isinstance(tool_input, dict):
+        cmd = tool_input.get("command")
+        if isinstance(cmd, str) and not OUTGOING.search(cmd):
+            return 0
+    texts, recipients, paths, strict = hook_parts(tool_input, name)
+    found = scan_text("\n".join(texts), "tool input", deny, allow, dod, terms)
+    found += [f for f in scan_text("\n".join(recipients), "mail recipients", deny, allow, dod, terms) if f[2] != "email"]
     found += [(p, 0, "unscanned", "named file missing or unreadable") for p in strict
               if not (os.path.isfile(full(p)) and os.access(full(p), os.R_OK))]
     files = [full(p) for p in paths if os.path.isfile(full(p))]
     if sum(os.path.getsize(f) for f in files) > HOOK_MAX_BYTES:
         found.append(("named files", 0, "unscanned", f"over {HOOK_MAX_BYTES} bytes in total: send fewer files per call"))
     else:
-        found += scan_files(files, root, deny, allow, dod, named=True)
+        found += scan_files(files, root, deny, allow, dod, named=True, terms=terms)
+    return verdict(found, name or "tool")
+
+
+def scan_write(name, tool_input, full, root, deny, allow, dod, terms):
+    """Findings for a Write, Edit or NotebookEdit call: the new text, and the target path against the block lines."""
+    new = [v for k in WRITE_KEYS[name] for v in [tool_input.get(k)] if isinstance(v, str)]
+    found = scan_text("\n".join(new), "new text", deny, allow, dod, terms)
+    path = tool_input.get("file_path") or tool_input.get("notebook_path")
+    if isinstance(path, str) and path:
+        rel = os.path.relpath(full(path), root).replace(os.sep, "/")
+        if blocked(rel, allow):
+            found.append((path, 0, "blocked", BLOCKED))
+    return found
+
+
+def verdict(found, tool):
+    """Print the findings and the reason to stderr; return 2 (block) when there are any, else 0."""
     if not found:
         return 0
-    tool = event.get("tool_name", "tool")
     for where, n, kind, val in found:
-        print(f"pii-guard hook: {where}:{n}: {kind}: {val}", file=sys.stderr)
-    print(f"pii-guard hook: blocked the {tool} call: {len(found)} finding(s) of personal data or secrets. Remove or "
-          "mask them (never copy them elsewhere), then call again. A finding that is not personal data: tell the owner; "
-          "only the owner adds an allow line to .pii-guard (.claude/skills/personal-data/SKILL.md).", file=sys.stderr)
+        print(f"check hook: {where}:{n}: {kind}: {val}", file=sys.stderr)
+    print(f"check hook: blocked the {tool} call: {len(found)} finding(s) of personal data, secrets or blocked content. "
+          "Remove or mask them (never copy them elsewhere), then call again. A finding that is wrong: tell the owner; "
+          "only the owner adds an allow line to .check (.claude/skills/personal-data/SKILL.md).", file=sys.stderr)
     return 2
 

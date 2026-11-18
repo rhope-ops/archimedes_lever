@@ -32,10 +32,10 @@ What it changes:
     .claude/skills/ (every kit skill)   Replaced with the baseline copies.
     .claude/agents/worker.md, scout.md, reviewer.md, docs/FIRST_USE.md   Added only when missing (a project
                            may tune them; FIRST_USE.md holds the denylist places that the session-start check names).
-    scripts/log_check.py, scripts/timeline.py, scripts/pii_guard*.py, scripts/first_use_check.py,
+    scripts/log_check.py, scripts/timeline.py, scripts/check_content*.py, scripts/first_use_check.py,
     scripts/check.sh, scripts/bloat_check*.py, scripts/code_standard*.py, docs/code-standard.md, scripts/git-hooks/pre-push,
     .claude/rule-tests.md
-                           Replaced with the baseline copies. A starter project gets none of ADVANCED_FILES. (.pii-guard is not copied: a project opts in itself.)
+                           Replaced with the baseline copies. A starter project gets none of ADVANCED_FILES. (.check is not copied: a project opts in itself.)
     .claude/settings.json  Adds the baseline deny rules, each baseline hook event the project has no hook for, and the
                            baseline "sandbox" block when the project has none. Keeps all other settings.
     .gitignore             Adds the baseline lines. Keeps all other lines.
@@ -47,7 +47,7 @@ What it changes:
                            first letter). Project text is never renamed. A private repo may keep a real name
                            (--owner NAME); a public repo uses a role. Owner: letters, digits, space . _ , ( ) -
 What it never changes: README.md, docs/ (except adding a missing docs/FIRST_USE.md and updating the kit license),
-.pii-guard and all other files.
+.check and all other files.
 Standard library only. Needs git.
 """
 import argparse
@@ -60,15 +60,18 @@ import sys
 import tempfile
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import check_blocks  # noqa: E402 - the deny rules and the placeholder pattern
+
 DEFAULT_BASELINE = "https://github.com/rhope-ops/archimedes_lever"
 RULES_HEADING = "## Project rules"
 COMMANDS_HEADING = "## Commands"
-COPY_FILES = ["scripts/session_checkin.sh", "scripts/stop_check.py",
-              "scripts/worker_guard.py", "scripts/log_check.py", "scripts/timeline.py", "scripts/pii_guard.py", "scripts/first_use_check.py",
-              "scripts/pii_guard_scan.py", "scripts/pii_guard_hook.py", "scripts/pii_guard_test.py",
+COPY_FILES = ["scripts/session_checkin.sh", "scripts/stop_check.py", "scripts/check_blocks.py", "scripts/check_content_test_blocks.py",
+              "scripts/worker_guard.py", "scripts/log_check.py", "scripts/timeline.py", "scripts/check_content.py", "scripts/first_use_check.py",
+              "scripts/check_content_scan.py", "scripts/check_content_hook.py", "scripts/check_content_test.py",
               "scripts/check.sh", "scripts/bloat_check.py", "scripts/bloat_check_skills.py", "scripts/bloat_check_test.py",
               "scripts/code_standard.py", "scripts/code_standard_test.py", "scripts/code_standard_docs.py", "docs/code-standard.md", "scripts/git-hooks/pre-push",
-              ".claude/skills/delegate/SKILL.md", ".claude/skills/audit/SKILL.md", ".claude/skills/project-log/SKILL.md", ".claude/rule-tests.md", ".github/workflows/pii-guard.yml",
+              ".claude/skills/delegate/SKILL.md", ".claude/skills/audit/SKILL.md", ".claude/skills/project-log/SKILL.md", ".claude/rule-tests.md", ".github/workflows/check.yml",
               ".claude/skills/deliver/SKILL.md", ".claude/skills/personal-data/SKILL.md", ".claude/skills/rule-change/SKILL.md",
               ".claude/skills/data-change/SKILL.md", ".claude/skills/ui-verify/SKILL.md", ".claude/skills/ui-verify/measure.mjs",
               ".claude/skills/run-verify/SKILL.md", ".claude/skills/efficiency/SKILL.md", ".claude/skills/handoff/SKILL.md",
@@ -295,9 +298,9 @@ def merge_settings(base_path, proj_path):
         deny = proj["permissions"]["deny"] = []
     if not isinstance(deny, list):
         die('.claude/settings.json "permissions.deny" must be a list; fix it first')
-    for rule in base.get("permissions", {}).get("deny", []):
-        if rule not in deny:
-            deny.append(rule)
+    # The kit's deny rules (scripts/check_blocks.py DENY) come first, in the kit's order; the project's own follow.
+    kit = check_blocks.DENY + [r for r in base.get("permissions", {}).get("deny", []) if r not in check_blocks.DENY]
+    deny[:] = kit + [r for r in deny if r not in kit]
     # Sandbox: add the baseline block only when the project has none (a project's own block is kept whole).
     if "sandbox" in base and "sandbox" not in proj:
         proj["sandbox"] = base["sandbox"]
@@ -383,7 +386,7 @@ def check_placeholders(root):
     """Stop when AGENTS.md, README.md or docs/*.md still holds a {{PLACEHOLDER}} (bootstrap has not run)."""
     for f in [root / "AGENTS.md", root / "README.md", *sorted(root.glob("docs/*.md"))]:
         rel = f.relative_to(root)
-        if f.is_file() and re.search(r"\{\{[A-Z_]+\}\}", f.read_text(errors="replace")):
+        if f.is_file() and check_blocks.placeholders([f]):
             die(f"{rel} still has template placeholders; run scripts/bootstrap.sh first")
 
 

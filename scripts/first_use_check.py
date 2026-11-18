@@ -14,7 +14,7 @@ It reports:
     KIT             the repo is the kit itself (origin named archimedes_lever), for example a plain `git clone` of it:
                     when the user asks to initiate or start a project, follow docs/FIRST_USE.md; for project
                     work, or when it is not clear, ask before changing anything.
-    DENYLIST        the repo has a .pii-guard file but this session has no name denylist, so pushes will be blocked.
+    DENYLIST        the repo has the settings file .check but this session has no name denylist, so pushes will be blocked.
     RESUMED         the hook input says source "resume" or "compact" (a restart or a compaction, not a new session):
                     this line (plus DENYLIST when it applies) instead of KIT and FIRST USE: the agent runs the check-in and
                     continues the approved plan, without a new plan review (the owner, 2026-11-18).
@@ -30,7 +30,8 @@ import sys
 import tempfile
 
 TEMPLATE_NAME = "archimedes_lever"
-PLACEHOLDER = re.compile(r"\{\{(PROJECT_NAME|REPO|PURPOSE|OWNER|TIMEZONE)\}\}")
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from check_blocks import PLACEHOLDER  # noqa: E402 - the one placeholder pattern (scripts/check_blocks.py)
 
 
 def origin_name(root):
@@ -41,10 +42,10 @@ def origin_name(root):
 
 
 def has_denylist():
-    """Same rule as pii_guard.py (shared helper): the first source with at least one entry."""
+    """Same rule as check_content.py (shared helper): the first source with at least one entry."""
     sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-    import pii_guard
-    return pii_guard.denylist_source()[1] is not None
+    import check_content
+    return check_content.denylist_source()[1] is not None
 
 
 def messages(root):
@@ -73,15 +74,15 @@ def messages(root):
                    "follow docs/FIRST_USE.md: ask the owner its questions (in Claude Code, with the clickable "
                    "question dialog), then run scripts/bootstrap.sh with the answers.")
     try:
-        guard_without_list = (root / ".pii-guard").is_file() and not has_denylist()
+        guard_without_list = ((root / ".check").is_file() or (root / ".pii-guard").is_file()) and not has_denylist()
     except Exception as e:
         guard_without_list = False
         out.append(f"first_use_check: denylist check skipped ({e})")
     if guard_without_list:
         try:
             sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-            import pii_guard
-            warn = pii_guard.warn_mode(root)
+            import check_content
+            warn = check_content.warn_mode(root)
         except Exception:
             warn = False
         effect = ("names are not checked (starter tier: pushes only warn)" if warn else "pushes will be blocked")
@@ -170,7 +171,7 @@ def self_test():
             good = any(m.startswith("KIT") and "ask in one question" in m for m in messages(d))
             print(("ok   " if good else "FAIL ") + "KIT: project work or an unclear request is asked about, not taken as kit work")
             ok = ok and good
-            pathlib.Path(d, ".pii-guard").write_text("# on\n")
+            pathlib.Path(d, ".check").write_text("# on\n")
             expect("guard on, no denylist", kinds(), ["KIT", "DENYLIST"])
             os.environ["PII_GUARD_DENYLIST"] = "Sam"
             expect("guard on, denylist in environment", kinds(), ["KIT"])
@@ -181,11 +182,11 @@ def self_test():
             agents.write_text("# Demo: agent instructions\n")
             run("remote", "set-url", "origin", "https://github.com/someone/demo")
             expect("set-up project, guard on, no denylist", kinds(), ["DENYLIST"])
-            pathlib.Path(d, ".pii-guard").write_text("denylist: warn\n")
+            pathlib.Path(d, ".check").write_text("denylist: warn\n")
             good = any("pushes only warn" in m for m in messages(d))
             print(("ok   " if good else "FAIL ") + "starter warn mode: DENYLIST says pushes only warn")
             ok = ok and good
-            pathlib.Path(d, ".pii-guard").unlink()
+            pathlib.Path(d, ".check").unlink()
             expect("set-up project, guard off", kinds(), [])
             hook_cases(d, expect)
     finally:

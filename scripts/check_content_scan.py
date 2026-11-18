@@ -1,10 +1,10 @@
-"""The scanner of pii_guard.py: the patterns, the denylist and .pii-guard readers, and the scans of a text, of files
-and of commits.
+"""The scanner of check_content.py: the patterns, the readers of the word lists (names, terms) and of the settings
+file (`.check`; the old name `.pii-guard` is still read), and the scans of a text, of files and of commits.
 
-Inputs: text, repo-relative paths or git rev-list arguments; the denylist (environment or file) and .pii-guard.
+Inputs: text, repo-relative paths or git rev-list arguments; the word lists (environment or file) and the settings file.
 Outputs: findings as (where, line number, kind, masked value) tuples; nothing is printed here.
-Run: not run alone; pii_guard.py, pii_guard_hook.py and pii_guard_test.py import it (the checks, tiers and limits
-are described in the pii_guard.py header).
+Run: not run alone; check_content.py, check_content_hook.py and check_content_test.py import it (the checks, tiers and limits
+are described in the check_content.py header).
 """
 import bisect
 import fnmatch
@@ -84,9 +84,9 @@ MAX_BYTES = 2_000_000
 
 def mask(kind, s):
     """Show the kind and a length, never enough to rebuild the value (CI logs may be public)."""
-    if kind == "unscanned":
+    if kind in ("unscanned", "blocked"):
         return s  # a reason, not a value
-    if kind in ("name", "secret", "milhost", "marking"):
+    if kind in ("name", "term", "secret", "milhost", "marking"):
         return f"<{len(s)} chars>"
     if kind == "email" and "@" in s:
         return "***@" + "*" * len(s.split("@", 1)[1])
@@ -123,40 +123,61 @@ def denylist_source():
     return "", None
 
 
+def terms_source():
+    """Return (raw text, where it came from) for the owner's own blocked terms (words that are not personal data:
+    a client, a code name), or ("", None). Same format and places as the name denylist, under other names; optional."""
+    raw = os.environ.get("CHECK_TERMS", "")
+    if parse_denylist(raw):
+        return raw, "environment variable CHECK_TERMS"
+    path = os.environ.get("CHECK_TERMS_FILE") or os.path.expanduser("~/.config/check/terms.txt")
+    try:
+        text = pathlib.Path(path).read_text(errors="replace") if os.path.isfile(path) else ""
+    except OSError:
+        text = ""
+    if parse_denylist(text):
+        return text, "file " + path
+    return "", None
+
+
+def load_terms():
+    """The owner's blocked terms from the first source that has any, or []."""
+    return parse_denylist(terms_source()[0])
+
+
 MISSING_HELP = ("no denylist found. Add your names (comma or newline separated), never in a repo or a chat: "
                 "a cloud session: environment variable PII_GUARD_DENYLIST in the cloud environment's settings; "
                 "GitHub Actions: repository secret PII_GUARD_DENYLIST; your computer: ~/.config/pii-guard/denylist.txt. "
                 "See docs/FIRST_USE.md.")
 
 
-WARN_OPTION = "denylist: warn"  # .pii-guard option line; first_use_check.py reads it too
+WARN_OPTION = "denylist: warn"  # settings option line; first_use_check.py reads it too
 
 
 # A tier line, also in a wrong form. After any leading punctuation (a bullet, a quote, a bracket):
 #   - the word profile, unless a character of a name follows it (profile.example.org and profile-x stay allowed values);
 #   - or one word, at most one punctuation mark, and the value dod (a misspelt key such as "profil: dod").
 # Every form other than `profile: dod` is unknown and fails the scan.
-_TIER = r"[\W_]*(?:profile(?![A-Za-z0-9._/-])|(?!skip\b|denylist\b)[A-Za-z_-]{1,40}\s*[^\w\s.]?\s*dod[\W_]*$)"
+_TIER = r"[\W_]*(?:profile(?![A-Za-z0-9._/-])|(?!skip\b|block\b|denylist\b)[A-Za-z_-]{1,40}\s*[^\w\s.]?\s*dod[\W_]*$)"
 PROFILE_LINE = re.compile(r"(?i)^" + _TIER)
 OPTION_LINE = re.compile(r"(?i)^(?:" + _TIER + r"|denylist\s*:)")  # option lines, never allowed values
 OPTION_MAX = 200  # a longer line is never an option line: the patterns above only ever see short lines (no slow match)
 
 
 def is_tier_line(v):
-    """True when this .pii-guard line is a tier line, in any form (short lines only)."""
+    """True when this settings line is a tier line, in any form (short lines only)."""
     return len(v) <= OPTION_MAX and bool(PROFILE_LINE.match(v))
 
 
 def is_option_line(v):
-    """True when this .pii-guard line is an option line (tier or denylist), never an allowed value."""
+    """True when this settings line is an option line (tier or denylist), never an allowed value."""
     return len(v) <= OPTION_MAX and bool(OPTION_LINE.match(v))
-UNREADABLE = "profile: <.pii-guard is not UTF-8 text>"  # load_allow adds it; it reads as an unknown tier line
-UNKNOWN_PROFILE = ("unknown profile line in .pii-guard, or the file is not UTF-8 text: the only tier line is "
+UNREADABLE = "profile: <the settings file is not UTF-8 text>"  # load_allow adds it; it reads as an unknown tier line
+UNKNOWN_PROFILE = ("unknown profile line in .check (or .pii-guard), or the file is not UTF-8 text: the only tier line is "
                    "`profile: dod`. Correct or remove the line, or save the file as UTF-8; the guard does not guess a tier.")
 
 
 def profile_of(allow):
-    """Tier from the .pii-guard lines: "minimum" (no profile line), "dod", or "unknown" (any other value: the caller
+    """Tier from the settings lines: "minimum" (no profile line), "dod", or "unknown" (any other value: the caller
     fails, so a wrong spelling cannot lower the tier in silence). Case, and spacing around the colon, do not matter."""
     lines = [v for v in allow if is_tier_line(v)]
     if not lines:
@@ -165,12 +186,12 @@ def profile_of(allow):
 
 
 def dod_mode(root):
-    """True when .pii-guard in the working tree has a profile line (an unknown value counts: fail closed)."""
+    """True when the settings file in the working tree has a profile line (an unknown value counts: fail closed)."""
     return profile_of(load_allow(root)) != "minimum"
 
 
 def warn_mode(root):
-    """True when .pii-guard in the working tree has the option line `denylist: warn` and no profile line."""
+    """True when the settings file in the working tree has the option line `denylist: warn` and no profile line."""
     allow = load_allow(root)
     return WARN_OPTION in allow and profile_of(allow) == "minimum"
 
@@ -186,14 +207,31 @@ def load_denylist():
     return parse_denylist(denylist_source()[0])
 
 
+CONFIG_NAMES = (".check", ".pii-guard")  # the settings file; the second is the name before 2026-11-18, still read
+
+
+def config_name(root, ref=None):
+    """The name of the settings file that exists (working tree, or at a git ref), or None: the first of CONFIG_NAMES."""
+    for name in CONFIG_NAMES:
+        if ref:
+            if subprocess.run(["git", "cat-file", "-e", f"{ref}:{name}"], cwd=root, capture_output=True).returncode == 0:
+                return name
+        elif (pathlib.Path(root) / name).is_file():
+            return name
+    return None
+
+
 def load_allow(root, ref=None):
-    """Allowed exact strings from .pii-guard (working tree, or the file at a git ref such as the PR base)."""
-    if ref:
-        r = subprocess.run(["git", "show", f"{ref}:.pii-guard"], cwd=root, capture_output=True)
+    """The lines of the settings file (working tree, or the file at a git ref such as the PR base): allowed exact
+    strings, and the `skip:`, `block:`, `denylist:` and `profile:` lines."""
+    name = config_name(root, ref)
+    if name is None:
+        data = b""
+    elif ref:
+        r = subprocess.run(["git", "show", f"{ref}:{name}"], cwd=root, capture_output=True)
         data = r.stdout if r.returncode == 0 else b""
     else:
-        f = pathlib.Path(root) / ".pii-guard"
-        data = f.read_bytes() if f.is_file() else b""
+        data = (pathlib.Path(root) / name).read_bytes()
     # The file must be clean UTF-8 text. Anything else (UTF-16 from a Windows shell, a NUL, bytes that do not decode)
     # could hide the tier line, so it adds UNREADABLE: profile_of then says "unknown" and the scan fails.
     bad = data.startswith((b"\xff\xfe", b"\xfe\xff")) or b"\0" in data
@@ -208,11 +246,28 @@ def load_allow(root, ref=None):
     return {v for v in vals if v} | ({UNREADABLE} if bad else set())
 
 
+def _covers(path, allow, key):
+    """True when a `<key> <path or glob>` line covers this repo-relative path: the glob matches the whole path or
+    the file name, or the line names a folder above it. A bare "*" or "**" is ignored."""
+    globs = [a[len(key):].strip() for a in allow if a.startswith(key)]
+    globs = [g for g in globs if g.strip("*/")]
+    base = path.rsplit("/", 1)[-1]
+    return any(fnmatch.fnmatchcase(path, g) or path.startswith(g.rstrip("/") + "/")
+               or (key == "block:" and "/" not in g and fnmatch.fnmatchcase(base, g)) for g in globs)
+
+
 def skipped(path, allow):
-    """True when a `skip: <path or glob>` line in .pii-guard covers this repo-relative path."""
-    globs = [a[5:].strip() for a in allow if a.startswith("skip:")]
-    globs = [g for g in globs if g.strip("*/")]  # a bare "*" or "**" would switch the guard off: ignored
-    return any(fnmatch.fnmatchcase(path, g) or path.startswith(g.rstrip("/") + "/") for g in globs if g)
+    """True when a `skip: <path or glob>` line covers this repo-relative path (a bare "*" would switch the scan off)."""
+    return _covers(path, allow, "skip:")
+
+
+def blocked(path, allow):
+    """True when a `block: <path or glob>` line names this repo-relative path: a file that must not be committed or
+    sent (a data export, a spreadsheet). A glob with no "/" also matches the file name in any folder (`block: *.xlsx`)."""
+    return _covers(path, allow, "block:")
+
+
+BLOCKED = "the settings file has a `block:` line for this path: this file must not be committed or sent"
 
 
 def _inside(spans):
@@ -232,12 +287,15 @@ def _inside(spans):
     return test
 
 
-def scan_text(text, where, deny, allow, dod=False):
-    """Return findings (where, line_no, kind, masked) for one text. dod: also run the DoD checks."""
+def scan_text(text, where, deny, allow, dod=False, terms=()):
+    """Return findings (where, line_no, kind, masked) for one text. dod: also run the DoD checks. terms: the owner's
+    own blocked words, found like the names (whole word, any case) and reported as kind term."""
     found = []
-    name_re = re.compile(r"(?i)(?<![A-Za-z0-9])(" + "|".join(re.escape(w) for w in deny) + r")(?![A-Za-z0-9])") if deny else None
+    words = list(deny) + list(terms)
+    names_low = {w.lower() for w in deny}
+    name_re = re.compile(r"(?i)(?<![A-Za-z0-9])(" + "|".join(re.escape(w) for w in words) + r")(?![A-Za-z0-9])") if words else None
     # Compiled once per call, used only on a line with a name hit (one finditer per allow line per line was slow).
-    allow_res = [re.compile(re.escape(v), re.IGNORECASE) for v in allow if not v.startswith("skip:")] if name_re else []
+    allow_res = [re.compile(re.escape(v), re.IGNORECASE) for v in allow if not v.startswith(("skip:", "block:"))] if name_re else []
     hosts_ok = {v.lower() for v in allow} if dod else set()  # a host name has no case
     for n, line in enumerate(text.splitlines(), 1):
         hits = []
@@ -260,7 +318,7 @@ def scan_text(text, where, deny, allow, dod=False):
         names = list(name_re.finditer(line)) if name_re else []
         if names:
             in_allowed = _inside((s.start(), s.end()) for rx in allow_res for s in rx.finditer(line))
-            hits += [("name", m.group(1)) for m in names
+            hits += [("name" if m.group(1).lower() in names_low else "term", m.group(1)) for m in names
                      if not in_allowed(m.start(1), m.end(1))]  # inside an allowed string
         seen = set()  # values already reported on this line, of any kind (a set: a list scan was quadratic)
         for kind, val in hits:
@@ -277,12 +335,16 @@ def git(*args, root="."):
                           errors="replace").stdout
 
 
-def scan_files(paths, root, deny, allow, dod=False, named=False):
+def scan_files(paths, root, deny, allow, dod=False, named=False, terms=()):
     """dod, or named (the caller named these files: FILE mode, the hook): a file that cannot be scanned is a finding
-    (kind unscanned) unless a `skip:` line names it."""
+    (kind unscanned) unless a `skip:` line names it. A path that a `block:` line names is a finding (kind blocked)."""
     found = []
     for p in paths:
         f = pathlib.Path(root) / p
+        rel = os.path.relpath(f, root).replace(os.sep, "/") if os.path.isabs(str(p)) else str(p)
+        if f.is_file() and blocked(rel, allow):
+            found.append((str(p), 0, "blocked", BLOCKED))
+            continue
         if skipped(str(p), allow) or not f.is_file():
             continue
         why = None
@@ -298,23 +360,41 @@ def scan_files(paths, root, deny, allow, dod=False, named=False):
             if dod or named:
                 found.append((str(p), 0, "unscanned", why))
             continue
-        found += scan_text(data.decode("utf-8", "replace"), str(p), deny, allow, dod)
+        found += scan_text(data.decode("utf-8", "replace"), str(p), deny, allow, dod, terms)
     return found
 
 
-def scan_commits(revs, root, deny, allow, dod=False):
+def commit_meta(sha, root, deny, allow, dod, terms):
+    """Findings in a commit's author and committer identity and in its message."""
+    lines = git("show", "-s", "--format=%an%n%ae%n%cn%n%ce%n%B", sha, root=root).split("\n")
+    out = []
+    for part, text in (("author/committer", "\n".join(lines[:4])), ("message", "\n".join(lines[4:]))):
+        out += [(f"commit {sha[:7]} {part}", n, k, v) for _, n, k, v in scan_text(text, "", deny, allow, dod, terms)]
+    return out
+
+
+def blocked_in_commit(sha, root, allow):
+    """Findings (kind blocked) for each file this commit adds or changes (a merge: against its first parent) that a
+    `block:` line names."""
+    names = git("-c", "core.quotepath=off", "show", "--format=", "--name-only", "-z", "--no-renames", "-m",
+                "--first-parent", "--diff-filter=AM", sha, root=root)
+    return [(f"commit {sha[:7]} {n}", "+", "blocked", BLOCKED) for n in filter(None, names.split("\0"))
+            if blocked(n, allow)]
+
+
+def scan_commits(revs, root, deny, allow, dod=False, terms=()):
     """revs: arguments for git rev-list. Scan each commit's identity, message and added lines.
-    dod: an added or changed file that cannot be scanned is a finding unless a `skip:` line names it."""
+    dod: an added or changed file that cannot be scanned is a finding unless a `skip:` line names it.
+    A file that a commit adds or changes under a `block:` line is a finding (kind blocked)."""
     found = []
     shas = git("rev-list", *revs, root=root).split()
+    has_block = any(a.startswith("block:") for a in allow)
     for sha in shas:
         short = sha[:7]
         unscanned = set()  # dod: files already reported as unscanned; their patch lines are not scanned again
-        meta = git("show", "-s", "--format=%an%n%ae%n%cn%n%ce%n%B", sha, root=root)
-        lines = meta.split("\n")
-        ident = "\n".join(lines[:4])
-        found += [(f"commit {short} author/committer", n, k, v) for _, n, k, v in scan_text(ident, "", deny, allow, dod)]
-        found += [(f"commit {short} message", n, k, v) for _, n, k, v in scan_text("\n".join(lines[4:]), "", deny, allow, dod)]
+        found += commit_meta(sha, root, deny, allow, dod, terms)
+        if has_block:
+            found += blocked_in_commit(sha, root, allow)
         if dod:  # numstat marks a binary file with "-"; the patch below has no added lines for it
             stat = git("-c", "core.quotepath=off", "show", "--format=", "--numstat", "-z", "--no-renames",
                        "--diff-filter=AM", sha, root=root)
@@ -341,7 +421,7 @@ def scan_commits(revs, root, deny, allow, dod=False):
 
         def flush():  # one scan per file, not one per added line (a large file has many lines)
             if added and not cur.endswith(SKIP_SUFFIX) and cur not in unscanned and not skipped(cur, allow):
-                found.extend((f"commit {short} {cur}", "+", k, v) for _, _, k, v in scan_text("\n".join(added), "", deny, allow, dod))
+                found.extend((f"commit {short} {cur}", "+", k, v) for _, _, k, v in scan_text("\n".join(added), "", deny, allow, dod, terms))
             added.clear()
 
         for line in patch.splitlines():

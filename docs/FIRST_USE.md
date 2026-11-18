@@ -10,7 +10,7 @@ The agent runs this once, before any other work. It starts in one of three ways:
 
 The check runs as the Claude Code SessionStart hook, or as the first step of AGENTS.md "Start of session" where hooks do not run (claude.ai chat).
 
-**Cloud session in the full tier (11B) with the guard on and no denylist** (the check also says DENYLIST; in the URL start, run `python3 scripts/pii_guard.py --status` right after the clone): do step 4 right after step 1, before steps 2 and 3, so no work is lost.
+**Cloud session in the full tier (11B) with the guard on and no denylist** (the check also says DENYLIST; in the URL start, run `python3 scripts/check_content.py --status` right after the clone): do step 4 right after step 1, before steps 2 and 3, so no work is lost.
 
 ## 1. Ask the questions
 
@@ -72,7 +72,7 @@ Rules for the asking agent:
 
 ## 4. The denylist, then the first push
 
-With the guard on (8A) in the full tier (11B), every push and every pull-request check fails until a name denylist exists. In the starter tier (11A), bootstrap adds `denylist: warn` to `.pii-guard`: a push with no list only warns, and every other check still runs. Ask for the list in both tiers. The user types the names, comma or newline separated: their names, username variants, employer. Run `python3 scripts/pii_guard.py --status`; it prints a count, never the names.
+With the guard on (8A) in the full tier (11B), every push and every pull-request check fails until a name denylist exists. In the starter tier (11A), bootstrap adds `denylist: warn` to `.pii-guard`: a push with no list only warns, and every other check still runs. Ask for the list in both tiers. The user types the names, comma or newline separated: their names, username variants, employer. Run `python3 scripts/check_content.py --status`; it prints a count, never the names.
 
 | Place | When | Where the user adds it |
 |---|---|---|
@@ -80,7 +80,7 @@ With the guard on (8A) in the full tier (11B), every push and every pull-request
 | Each Claude cloud environment the repo uses | 9A or 9C | Environment menu in the session title bar > Edit > Environment variables: `PII_GUARD_DENYLIST=Name1,Name2,...`. Only a new session reads it |
 | GitHub pull-request check | always (after the first push is fine) | `https://github.com/<owner/repo>/settings/secrets/actions` > New repository secret > Name `PII_GUARD_DENYLIST` |
 
-One master copy: the user keeps the list in one file in their own Google Drive and edits only that file. A computer with Drive for desktop reads it directly (set `PII_GUARD_DENYLIST_FILE` to the synced path); the cloud variable and the GitHub secret are pasted copies of it. An agent never opens the master file. To find a copy that differs, compare the fingerprint: `python3 scripts/pii_guard.py --status` in each place and the last line of the pull-request check print the same 8 characters when the lists are the same.
+One master copy: the user keeps the list in one file in their own Google Drive and edits only that file. A computer with Drive for desktop reads it directly (set `PII_GUARD_DENYLIST_FILE` to the synced path); the cloud variable and the GitHub secret are pasted copies of it. An agent never opens the master file. To find a copy that differs, compare the fingerprint: `python3 scripts/check_content.py --status` in each place and the last line of the pull-request check print the same 8 characters when the lists are the same.
 
 Then:
 
@@ -91,6 +91,6 @@ Then:
 
 ## 5. Verify and hand over
 
-1. Run `python3 scripts/pii_guard.py --status` and `python3 scripts/pii_guard.py --all` (it must print `PII GUARD PASS`), then `scripts/check.sh`. Report the result lines.
+1. Run `python3 scripts/check_content.py --status` and `python3 scripts/check_content.py --all` (it must print `CONTENT CHECK PASS`), then `scripts/check.sh`. Report the result lines.
 2. Give the user the claude.ai Project text from docs/host-prompts.md under Copy, for use in a claude.ai Project.
 3. Tell the user, in plain words: what was set up (with links to the repo and to AGENTS.md); what is left (the GitHub secret, other cloud environments); and how to go on: open the project with any agent and say what they want next; the agent reads docs/NEXT_PROMPT.md first.

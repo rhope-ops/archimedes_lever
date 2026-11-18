@@ -1,0 +1,7 @@
+# Settings of the content check (scripts/check.sh --content; the pre-push hook and the "checks" GitHub Action).
+# One entry per line:
+#   <exact string>          allowed although it looks like personal data
+#   skip: <path or glob>    not scanned
+#   block: <path or glob>   must not be committed or sent (for example `block: *.xlsx`)
+#   profile: dod            the DoD tier; `denylist: warn` lets a push pass with no name denylist
+# Only the owner adds an allowed string or a skip line. Agents never add one to get past a block (AGENTS.md "Personal data").

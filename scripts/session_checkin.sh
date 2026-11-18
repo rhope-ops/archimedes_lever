@@ -100,11 +100,11 @@ echo "uncommitted: $uncommitted"
 last="$(git rev-parse --git-dir)/check-last"
 [ -f "$last" ] && echo "check:       $(sed 's/^TIME  //' "$last")"
 # Personal-data guard: list source, entry count, fingerprint (compare it between places) and tier; never the names.
-if [ -f .pii-guard ] && [ -f scripts/pii_guard.py ]; then python3 scripts/pii_guard.py --status || true; fi
+if { [ -f .check ] || [ -f .pii-guard ]; } && [ -f scripts/check_content.py ]; then python3 scripts/check_content.py --status || true; fi
 
 # The kit itself keeps its placeholders on purpose (same origin rule as TEMPLATE_NAME in scripts/first_use_check.py).
 origin=$(git remote get-url origin 2>/dev/null); origin=${origin%/}; origin=${origin%.git}; origin=${origin##*/}
-if [ "$(printf '%s' "$origin" | tr '[:upper:]' '[:lower:]')" != "archimedes_lever" ] && grep -rIl '{{[A-Z_]*}}' --exclude-dir=.git --exclude=bootstrap.sh --exclude=session_checkin.sh --exclude=sync_baseline.py --exclude=first_use_check.py --exclude=drift.py --exclude=check.sh --exclude=README.md . >/dev/null 2>&1; then
+if [ "$(printf '%s' "$origin" | tr '[:upper:]' '[:lower:]')" != "archimedes_lever" ] && [ -f scripts/check_blocks.py ] && ! python3 scripts/check_blocks.py --placeholders >/dev/null 2>&1; then
   echo "warning: template placeholders remain; run scripts/bootstrap.sh"
 fi
 # This run's time against the "checkin" baseline in .bloat-audit.json (warn only; .claude/skills/efficiency/SKILL.md).

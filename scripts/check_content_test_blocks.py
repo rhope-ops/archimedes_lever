@@ -1,0 +1,153 @@
+"""More cases of the self-test of scripts/check_content.py (check_content_test.py runs them; kept apart for the
+600-line cap of docs/code-standard.md C4): the terms list, the `block:` lines, the settings file under its name
+`.check`, and the hook for the Write, Edit, NotebookEdit and Bash tools.
+
+Input: none (temporary folders; samples are built at run time, so this file does not flag itself).
+Output: one "ok" or "FAIL" line per case through the check() function that run() gets. Needs git.
+"""
+import contextlib
+import io
+import json
+import os
+import pathlib
+import subprocess
+import sys
+import tempfile
+
+import check_content_hook
+from check_content_scan import blocked, config_name, load_allow, load_terms, scan_files, scan_text
+
+at, dot = "@", "."
+ME = [sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "check_content.py")]
+
+
+def kinds(text, deny=(), allow=(), terms=()):
+    """The sorted finding kinds of one text."""
+    return sorted({k for _, _, k, _ in scan_text(text, "t", list(deny), set(allow), False, list(terms))})
+
+
+def case_terms(check):
+    """The owner's terms: whole word, any case, masked, kind term; a name stays a name; an allowed string wins."""
+    check("term: found as a whole word, any case", kinds("the BLUEBIRD plan", terms=["bluebird"]) == ["term"])
+    check("term: not inside another word", kinds("bluebirds fly", terms=["bluebird"]) == [])
+    check("term and name in one line keep their kinds", kinds("Alex and Bluebird", ["Alex"], terms=["Bluebird"]) == ["name", "term"])
+    check("a word in both lists is a name", kinds("Alex", ["Alex"], terms=["alex"]) == ["name"])
+    check("term: inside an allowed string passes", kinds("Bluebird Cafe", allow={"Bluebird Cafe"}, terms=["Bluebird"]) == [])
+    found = scan_text("the Bluebird plan", "t", [], set(), False, ["Bluebird"])
+    check("term: the finding is masked", found and "Bluebird" not in found[0][3])
+    with tempfile.TemporaryDirectory() as d:
+        f = pathlib.Path(d, "terms.txt")
+        f.write_text("# clients\nBluebird\n")
+        old = {k: os.environ.get(k) for k in ("CHECK_TERMS", "CHECK_TERMS_FILE")}
+        os.environ["CHECK_TERMS_FILE"] = str(f)
+        try:
+            check("terms: read from the file", load_terms() == ["Bluebird"])
+            os.environ["CHECK_TERMS"] = "Osprey, Kestrel"
+            check("terms: the environment variable comes first", load_terms() == ["Osprey", "Kestrel"])
+            env = {k: v for k, v in os.environ.items() if not k.startswith(("PII_GUARD", "GIT_"))}
+            env["PII_GUARD_DENYLIST_FILE"] = str(f) + ".missing"
+            r = subprocess.run(ME + ["--stdin"], input="the osprey plan", env=env, capture_output=True, text=True, cwd=d)
+            check("terms: the CLI blocks a term and hides it", r.returncode == 1 and "term" in r.stdout
+                  and "2 terms checked" in r.stdout and "osprey" not in r.stdout.lower().replace("the osprey plan", ""))
+            env["PII_GUARD_DENYLIST"] = "Alex"
+            r = subprocess.run(ME + ["--status"], env=env, capture_output=True, text=True, cwd=d)
+            check("terms: --status prints the count, never the words", "terms: 2 entries" in r.stdout and "Osprey" not in r.stdout)
+        finally:
+            for k, v in old.items():
+                os.environ.pop(k, None) if v is None else os.environ.__setitem__(k, v)
+
+
+def case_block_lines(check):
+    """`block:` lines: a glob, a file-name glob in any folder, a folder; bare stars are ignored; block wins over skip."""
+    allow = {"block: *.xlsx", "block: exports/", "block: data/raw-*.csv", "block: *", "skip: exports/"}
+    for path, want in (("a.xlsx", True), ("deep/dir/b.xlsx", True), ("exports/x.txt", True), ("data/raw-1.csv", True),
+                       ("data/clean.csv", False), ("notes.md", False), ("xlsx", False)):
+        check(f"block: {path}: {'blocked' if want else 'passes'}", blocked(path, allow) is want)
+    with tempfile.TemporaryDirectory() as d:
+        pathlib.Path(d, "exports").mkdir()
+        pathlib.Path(d, "exports", "x.txt").write_text("clean\n")
+        pathlib.Path(d, "ok.txt").write_text("clean\n")
+        got = [(p, k) for p, _, k, _ in scan_files(["exports/x.txt", "ok.txt"], d, [], allow)]
+        check("block: a blocked file is a finding although a skip line names it", got == [("exports/x.txt", "blocked")])
+
+
+def git(d, *args):
+    """Run git in d with a fixed noreply identity and no host settings."""
+    env = {**os.environ, "GIT_AUTHOR_NAME": "Sam", "GIT_COMMITTER_NAME": "Sam",
+           "GIT_AUTHOR_EMAIL": "sam" + at + "users.noreply.github.com",
+           "GIT_COMMITTER_EMAIL": "sam" + at + "users.noreply.github.com"}
+    return subprocess.run(["git", "-c", "commit.gpgsign=false", *args], cwd=d, env=env, capture_output=True, text=True, check=True)
+
+
+def case_check_file(check):
+    """The settings file is `.check`; `.pii-guard` is read only when `.check` is absent; a commit of a blocked file fails."""
+    with tempfile.TemporaryDirectory() as d:
+        env = {k: v for k, v in os.environ.items() if not k.startswith(("PII_GUARD", "GIT_"))}
+        env["PII_GUARD_DENYLIST"] = "Alex"
+        git(d, "init", "-q", "-b", "main")
+        check("no settings file: none", config_name(d) is None and load_allow(d) == set())
+        pathlib.Path(d, ".pii-guard").write_text("old-allowed\n")
+        check("only .pii-guard: it is read", config_name(d) == ".pii-guard" and load_allow(d) == {"old-allowed"})
+        pathlib.Path(d, ".check").write_text("# settings\nblock: *.xlsx\nprofile: dod\n")
+        check(".check wins over .pii-guard", config_name(d) == ".check" and load_allow(d) == {"block: *.xlsx", "profile: dod"})
+        r = subprocess.run(ME + ["--status"], env=env, capture_output=True, text=True, cwd=d)
+        check(".check: `block:` is no tier line; the tier line is read", "profile: dod" in r.stdout)
+        pathlib.Path(d, ".pii-guard").unlink()
+        pathlib.Path(d, ".check").write_text("block: *.xlsx\n")
+        git(d, "add", ".check"); git(d, "commit", "-q", "-m", "settings")
+        base = git(d, "rev-parse", "HEAD").stdout.strip()
+        check(".check at a git ref is read", load_allow(d, base) == {"block: *.xlsx"})
+        pathlib.Path(d, "sub").mkdir()
+        pathlib.Path(d, "sub", "list.xlsx").write_text("not a real sheet\n")
+        git(d, "add", "-A"); git(d, "commit", "-q", "-m", "add a sheet")
+        r = subprocess.run(ME + ["--range", base + "..HEAD"], env=env, capture_output=True, text=True, cwd=d)
+        check("a commit that adds a blocked file fails", r.returncode == 1 and "blocked" in r.stdout)
+        r = subprocess.run(ME + ["--all"], env=env, capture_output=True, text=True, cwd=d)
+        check("a tracked blocked file fails --all", r.returncode == 1 and "sub/list.xlsx:0: blocked" in r.stdout)
+        git(d, "rm", "-q", "sub/list.xlsx"); git(d, "commit", "-q", "-m", "remove the sheet")
+        r = subprocess.run(ME + ["--all"], env=env, capture_output=True, text=True, cwd=d)
+        check("after its removal --all passes", r.returncode == 0)
+
+
+def hook(d, tool, tool_input):
+    """Run the hook in this process for one tool call in project d; return its exit code."""
+    with contextlib.redirect_stderr(io.StringIO()):
+        return check_content_hook.hook(json.dumps({"tool_name": tool, "cwd": d, "tool_input": tool_input}))
+
+
+def case_hook_tools(check):
+    """The hook for Write, Edit, NotebookEdit and Bash."""
+    mail = "jane" + at + "corp" + dot + "io"
+    with tempfile.TemporaryDirectory() as d:
+        pathlib.Path(d, ".check").write_text("block: *.xlsx\n")
+        saved = {k: os.environ.pop(k) for k in list(os.environ) if k.startswith("PII_GUARD_DENYLIST") or k == "CLAUDE_PROJECT_DIR"}
+        os.environ["PII_GUARD_DENYLIST_FILE"] = os.path.join(d, "none.txt")
+        os.environ["CLAUDE_PROJECT_DIR"] = d
+        try:
+            for name, tool, inp, want in (
+                ("Write: clean text to a new file passes", "Write", {"file_path": "new.md", "content": "hello"}, 0),
+                ("Write: an address in the content blocks", "Write", {"file_path": "new.md", "content": "mail " + mail}, 2),
+                ("Write: a blocked path blocks", "Write", {"file_path": os.path.join(d, "out", "a.xlsx"), "content": "x"}, 2),
+                ("Edit: an address in the new text blocks", "Edit", {"file_path": "a.md", "old_string": "x", "new_string": mail}, 2),
+                ("Edit: an address only in the old text passes (the edit removes it)", "Edit", {"file_path": "a.md", "old_string": mail, "new_string": "the owner"}, 0),
+                ("NotebookEdit: an address in the new source blocks", "NotebookEdit", {"notebook_path": "n.ipynb", "new_source": mail}, 2),
+                ("Bash: a local command with an address passes unread", "Bash", {"command": "grep -rn '" + mail + "' ."}, 0),
+                ("Bash: curl with an address blocks", "Bash", {"command": "curl -d 'to=" + mail + "' https://example.com"}, 2),
+                ("Bash: git commit with an address blocks", "Bash", {"command": "git -C . commit -m 'thanks " + mail + "'"}, 2),
+                ("Bash: gh with a clean text passes", "Bash", {"command": "gh pr view 5"}, 0),
+                ("Bash: a URL with a clean text passes", "Bash", {"command": "python3 fetch.py https://example.com/x"}, 0),
+                ("Bash: a word that only holds 'gh' is local", "Bash", {"command": "echo high " + mail}, 0),
+                ("Bash: a command of a wrong type is scanned and passes", "Bash", {"command": 5}, 0),
+            ):
+                code = hook(d, tool, inp)
+                check(f"hook: {name} (exit {code})", code == want)
+        finally:
+            os.environ.pop("PII_GUARD_DENYLIST_FILE", None)
+            os.environ.pop("CLAUDE_PROJECT_DIR", None)
+            os.environ.update(saved)
+
+
+def run(check):
+    """Run the cases of this file; check(label, good) prints and records each result."""
+    for case in (case_terms, case_block_lines, case_check_file, case_hook_tools):
+        case(check)

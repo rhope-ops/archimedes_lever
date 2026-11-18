@@ -5,7 +5,8 @@ Blocks (exit 2, reason on stderr) when the checkout has uncommitted changes, or
 commits that its upstream branch does not have, or a branch that was never pushed.
 Passes a clean read-only checkout: no changes (untracked files included), no stash,
 and HEAD is on the default branch (origin/main, else origin/master) or behind it, so
-an unpushed session branch with no work of its own does not block (kit default, 2026-11-11).
+an unpushed session branch with no work of its own does not block (kit default, 2026-11-11). When the local copy
+of the default branch is old (a new session clone often is), the hook fetches that one branch and compares again.
 Allows the stop on the second try in a row (stop_hook_active), so a turn that must
 end anyway (for example, near the usage limit, or when the owner said hold) can end.
 Outside a git repo, or when git fails, it allows the stop.
@@ -22,6 +23,7 @@ import subprocess
 import sys
 
 REPO_DIR = None
+FETCH_TIMEOUT_S = 10  # the hook timeout in .claude/settings.json is 30
 
 
 def git(*args):
@@ -44,13 +46,24 @@ def default_ref():
 
 
 def on_default_branch():
-    """True when HEAD has no commits that origin/main (or origin/master) lacks."""
+    """True when HEAD has no commits that origin/main (or origin/master) lacks. A local copy of that branch can be
+    old: when the first comparison fails, fetch the branch once (at most FETCH_TIMEOUT_S seconds) and compare again."""
     ref = default_ref()
     if ref is None:
         return False
-    r = subprocess.run(["git", "merge-base", "--is-ancestor", "HEAD", ref], cwd=REPO_DIR,
-                       capture_output=True, text=True)
-    return r.returncode == 0
+
+    def merged():
+        """True when HEAD is the ref's commit or one of its ancestors."""
+        return subprocess.run(["git", "merge-base", "--is-ancestor", "HEAD", ref], cwd=REPO_DIR,
+                              capture_output=True, text=True).returncode == 0
+    if merged():
+        return True
+    try:  # no network, no remote or a slow host: keep the first answer
+        subprocess.run(["git", "fetch", "--quiet", "origin", ref.split("/", 1)[1]], cwd=REPO_DIR, capture_output=True,
+                       timeout=FETCH_TIMEOUT_S)
+    except (subprocess.TimeoutExpired, OSError):
+        return False
+    return merged()
 
 
 def problems():
@@ -171,6 +184,10 @@ def clean_cases(repos):
     out.append(("clean branch behind origin/main, never pushed", verdict(work), "pass"))
     work = repos.fresh("master", default="master"); run(work, "checkout", "-q", "-b", "s")
     out.append(("clean branch at origin/master (no main), never pushed", verdict(work), "pass"))
+    # The local origin/main is one commit old, and HEAD is the newer commit that the remote already has.
+    work = repos.fresh("stale"); repos.commit(work, "b"); run(work, "push", "-q", "origin", "main")
+    run(work, "update-ref", "refs/remotes/origin/main", "HEAD~1"); run(work, "checkout", "-q", "-b", "s")
+    out.append(("clean branch at the remote's main while the local origin/main is old", verdict(work), "pass"))
     return out
 
 

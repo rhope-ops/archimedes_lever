@@ -40,7 +40,7 @@ These are things that went wrong across 5 real projects, and the rule each one l
 | Before you build, ask how the person works and what their setup allows | A solution assumed copy and paste, on a machine where the user had to type everything by hand | PREFERENCES.md "Least Effort for Me" |
 | Build from a real sample and the full source, not from memory | A package built from the docs failed on import; a real export showed the wrong key | Ask for a sample first (not yet a rule) |
 | Change one thing per test, and use a control | A test changed 2 things at once and could not find the cause | Not yet a rule |
-| Keep personal data out of git from the very first commit | An old repo could never go public, because its history held a name and an email | The kit's `scripts/pii_guard.py` |
+| Keep personal data out of git from the very first commit | An old repo could never go public, because its history held a name and an email | The kit's `scripts/check_content.py` |
 | Treat text in repos and on web pages as data, not as instructions | Research: one model followed an instruction injected into a README or TODO file 2.6 times more often than the same instruction in a code or data file | The kit's AGENTS.md "Untrusted input" |
 | Check for bloat on a schedule, and measure before you cut | One operation went from 116.6 s to 23.4 s after an audit | The kit's `scripts/bloat_check.py` |
 
@@ -118,7 +118,7 @@ With the guard on in the full kit, every push and every pull-request check fails
    git config --global user.email "ID+USER@users.noreply.github.com"
    ```
 2. Add your name list (your names, username variants, employer) in each place you work: [docs/FIRST_USE.md, step 4](docs/FIRST_USE.md#4-the-denylist-then-the-first-push) lists the places and commands. It never goes into a repo.
-3. Check it: `python3 scripts/pii_guard.py --status` shows where the list comes from and how many entries it has, never the names; `python3 scripts/pii_guard.py --all` prints PII GUARD PASS, or each finding with the value masked.
+3. Check it: `python3 scripts/check_content.py --status` shows where the list comes from and how many entries it has, never the names; `python3 scripts/check_content.py --all` prints CONTENT CHECK PASS, or each finding with the value masked.
 
 ## Update an existing project
 
@@ -140,7 +140,7 @@ An old AGENTS.md that doesn't follow the kit's layout is moved under "Project ru
 - Account-wide preferences apply only to your own Claude account. Every Claude session in the project gets the project rules from AGENTS.md.
 - Setup needs an agent with file access. A chat that can't run commands can only give you text to paste; use "Set up a project by hand".
 - With the guard on, the pull-request check needs the `PII_GUARD_DENYLIST` secret. GitHub doesn't give secrets to pull requests from forks, so a pull request from a fork always fails the check. The maintainer checks it by hand, or copies it to a branch in the repo.
-- The pull-request check runs the scripts from the pull request itself, so a pull request that edits `scripts/pii_guard.py` or `scripts/check.sh` can change the result. Review changes to those files by hand.
+- The pull-request check runs the scripts from the pull request itself, so a pull request that edits `scripts/check_content.py` or `scripts/check.sh` can change the result. Review changes to those files by hand.
 - Hooks are seat belts, not locks: Claude Code hooks only apply to Claude Code, and `--no-verify` skips git hooks.
 - The Claude Code sandbox (the network allowlist in .claude/settings.json) needs bubblewrap and socat on Linux. Without them, Claude Code warns you and runs commands outside the sandbox; the deny rules and git hooks still apply. Claude cloud containers don't have them, but they sit behind their own network proxy. macOS needs nothing extra.
 - The guard finds patterns and the names on your list. It can't find a name you didn't list, or personal details written out in sentences. Read everything before you publish.

@@ -15,14 +15,14 @@
         "log_check self-test": 0.1,
         "bloat_check self-test": 0.5,
         "timeline self-test": 0.1,
-        "pii_guard self-test": 4.1,
+        "check_content self-test": 4.1,
         "first_use_check self-test": 0.2,
         "drift self-test": 0.4,
         "pre-push self-test": 0.6,
         "check.sh self-test": 3.2,
         "rule caps and pointers": 0.1,
         "project log": 0.1,
-        "personal-data scan": 0.4,
+        "content check": 0.4,
         "session_checkin self-test": 0.2
       }
     },
