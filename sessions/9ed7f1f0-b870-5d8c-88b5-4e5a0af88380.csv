@@ -1,0 +1,12 @@
+message_id,timestamp,turn,session_id,repo,model,source,input_tokens,cache_creation_input_tokens,cache_read_input_tokens,output_tokens
+msg_011ChALyjCPMvzs7LhWXvujU,2026-11-18T11:51:46.423Z,1,9ed7f1f0-b870-5d8c-88b5-4e5a0af88380,archimedes_lever,claude-fable-5-2,main,2,33606,64085,4052
+msg_011ChAM35JgrYakYzGNjW8SW,2026-11-18T11:52:26.994Z,1,9ed7f1f0-b870-5d8c-88b5-4e5a0af88380,archimedes_lever,claude-opus-5-5,subagent,2,54336,0,237
+msg_011ChAM35LviUBQEzsdGU6db,2026-11-18T11:52:27.071Z,1,9ed7f1f0-b870-5d8c-88b5-4e5a0af88380,archimedes_lever,claude-opus-5-5,subagent,2,54340,0,213
+msg_011ChAM35R98AChTsaPbhiPD,2026-11-18T11:52:27.138Z,1,9ed7f1f0-b870-5d8c-88b5-4e5a0af88380,archimedes_lever,claude-opus-5-5,subagent,2,54090,0,161
+msg_011ChAM3GD2waP27jZ5M7nyE,2026-11-18T11:52:29.655Z,1,9ed7f1f0-b870-5d8c-88b5-4e5a0af88380,archimedes_lever,claude-opus-5-5,subagent,2,4508,54336,272
+msg_011ChAM3GzQTNPqv6WUoJuS5,2026-11-18T11:52:29.660Z,1,9ed7f1f0-b870-5d8c-88b5-4e5a0af88380,archimedes_lever,claude-opus-5-5,subagent,2,3767,54340,192
+msg_011ChAM3GPCfWUTfdoVxVs5Z,2026-11-18T11:52:29.888Z,1,9ed7f1f0-b870-5d8c-88b5-4e5a0af88380,archimedes_lever,claude-opus-5-5,subagent,2,4215,54090,310
+msg_011ChAM3QnDkGj9NCNEwzJnK,2026-11-18T11:52:31.671Z,1,9ed7f1f0-b870-5d8c-88b5-4e5a0af88380,archimedes_lever,claude-opus-5-5,subagent,2,14473,58107,255
+msg_011ChAM3WUmzfybC8irzEscV,2026-11-18T11:52:34.663Z,1,9ed7f1f0-b870-5d8c-88b5-4e5a0af88380,archimedes_lever,claude-opus-5-5,subagent,2,18615,58305,256
+msg_011ChAM3SryyMm6oXMexTYVK,2026-11-18T11:52:34.693Z,1,9ed7f1f0-b870-5d8c-88b5-4e5a0af88380,archimedes_lever,claude-opus-5-5,subagent,2,14027,58844,413
+msg_011ChAM3hWYtRHu9p2gUDNrj,2026-11-18T11:52:36.560Z,1,9ed7f1f0-b870-5d8c-88b5-4e5a0af88380,archimedes_lever,claude-fable-5-2,main,2,8790,97691,159
