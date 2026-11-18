@@ -141,7 +141,7 @@ _TIER = r"[\W_]*(?:profile(?![A-Za-z0-9._/-])|(?!skip\b|block\b|denylist\b)[A-Za
 PROFILE_LINE = re.compile(r"(?i)^" + _TIER)
 # A setting of the code standard or the audit (`code-max-file-lines: 600`, `audit-ignore: ref/**`): `code-` or `audit-`,
 # a key and a colon. scripts/check_settings.py reads these lines; here they are option lines and never tier lines.
-SETTING_LINE = re.compile(r"(?i)^(?:code|audit|content)-[A-Za-z0-9_-]+\s*:")
+SETTING_LINE = re.compile(r"(?i)^(?:code|audit)-[A-Za-z0-9_-]+\s*:")
 OPTION_LINE = re.compile(r"(?i)^(?:" + _TIER + r"|denylist\s*:)")  # option lines, never allowed values
 OPTION_MAX = 200  # a longer line is never an option line: the patterns above only ever see short lines (no slow match)
 
@@ -154,7 +154,8 @@ def max_bytes_of(allow):
     """The size limit of one scanned file: the `content-max-bytes: <number>` line of the settings file, else MAX_BYTES.
 
     A project raises it so that its large text files are scanned instead of reported as unscanned (a higher limit
-    scans more, so it never weakens the check). A value below MAX_BYTES, above MAX_BYTES_CEILING or not a number is
+    scans more, so it never weakens the check). The line is not an option line: the callers that drop option lines
+    keep it, so the limit reaches the scan; as an allowed string it only allows its own text. It is never a tier line. A value below MAX_BYTES, above MAX_BYTES_CEILING or not a number is
     ignored, and MAX_BYTES applies.
 
     Args:
@@ -175,7 +176,7 @@ def is_tier_line(v):
 
 
 def is_option_line(v):
-    """True when this settings line is an option line (tier, denylist, or a `code-`, `audit-` or `content-` setting), never an
+    """True when this settings line is an option line (tier, denylist, or a `code-` or `audit-` setting), never an
     allowed value."""
     return len(v) <= OPTION_MAX and bool(OPTION_LINE.match(v) or SETTING_LINE.match(v))
 BOTH_FILES = "profile: <both .check and .pii-guard exist>"  # load_allow adds it; it reads as an unknown tier line
