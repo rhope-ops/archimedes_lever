@@ -28,7 +28,7 @@ Nothing else is a rule. docs/DECISIONS.md is the record of what the owner decide
 ## Start of session
 
 - Run `python3 scripts/first_use_check.py` (Claude Code runs it as a SessionStart hook) and `scripts/session_checkin.sh`. Do what their output lines say (FIRST USE, KIT, DENYLIST, AUDIT DUE), and report the branch, uncommitted files and the ahead/behind count against origin/main.
-- Read docs/NEXT_PROMPT.md. Find the tools you have and read the environment docs before you say a capability is not available.
+- Read docs/NEXT_PROMPT.md (in the kit clone itself: the text of the open pull request of your branch). Find the tools you have and read the environment docs before you say a capability is not available.
 
 ## Authority
 
@@ -38,7 +38,7 @@ Nothing else is a rule. docs/DECISIONS.md is the record of what the owner decide
 
 - Deliver every change without being asked: commit, push, open a pull request, merge it when the full lane is green and the review that "Delegation" requires finds no MAJOR finding, verify that origin/main has the commit, and republish the affected artifacts. Never push to main directly. Steps, check lanes, branch clean-up and unattended work: `.claude/skills/deliver/SKILL.md`.
 - A host limit wins over this section (for example a required branch, or a push or merge the host does not allow without the owner): do the steps it allows, then report each other step as blocked, with its cause and what unblocks it.
-- Exception: for a UI or design change that the owner has not approved, show a preview first (a preview artifact or a branch) and merge after the owner approves. For other changes, this section overrides the personal "preview first" rule.
+- Exceptions: for a UI or design change that the owner has not approved, show a preview first (a preview artifact or a branch) and merge after the owner approves; for a change whose merge has a live or irreversible effect (a deploy, a data write), ask before the merge. For other changes, this section overrides the personal "preview first" rule.
 - Put every deliverable where it survives (repo, doc, artifact) as soon as it exists.
 
 ## Reporting
@@ -60,13 +60,13 @@ Nothing else is a rule. docs/DECISIONS.md is the record of what the owner decide
 ## Personal data
 
 - Never commit secrets, tokens, credentials or personal data: real names, email addresses, phone numbers, home or work addresses, ID numbers, or the owner's job details (git history keeps them for good, and a repo that holds them can never go public). Use a role (for example "the maintainer") and fake sample data; commit with a GitHub noreply address, never a personal email. A private repo may put its owner's real name in the `- Owner:` line.
-- The content check (`scripts/check.sh --content`; settings in `.check`) scans every push and pull request for personal data, secrets, the owner's blocked terms and blocked files, and a PreToolUse hook (`scripts/check.sh --hook`) scans the tool calls that write files or send content out, also in a repo with no `.check` file. When it blocks, and for its coverage, state, tiers and word lists: `.claude/skills/personal-data/SKILL.md`. Never ask for the names or terms in chat, never commit them, and never add an allow or skip entry: only the owner does.
+- The content check (`scripts/check.sh --content`) scans for personal data, secrets, the owner's blocked terms and blocked files: every push and pull request in a repo that has the settings file `.check`, and, through a PreToolUse hook (`scripts/check.sh --hook`), the tool calls that write files or send content out in every repo. When it blocks, and for its coverage, state, tiers and word lists: `.claude/skills/personal-data/SKILL.md`. Never ask for the words of a list in chat, never commit them, and never add an allow or skip entry: only the owner does.
 
 ## Commands
 
 <!-- Fill in when the project has them. Give exact commands. -->
 - Build: not set yet.
-- Test: `scripts/check.sh` (full lane: the kit's self-tests, the caps, the content check and this project's own tests in `scripts/check.local.sh`); `scripts/check.sh --fast` (fast lane: self-tests only of changed scripts, and `check.local.sh --fast`).
+- Test: `scripts/check.sh` (full lane) and `scripts/check.sh --fast` (fast lane); what each runs: the header of `scripts/check.sh`. This project's own tests: `scripts/check.local.sh`.
 - Lint: not set yet.
 - Production data: not set yet (until it is set, agents treat every data target as production).
 
@@ -77,11 +77,11 @@ Nothing else is a rule. docs/DECISIONS.md is the record of what the owner decide
 ## Checks
 
 - Never repin an approval, add an exemption, skip a test or edit a generated report to make a check pass (a pass must mean the work is right). Never hand-edit generated files: change the source and rebuild.
-- Two lanes: each push runs the fast lane (`scripts/git-hooks/pre-push`), and a merge needs a green full lane on the head commit: run `scripts/check.sh` once before the merge; the pull-request Action runs it too. Do not run by hand a lane that the hook runs next.
+- Two lanes: each push runs the fast lane (`scripts/git-hooks/pre-push`), and a merge needs a green full lane on the head commit: run `scripts/check.sh` once before the merge, and where the pull-request Action runs, its result decides: never merge while it is red or running. Do not run by hand a lane that the hook runs next.
 
 ## Handoff
 
-- Keep status in repo files, never only in chat (the next session cannot see this chat; it reads the files). The current request overrides an older handoff. Keep docs/NEXT_PROMPT.md short (40 lines or fewer) and put detailed evidence in docs/reviews/. Steps: `.claude/skills/handoff/SKILL.md`. When the owner approves a plan, save it in docs/NEXT_PROMPT.md (in the kit clone itself: in the pull request text) with the approval date and push it before step 1; after a restart or a compaction, continue it without a new plan review or approval.
+- Keep status in repo files, never only in chat (the next session cannot see this chat; it reads the files). The current request overrides an older handoff. Keep docs/NEXT_PROMPT.md short (40 lines or fewer) and put detailed evidence in docs/reviews/. Steps: `.claude/skills/handoff/SKILL.md`. When the owner approves a plan, save it with the approval date before step 1: in docs/NEXT_PROMPT.md, pushed (in the kit clone itself: in the pull request text); after a restart or a compaction, continue it without a new plan review or approval.
 
 ## Bloat, drift and assumptions
 
@@ -104,7 +104,7 @@ Nothing else is a rule. docs/DECISIONS.md is the record of what the owner decide
 - Before you delegate or run more than one agent: `.claude/skills/delegate/SKILL.md` (agents, model routing, briefs, review and merge).
 <!-- /full -->
 - Delegate only substantial independent work (about 30 minutes or more) with bounded files and measurable done criteria. Give parallel agents disjoint files, and ask for concise findings with evidence paths. Check delegated output (diff, touched files, no approval or exemption changes) before you report it as done.
-- Before a merge of changes to code, scripts, checks, hooks or instruction files (AGENTS.md, CLAUDE.md, .claude/), and before a data write, a change that goes live or a security change, a fresh reviewer gets only the diff and the brief, not the author's conclusions (a fresh context finds what self-review misses): the `reviewer` subagent where the host has subagents, else a new session, on a model tier no lower than the author's; if neither is possible, review it yourself and call it "self-review". Other docs skip this review. The review covers the head commit you merge: a fix made after a review gets its own review.
+- Before a merge of changes to code, scripts, checks or the instruction and guard files that "Rules and decisions" lists, and before a data write, a change that goes live or a security change, a fresh reviewer gets only the diff and the brief, not the author's conclusions (a fresh context finds what self-review misses): the `reviewer` subagent where the host has subagents, else a new session, on a model tier no lower than the author's; if neither is possible, review it yourself, call it "self-review" and ask the owner before the merge. Other docs skip this review. The review covers the head commit you merge: a fix made after a review gets its own review.
 - Work the owner expects done while away needs a running owner before the turn ends: a started agent or a one-time scheduled task. Say when the usage limit can interrupt it.
 
 ## Boundaries
