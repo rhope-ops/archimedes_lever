@@ -80,6 +80,8 @@ With the guard on (8A) in the full tier (11B), every push and every pull-request
 | Each Claude cloud environment the repo uses | 9A or 9C | Environment menu in the session title bar > Edit > Environment variables: `PII_GUARD_DENYLIST=Name1,Name2,...`. Only a new session reads it |
 | GitHub pull-request check | always (after the first push is fine) | `https://github.com/<owner/repo>/settings/secrets/actions` > New repository secret > Name `PII_GUARD_DENYLIST` |
 
+Optional second list, the owner's own blocked terms (words that are not personal data: a client, a code name). Same format and the same three places, under other names: the file `~/.config/check/terms.txt`, the cloud environment variable `CHECK_TERMS`, and the repository secret `CHECK_TERMS`. With no terms list, nothing is missing: the check runs without it. `scripts/check.sh --status` prints the count and a fingerprint of each list, never the words.
+
 One master copy: the user keeps the list in one file in their own Google Drive and edits only that file. A computer with Drive for desktop reads it directly (set `PII_GUARD_DENYLIST_FILE` to the synced path); the cloud variable and the GitHub secret are pasted copies of it. An agent never opens the master file. To find a copy that differs, compare the fingerprint: `python3 scripts/check_content.py --status` in each place and the last line of the pull-request check print the same 8 characters when the lists are the same.
 
 Then:
