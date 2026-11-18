@@ -1,11 +1,11 @@
 ---
 name: audit
-description: Use when the owner asks for a bloat, drift, rule or speed audit, when the check-in says AUDIT DUE and the owner agrees to run it, and before a release (one slow operation: the efficiency skill). Gives the full audit - measure, find bloat by category (rule census and slow or serial steps included), check assumptions, fix, and deliver removals as one small pull request for the owner.
+description: Use when the owner asks for a bloat, drift, rule or speed audit, when the check-in says AUDIT DUE and the owner agrees, and before a release. Gives the full audit: measure, find bloat by category, check assumptions, fix, and deliver removals as one pull request.
 ---
 
 # Bloat, drift and assumption audit
 
-The full periodic audit that AGENTS.md "Bloat, drift and assumptions" calls for. Claude or a person can run it. Never start it unasked: when the check-in says AUDIT DUE, tell the owner and ask (about 1 hour of agent time).
+The full periodic audit that AGENTS.md "Caps and audit" names. Claude or a person can run it, and only when the owner asks: when the check-in says AUDIT DUE, tell the owner and ask (about 1 hour of agent time).
 
 Due: every 14 days or 300 commits to main, whichever comes first, and before a release. The owner may set other values in `.check` (`audit-every-days:`, `audit-every-commits:`). One operation slower than its baseline: `.claude/skills/efficiency/SKILL.md`; it proposes this audit when the cause is spread over many files.
 
@@ -20,8 +20,8 @@ Why: two audits of one project found layered bloat that made a simple operation 
 - "Nothing in the repo calls it" does not prove a thing is unused. People run tools by hand, from other repos or devices, and from pasted prompts. Agents read only the repo, so a request that lives only in chat is invisible to them.
 - Exceptions (no approval), the only list: (a) files made on this audit's own branch; (b) generated files rebuilt from their source; (c) agent scratch files (debug output, "_old"/"_v2" copies) that nothing references AND whose adding commit names no request or decision; (d) exact duplicates merged into the canonical copy, text kept word for word; (e) reference text moved out of start-read files unchanged, except from instruction and guard files (AGENTS.md "Rules and decisions"), where every change is a proposal. List each in the report.
 - Chesterton's fence: before you propose a removal, find why the thing exists (git log -S, DECISIONS, the commit that added it) and put the reason, or "not found", in the proposal.
-- Never weaken a check, hook, test or guard to make a number smaller.
-- Generated files: fix the source and rebuild. Never hand-edit the output.
+- A smaller number is not a reason to change a check, hook, test or guard (AGENTS.md "Guards and checks").
+- Generated files: fix the source and rebuild (AGENTS.md "Checks").
 - One audit = one branch, small commits by category, so each removal can be reverted alone.
 - The audit itself must stay cheap: budget about 1 hour of agent time for a small repo. Stop and report if the scope is larger.
 
@@ -78,7 +78,7 @@ Assumptions that nobody checked are drift that has not happened yet.
 1. Make only the fixes in the exceptions list in "Rules for the auditor". Every other removal, shortening or rewording is a proposal for the owner (Step 5.4); make it only after the owner approves.
 2. Run the project's checks (AGENTS.md "Commands"). All must pass as before.
 3. Run `python3 scripts/bloat_check.py --time` again. Report before → after for each number.
-4. AGENTS.md "Delegation" says which changes need the fresh review before the merge.
+4. AGENTS.md "Delivery" and "Fresh review" say which changes need the fresh review and who merges.
 
 ## Step 5: record
 
