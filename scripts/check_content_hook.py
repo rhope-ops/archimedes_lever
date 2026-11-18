@@ -40,18 +40,17 @@ GIT_OUT = frozenset(("commit", "commit-tree", "merge", "tag", "notes", "push", "
 
 
 def outgoing(cmd):
-    """True when a Bash command can send something out: it names a network client or a URL, or one of its simple
-    commands (split on newline ; | &) has the word git and a publishing verb. One pass per part (no slow pattern)."""
-    # Two readings, and either one makes the command outgoing: as written, and with each backslash-newline deleted
-    # (the shell joins such lines: "cu\<newline>rl" runs curl). Only the second would glue a word onto a client name
-    # where the shell does not join (inside a comment, or before a carriage return), and so hide it.
-    for text in (cmd, cmd.replace("\\\n", "")):
-        if CLIENTS.search(text):
+    """True when a Bash command can send something out: it names a network client or a URL, one of its simple
+    commands (split on newline ; | &) has the word git and a publishing verb, or a line ends in a backslash. One pass
+    (no slow pattern)."""
+    # A backslash at a line end can join two lines into one word ("cu\<newline>rl" runs curl), and where the shell
+    # joins depends on comments and quotes. The hook does not copy those rules: such a command is always scanned.
+    if "\\\n" in cmd or "\\\r" in cmd or CLIENTS.search(cmd):
+        return True
+    for part in re.split(r"[\n;|&]", cmd):
+        words = set(re.findall(r"[A-Za-z-]+", part))
+        if "git" in words and words & GIT_OUT:
             return True
-        for part in re.split(r"[\n;|&]", text):
-            words = set(re.findall(r"[A-Za-z-]+", part))
-            if "git" in words and words & GIT_OUT:
-                return True
     return False
 
 
