@@ -45,24 +45,25 @@ def expect(name, text, kinds, deny=(), allow=(), dod=False):
 
 
 def case_speed():
-    """Long lines (address chains, host runs, many distinct values) scan in linear time."""
+    """Long lines (address chains, host runs, many distinct values) scan in linear time (CPU time of this process,
+    so checks that run at the same time do not count)."""
     expect("personal email", "mail jane" + at + "corp" + dot + "io", ["email"])
-    t0 = time.time()
+    t0 = time.process_time()
     chain = len(scan_text(("a" + at + "b" + dot + "cc+") * 20_000, "t", [], set()))  # 200 KB of joined addresses
-    secs = time.time() - t0  # the first address and the "+" joined one; scan_text drops repeats
+    secs = time.process_time() - t0  # the first address and the "+" joined one; scan_text drops repeats
     check(f"200 KB chain of joined addresses: linear ({secs:.2f} s)", 1 <= chain <= 2 and secs < 2)
     teams = "api" + dot + "dod" + dot + "teams" + dot + "microsoft" + dot + "us"
     expect("a DoD Teams host with a subdomain", "see https://" + teams + "/x", ["milhost"], dod=True)
     for label, run in (("a.", "a." * 100_000), ("a-a.", "a-a." * 50_000), ("a.dod.", "a.dod." * 33_000)):
-        t0 = time.time()
+        t0 = time.process_time()
         scan_text(run, "t", [], set(), True)
-        secs = time.time() - t0
+        secs = time.process_time() - t0
         check(f"200 KB of {label!r}: MILHOST linear ({secs:.2f} s)", secs < 2)
-    t0 = time.time()
+    t0 = time.process_time()
     many = "".join("a" + str(i) + at + "b" + dot + "cc " for i in range(17_600))  # 200 KB of distinct addresses
     many += "".join("h" + str(i) + dot + "mil " for i in range(5_000)) + "Jane Doe" * 18_000  # hosts, allowed names
     scan_text(many, "t", ["jane"], {"Jane Doe"}, True)
-    secs = time.time() - t0
+    secs = time.process_time() - t0
     check(f"200 KB of distinct addresses, hosts and allowed names: linear ({secs:.2f} s)", secs < 2)
 
 
@@ -191,9 +192,9 @@ def case_profile_lines():
     hostile += [h[:n] for h in list(hostile) for n in (OPTION_MAX, OPTION_MAX - 1)]  # the longest lines the patterns see
     good = True
     for h in hostile:
-        t0 = time.monotonic()
+        t0 = time.process_time()
         good = profile_of({h}) != "dod" and is_option_line(h) in (True, False) and good
-        slow = max(slow, time.monotonic() - t0)
+        slow = max(slow, time.process_time() - t0)
     check(f"option lines: {len(hostile)} long or odd lines, the slowest read in {slow:.3f} s", good and slow < 1)
     expect("dod id: a longer word that starts like the keyword is not one", "dodidentifier 12345" + "67890", [], dod=True)
 
@@ -443,7 +444,7 @@ def run_hook_in_process(d, text, want):
         subprocess.run(["git", "init", "-q"], cwd=d, capture_output=True)
     cap = pii_guard_hook.HOOK_MAX_BYTES
     pii_guard_hook.HOOK_MAX_BYTES = 150_000 if want == "cap" else cap
-    err, t0 = io.StringIO(), time.time()
+    err, t0 = io.StringIO(), time.process_time()  # CPU time of this process, as in case_speed
     try:
         with contextlib.redirect_stderr(err):
             code = pii_guard_hook.hook(text)
@@ -453,7 +454,7 @@ def run_hook_in_process(d, text, want):
     if want == "dod":
         pathlib.Path(d, ".pii-guard").unlink()
     want = 2 if want in ("cap", "dod") else want
-    if time.time() - t0 > 5:
+    if time.process_time() - t0 > 5:
         out += " too slow"
         code = -1
     return code, out, want
