@@ -2,37 +2,37 @@
 
 The kit's own handoff (AGENTS.md "Handoff"). Kit only: first use deletes it in a project, which uses docs/NEXT_PROMPT.md. Keep it at 40 lines or fewer; evidence goes in docs/reviews/. Times are America/Chicago.
 
-Updated: 2026-11-18 07:10 by the session of pull request 41.
+Updated: 2026-11-18 12:20 by the session that wrote the plan below.
 
 ## State
 
-- main: `b24c834`. Open: [pull request 41](https://github.com/rhope-ops/archimedes_lever/pull/41), branch `claude/upbeat-bell-uxsavx`.
+- main: `213c58c` (pull request 41 merged: one `check`, kit lock, caps, config layout). Work branch in the kit and in each project: `claude/archimedes-lever-workflow-0mydsw`.
+- No project is synced yet: 0 of 7 have `.check.lock`; all 7 still use `.pii-guard`. Drift: 48 of 65 items (RADE) to 57 of 65 (65-601.Z).
 
-## Approved plan (the owner, 2026-11-18): one `check`, one home per rule, locked kit files
+## Approved plan (the owner, 2026-11-18 12:15): lean two-tier rules and the kit as a synced baseline
 
-Decisions and approved rule texts: the 2026-11-18 rows of [DECISIONS.md](DECISIONS.md). Conflict checks: [reviews/2026-11-18-rule-conflict-2.md](reviews/2026-11-18-rule-conflict-2.md).
+Full text, measured facts, proposals 1 to 26, usage estimate, risks and targets: [reviews/2026-11-18-lean-rules-sync-plan.md](reviews/2026-11-18-lean-rules-sync-plan.md). Decisions: the first 2026-11-18 row of [DECISIONS.md](DECISIONS.md). It replaces the open steps 3 to 9 of the plan "one `check`, one home per rule, locked kit files" (its steps 0 to 6 are done).
 
-- [x] 0. Plan saved; decisions recorded.
-- [x] 1. One content check behind `scripts/check.sh` (`check_content*.py`, `.check`, terms, `block:` lines, wider hook, `check_blocks.py`).
-- [x] 2. Caps: AGENTS.md 200 lines, session load 6,000 tokens; one-home check.
-- [ ] 3. One home per rule: rule texts approved and applied; skills cleaned; 3 conflict checks recorded. Left: the fourth conflict check (merge rule: ask by default) and its record; a recount against the audit.
-- [ ] 4b. Config layout `.check` + `.check.lock` + `.check.state.json` (`scripts/check_settings.py --migrate`); needs its own fresh review.
-- [x] 4. Kit lock `.check.lock`, `KIT_VERSION`, [CHANGELOG.md](CHANGELOG.md).
-- [ ] 5. Deliver the kit: the first fresh review is done and its 3 MAJOR findings are fixed; a review of the fixes and of 4b, a project log row, full lane and Action green, then ask the owner for the merge of pull request 41.
-- [x] 6. Projects attached and measured (clones next to the kit). 5 kit projects: RADE and 90-161.Z (47 of 64 items differ; session load about 7,084 and 8,269 tokens, over the cap), SPAR, 65-601.Z, 36-3003.Z (56 of 64; older kit). icf-source and sec-source have their own layout.
-- [ ] 7. Port to those 7 (the owner's scope): one worker and one pull request per repo (sync or hand port, `check_settings.py --migrate`, delete the renamed files, lock; trim the two large ones under the cap). A project rule that conflicts with a kit rule goes to the owner in one dialog. The owner merges each, unless waived.
-- [ ] 8. A paste block of the revised PREFERENCES.md for the owner's account.
-- [ ] 9. Setup guide for the owner (asked 2026-11-18): how to configure each Claude cloud environment and each GitHub repo for the new `check` (word lists, Actions secrets, the required check `checks`), one deep link per step.
+- [x] 0.1 Plan saved here; decisions recorded.
+- [x] 0.2 Proposal toggles published: https://claude.ai/artifact/7XSV5V62Wv8bKQYZsLpJLz (private; state in its database, collection `proposals`, field `on`).
+- [ ] 0.3 The owner sets the toggles. Read them (`ArtifactData` list `proposals`), write the result in this file. A proposal that is off drops out of every later step.
+- [ ] 1. Kit: re-read the Anthropic pages (1.1); full new AGENTS.md with "Hard rules", "Defaults" and three merge lanes, shown to the owner once for approval of the exact text (1.2); rule tests before and after (1.3); sync, drift, pre-push, one-home check and caps (1.4); doc fixes (1.5); fresh review, owner merge, release tag (1.6).
+- [ ] 2. Pilot sync: 36-3003.Z, 65-601.Z, SPAR (3 workers, one pull request each).
+- [ ] 3. RADE and 90-161.Z, one session each: give each project guard a home first.
+- [ ] 4. icf-source and sec-source: convert to the kit layout, then sync.
+- [ ] 5. Owner layer: PREFERENCES.md paste block; ruleset and secret-scanning links per repo; kit-update pull request and fleet page if toggled on; final handoffs. Still open from the old plan and kept here: the setup guide for cloud environments and repos (old step 9).
 
 ## Open (in order)
 
-1. Step 3, then 5 to 8. Done = each repo has a merged pull request with a green full lane, and `drift.py` shows 0 changed kit files.
+1. Step 0.3, then 1 to 5. Done = `drift.py --strict` shows 0 kit items different in 7 repos, `scripts/check.sh` passes in each, and the targets in the plan's "Verification" table are met.
 
 ## Needs the owner
 
-- Not in the plan (add only on approval): branch protection with the required check `checks`; GitHub secret scanning; CODEOWNERS; the kit as a Claude Code plugin; semantic versions.
+- Set the toggles (step 0.3). Default: proposals 1 to 19 on, 20 to 26 off.
+- Step 1.2: approve the exact AGENTS.md text. Options: approve; change lines; keep a removed rule. REC: approve after the rule tests pass.
 
 ## Do not
 
 - Do not put a command that holds a denied git pattern in a shell heredoc: the deny rules refuse it. Use the file tool.
 - Do not loop on MINOR conflict findings: record them; only a MAJOR finding changes rule text again.
+- Do not run `sync_baseline.py --apply` in a project before its step: five projects still have a "No kit sync" rule, and it stands until that step's pull request replaces it.
