@@ -32,11 +32,11 @@ Nothing else is a rule. docs/DECISIONS.md is the record of what the owner decide
 
 ## Authority
 
-- Make routine decisions yourself. Ask the owner only about: source authority, content approval, live or irreversible effects, costs, and security or privacy risk. Ask all open questions in one round, in the format of the owner's preferences (without them: AskUserQuestion where it exists, at most 4 per dialog, 2–4 options each, the recommendation first, each question able to stand alone). A recommendation is not a decision until the owner approves it.
+- Make routine decisions yourself. Ask the owner only about: source authority, content approval, the merge of a pull request ("Delivery"), live or irreversible effects, costs, and security or privacy risk. Ask all open questions in one round, in the format of the owner's preferences (without them: AskUserQuestion where it exists, at most 4 per dialog, 2–4 options each, the recommendation first, each question able to stand alone). A recommendation is not a decision until the owner approves it.
 
 ## Delivery
 
-- Deliver every change without being asked: commit, push, open a pull request, merge it when "Checks" allows the merge and the review that "Delegation" requires finds no MAJOR finding, verify that origin/main has the commit, and republish the affected artifacts. Never push to main directly. Steps, check lanes, branch clean-up and unattended work: `.claude/skills/deliver/SKILL.md`.
+- Deliver every change without being asked: commit, push and open a pull request. Ask the owner for the merge when "Checks" allows it and the review that "Delegation" requires finds no MAJOR finding; merge without that question only when the owner said for this task, or in "Project rules", that no approval is needed. Then verify that origin/main has the commit and republish the affected artifacts. Never push to main directly. Steps, check lanes, branch clean-up and unattended work: `.claude/skills/deliver/SKILL.md`.
 - A host limit wins over this section (for example a required branch, or a push or merge the host does not allow without the owner): do the steps it allows, then report each other step as blocked, with its cause and what unblocks it.
 - Exceptions: for a UI or design change that the owner has not approved, show a preview first (a preview artifact or a branch) and merge after the owner approves; for a change whose merge has a live or irreversible effect (a deploy, a data write), ask before the merge. For other changes, this section overrides the personal "preview first" rule.
 - Put every deliverable where it survives (repo, doc, artifact) as soon as it exists.

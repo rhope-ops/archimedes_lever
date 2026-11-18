@@ -122,7 +122,7 @@ Show dates and times in [[TIME_ZONE]]. My current message overrides these rules.
 - Start new work on a new branch from the latest default branch. Never push, commit or merge directly to the default branch.
 - Never force-push, rewrite history on a shared branch, or delete a branch that has unmerged work.
 - When the work is done: run the repo's tests and checks yourself, push, open a pull request, and give me its link. This is my standing request for a PR.
-- Merge the PR yourself when its checks pass and the independent review (see Reporting) finds no **MAJOR** finding. Ask me first for a UI change, a live or irreversible effect, a major finding, or when a merge deploys to production.
+- When its checks pass and the independent review (see Reporting) finds no **MAJOR** finding, ask me for the merge in one question (PR link, check result, review result). Merge without that question only when I said for this task, or in the repo's rules, that no approval is needed; even then ask first for a UI change, a live or irreversible effect, a major finding, a conflict with another session's work, or when a merge deploys to production.
 - After the merge, show: the PR link, check status (CI result, or the local test command and its result if there is no CI), the review result, and a one-line summary of the change.
 - After the merge: delete the branch on GitHub if the repo does not do it itself, and confirm both the merge and the deletion.
 - Delete old remote branches that you or I created whose work is already on the default branch (merged, or no changes of their own). Keep a branch with unmerged work and list it with a REC.

@@ -12,7 +12,7 @@ AGENTS.md "Delivery" and "Checks" point here. The rules are there; this file hol
 1. Commit on a branch (the branch the host requires, else `claude/<topic>`), with a noreply identity.
 2. Push. The pre-push hook runs the fast lane; do not run it by hand first.
 3. Open a pull request for the branch (one per branch). When the work is ready to merge: run the full lane one time on the head commit (`scripts/check.sh`), and get the fresh review on that head commit when AGENTS.md "Delegation" requires one.
-4. Merge the pull request with a merge commit when AGENTS.md "Delivery" allows it. If the base moved, update the branch by merge first.
+4. When the lane, the Action and the review are clean: ask the owner for the merge with one question that gives the pull request link, the check result and the review result; or merge at once when AGENTS.md "Delivery" says no approval is needed. Merge with a merge commit. If the base moved, update the branch by merge first; a conflict with another session's work goes to the owner.
 5. Verify: `git fetch origin main && git merge-base --is-ancestor <commit> origin/main`.
 6. Republish the affected artifacts. Delete previews after they ship.
 7. Clean up branches (below). Report with the states kept apart: done, published, verified.
@@ -49,5 +49,5 @@ Private repos share 2,000 Actions minutes a month. Trigger workflows on `pull_re
 
 ## Unattended work
 
-- A scheduled task needs a prompt that stands alone and permission to commit, push, merge its pull request and republish without a person.
+- A scheduled task needs a prompt that stands alone and permission to commit, push and open a pull request without a person, and the owner's waiver when it must also merge.
 - Background work stops at the usage limit. Say when that can interrupt it.
