@@ -1,6 +1,6 @@
 """More cases of the self-test of scripts/check_content.py (check_content_test.py runs them; kept apart for the
 600-line cap of docs/code-standard.md C4): the terms list, the `block:` lines, the settings file under its name
-`.check`, and the hook for the Write, Edit, NotebookEdit and Bash tools.
+`.check`, its `code-` and `audit-` setting lines, and the hook for the Write, Edit, NotebookEdit and Bash tools.
 
 Input: none (temporary folders; samples are built at run time, so this file does not flag itself).
 Output: one "ok" or "FAIL" line per case through the check() function that run() gets. Needs git.
@@ -15,7 +15,8 @@ import sys
 import tempfile
 
 import check_content_hook
-from check_content_scan import blocked, config_name, load_allow, load_terms, profile_of, scan_files, scan_text
+from check_content_scan import (blocked, config_name, is_option_line, is_tier_line, load_allow, load_terms, profile_of,
+                                scan_files, scan_text)
 
 at, dot = "@", "."
 ME = [sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "check_content.py")]
@@ -168,7 +169,32 @@ def case_hook_tools(check):
             os.unlink(d + "-link")
 
 
+def case_setting_lines(check):
+    """The `code-` and `audit-` lines of `.check` (scripts/check_settings.py reads them): option lines, never allowed
+    values and never tier lines; every other line keeps its meaning, and the tier line still fails closed."""
+    settings = ["code-max-file-lines: 600", "code-exclude: Alex/*", "audit-ignore: ref/**", "audit-budget-file_kb: 100",
+                "Code-C2: full", "code-c2 : dod", "audit-x: dod"]
+    check("setting lines are option lines", all(is_option_line(v) for v in settings))
+    check("setting lines are never tier lines", not any(is_tier_line(v) for v in settings))
+    check("a setting line does not change the tier", profile_of(set(settings)) == "minimum"
+          and profile_of(set(settings) | {"profile: dod"}) == "dod")
+    check("a wrong tier line next to setting lines still fails closed",
+          profile_of(set(settings) | {"profil: dod"}) == "unknown" and profile_of(set(settings) | {"profile: dodd"}) == "unknown")
+    plain = ["code-review", "audit-trail", "codes: x", "code: dod", "the code-max: 1", "code-: 1"]
+    check("a line that only looks like a setting is no setting line",
+          [v for v in plain if is_option_line(v) and not is_tier_line(v)] == [])
+    check("`code: dod` is still an unknown tier line", is_tier_line("code: dod") and profile_of({"code: dod"}) == "unknown")
+    with tempfile.TemporaryDirectory() as d:
+        env = {k: v for k, v in os.environ.items() if not k.startswith(("PII_GUARD", "GIT_"))}
+        env["PII_GUARD_DENYLIST"] = "Alex"
+        pathlib.Path(d, ".check").write_text("code-exclude: Alex/*\naudit-ignore: ref/**\nAlex Example\n")
+        r = subprocess.run(ME + ["--stdin"], input="see code-exclude: Alex/* here", env=env, capture_output=True, text=True, cwd=d)
+        check("a setting line is not an allowed value: a name in it is still found", r.returncode == 1 and "name" in r.stdout)
+        r = subprocess.run(ME + ["--stdin"], input="by Alex Example", env=env, capture_output=True, text=True, cwd=d)
+        check("an allowed string next to setting lines still passes", r.returncode == 0)
+
+
 def run(check):
     """Run the cases of this file; check(label, good) prints and records each result."""
-    for case in (case_terms, case_block_lines, case_check_file, case_hook_tools):
+    for case in (case_terms, case_block_lines, case_check_file, case_setting_lines, case_hook_tools):
         case(check)

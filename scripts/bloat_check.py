@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Cheap bloat and drift metrics for a project repo, and the bloat-audit due date. Report only, unless --record.
+"""Cheap bloat and drift metrics for a project repo, and the audit due date. Report only, unless --record.
 
 Usage:
     python3 scripts/bloat_check.py            # full report
     python3 scripts/bloat_check.py --brief    # one line (scripts/session_checkin.sh runs this)
-    python3 scripts/bloat_check.py --time     # also run each timed command in .bloat-audit.json and compare
+    python3 scripts/bloat_check.py --time     # also run each timed command in .check.state.json and compare
     python3 scripts/bloat_check.py --time --record   # run them and store the new seconds as the baseline
     python3 scripts/bloat_check.py --strict   # exit 1 when a budget is over or the audit is due
     python3 scripts/bloat_check.py --rules    # rule counts against the caps, rule lines added or removed against
@@ -27,8 +27,8 @@ Usage:
 
 It measures:
     session load  bytes and ~tokens (bytes / 4) of what every session loads: AGENTS.md, CLAUDE.md,
-                  docs/NEXT_PROMPT.md, "start_read" in the config, and the skill and agent names and descriptions.
-                  Caps for every repo (KIT_CAPS; the config can lower one, never raise it): 6,000 tokens (warning at
+                  docs/NEXT_PROMPT.md, the `audit-start-read:` files, and the skill and agent names and descriptions.
+                  Caps for every repo (KIT_CAPS; a project can lower one, never raise it): 6,000 tokens (warning at
                   5,000) and 200 lines of AGENTS.md; over a cap fails --rules
     rules         list items in AGENTS.md (any marker, any indent; a wrapped line is part of its item): the kit
                   sections (the header, "## Commands" and the numbered ranking in "## Order of authority" are not
@@ -45,43 +45,41 @@ It measures:
     handoff       docs/NEXT_PROMPT.md lines
     duplicates    normalized text lines of 80+ characters found in 2 or more tracked files
     big files     tracked files over the size budget
-    audit due     days and commits on main since the last full audit (.bloat-audit.json "last_audit")
+    audit due     days and commits on main since the last full audit (.check.state.json "audit": "last_audit")
     timings       (--time) wall time of each named command against its recorded baseline; (--compare) times that
                   a script measured itself: NAME is a timings key, NAME:STEP one of its "steps". Slower means over
                   max_slowdown (default +25%) and over min_slowdown_seconds (default 0.5 s), so noise on a small step
                   does not warn. A slowdown starts .claude/skills/efficiency/SKILL.md
 
-.bloat-audit.json (project-owned; the full audit in .claude/skills/audit/SKILL.md writes it). All keys are optional:
-    {"last_audit": {"date": "YYYY-MM-DD", "commit": "<sha>", "report": "<path>"},
-     "every_days": 14, "every_commits": 300,
-     "budgets": {"handoff_lines": 40, "file_kb": 500, "duplicate_lines": 20, "rules": 35, "project_rules": 15},
-     "start_read": [], "ignore": ["ref/**"],
+Settings: the `audit-` lines of `.check` (scripts/check_settings.py reads them and lists the keys; all are optional,
+and a line that is not valid fails --rules):
+    audit-every-days: 14, audit-every-commits: 300, audit-ignore: ref/**, audit-start-read: <path>,
+    audit-budget-<name>: <number> (handoff_lines 40, file_kb 500, duplicate_lines 20, rules 35, project_rules 15)
+State: `.check.state.json` (tools write it; the full audit in .claude/skills/audit/SKILL.md sets "last_audit"):
+    {"audit": {"last_audit": {"date": "YYYY-MM-DD", "commit": "<sha>", "report": "<path>"}},
      "timings": {"tests": {"cmd": "tests/run.sh", "seconds": 20.8, "max_slowdown": 0.25},
                  "check": {"cmd": "bash scripts/check.sh", "seconds": 4.5, "steps": {"check_content self-test": 4.1}},
                  "push-guard": {"seconds": 0.4}}}
 A timing with no "cmd" is only compared (--compare), never run by --time.
 The "rules" and "project_rules" bullet counts only warn.
 A repo with no "last_audit" reports AUDIT DUE (never audited) once it is every_days or every_commits past its first
-commit (a new project is not due on day one; an older project synced for the first time usually is). The first audit
-creates the file. Exit 0, unless --strict and something is over (exit 1). Standard library only. Needs git.
+commit (a new project is not due on day one; an older project synced for the first time usually is).
+Exit 0, unless --strict and something is over (exit 1). Standard library only. Needs git.
 """
 import argparse
 import datetime
 import fnmatch
-import json
 import re
 import subprocess
 import sys
 import time
 from pathlib import Path
 
-CONFIG = ".bloat-audit.json"
+import check_settings  # scripts/check_settings.py: the reader of .check and the reader and writer of .check.state.json
+
+STATE = check_settings.STATE
 START_READ = ["AGENTS.md", "CLAUDE.md", "docs/NEXT_PROMPT.md"]
-DEFAULTS = {"every_days": 14, "every_commits": 300,
-            "budgets": {"session_load_tokens": 6000, "session_load_warn_tokens": 5000, "rules_file_lines": 200,
-                        "handoff_lines": 40, "file_kb": 500, "duplicate_lines": 20, "rules": 35, "project_rules": 15}}
-# The owner's caps for every repo (2026-11-18): .bloat-audit.json can lower one of these, never raise it.
-KIT_CAPS = ("session_load_tokens", "session_load_warn_tokens", "rules_file_lines")
+DEFAULTS = check_settings.AUDIT_DEFAULTS  # the settings when .check has no `audit-` line
 RULES_FILE = "AGENTS.md"
 PROJECT_RULES = "## Project rules"
 NOT_RULES = {"## Commands"}  # project-owned settings, not rules
@@ -110,23 +108,13 @@ def git(root, *args):
 
 
 def load_config(root):
-    """The DEFAULTS merged with .bloat-audit.json (budgets merged key by key); ValueError when it is not an object."""
-    cfg = json.loads(json.dumps(DEFAULTS))
-    p = root / CONFIG
-    if p.exists():
-        data = json.loads(p.read_text(encoding="utf-8"))
-        if not isinstance(data, dict):
-            raise ValueError("top level is not an object")
-        budgets = {**cfg["budgets"], **data.get("budgets", {})}
-        for k in KIT_CAPS:
-            budgets[k] = min(budgets[k], DEFAULTS["budgets"][k])
-        cfg.update(data)
-        cfg["budgets"] = budgets
-    return cfg
+    """The audit settings of .check, with "last_audit" and "timings" from .check.state.json; ValueError when a
+    line is not valid or a file cannot be read (scripts/check_settings.py; KIT_CAPS budgets can only be lowered there)."""
+    return check_settings.audit_config(root)
 
 
 def ignored(rel, cfg):
-    """True when rel matches a glob in the config's "ignore" list."""
+    """True when rel matches a glob of an `audit-ignore:` line."""
     return any(fnmatch.fnmatch(rel, g) for g in cfg.get("ignore", []))
 
 
@@ -449,7 +437,7 @@ def compare_times(cfg, pairs, record=False):
             else:
                 entry["seconds"] = secs
     if record:
-        return f"TIME  baseline recorded for {n} time(s) in {CONFIG}", []
+        return f"TIME  baseline recorded for {n} time(s) in {STATE}", []
     if slow:
         return ("WARN  slower than the baseline: " + "; ".join(slow) +
                 ". Next: .claude/skills/efficiency/SKILL.md (a measured slowdown starts it)"), slow
@@ -473,11 +461,8 @@ def main_compare(root, items, record):
 
 
 def save_timings(root, timings):
-    """Write timings into .bloat-audit.json and keep its other keys."""
-    p = root / CONFIG
-    data = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
-    data["timings"] = timings
-    p.write_text(json.dumps(data, indent=2) + "\n")
+    """Write timings into .check.state.json and keep its other parts."""
+    check_settings.save_part(root, "timings", timings)
 
 
 def report(root, args, today=None):
@@ -487,7 +472,7 @@ def report(root, args, today=None):
         cfg = load_config(root)
         due = audit_due(root, cfg, today)
     except (ValueError, TypeError, KeyError) as e:
-        print(f"bloat:       {CONFIG} unreadable ({e}); fix it, then run scripts/bloat_check.py")
+        print(f"bloat:       settings unreadable ({e}); fix it, then run scripts/bloat_check.py")
         return 1 if args.strict else 0
     b = cfg["budgets"]
     files = scan_files(root, cfg)
@@ -553,7 +538,7 @@ def main_rules(root, gate=False):
     try:
         cfg = load_config(root)
     except (ValueError, TypeError, KeyError) as e:
-        print(f"rules:       {CONFIG} unreadable ({e}); fix it first")
+        print(f"rules:       settings unreadable ({e}); fix it first")
         return 1
     rows, problems = rules_report(root, cfg, gate)
     print("\n".join(rows))

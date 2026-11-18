@@ -4,8 +4,8 @@ check stays under the 600-line cap of docs/code-standard.md C4).
 
 It builds small sample repos in temporary folders and proves each measure: duplicates, big files, the audit due date
 (also for a repo never audited, a new repo and a shallow clone), timings, the rule count by place, the caps, the
-paths AGENTS.md names, the conflict gate, the rule lint, the start-read warning, --compare and --record, and the
-skills check (scripts/bloat_check_skills.py).
+paths AGENTS.md names, the conflict gate, the rule lint, the start-read warning, --compare and --record, the settings
+in `.check` and the state in `.check.state.json`, and the skills check (scripts/bloat_check_skills.py).
 Input: the bloat_check module. Output: BLOAT TEST PASS, or an AssertionError naming the case. Needs git.
 """
 import argparse
@@ -19,6 +19,7 @@ import tempfile
 from pathlib import Path
 
 import bloat_check_skills as skills
+import check_settings
 
 LONG = "This line is long enough to count as a duplicate when it shows up in two different files of a repo."
 
@@ -29,16 +30,21 @@ def git_in(folder, *args):
                    capture_output=True)
 
 
+def settings(root, lines="", **state):
+    """Write the repo's .check (setting lines) and replace its .check.state.json with these parts."""
+    (root / check_settings.CHECK).write_text(lines)
+    (root / check_settings.STATE).write_text(json.dumps(state))
+
+
 def sample_repo(bloat, root):
-    """A repo with a duplicate line, a long handoff, a big file and a config with low budgets; returns its config."""
+    """A repo with a duplicate line, a long handoff, a big file and settings with low budgets; returns its config."""
     subprocess.run(["git", "init", "-q", str(root)], check=True)
     (root / "AGENTS.md").write_text(f"# A\n- {LONG}\n")
     (root / "docs").mkdir()
     (root / "docs/NEXT_PROMPT.md").write_text(f"{LONG.upper()}\n" + "x\n" * 45)
     (root / "big.txt").write_text("y" * 3000)
-    (root / bloat.CONFIG).write_text(json.dumps({"budgets": {"file_kb": 2, "session_load_tokens": 10},
-                                              "last_audit": {"date": "2026-01-01"},
-                                              "timings": {"t": {"cmd": "true", "seconds": 5}}}))
+    settings(root, "audit-budget-file_kb: 2\naudit-budget-session_load_tokens: 10\n",
+             audit={"last_audit": {"date": "2026-01-01"}}, timings={"t": {"cmd": "true", "seconds": 5}})
     subprocess.run(["git", "-C", str(root), "add", "-A"], check=True)
     return bloat.load_config(root)
 
@@ -125,10 +131,16 @@ def caps_and_paths_cases(bloat, ro, caps):
     assert len(problems) == 2 and "over the line cap (10 > 3)" in problems[0] and "session load over the cap" in problems[1], "the line cap and the load cap fail"
     warned = {"budgets": {**caps["budgets"], "session_load_warn_tokens": 5}}
     assert any("over the warning" in r for r in bloat.rules_report(ro, warned)[0]) and not bloat.rules_report(ro, warned)[1], "the load warning only warns"
-    (ro / bloat.CONFIG).write_text(json.dumps({"budgets": {"session_load_tokens": 999999, "rules_file_lines": 50}}))
-    b = bloat.load_config(ro)["budgets"]
-    assert b["session_load_tokens"] == 6000 and b["rules_file_lines"] == 50, "a project can lower a kit cap, never raise it"
-    (ro / bloat.CONFIG).unlink()
+    settings(ro, "audit-budget-rules_file_lines: 50\naudit-ignore: ref/**\n")
+    cfg = bloat.load_config(ro)
+    assert cfg["budgets"]["session_load_tokens"] == 6000 and cfg["budgets"]["rules_file_lines"] == 50, "a project can lower a kit cap"
+    assert bloat.ignored("ref/a/b.md", cfg) and not bloat.ignored("docs/a.md", cfg), "audit-ignore globs are read"
+    for bad in ("audit-budget-session_load_tokens: 999999\n", "audit-budget-rule_file_lines: 50\n", "audit-every-days: soon\n"):
+        settings(ro, bad)
+        with contextlib.redirect_stdout(io.StringIO()) as w:
+            assert bloat.main_rules(ro) == 1 and bad.split(":")[0] in w.getvalue(), "a raised kit cap, an unknown key and a bad value fail --rules: " + bad
+    (ro / check_settings.CHECK).unlink()
+    (ro / check_settings.STATE).unlink()
     skill = ro / ".claude/skills/s"; skill.mkdir(parents=True)
     (skill / "SKILL.md").write_text("---\nname: s\ndescription: " + "d" * 400 + "\n---\nAn agent never merges this.\n")
     assert bloat.start_read(ro, caps)[2] >= 100, "skill names and descriptions count in the session load"
@@ -193,8 +205,7 @@ def lint_cases(bloat, ro):
 
 def report_cases(bloat, root, cfg, strict):
     """The start-read warning, an unknown audit commit, a bad config, and --time --record."""
-    (root / bloat.CONFIG).write_text(json.dumps({"budgets": {"session_load_warn_tokens": 1, "session_load_tokens": 99999},
-                                              "last_audit": {"date": "2026-01-01"}}))
+    settings(root, "audit-budget-session_load_warn_tokens: 1\n", audit={"last_audit": {"date": "2026-01-01"}})
     w = io.StringIO()
     with contextlib.redirect_stdout(w):
         bloat.report(root, argparse.Namespace(brief=True, time=False, record=False, strict=False), datetime.date(2026, 1, 5))
@@ -202,12 +213,19 @@ def report_cases(bloat, root, cfg, strict):
     with contextlib.redirect_stdout(io.StringIO()):
         assert bloat.audit_due(root, {**cfg, "last_audit": {"date": "2026-01-01", "commit": "f" * 40}},
                             datetime.date(2026, 1, 5)) == "", "unknown commit alone is not due"
-        (root / bloat.CONFIG).write_text("{bad")
-        assert bloat.report(root, strict, datetime.date(2026, 1, 5)) == 1, "bad config: message, no traceback"
-        (root / bloat.CONFIG).write_text(json.dumps({"timings": {"f": {"cmd": "false"}, "t": {"cmd": "true"}}}))
+        (root / bloat.STATE).write_text("{bad")
+        assert bloat.report(root, strict, datetime.date(2026, 1, 5)) == 1, "bad state file: message, no traceback"
+        settings(root, "audit-budget-file_kbs: 9\n")
+        assert bloat.report(root, strict, datetime.date(2026, 1, 5)) == 1, "unknown audit- key: message, no traceback"
+        settings(root)
+        (root / check_settings.OLD_AUDIT).write_text("{}")
+        assert bloat.main_rules(root) == 1, "the old settings file fails --rules until it is migrated"
+        (root / check_settings.OLD_AUDIT).unlink()
+        settings(root, audit={"last_audit": {"date": "2026-01-01"}}, timings={"f": {"cmd": "false"}, "t": {"cmd": "true"}})
         bloat.report(root, argparse.Namespace(brief=True, time=True, record=True, strict=False))
-    saved = json.loads((root / bloat.CONFIG).read_text())["timings"]
-    assert "seconds" not in saved["f"] and saved["t"]["seconds"] is not None, "record skips failed commands"
+    saved = check_settings.load_state(root)
+    assert "seconds" not in saved["timings"]["f"] and saved["timings"]["t"]["seconds"] is not None, "record skips failed commands"
+    assert saved["audit"]["last_audit"]["date"] == "2026-01-01", "--time --record keeps the other parts of the state"
 
 
 def compare_cases(bloat, root):
@@ -222,11 +240,13 @@ def compare_cases(bloat, root):
     rec = json.loads(json.dumps(tc))
     bloat.compare_times(rec, [("check", 3.0), ("check:new", 1.0), ("other", 0.2)], record=True)
     assert rec["timings"]["check"]["seconds"] == 3.0 and rec["timings"]["check"]["steps"]["new"] == 1.0 and rec["timings"]["other"]["seconds"] == 0.2, "record stores wall, step and a new key"
-    (root / bloat.CONFIG).write_text(json.dumps({"budgets": {}, **tc}))
+    settings(root, code_standard={"debt": {}}, **tc)
     with contextlib.redirect_stdout(io.StringIO()):
         assert bloat.main_compare(root, ["check:a=9", "bad"], False) == 0, "a bad item: no failure"
         bloat.main_compare(root, ["check:a=1.25"], True)
-    assert json.loads((root / bloat.CONFIG).read_text())["timings"]["check"]["steps"]["a"] == 1.2 and "budgets" in json.loads((root / bloat.CONFIG).read_text()), "--record keeps the other keys"
+    saved = check_settings.load_state(root)
+    assert saved["timings"]["check"]["steps"]["a"] == 1.2 and saved["code_standard"] == {"debt": {}}, "--record keeps the other parts"
+    assert (root / bloat.STATE).read_text() == check_settings.state_text(saved), "the state file has sorted keys and indent 1"
     rows, _ = bloat.run_timings(root, {"timings": {"nocmd": {"seconds": 1}}}, record=False)
     assert rows == [], "--time skips a timing with no cmd"
 

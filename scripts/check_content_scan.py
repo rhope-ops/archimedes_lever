@@ -159,18 +159,22 @@ WARN_OPTION = "denylist: warn"  # settings option line; first_use_check.py reads
 # Every form other than `profile: dod` is unknown and fails the scan.
 _TIER = r"[\W_]*(?:profile(?![A-Za-z0-9._/-])|(?!skip\b|block\b|denylist\b)[A-Za-z_-]{1,40}\s*[^\w\s.]?\s*dod[\W_]*$)"
 PROFILE_LINE = re.compile(r"(?i)^" + _TIER)
+# A setting of the code standard or the audit (`code-max-file-lines: 600`, `audit-ignore: ref/**`): `code-` or `audit-`,
+# a key and a colon. scripts/check_settings.py reads these lines; here they are option lines and never tier lines.
+SETTING_LINE = re.compile(r"(?i)^(?:code|audit)-[A-Za-z0-9_-]+\s*:")
 OPTION_LINE = re.compile(r"(?i)^(?:" + _TIER + r"|denylist\s*:)")  # option lines, never allowed values
 OPTION_MAX = 200  # a longer line is never an option line: the patterns above only ever see short lines (no slow match)
 
 
 def is_tier_line(v):
-    """True when this settings line is a tier line, in any form (short lines only)."""
-    return len(v) <= OPTION_MAX and bool(PROFILE_LINE.match(v))
+    """True when this settings line is a tier line, in any form (short lines only; never a `code-` or `audit-` setting)."""
+    return len(v) <= OPTION_MAX and bool(PROFILE_LINE.match(v)) and not SETTING_LINE.match(v)
 
 
 def is_option_line(v):
-    """True when this settings line is an option line (tier or denylist), never an allowed value."""
-    return len(v) <= OPTION_MAX and bool(OPTION_LINE.match(v))
+    """True when this settings line is an option line (tier, denylist, or a `code-` or `audit-` setting), never an
+    allowed value."""
+    return len(v) <= OPTION_MAX and bool(OPTION_LINE.match(v) or SETTING_LINE.match(v))
 BOTH_FILES = "profile: <both .check and .pii-guard exist>"  # load_allow adds it; it reads as an unknown tier line
 UNREADABLE = "profile: <the settings file is not UTF-8 text>"  # load_allow adds it; it reads as an unknown tier line
 UNKNOWN_PROFILE = ("unknown profile line in .check (or .pii-guard), or the file is not UTF-8 text: the only tier line is "
@@ -226,7 +230,7 @@ def config_name(root, ref=None):
 
 def load_allow(root, ref=None):
     """The lines of the settings file (working tree, or the file at a git ref such as the PR base): allowed exact
-    strings, and the `skip:`, `block:`, `denylist:` and `profile:` lines."""
+    strings, and the `skip:`, `block:`, `denylist:`, `profile:`, `code-` and `audit-` lines."""
     name = config_name(root, ref)
     both = name == CONFIG_NAMES[0] and _exists(root, CONFIG_NAMES[1], ref)
     if name is None:

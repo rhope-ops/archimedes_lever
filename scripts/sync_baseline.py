@@ -73,7 +73,7 @@ COMMANDS_HEADING = "## Commands"
 COPY_FILES = ["scripts/session_checkin.sh", "scripts/stop_check.py", "scripts/check_blocks.py", "scripts/check_lock.py", "scripts/check_content_test_blocks.py",
               "scripts/worker_guard.py", "scripts/log_check.py", "scripts/timeline.py", "scripts/check_content.py", "scripts/first_use_check.py",
               "scripts/check_content_scan.py", "scripts/check_content_hook.py", "scripts/check_content_test.py",
-              "scripts/check.sh", "scripts/bloat_check.py", "scripts/bloat_check_skills.py", "scripts/bloat_check_test.py",
+              "scripts/check.sh", "scripts/check_settings.py", "scripts/bloat_check.py", "scripts/bloat_check_skills.py", "scripts/bloat_check_test.py",
               "scripts/code_standard.py", "scripts/code_standard_test.py", "scripts/code_standard_docs.py", "docs/code-standard.md", "scripts/git-hooks/pre-push",
               ".claude/skills/delegate/SKILL.md", ".claude/skills/audit/SKILL.md", ".claude/skills/project-log/SKILL.md", ".claude/rule-tests.md", ".github/workflows/check.yml",
               ".claude/skills/deliver/SKILL.md", ".claude/skills/personal-data/SKILL.md", ".claude/skills/rule-change/SKILL.md",
@@ -497,8 +497,10 @@ def report_leftovers(root, tier):
     old = [f for f in MOVED_FILES if (root / f).exists()]
     if old:
         print(f"These files moved or were renamed in the kit; delete the old copies by hand: {', '.join(old)}")
-    if (root / ".pii-guard").exists() and not (root / ".check").exists():
-        print("The settings file has a new name: run 'git mv .pii-guard .check' (its lines stay as they are).")
+    old = [f for f in (".pii-guard", ".code-standard.json", ".bloat-audit.json") if (root / f).exists()]
+    if old:
+        print(f"Old settings files ({', '.join(old)}): run 'python3 scripts/check_settings.py --migrate' (it moves "
+              "them into .check and .check.state.json; the lines of .check stay as they are).")
 
 
 def write_files(base, root, new, changed):

@@ -10,7 +10,7 @@
 #   scripts/check.sh --hook              the Claude Code PreToolUse hook (.claude/settings.json); any error blocks
 # The checks:
 #   1. the self-test of each kit script present (--test; a starter project has fewer), and the code standard
-#      (scripts/code_standard.py, when .code-standard.json exists),
+#      (scripts/code_standard.py, when .check.state.json holds its baseline; settings: the `code-` lines of .check),
 #   2. the rule caps and the paths AGENTS.md names, the lint of changed rule lines (WARN lines), and in the full lane
 #      the conflict-check record for changed rule lines (scripts/bloat_check.py --rules [--gate]; full tier),
 #   3. the project log check (full tier),
@@ -20,7 +20,7 @@
 #      .claude/skills/deliver/SKILL.md then guards main).
 # The checks run in parallel: each one works on its own temporary files. CHECK_SERIAL=1 runs them one at a time.
 # Prints one PASS/FAIL/SKIP line per check, the output of each failed check, a TIME line (wall time and the 3 slowest
-# checks), a line that compares the times with the baselines in .bloat-audit.json (scripts/bloat_check.py --compare:
+# checks), a line that compares the times with the baselines in .check.state.json (scripts/bloat_check.py --compare:
 # the full lane and each step; the fast lane only its steps, as its total depends on what changed; a slowdown is a
 # WARN line, never a failure) and "CHECK PASS" or "CHECK FAIL" last.
 # --record (full lane only): after a pass, store this run's times as the new baselines (commit the change). Exit 0 only when no check failed. Needs bash, git and python3.
@@ -233,9 +233,10 @@ for s in stop_check worker_guard log_check; do
   selftest "$s" "scripts/$s.py" -- python3 "scripts/$s.py" --test
 done
 # A script whose cases or parts live in sibling modules lists them, so the fast lane reruns its self-test when they change.
-selftest bloat_check scripts/bloat_check.py scripts/bloat_check_test.py scripts/bloat_check_skills.py -- python3 scripts/bloat_check.py --test
+selftest check_settings scripts/check_settings.py -- python3 scripts/check_settings.py --test
+selftest bloat_check scripts/bloat_check.py scripts/bloat_check_test.py scripts/bloat_check_skills.py scripts/check_settings.py -- python3 scripts/bloat_check.py --test
 selftest token_log scripts/token_log.py scripts/token_log_test.py -- python3 scripts/token_log.py --test
-selftest code_standard scripts/code_standard.py scripts/code_standard_test.py scripts/code_standard_docs.py -- python3 scripts/code_standard.py --test
+selftest code_standard scripts/code_standard.py scripts/code_standard_test.py scripts/code_standard_docs.py scripts/check_settings.py -- python3 scripts/code_standard.py --test
 selftest timeline scripts/timeline.py scripts/log_check.py -- python3 scripts/timeline.py --test  # it imports log_check
 selftest check_content scripts/check_content.py scripts/check_content_scan.py scripts/check_content_hook.py scripts/check_content_test.py scripts/check_content_test_blocks.py -- python3 scripts/check_content.py --test
 selftest check_blocks scripts/check_blocks.py .claude/settings.json -- python3 scripts/check_blocks.py --test
@@ -250,10 +251,12 @@ selftest session_checkin scripts/session_checkin.sh -- bash scripts/session_chec
 [ "$untested" -gt 0 ] && skip "$untested self-tests" "fast lane: those scripts did not change; the full lane runs them"
 
 # The code standard (docs/code-standard.md), both lanes: it takes about 0.1 s. A repo that has not adopted it skips.
-if [ -f scripts/code_standard.py ] && [ -f .code-standard.json ]; then
+# Adopted: .check.state.json holds the "code_standard" baseline. A repo that still has the old .code-standard.json
+# runs the check too: it fails there and names the migration, so the old limits are not dropped in silence.
+if [ -f scripts/code_standard.py ] && { grep -qs '"code_standard"' .check.state.json || [ -f .code-standard.json ]; }; then
   run "code standard" python3 scripts/code_standard.py
 elif [ -f scripts/code_standard.py ]; then
-  skip "code standard" "no .code-standard.json: adopt it with python3 scripts/code_standard.py --init (docs/code-standard.md)"
+  skip "code standard" "no code standard baseline in .check.state.json: adopt it with python3 scripts/code_standard.py --init (docs/code-standard.md)"
 fi
 
 # Rule caps, paths, the lint of changed rule lines, and (full lane) the conflict-check record for changed rule lines.

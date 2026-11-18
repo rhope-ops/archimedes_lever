@@ -56,7 +56,7 @@ if [ "$BS_OWNER" != "the owner" ]; then
   # "the owner" is an option, a role or a literal the script needs.
   owner_files=("${files[@]}" .claude/skills/delegate/SKILL.md .claude/skills/audit/SKILL.md .claude/skills/project-log/SKILL.md .claude/skills/deliver/SKILL.md .claude/skills/personal-data/SKILL.md .claude/skills/rule-change/SKILL.md .claude/skills/efficiency/SKILL.md .claude/skills/handoff/SKILL.md .claude/skills/port/SKILL.md .claude/rule-tests.md scripts/bloat_check.py scripts/session_checkin.sh scripts/stop_check.py scripts/worker_guard.py
     scripts/log_check.py scripts/timeline.py scripts/check_content.py scripts/check_content_scan.py scripts/check_content_hook.py scripts/check_content_test.py
-    scripts/bloat_check_skills.py scripts/bloat_check_test.py scripts/code_standard.py scripts/code_standard_test.py docs/code-standard.md scripts/check.sh scripts/git-hooks/pre-push)
+    scripts/bloat_check_skills.py scripts/bloat_check_test.py scripts/check_settings.py scripts/code_standard.py scripts/code_standard_test.py docs/code-standard.md scripts/check.sh scripts/git-hooks/pre-push)
   for f in "${owner_files[@]}"; do
     perl -pi -e 'my $c = ucfirst $ENV{BS_OWNER}; s/\b([Tt])he owner\b/$1 eq "T" ? $c : $ENV{BS_OWNER}/ge' "$f"
   done
@@ -86,9 +86,12 @@ if ! python3 scripts/check_blocks.py --placeholders "${present[@]}"; then
   exit 1
 fi
 
-# The maintainer's preferences template (PREFERENCES.md), the kit's file list (docs/FILES.md) and the kit's audit state (.bloat-audit.json) live only in the template repo. The kit's license moves next to the docs: the copied scripts
+# The maintainer's preferences template (PREFERENCES.md) and the kit's file list (docs/FILES.md) live only in the template repo. The kit's license moves next to the docs: the copied scripts
 # stay under it, and the root LICENSE is the project's own choice (docs/FIRST_USE.md, question 6).
-rm -f -- PREFERENCES.md docs/FILES.md .bloat-audit.json
+rm -f -- PREFERENCES.md docs/FILES.md
+# The kit's state (.check.state.json: its last audit and time baselines) is the kit's own. The project starts with a
+# fresh file: the code standard adopted with no debt (the kit's code meets it), no audit yet and no time baselines.
+printf '%s\n' '{' ' "code_standard": {' '  "debt": {}' ' }' '}' > .check.state.json
 # The kit's own review reports describe the kit, not the project; docs/reviews/README.md stays.
 find docs/reviews -maxdepth 1 -name '20*.md' -delete 2>/dev/null || true
 # Projects do not stay in sync with the kit (the owner, 2026-11-13): the sync tools stay in the kit only.
