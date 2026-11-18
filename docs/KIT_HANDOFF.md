@@ -6,30 +6,29 @@ Updated: 2026-11-18 12:20 by the session that wrote the plan below.
 
 ## State
 
-- main: `213c58c` (pull request 41 merged: one `check`, kit lock, caps, config layout). Work branch in the kit and in each project: `claude/archimedes-lever-workflow-0mydsw`.
-- No project is synced yet: 0 of 7 have `.check.lock`; all 7 still use `.pii-guard`. Drift: 48 of 65 items (RADE) to 57 of 65 (65-601.Z).
+- main: `dde2bb3` (pull request 43: the plan below). Work branch in the kit and in each project: `claude/archimedes-lever-workflow-0mydsw`.
+- No project is synced yet: 0 of 7 have `.check.lock`; all 7 still use `.pii-guard`.
 
 ## Approved plan (the owner, 2026-11-18 12:15): lean two-tier rules and the kit as a synced baseline
 
-Full text, measured facts, proposals 1 to 26, usage estimate, risks and targets: [reviews/2026-11-18-lean-rules-sync-plan.md](reviews/2026-11-18-lean-rules-sync-plan.md). Decisions: the first 2026-11-18 row of [DECISIONS.md](DECISIONS.md). It replaces the open steps 3 to 9 of the plan "one `check`, one home per rule, locked kit files" (its steps 0 to 6 are done).
+Full text, measured facts, proposals 1 to 26, risks and targets: [reviews/2026-11-18-lean-rules-sync-plan.md](reviews/2026-11-18-lean-rules-sync-plan.md). Scope (the owner, 2026-11-18): all 26 proposals; skills may be rewritten or combined. Toggle record: https://claude.ai/artifact/7XSV5V62Wv8bKQYZsLpJLz (all Yes).
 
-- [x] 0.1 Plan saved here; decisions recorded.
-- [x] 0.2 Proposal toggles published: https://claude.ai/artifact/7XSV5V62Wv8bKQYZsLpJLz (private; state in its database, collection `proposals`, field `on`).
-- [ ] 0.3 The owner sets the toggles. Read them (`ArtifactData` list `proposals`), write the result in this file. A proposal that is off drops out of every later step.
-- [ ] 1. Kit: re-read the Anthropic pages (1.1); full new AGENTS.md with "Hard rules", "Defaults" and three merge lanes, shown to the owner once for approval of the exact text (1.2); rule tests before and after (1.3); sync, drift, pre-push, one-home check and caps (1.4); doc fixes (1.5); fresh review, owner merge, release tag (1.6).
-- [ ] 2. Pilot sync: 36-3003.Z, 65-601.Z, SPAR (3 workers, one pull request each).
-- [ ] 3. RADE and 90-161.Z, one session each: give each project guard a home first.
+- [x] 0. Plan saved; toggles set.
+- [ ] 1. Kit, in one lane C pull request: AGENTS.md in "Hard rules" and "Defaults", three merge lanes, skills `verify` and `kit-update`, scripts, caps, docs, version 2026.11.19. Reviews: [reviews/2026-11-18-lean-rules-review.md](reviews/2026-11-18-lean-rules-review.md). Left: the owner's merge; a release tag; a run of the rule tests in fresh sessions (not run yet).
+- [ ] 2. Pilot sync: 36-3003.Z, 65-601.Z, SPAR (one pull request each; steps: `.claude/skills/kit-update/SKILL.md`; starter tier until their first code, proposal 21).
+- [ ] 3. RADE and 90-161.Z, one session each: give each project guard a home first; trim their session load under 5,000 tokens.
 - [ ] 4. icf-source and sec-source: convert to the kit layout, then sync.
-- [ ] 5. Owner layer: PREFERENCES.md paste block; ruleset and secret-scanning links per repo; kit-update pull request and fleet page if toggled on; final handoffs. Still open from the old plan and kept here: the setup guide for cloud environments and repos (old step 9).
+- [ ] 5. Owner layer and server side: PREFERENCES.md rewrite and paste block (proposal 5); ruleset and secret-scanning links per repo (4, 17); kit-update pull request on release (15); fleet status page (22); allow list (25); "not set yet" lines (24); the setup guide for cloud environments and repos.
+- [ ] 6. Proposal 20 (kit rules as one imported file): test it in one pilot repo after step 2, then decide. Anthropic's memory page says an import does not lower the context cost, so its only gain is a simpler sync.
 
 ## Open (in order)
 
-1. Step 0.3, then 1 to 5. Done = `drift.py --strict` shows 0 kit items different in 7 repos, `scripts/check.sh` passes in each, and the targets in the plan's "Verification" table are met.
+1. Steps 1 to 6. Done = `drift.py --strict` shows 0 kit items different in 7 repos, `scripts/check.sh` passes in each, and the targets in the plan's "Verification" table are met.
 
 ## Needs the owner
 
-- Set the toggles (step 0.3). Default: proposals 1 to 19 on, 20 to 26 off.
-- Step 1.2: approve the exact AGENTS.md text. Options: approve; change lines; keep a removed rule. REC: approve after the rule tests pass.
+- Step 1: merge the kit pull request (its text shows every rule in full; the merge approves the rule text).
+- Step 2 to 4: approve the removal of each project's "No kit sync" rule (AGENTS.md "Kit files" replaces it).
 
 ## Do not
 
