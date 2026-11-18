@@ -42,13 +42,16 @@ GIT_OUT = frozenset(("commit", "commit-tree", "merge", "tag", "notes", "push", "
 def outgoing(cmd):
     """True when a Bash command can send something out: it names a network client or a URL, or one of its simple
     commands (split on newline ; | &) has the word git and a publishing verb. One pass per part (no slow pattern)."""
-    cmd = cmd.replace("\\\r\n", "").replace("\\\n", "")  # the shell deletes a backslash at a line end: "cu\<newline>rl" runs curl
-    if CLIENTS.search(cmd):
-        return True
-    for part in re.split(r"[\n;|&]", cmd):
-        words = set(re.findall(r"[A-Za-z-]+", part))
-        if "git" in words and words & GIT_OUT:
+    # Two readings, and either one makes the command outgoing: as written, and with each backslash-newline deleted
+    # (the shell joins such lines: "cu\<newline>rl" runs curl). Only the second would glue a word onto a client name
+    # where the shell does not join (inside a comment, or before a carriage return), and so hide it.
+    for text in (cmd, cmd.replace("\\\n", "")):
+        if CLIENTS.search(text):
             return True
+        for part in re.split(r"[\n;|&]", text):
+            words = set(re.findall(r"[A-Za-z-]+", part))
+            if "git" in words and words & GIT_OUT:
+                return True
     return False
 
 

@@ -125,7 +125,7 @@ PY
   echo '{"timings": {"check": {"steps": {"code standard": 1}}}}' > "$t/r/.check.state.json"
   g add -A; g commit -q -m "state without a baseline"; g update-ref refs/remotes/origin/main HEAD
   ok "no baseline here or on the default branch: the code standard is skipped" "$(c | grep -c '^SKIP  code standard')" 1
-  python3 -c 'import json; print(json.dumps({"code_standard": {"debt": {"length": {"f%d.py::main" % i: 99 for i in range(4000)}}}}))' > "$t/r/.check.state.json"
+  python3 -c 'import json; print(json.dumps({"code_standard": {"debt": {"length": {"f%d.py::main" % i: 99 for i in range(4000)}}}}, indent=1))' > "$t/r/.check.state.json"
   g add -A; g commit -q -m "a large baseline"; g update-ref refs/remotes/origin/main HEAD
   rm "$t/r/.check.state.json"
   ok "a large baseline on the default branch, state file deleted: the code standard runs" "$(c | grep -c '^PASS  code standard$')" 1
