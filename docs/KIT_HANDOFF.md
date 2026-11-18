@@ -19,6 +19,7 @@ Decisions and rule texts: the 2026-11-18 rows of [DECISIONS.md](DECISIONS.md). S
   - 90-161.Z `b031e94`: local only (its hook blocks the push): strict code standard fails on the kit files, load 6,759 of 6,000, a project rule names `scripts/pii_guard.py`. Record: its docs/reviews/2026-11-18-kit-port-one-check.md.
   - icf-source `562b527`: pushed; own check passes (75); `.bloat-audit.json` stays (own bloat check, own keys).
   - sec-source `6bd94d7`: local only: 2 marking findings already on main block the push; migration stopped on old budget keys.
+- Owner's answers 2026-11-18 (newest row of DECISIONS.md): lift "No kit sync" in all 5; strict docs live in the kit; icf-source and sec-source use the kit's bloat check; one allow entry in sec-source; one merge question for all 7.
 - [ ] 7b. Second kit pull request (found by the ports): `check_settings.py --migrate` must not stop on old or project-only budget keys; accept `code-max-line-chars` and a strict safety level; kit files meet the strict code standard (take RADE's labels and docs, if the owner agrees); a sync refreshes `reviewer.md` and `FIRST_USE.md` when they are old kit copies; `--migrate` renews the old header comment of `.check`. Then re-copy into RADE and 90-161.Z and drop their overrides.
 - [ ] 7c. Per repo: the owner's rule texts, a fresh conflict check and code review, pull request, then the one merge dialog.
 - [ ] 8. A paste block of the revised PREFERENCES.md for the owner's account.
