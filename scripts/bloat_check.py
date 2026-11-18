@@ -28,8 +28,8 @@ Usage:
 It measures:
     session load  bytes and ~tokens (bytes / 4) of what every session loads: AGENTS.md, CLAUDE.md,
                   docs/NEXT_PROMPT.md, the `audit-start-read:` files, and the skill and agent names and descriptions.
-                  Caps for every repo (KIT_CAPS; a project can lower one, never raise it): 6,000 tokens (warning at
-                  5,000) and 200 lines of AGENTS.md; over a cap fails --rules
+                  Caps for every repo (KIT_CAPS; a project can lower one, never raise it): 5,000 tokens (warning at
+                  4,500) and 200 lines of AGENTS.md; over a cap fails --rules
     rules         list items in AGENTS.md (any marker, any indent; a wrapped line is part of its item): the kit
                   sections (the header, "## Commands" and the numbered ranking in "## Order of authority" are not
                   counted) and "## Project rules" (there a paragraph or a table row counts too), each against its
@@ -54,7 +54,7 @@ It measures:
 Settings: the `audit-` lines of `.check` (scripts/check_settings.py reads them and lists the keys; all are optional,
 and a line that is not valid fails --rules):
     audit-every-days: 14, audit-every-commits: 300, audit-ignore: ref/**, audit-start-read: <path>,
-    audit-budget-<name>: <number> (handoff_lines 40, file_kb 500, duplicate_lines 20, rules 35, project_rules 15)
+    audit-budget-<name>: <number> (handoff_lines 40, file_kb 500, duplicate_lines 20, rules 28, project_rules 15)
 State: `.check.state.json` (tools write it; the full audit in .claude/skills/audit/SKILL.md sets "last_audit"):
     {"audit": {"last_audit": {"date": "YYYY-MM-DD", "commit": "<sha>", "report": "<path>"}},
      "timings": {"tests": {"cmd": "tests/run.sh", "seconds": 20.8, "max_slowdown": 0.25},
@@ -141,8 +141,19 @@ HEADING = re.compile(r"^\s*#{1,6}(\s|$)")                    # "### Sub"; "#1 pr
 EMPTY_ITEM = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s*$")         # a marker with no text
 
 
+BOLD_LABEL = re.compile(r"^\s*\*\*([^*]+?)\.?\*\*")  # "**Delivery.** text": the label of a rule bullet
+
+
+def bold_label(text):
+    """The bold label that starts a rule bullet, without its trailing dot ("Delivery"), or None."""
+    m = BOLD_LABEL.match(text)
+    return m.group(1).strip() if m else None
+
+
 def rule_lines(text, with_sections=False):
     """Return (kit, project, every): the rule lines of an AGENTS.md text, by where they are.
+    With with_sections: [(key, text)], where key is the bold label of a bullet ("**Delivery.** ..." gives "Delivery"),
+    else the "## " heading name; the lint matches it to the "Section" column of .claude/rule-tests.md.
 
     A rule line is a list item with any marker ("- ", "* ", "+ ", "1. ") at any indent; a line that follows it with
     no blank line between is its continuation, not a new rule. kit = items under a "## " heading above
@@ -157,7 +168,7 @@ def rule_lines(text, with_sections=False):
     """
     text = re.sub(r"(?ms)^<!-- starter -->\n.*?^<!-- /starter -->\n", "", text)
     text = re.sub(r"(?s)<!--.*?-->", "", text)
-    rows, sec, fenced, open_item = [], None, False, False  # rows: [section, text, counted]
+    rows, sec, fenced, open_item = [], None, False, False  # rows: [section, text, counted, lint key]
     for line in text.splitlines():
         if line.lstrip().startswith(("```", "~~~")):
             fenced, open_item = not fenced, False
@@ -178,18 +189,18 @@ def rule_lines(text, with_sections=False):
             indented = line[:1] in (" ", "\t")
             if m:
                 counted = sec not in NOT_RULES and not (sec in RANKED and m.group(1))
-                rows.append([sec, m.group(2).strip(), counted])
+                rows.append([sec, m.group(2).strip(), counted, bold_label(m.group(2)) or sec[3:].strip()])
                 open_item = True
             elif open_item and not line.lstrip().startswith("|") and (indented or sec != PROJECT_RULES):
                 rows[-1][1] += " " + line.strip()  # a wrapped line belongs to the item above it
             elif sec == PROJECT_RULES:
-                rows.append([sec, line.strip(), True])
+                rows.append([sec, line.strip(), True, bold_label(line) or sec[3:].strip()])
                 open_item = True
     if with_sections:
-        return [(s_[3:].strip(), t) for s_, t, c in rows if c]
-    kit = [t for s_, t, c in rows if c and s_ != PROJECT_RULES]
-    project = [t for s_, t, c in rows if c and s_ == PROJECT_RULES]
-    return kit, project, [t for _, t, _ in rows]
+        return [(key, t) for _, t, c, key in rows if c]
+    kit = [t for s_, t, c, _ in rows if c and s_ != PROJECT_RULES]
+    project = [t for s_, t, c, _ in rows if c and s_ == PROJECT_RULES]
+    return kit, project, [r[1] for r in rows]
 
 
 def words(line):
@@ -198,7 +209,7 @@ def words(line):
 
 
 def tested_sections(root):
-    """Sections of AGENTS.md that have a scenario: the "Section" column of the table in .claude/rule-tests.md."""
+    """Rule keys that have a scenario: the "Section" column of .claude/rule-tests.md (a bold bullet label, else a heading)."""
     p = root / RULE_TESTS
     if not p.is_file():
         return None

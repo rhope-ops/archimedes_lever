@@ -36,7 +36,7 @@ These are things that went wrong across 5 real projects, and the rule each one l
 | Enforce safety with a hook, not just with written rules | A rule said "never force-push"; only one tool obeyed it | The kit's `scripts/git-hooks/pre-push` |
 | Don't push to main until the checks pass | A commit reached main with a failing check | The kit's pre-push hook runs `scripts/check.sh`: the full lane before main, a fast lane on other branches |
 | State each rule once; conflicting rules hurt more than long ones | 3 conflicting preference rules made the agent's behavior look random | One rule set in PREFERENCES.md; the kit's `.claude/rule-tests.md` |
-| Measure; don't judge by eye | A layout shifted 14 px and no check noticed | The kit's `.claude/skills/ui-verify` |
+| Measure; don't judge by eye | A layout shifted 14 px and no check noticed | The kit's `.claude/skills/verify` |
 | Before you build, ask how the person works and what their setup allows | A solution assumed copy and paste, on a machine where the user had to type everything by hand | PREFERENCES.md "Least Effort for Me" |
 | Build from a real sample and the full source, not from memory | A package built from the docs failed on import; a real export showed the wrong key | Ask for a sample first (not yet a rule) |
 | Change one thing per test, and use a control | A test changed 2 things at once and could not find the cause | Not yet a rule |
@@ -122,7 +122,7 @@ With the guard on in the full kit, every push and every pull-request check fails
 
 ## Update an existing project
 
-Projects don't stay in sync with the kit automatically, and they don't carry the sync tools. To bring a project up to date by hand, start in the project repo with no uncommitted changes:
+A project takes a kit release as one pull request. The kit files in a project are locked (`.check.lock` holds their hashes and the kit version, and the check fails when one differs); a project adds its own rules, commands, checks and skill additions in the places that [the kit-update skill](.claude/skills/kit-update/SKILL.md) lists, and a sync does not touch those. To bring a project up to date, start in the project repo with no uncommitted changes:
 
 1. Clone this repo next to the project, then run its copy of the sync script:
    ```
@@ -136,10 +136,10 @@ An old AGENTS.md that doesn't follow the kit's layout is moved under "Project ru
 
 ## Limits
 
-- A project doesn't update when the kit does. The kit keeps no changelog; its history is in git (`git log`).
+- A project doesn't update when the kit does: someone runs the sync and merges its pull request. What each kit version changes: [docs/CHANGELOG.md](docs/CHANGELOG.md).
 - Account-wide preferences apply only to your own Claude account. Every Claude session in the project gets the project rules from AGENTS.md.
 - Setup needs an agent with file access. A chat that can't run commands can only give you text to paste; use "Set up a project by hand".
-- With the guard on, the pull-request check needs the `PII_GUARD_DENYLIST` secret. GitHub doesn't give secrets to pull requests from forks, so a pull request from a fork always fails the check. The maintainer checks it by hand, or copies it to a branch in the repo.
+- With the guard on, the pull-request check needs the `PII_GUARD_DENYLIST` secret (and `CHECK_TERMS` when you use a list of blocked terms). GitHub doesn't give secrets to pull requests from forks, so a pull request from a fork always fails the check. The maintainer checks it by hand, or copies it to a branch in the repo.
 - The pull-request check runs the scripts from the pull request itself, so a pull request that edits `scripts/check_content.py` or `scripts/check.sh` can change the result. Review changes to those files by hand.
 - Hooks are seat belts, not locks: Claude Code hooks only apply to Claude Code, and `--no-verify` skips git hooks.
 - The Claude Code sandbox (the network allowlist in .claude/settings.json) needs bubblewrap and socat on Linux. Without them, Claude Code warns you and runs commands outside the sandbox; the deny rules and git hooks still apply. Claude cloud containers don't have them, but they sit behind their own network proxy. macOS needs nothing extra.

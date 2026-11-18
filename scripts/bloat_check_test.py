@@ -14,6 +14,7 @@ import datetime
 import io
 import json
 import os
+import re
 import subprocess
 import tempfile
 from pathlib import Path
@@ -100,6 +101,8 @@ def rule_count_cases(bloat):
     assert kit == ["Rule one.", "Rule two."] and project == ["Project rule."], "header, Commands, fences, comments and starter blocks are not rules"
     assert "Build: none." in every, "the list of changed lines also covers sections that are not counted"
     assert rule_lines("## A\n\n- Rule start\n  continues with a | b here.\n")[0] == ["Rule start continues with a | b here."], "a continuation with a pipe stays in its rule (a change to it shows)"
+    keyed = rule_lines("## Hard rules\n\n- **Git history.** Never x.\n- **The owner may change anything** here.\n- Plain.\n\n## Project rules\n\n- **Own.** P.\n", with_sections=True)
+    assert [k for k, _ in keyed] == ["Git history", "The owner may change anything", "Hard rules", "Own"], "a bold label is the lint key, without its dot; else the heading"
     kit, project, _ = rule_lines("## A\n\n* Star.\n1. Numbered.\n  - Nested.\nA paragraph.\n\n## Project rules\n\n+ Plus.\n  wrapped.\nA rule as a paragraph.\n")
     assert kit == ["Star.", "Numbered.", "Nested. A paragraph."] and project == ["Plus. wrapped.", "A rule as a paragraph."], "every list marker counts; in the kit a line right below an item continues it, in Project rules only an indented one"
     _, project, _ = rule_lines("## Project rules\n\nRule one.\nRule two.\nRule three.\n\n- Bullet.\nAfter a bullet.\n\n#1 priority: never do X.\n")
@@ -133,7 +136,7 @@ def caps_and_paths_cases(bloat, ro, caps):
     assert any("over the warning" in r for r in bloat.rules_report(ro, warned)[0]) and not bloat.rules_report(ro, warned)[1], "the load warning only warns"
     settings(ro, "audit-budget-rules_file_lines: 50\naudit-ignore: ref/**\n")
     cfg = bloat.load_config(ro)
-    assert cfg["budgets"]["session_load_tokens"] == 6000 and cfg["budgets"]["rules_file_lines"] == 50, "a project can lower a kit cap"
+    assert cfg["budgets"]["session_load_tokens"] == 5000 and cfg["budgets"]["rules_file_lines"] == 50, "a project can lower a kit cap"
     assert bloat.ignored("ref/a/b.md", cfg) and not bloat.ignored("docs/a.md", cfg), "audit-ignore globs are read"
     for bad in ("audit-budget-session_load_tokens: 999999\n", "audit-budget-rule_file_lines: 50\n", "audit-every-days: soon\n"):
         settings(ro, bad)
@@ -197,8 +200,8 @@ def lint_cases(bloat, ro):
     with contextlib.redirect_stdout(io.StringIO()):
         assert bloat.main_rules(ro) == 0, "--rules passes"
         assert bloat.main_lint(ro) == 0, "--lint never fails"
-        (ro / "AGENTS.md").write_text("## A\n\n" + "- r.\n" * 36)
-        assert bloat.main_rules(ro) == 0, "--rules passes over the bullet guide of 35 (a warning)"
+        (ro / "AGENTS.md").write_text("## A\n\n" + "- r.\n" * 29)
+        assert bloat.main_rules(ro) == 0, "--rules passes over the bullet guide of 28 (a warning)"
         (ro / "AGENTS.md").write_text("## A\n\n" + "- r.\n" * 199)
         assert bloat.main_rules(ro) == 1, "--rules fails over the default cap of 200 lines"
 
@@ -257,6 +260,21 @@ def write_skill(rs, folder, body):
     (rs / ".claude/skills" / folder / "SKILL.md").write_text(body)
 
 
+def hard_rule_cases(rs):
+    """SINGLE_HOME: each hard rule restated in a skill is a hit; a pointer and a hook description pass."""
+    hits = ["Never force-push or rewrite published history.", "Never rebase a pushed branch.", "Never push with `--no-verify`.",
+            "Never push to main directly.", "Never weaken a hook to get past a block.", "Never skip a test.",
+            "Never repin an approval.", "A review finding is not approval.", "Review on a model tier no lower than the author's.",
+            "Never review with a lower tier."]
+    passes = ['Rules: see (AGENTS.md "Hard rules").', "| pre-push | blocks every force-push form and a push to main |",
+              "Run git clean up on a scratch folder.", "The owner's approval is in the pull request.",
+              "Check that the hook refuses --no-verify."]
+    for i, line in enumerate(hits + passes):
+        write_skill(rs, f"s{i}", f"---\nname: s{i}\ndescription: Use when testing.\n---\n{line}\n")
+    got = {re.search(r"skills/(s\d+)/", p).group(1) for p in skills.second_homes(rs)}
+    assert got == {f"s{i}" for i in range(len(hits))}, "each hard rule restated is a hit; pointers and descriptions pass: " + str(sorted(got))
+
+
 def skills_cases(rs):
     """--skills: a clean pass, each FAIL case, each WARN case, orphans and a folded description."""
     (rs / "AGENTS.md").write_text("Skills: ok, nodesc, noname, wrongname, nofm, longone, warnone.\n")
@@ -313,4 +331,6 @@ def run(bloat):
         compare_cases(bloat, root)
     with tempfile.TemporaryDirectory() as d:
         skills_cases(Path(d))
+    with tempfile.TemporaryDirectory() as d:
+        hard_rule_cases(Path(d))
     print("BLOAT TEST PASS")

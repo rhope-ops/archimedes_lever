@@ -94,6 +94,16 @@ SINGLE_HOME = [
     ("who merges a pull request", r"only the owner merges|the owner merges\b|never merges this pull request|the owner's merge is the approval", ["AGENTS.md"]),
     ("no direct push to main", r"merge to main by merge|\bPush main:|git checkout main && git merge|push to main and republish", ["AGENTS.md"]),
     ("the end-of-turn summary format", r"end-of-turn summary line:", ["AGENTS.md"]),
+    # The hard rules (AGENTS.md "Hard rules", 2026-11-18). A pointer such as (AGENTS.md "Hard rules") or a description
+    # of what a hook blocks has no "never ..." sentence and passes.
+    ("hard rule: git history",
+     r"\bnever (?:force[- ]?push|rebase\b|reset\b|stash\b|(?:git )?clean\b(?! up)|rewrite published history|discard work)"
+     r"|\bnever push\b[^.\n]*(?:--no-verify|\bmain\b|default branch)", ["AGENTS.md"]),
+    ("hard rule: guards and checks",
+     r"\bnever (?:weaken a (?:check|hook|test|guard)|skip a (?:check|test)|repin\b|add an? (?:allow|skip|exemption)"
+     r"|edit a generated report)", ["AGENTS.md"]),
+    ("hard rule: rule text approval", r"\b(?:is|are) not approval\b", ["AGENTS.md"]),
+    ("hard rule: the fresh review tier", r"tier no lower than|never review with a lower tier", ["AGENTS.md"]),
 ]
 
 

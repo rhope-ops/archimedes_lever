@@ -1,11 +1,11 @@
 ---
 name: personal-data
-description: Use when the content check (scripts/check.sh --content, or its hook) blocks a push, a pull-request check or a tool call, before you send content through a channel the hook does not cover, when a session reports DENYLIST, and before you set up or change `.check`. Gives what is scanned, how to fix a block, where the word lists live and what only the owner may do.
+description: Use when the content check blocks a push, a pull-request check or a tool call, before you send content through a channel the hook does not cover, when a session reports DENYLIST, and before you change `.check`. Gives what is scanned, how to fix a block and what only the owner may do.
 ---
 
 # The content check (personal data, secrets, blocked terms and files)
 
-AGENTS.md "Personal data" points here. Every pattern, tier and limit: the header of `scripts/check_content.py`.
+AGENTS.md "Secrets and personal data" points here. Every pattern, tier and limit: the header of `scripts/check_content.py`.
 
 ## State
 
@@ -37,7 +37,7 @@ Not covered: claude.ai chats (no hooks), a Bash command that builds its payload 
 1. Read the masked findings. Do not copy the data into chat, a commit message or a log.
 2. Remove the data. If it is in an unpushed commit, fix that commit.
 3. Push or call again.
-4. A finding that is wrong (a public reference text, an example value): tell the owner. AGENTS.md "Personal data" says who may add an entry to `.check`.
+4. A finding that is wrong (a public reference text, an example value): tell the owner. AGENTS.md "Guards and checks" says who may add an entry to `.check`. A private repo may put its owner's real name in the `- Owner:` line of AGENTS.md.
 
 ## The word lists
 
