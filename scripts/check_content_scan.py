@@ -171,9 +171,11 @@ def is_tier_line(v):
 def is_option_line(v):
     """True when this settings line is an option line (tier or denylist), never an allowed value."""
     return len(v) <= OPTION_MAX and bool(OPTION_LINE.match(v))
+BOTH_FILES = "profile: <both .check and .pii-guard exist>"  # load_allow adds it; it reads as an unknown tier line
 UNREADABLE = "profile: <the settings file is not UTF-8 text>"  # load_allow adds it; it reads as an unknown tier line
 UNKNOWN_PROFILE = ("unknown profile line in .check (or .pii-guard), or the file is not UTF-8 text: the only tier line is "
-                   "`profile: dod`. Correct or remove the line, or save the file as UTF-8; the guard does not guess a tier.")
+                   "`profile: dod`. Correct or remove the line, or save the file as UTF-8; if both .check and .pii-guard "
+                   "exist, move the lines of .pii-guard into .check and delete it. The check does not guess a tier.")
 
 
 def profile_of(allow):
@@ -210,21 +212,23 @@ def load_denylist():
 CONFIG_NAMES = (".check", ".pii-guard")  # the settings file; the second is the name before 2026-11-18, still read
 
 
+def _exists(root, name, ref=None):
+    """True when the file exists in the working tree, or at the git ref."""
+    if ref:
+        return subprocess.run(["git", "cat-file", "-e", f"{ref}:{name}"], cwd=root, capture_output=True).returncode == 0
+    return (pathlib.Path(root) / name).is_file()
+
+
 def config_name(root, ref=None):
     """The name of the settings file that exists (working tree, or at a git ref), or None: the first of CONFIG_NAMES."""
-    for name in CONFIG_NAMES:
-        if ref:
-            if subprocess.run(["git", "cat-file", "-e", f"{ref}:{name}"], cwd=root, capture_output=True).returncode == 0:
-                return name
-        elif (pathlib.Path(root) / name).is_file():
-            return name
-    return None
+    return next((name for name in CONFIG_NAMES if _exists(root, name, ref)), None)
 
 
 def load_allow(root, ref=None):
     """The lines of the settings file (working tree, or the file at a git ref such as the PR base): allowed exact
     strings, and the `skip:`, `block:`, `denylist:` and `profile:` lines."""
     name = config_name(root, ref)
+    both = name == CONFIG_NAMES[0] and _exists(root, CONFIG_NAMES[1], ref)
     if name is None:
         data = b""
     elif ref:
@@ -243,7 +247,8 @@ def load_allow(root, ref=None):
     text = "".join(c for c in text if unicodedata.category(c) != "Cf")
     # A comment starts at the line start or after whitespace, so "skip: docs/#1.txt" keeps its "#".
     vals = (re.split(r"(?:^|\s)#", l, maxsplit=1)[0].strip() for l in text.splitlines())
-    return {v for v in vals if v} | ({UNREADABLE} if bad else set())
+    # Both files present: the old one could hold the tier line that the new one lacks, so the scan fails.
+    return {v for v in vals if v} | ({UNREADABLE} if bad else set()) | ({BOTH_FILES} if both else set())
 
 
 def _covers(path, allow, key):
@@ -251,6 +256,8 @@ def _covers(path, allow, key):
     the file name, or the line names a folder above it. A bare "*" or "**" is ignored."""
     globs = [a[len(key):].strip() for a in allow if a.startswith(key)]
     globs = [g for g in globs if g.strip("*/")]
+    if key == "block:":  # a block line matches in any letter case (A.XLSX is the same file type as a.xlsx)
+        path, globs = path.lower(), [g.lower() for g in globs]
     base = path.rsplit("/", 1)[-1]
     return any(fnmatch.fnmatchcase(path, g) or path.startswith(g.rstrip("/") + "/")
                or (key == "block:" and "/" not in g and fnmatch.fnmatchcase(base, g)) for g in globs)

@@ -6,8 +6,9 @@ What is scanned, by tool:
     Write, Edit, NotebookEdit   the new text only (content, new_string, new_source), and the path against the
                                 `block:` lines. The old text of an edit is not scanned: an edit must be able to
                                 remove a finding. The target file is not read and need not exist.
-    Bash                        the command, only when it sends something out (OUTGOING: a network client, gh, or a
-                                git commit, tag, notes or push). A local command passes unread.
+    Bash                        the command, only when it can send something out (outgoing(): a network client, a
+                                URL, or git commit, tag, notes, push or send-email). A local command passes
+                                unread. Limit: a payload that a script or an interpreter builds at run time.
     every other tool            every string of the input, and the files it names.
 Output: exit 0 lets the tool call run; exit 2 blocks it, and the masked findings go to stderr. Any error blocks.
 Run: check_content.py imports it for --hook; not run alone.
@@ -20,7 +21,7 @@ import subprocess
 import sys
 
 from check_content_scan import (BLOCKED, UNKNOWN_PROFILE, blocked, git, is_option_line, load_allow, load_denylist,
-                                load_terms, profile_of, scan_files, scan_text)
+                                load_terms, profile_of, scan_files, scan_text, skipped)
 
 
 HOOK_FILE_KEYS = ("file_path", "file_paths", "files")
@@ -30,8 +31,24 @@ HOOK_RECIPIENT_KEYS = ("to", "cc", "bcc")  # Gmail, top level: an address here i
 # Tools that write a local file: the keys that hold the new text. Only these are scanned.
 WRITE_KEYS = {"Write": ("content",), "Edit": ("new_string",), "NotebookEdit": ("new_source",)}
 # A Bash command is scanned only when it sends something out of the workspace.
-OUTGOING = re.compile(r"(?<![\w./-])(?:curl|wget|gh|scp|sftp|rsync|ssh|nc|ncat|telnet|ftp|mail|mailx|sendmail|http|https"
-                      r"|git\s+(?:-\S+\s+(?:[^-\s]\S*\s+)?)*(?:commit|tag|notes|push))(?![\w-])|https?://")
+# Programs that send their arguments or input to another host. A path before the name still counts (/usr/bin/curl).
+CLIENTS = re.compile(r"(?<![\w.-])(?:curl|wget|gh|scp|sftp|rsync|ssh|nc|ncat|telnet|ftp|mail|mailx|sendmail|http|https|aws"
+                     r"|gsutil|gcloud|bq|az|docker|podman|npm|pnpm|yarn|twine|pip|pip3)(?![\w-])|https?://")
+GIT_OUT = frozenset(("commit", "tag", "notes", "push", "send-email"))  # git verbs that publish text
+
+
+def outgoing(cmd):
+    """True when a Bash command can send something out: it names a network client or a URL, or one of its simple
+    commands (split on newline ; | &) has the word git and a publishing verb. One pass per part (no slow pattern)."""
+    if CLIENTS.search(cmd):
+        return True
+    for part in re.split(r"[\n;|&]", cmd):
+        words = set(re.findall(r"[A-Za-z-]+", part))
+        if "git" in words and words & GIT_OUT:
+            return True
+    return False
+
+
 HOOK_MAX_BYTES = 8_000_000  # named files above this total block: the scan must end well inside the hook timeout
 HOOK_BUDGET_S = 8  # seconds; the hook timeout in .claude/settings.json is 10
 
@@ -124,7 +141,7 @@ def _hook(stdin_text):
         return verdict(scan_write(name, tool_input, full, root, deny, allow, dod, terms), name)
     if name == "Bash" and isinstance(tool_input, dict):
         cmd = tool_input.get("command")
-        if isinstance(cmd, str) and not OUTGOING.search(cmd):
+        if isinstance(cmd, str) and not outgoing(cmd):
             return 0
     texts, recipients, paths, strict = hook_parts(tool_input, name)
     found = scan_text("\n".join(texts), "tool input", deny, allow, dod, terms)
@@ -142,13 +159,15 @@ def _hook(stdin_text):
 def scan_write(name, tool_input, full, root, deny, allow, dod, terms):
     """Findings for a Write, Edit or NotebookEdit call: the new text, and the target path against the block lines."""
     new = [v for k in WRITE_KEYS[name] for v in [tool_input.get(k)] if isinstance(v, str)]
-    found = scan_text("\n".join(new), "new text", deny, allow, dod, terms)
     path = tool_input.get("file_path") or tool_input.get("notebook_path")
-    if isinstance(path, str) and path:
-        rel = os.path.relpath(full(path), root).replace(os.sep, "/")
+    rel = None
+    if isinstance(path, str) and path:  # real paths: a symlinked folder must not hide the file from a block line
+        rel = os.path.relpath(os.path.realpath(full(path)), os.path.realpath(root)).replace(os.sep, "/")
         if blocked(rel, allow):
-            found.append((path, 0, "blocked", BLOCKED))
-    return found
+            return [(path, 0, "blocked", BLOCKED)]
+    if rel and skipped(rel, allow):  # the owner's skip line covers this file: its text is not scanned, as in a push
+        return []
+    return scan_text("\n".join(new), "new text", deny, allow, dod, terms)
 
 
 def verdict(found, tool):
@@ -159,6 +178,6 @@ def verdict(found, tool):
         print(f"check hook: {where}:{n}: {kind}: {val}", file=sys.stderr)
     print(f"check hook: blocked the {tool} call: {len(found)} finding(s) of personal data, secrets or blocked content. "
           "Remove or mask them (never copy them elsewhere), then call again. A finding that is wrong: tell the owner; "
-          "only the owner adds an allow line to .check (.claude/skills/personal-data/SKILL.md).", file=sys.stderr)
+          "an allow line in .check needs the owner's request (.claude/skills/personal-data/SKILL.md).", file=sys.stderr)
     return 2
 

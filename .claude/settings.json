@@ -64,7 +64,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR\"/scripts/check.sh --hook",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/scripts/check.sh --hook || exit 2",
             "timeout": 10
           }
         ]

@@ -15,7 +15,7 @@ import sys
 import tempfile
 
 import check_content_hook
-from check_content_scan import blocked, config_name, load_allow, load_terms, scan_files, scan_text
+from check_content_scan import blocked, config_name, load_allow, load_terms, profile_of, scan_files, scan_text
 
 at, dot = "@", "."
 ME = [sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "check_content.py")]
@@ -61,7 +61,8 @@ def case_block_lines(check):
     """`block:` lines: a glob, a file-name glob in any folder, a folder; bare stars are ignored; block wins over skip."""
     allow = {"block: *.xlsx", "block: exports/", "block: data/raw-*.csv", "block: *", "skip: exports/"}
     for path, want in (("a.xlsx", True), ("deep/dir/b.xlsx", True), ("exports/x.txt", True), ("data/raw-1.csv", True),
-                       ("data/clean.csv", False), ("notes.md", False), ("xlsx", False)):
+                       ("data/clean.csv", False), ("notes.md", False), ("xlsx", False), ("Deep/B.XLSX", True),
+                       ("EXPORTS/x.txt", True)):
         check(f"block: {path}: {'blocked' if want else 'passes'}", blocked(path, allow) is want)
     with tempfile.TemporaryDirectory() as d:
         pathlib.Path(d, "exports").mkdir()
@@ -89,10 +90,14 @@ def case_check_file(check):
         pathlib.Path(d, ".pii-guard").write_text("old-allowed\n")
         check("only .pii-guard: it is read", config_name(d) == ".pii-guard" and load_allow(d) == {"old-allowed"})
         pathlib.Path(d, ".check").write_text("# settings\nblock: *.xlsx\nprofile: dod\n")
-        check(".check wins over .pii-guard", config_name(d) == ".check" and load_allow(d) == {"block: *.xlsx", "profile: dod"})
+        check("both files: .check is read, and the scan fails until .pii-guard is gone",
+              config_name(d) == ".check" and profile_of(load_allow(d)) == "unknown")
+        r = subprocess.run(ME + ["--stdin"], input="clean", env=env, capture_output=True, text=True, cwd=d)
+        check("both files: the CLI fails and says what to do", r.returncode == 1 and "delete it" in r.stdout)
+        pathlib.Path(d, ".pii-guard").unlink()
+        check("only .check: its lines are read", load_allow(d) == {"block: *.xlsx", "profile: dod"})
         r = subprocess.run(ME + ["--status"], env=env, capture_output=True, text=True, cwd=d)
         check(".check: `block:` is no tier line; the tier line is read", "profile: dod" in r.stdout)
-        pathlib.Path(d, ".pii-guard").unlink()
         pathlib.Path(d, ".check").write_text("block: *.xlsx\n")
         git(d, "add", ".check"); git(d, "commit", "-q", "-m", "settings")
         base = git(d, "rev-parse", "HEAD").stdout.strip()
@@ -119,7 +124,8 @@ def case_hook_tools(check):
     """The hook for Write, Edit, NotebookEdit and Bash."""
     mail = "jane" + at + "corp" + dot + "io"
     with tempfile.TemporaryDirectory() as d:
-        pathlib.Path(d, ".check").write_text("block: *.xlsx\n")
+        pathlib.Path(d, ".check").write_text("block: *.xlsx\nblock: data/*.csv\nskip: ref/\n")
+        os.symlink(d, d + "-link")  # the same project folder through a symlink
         saved = {k: os.environ.pop(k) for k in list(os.environ) if k.startswith("PII_GUARD_DENYLIST") or k == "CLAUDE_PROJECT_DIR"}
         os.environ["PII_GUARD_DENYLIST_FILE"] = os.path.join(d, "none.txt")
         os.environ["CLAUDE_PROJECT_DIR"] = d
@@ -138,13 +144,28 @@ def case_hook_tools(check):
                 ("Bash: a URL with a clean text passes", "Bash", {"command": "python3 fetch.py https://example.com/x"}, 0),
                 ("Bash: a word that only holds 'gh' is local", "Bash", {"command": "echo high " + mail}, 0),
                 ("Bash: a command of a wrong type is scanned and passes", "Bash", {"command": 5}, 0),
+                ("Write: a path-form block line blocks", "Write", {"file_path": "data/x.csv", "content": "x"}, 2),
+                ("Write: a file under a skip line is not scanned", "Write", {"file_path": "ref/a.md", "content": mail}, 0),
+                ("Bash: a client named by its full path blocks", "Bash", {"command": "/usr/bin/curl -d " + mail + " example.org"}, 2),
+                ("Bash: ./gh and sudo /bin/wget block", "Bash", {"command": "./gh issue create -b " + mail + "; sudo /bin/wget x?" + mail}, 2),
+                ("Bash: git with a quoted folder, then commit, blocks", "Bash", {"command": "git -C 'my dir' commit -m '" + mail + "'"}, 2),
+                ("Bash: aws with an address blocks", "Bash", {"command": "aws s3 cp - s3://b/" + mail}, 2),
+                ("Bash: git status with an address is local", "Bash", {"command": "git status; grep " + mail + " notes.md"}, 0),
             ):
                 code = hook(d, tool, inp)
                 check(f"hook: {name} (exit {code})", code == want)
+            with contextlib.redirect_stderr(io.StringIO()):
+                code = check_content_hook.hook(json.dumps({"tool_name": "Write", "cwd": d + "-link", "tool_input": {"file_path": "data/x.csv", "content": "x"}}))
+            check(f"hook: Write through a symlinked folder: the block line holds (exit {code})", code == 2)
+            import time
+            t0 = time.process_time()
+            slow = check_content_hook.outgoing("git -a " * 16_000) or check_content_hook.outgoing("x /" * 40_000)
+            check("hook: a long Bash command is classified in linear time", not slow and time.process_time() - t0 < 1)
         finally:
             os.environ.pop("PII_GUARD_DENYLIST_FILE", None)
             os.environ.pop("CLAUDE_PROJECT_DIR", None)
             os.environ.update(saved)
+            os.unlink(d + "-link")
 
 
 def run(check):

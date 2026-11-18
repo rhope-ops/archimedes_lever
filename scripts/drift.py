@@ -240,6 +240,35 @@ def legacy_and_synced_cases(proj, base, results):
     expect(results, "no Owner line, --owner Sam", {(a, i): (s, d) for a, i, s, d in rows}[("AGENTS.md", "Order of authority")], "same")
 
 
+def same(results, name, got, want):
+    """Record and print one case of the settings merge: got must equal want."""
+    results.append(got == want)
+    print(("ok   " if got == want else "FAIL ") + name + ("" if got == want else f": got {got}"))
+
+
+def settings_merge_cases(tmp, base, results):
+    """sync merge of .claude/settings.json: the kit's deny rules and hook entries first; the project's own are kept."""
+    kit_cmd = json.loads((base / ".claude/settings.json").read_text())["hooks"]["PreToolUse"][0]
+    own = {"matcher": "^Bash$", "hooks": [{"type": "command", "command": "python3 tools/own_guard.py"}]}
+    mixed = {"hooks": [{"type": "command", "command": "python3 scripts/stop_check.py"},
+                       {"type": "command", "command": "python3 tools/own_stop.py"}]}
+    old_kit = {"matcher": "^(Agent|mcp__slack__post)$", "hooks": [{"type": "command", "command": "python3 scripts/pii_guard.py --hook"}]}
+    path = tmp / "settings.json"
+    path.write_text(json.dumps({"permissions": {"deny": ["Bash(own rule*)"]},
+                                "hooks": {"PreToolUse": [old_kit, own], "Stop": [mixed]}}))
+    sb.REPLACED_HOOKS.clear()
+    got = json.loads(sb.merge_settings(base / ".claude/settings.json", path))
+    pre, stop = got["hooks"]["PreToolUse"], got["hooks"]["Stop"]
+    same(results, "merge: the kit hook first, the project's own entry kept, the older kit copy gone",
+           [pre[0] == kit_cmd, own in pre, old_kit not in pre, len(pre)], [True, True, True, 2])
+    same(results, "merge: a mixed entry keeps only the project's command",
+           [h["command"] for e in stop[1:] for h in e["hooks"]], ["python3 tools/own_stop.py"])
+    same(results, "merge: the matcher of a replaced kit entry is noted", sb.REPLACED_HOOKS, ["^(Agent|mcp__slack__post)$"])
+    deny = got["permissions"]["deny"]
+    same(results, "merge: the kit deny rules first, the project's rule last",
+           [deny[:len(sb.check_blocks.DENY)] == sb.check_blocks.DENY, deny[-1]], [True, "Bash(own rule*)"])
+
+
 def tier_cases(proj, base, results):
     """A starter project is not compared with the advanced parts; apply_tier, header_tier and set_tier work."""
     get = lambda item: status(proj, base, item)  # noqa: E731
@@ -283,6 +312,7 @@ def self_test():
         proj = pathlib.Path(d)
         legacy_and_synced_cases(proj, base, results)
         tier_cases(proj, base, results)
+        settings_merge_cases(proj, base, results)
     ok = all(results)
     print("DRIFT TEST " + ("PASS" if ok else "FAIL"))
     return 0 if ok else 1

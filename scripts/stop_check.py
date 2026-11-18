@@ -45,9 +45,10 @@ def default_ref():
     return None
 
 
-def on_default_branch():
+def on_default_branch(fetch=False):
     """True when HEAD has no commits that origin/main (or origin/master) lacks. A local copy of that branch can be
-    old: when the first comparison fails, fetch the branch once (at most FETCH_TIMEOUT_S seconds) and compare again."""
+    old: with fetch, when the first comparison fails, fetch the branch once (at most FETCH_TIMEOUT_S seconds) and
+    compare again."""
     ref = default_ref()
     if ref is None:
         return False
@@ -56,8 +57,8 @@ def on_default_branch():
         """True when HEAD is the ref's commit or one of its ancestors."""
         return subprocess.run(["git", "merge-base", "--is-ancestor", "HEAD", ref], cwd=REPO_DIR,
                               capture_output=True, text=True).returncode == 0
-    if merged():
-        return True
+    if merged() or not fetch:
+        return merged()
     try:  # no network, no remote or a slow host: keep the first answer
         subprocess.run(["git", "fetch", "--quiet", "origin", ref.split("/", 1)[1]], cwd=REPO_DIR, capture_output=True,
                        timeout=FETCH_TIMEOUT_S)
@@ -87,6 +88,10 @@ def problems():
         if ahead:
             found.append(f"{ahead} commit(s) on {branch} not pushed to {upstream}")
     elif branch != "HEAD":
+        # Only here a fetch is worth its time: a clean branch that was never pushed and looks ahead of an old local
+        # copy of the default branch (a new session clone).
+        if not found and on_default_branch(fetch=True):
+            return found
         found.append(f"branch {branch} has no upstream (never pushed)")
     elif default_ref() and not on_default_branch():
         # Detached HEAD (also during a rebase that is not finished) with commits the default branch lacks

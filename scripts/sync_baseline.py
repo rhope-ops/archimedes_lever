@@ -321,16 +321,29 @@ def merge_settings(base_path, proj_path):
             die('.claude/settings.json "hooks" must be an object; fix it first')
         # The kit's hook entries come first and replace older copies of themselves; the project's own entries follow.
         for event, entries in base_hooks.items():
-            own = [e for e in hooks.get(event) or [] if e not in entries and not kit_hook(e)]
-            hooks[event] = entries + own
+            hooks[event] = entries + [e for e in map(own_part, hooks.get(event) or []) if e and e not in entries]
     return json.dumps(proj, indent=2, ensure_ascii=False) + "\n"
 
 
-def kit_hook(entry):
-    """True when a settings.json hook entry runs a kit script (an older copy of a kit hook, replaced by a sync)."""
-    text = json.dumps(entry)
-    return any(name in text for name in ("scripts/pii_guard.py", "scripts/check_content.py", "scripts/check.sh --hook",
-                                         "scripts/stop_check.py", "scripts/first_use_check.py"))
+KIT_HOOK_COMMANDS = ("scripts/pii_guard.py", "scripts/check_content.py", "scripts/check.sh --hook",
+                     "scripts/stop_check.py", "scripts/first_use_check.py")
+REPLACED_HOOKS = []  # matchers of older kit hook entries that a sync replaced (main() prints them)
+
+
+def own_part(entry):
+    """The project's own part of a settings.json hook entry: the entry without the commands that run a kit script
+    (the kit's entry runs those). None when nothing is left: an older copy of a kit hook. Its matcher is noted, so
+    the project can see tool names it had added to it."""
+    if not isinstance(entry, dict) or not isinstance(entry.get("hooks"), list):
+        return entry
+    own = [h for h in entry["hooks"] if not any(k in json.dumps(h) for k in KIT_HOOK_COMMANDS)]
+    if len(own) == len(entry["hooks"]):
+        return entry
+    if not own:
+        if entry.get("matcher"):
+            REPLACED_HOOKS.append(entry["matcher"])
+        return None
+    return {**entry, "hooks": own}
 
 
 NEW_ARCS = "| Arc | Span | Summary | Problem | Turning point | Outcome | Lesson |"
@@ -378,6 +391,7 @@ def parse_args():
     ap.add_argument("--timezone", help="IANA time zone for project log times, for example Europe/Berlin")
     ap.add_argument("--tier", choices=TIERS, help="kit tier (default: the project's - Tier: line, else full)")
     ap.add_argument("--set-tier", choices=TIERS, help="bootstrap only: apply the tier to this repo in place")
+    ap.add_argument("--lock-here", action="store_true", help="bootstrap only: write the kit lock for this repo as it is")
     args = ap.parse_args()
     if args.timezone and not valid_timezone(args.timezone):
         die(f"time zone {args.timezone!r} is not a known IANA name (for example UTC, Europe/Berlin)")
@@ -497,10 +511,16 @@ def write_files(base, root, new, changed):
         path.write_text(new[rel])
         if rel.endswith((".sh", ".py")) or rel.startswith("scripts/git-hooks/"):
             shutil.copymode(base / rel, path) if (base / rel).exists() else None
-    locked = [r for r in new if r in COPY_FILES]
-    version = (base / "KIT_VERSION").read_text().strip() if (base / "KIT_VERSION").exists() else "unknown"
-    check_lock.write(root, check_lock.build(root, locked, version, baseline_sha(base).split()[0]))
+    version = write_lock(base, root, new)
     print(f"Written, with the kit lock {check_lock.LOCK} (kit version {version}). Review with 'git diff', then commit and push.")
+
+
+def write_lock(base, root, files):
+    """Write the kit lock of the project for the kit files among `files`; return the kit version."""
+    version = (base / "KIT_VERSION").read_text().strip() if (base / "KIT_VERSION").exists() else "unknown"
+    check_lock.write(root, check_lock.build(root, [r for r in files if r in COPY_FILES], version,
+                                            baseline_sha(base).split()[0]))
+    return version
 
 
 def main():
@@ -513,6 +533,9 @@ def main():
     if args.set_tier:
         set_tier(root, args.set_tier)
         return
+    if args.lock_here:  # bootstrap: this clone of the kit becomes a project; lock its kit files as they are now
+        write_lock(root, root, COPY_FILES)
+        return
 
     with tempfile.TemporaryDirectory() as tmp:
         base = get_baseline(args.baseline, tmp)
@@ -524,8 +547,13 @@ def main():
         new, tier = planned_files(base, root, args)
         changed = show_diff(root, new)
         report_leftovers(root, tier)
+        for matcher in REPLACED_HOOKS:
+            print("An older kit hook entry is replaced by the kit's. If you had added tool names to its matcher, add a "
+                  f"hook entry of your own for them. The old matcher: {matcher}")
         if not changed:
             print("No changes: the project already matches the baseline.")
+            if args.apply:
+                write_lock(base, root, new)
             return
         print(f"\n{len(changed)} file(s) to change: {', '.join(changed)}")
         if not args.apply:
