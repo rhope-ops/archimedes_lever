@@ -144,7 +144,8 @@ A kit file that the owner wants different in one project is recorded with `pytho
 
 ## Limits
 
-- A project doesn't update when the kit does: someone runs the sync and merges its pull request. What each kit version changes: [docs/CHANGELOG.md](docs/CHANGELOG.md).
+- A project doesn't update when the kit does: someone runs the sync and merges its pull request. What each kit version changes, and what a MAJOR version asks of a project: [docs/CHANGELOG.md](docs/CHANGELOG.md).
+- The hooks run on your computer or in the agent's container. Server-side protection (a ruleset on main, secret scanning) is a GitHub setting that only you can turn on: [docs/github/](docs/github/README.md).
 - Account-wide preferences apply only to your own Claude account. Every Claude session in the project gets the project rules from AGENTS.md.
 - Setup needs an agent with file access. A chat that can't run commands can only give you text to paste; use "Set up a project by hand".
 - With the guard on, the pull-request check needs the `PII_GUARD_DENYLIST` secret (and `CHECK_TERMS` when you use a list of blocked terms). GitHub doesn't give secrets to pull requests from forks, so a pull request from a fork always fails the check. The maintainer checks it by hand, or copies it to a branch in the repo.
