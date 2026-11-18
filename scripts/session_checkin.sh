@@ -99,7 +99,8 @@ echo "uncommitted: $uncommitted"
 # The last check run in this clone: lane, wall time and the 3 slowest checks (scripts/check.sh writes it).
 last="$(git rev-parse --git-dir)/check-last"
 [ -f "$last" ] && echo "check:       $(sed 's/^TIME  //' "$last")"
-# Personal-data guard: list source, entry count, fingerprint (compare it between places) and tier; never the names.
+[ -f scripts/check_lock.py ] && [ -f .check.lock ] && python3 scripts/check_lock.py --status
+# Content check: list source, entry count, fingerprint (compare it between places) and tier; never the names.
 if { [ -f .check ] || [ -f .pii-guard ]; } && [ -f scripts/check_content.py ]; then python3 scripts/check_content.py --status || true; fi
 
 # The kit itself keeps its placeholders on purpose (same origin rule as TEMPLATE_NAME in scripts/first_use_check.py).

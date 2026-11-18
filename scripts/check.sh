@@ -239,6 +239,7 @@ selftest code_standard scripts/code_standard.py scripts/code_standard_test.py sc
 selftest timeline scripts/timeline.py scripts/log_check.py -- python3 scripts/timeline.py --test  # it imports log_check
 selftest check_content scripts/check_content.py scripts/check_content_scan.py scripts/check_content_hook.py scripts/check_content_test.py scripts/check_content_test_blocks.py -- python3 scripts/check_content.py --test
 selftest check_blocks scripts/check_blocks.py .claude/settings.json -- python3 scripts/check_blocks.py --test
+selftest check_lock scripts/check_lock.py -- python3 scripts/check_lock.py --test
 selftest first_use_check scripts/first_use_check.py scripts/check_blocks.py scripts/check_content.py scripts/check_content_scan.py -- python3 scripts/first_use_check.py --test
 # Kit only: projects have no sync tools. The drift self-test reads the kit's AGENTS.md and stop_check.py.
 selftest drift scripts/drift.py scripts/sync_baseline.py AGENTS.md scripts/stop_check.py -- python3 scripts/drift.py --test
@@ -263,6 +264,8 @@ if [ -f scripts/bloat_check.py ]; then
 fi
 # The git-safety and key-file deny rules (scripts/check_blocks.py) are all in .claude/settings.json.
 [ -f scripts/check_blocks.py ] && [ -f .claude/settings.json ] && run "deny rules" python3 scripts/check_blocks.py --settings
+# The kit files of a project are as the last sync wrote them (scripts/check_lock.py; the kit itself has no lock).
+[ -f scripts/check_lock.py ] && [ -f .check.lock ] && run "kit lock" python3 scripts/check_lock.py --verify
 
 if [ ! -f scripts/log_check.py ]; then
   :  # starter tier: no project log

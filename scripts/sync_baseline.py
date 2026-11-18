@@ -36,8 +36,11 @@ What it changes:
     scripts/check.sh, scripts/bloat_check*.py, scripts/code_standard*.py, docs/code-standard.md, scripts/git-hooks/pre-push,
     .claude/rule-tests.md
                            Replaced with the baseline copies. A starter project gets none of ADVANCED_FILES. (.check is not copied: a project opts in itself.)
-    .claude/settings.json  Adds the baseline deny rules, each baseline hook event the project has no hook for, and the
-                           baseline "sandbox" block when the project has none. Keeps all other settings.
+    .claude/settings.json  The kit's deny rules first (scripts/check_blocks.py), the kit's hook entries first in each
+                           event (an older copy of a kit hook is replaced), and the baseline "sandbox" block when the
+                           project has none. Keeps the project's own deny rules, hooks and all other settings.
+    .check.lock            The kit lock: the kit version and commit, and a hash of each kit file and of the kit
+                           sections of AGENTS.md (scripts/check_lock.py; scripts/check.sh fails on a difference).
     .gitignore             Adds the baseline lines. Keeps all other lines.
     docs/LOG.md            An Arcs table with the old columns (Arc | Span | Summary | Outcome) gets the story columns
                            Problem, Turning point and Lesson, each "-" (.claude/skills/project-log/SKILL.md). Rows are kept.
@@ -62,11 +65,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import check_blocks  # noqa: E402 - the deny rules and the placeholder pattern
+import check_lock  # noqa: E402 - the kit lock that a sync writes into the project
 
 DEFAULT_BASELINE = "https://github.com/rhope-ops/archimedes_lever"
 RULES_HEADING = "## Project rules"
 COMMANDS_HEADING = "## Commands"
-COPY_FILES = ["scripts/session_checkin.sh", "scripts/stop_check.py", "scripts/check_blocks.py", "scripts/check_content_test_blocks.py",
+COPY_FILES = ["scripts/session_checkin.sh", "scripts/stop_check.py", "scripts/check_blocks.py", "scripts/check_lock.py", "scripts/check_content_test_blocks.py",
               "scripts/worker_guard.py", "scripts/log_check.py", "scripts/timeline.py", "scripts/check_content.py", "scripts/first_use_check.py",
               "scripts/check_content_scan.py", "scripts/check_content_hook.py", "scripts/check_content_test.py",
               "scripts/check.sh", "scripts/bloat_check.py", "scripts/bloat_check_skills.py", "scripts/bloat_check_test.py",
@@ -95,8 +99,11 @@ ADVANCED_FILES = [".claude/skills/delegate/SKILL.md", ".claude/agents/scout.md",
                   ".claude/skills/audit/SKILL.md", "scripts/bloat_check.py", "scripts/bloat_check_skills.py",
                   "scripts/bloat_check_test.py", ".claude/rule-tests.md",
                   ".claude/skills/efficiency/SKILL.md"]
-# Moved to .claude/skills/ on 2026-11-16: a project synced before then still has the old copies.
-MOVED_FILES = [".claude/orchestration.md", ".claude/bloat-audit.md", ".claude/project-log.md"]
+# Moved or renamed in the kit (to .claude/skills/ on 2026-11-16; the guard to check_content on 2026-11-18): a
+# project synced before then still has the old copies.
+MOVED_FILES = [".claude/orchestration.md", ".claude/bloat-audit.md", ".claude/project-log.md",
+               "scripts/pii_guard.py", "scripts/pii_guard_scan.py", "scripts/pii_guard_hook.py",
+               "scripts/pii_guard_test.py", ".github/workflows/pii-guard.yml"]
 TIERS = ("starter", "full")
 NO_OWNER_RENAME = {"scripts/sync_baseline.py", "scripts/first_use_check.py", "docs/FIRST_USE.md"}
 OWNER_RE = r"[A-Za-z0-9 ._,()-]+"  # safe inside Python strings, JSON and Markdown
@@ -312,10 +319,18 @@ def merge_settings(base_path, proj_path):
             hooks = proj["hooks"] = {}
         if not isinstance(hooks, dict):
             die('.claude/settings.json "hooks" must be an object; fix it first')
+        # The kit's hook entries come first and replace older copies of themselves; the project's own entries follow.
         for event, entries in base_hooks.items():
-            if not hooks.get(event):
-                hooks[event] = entries
+            own = [e for e in hooks.get(event) or [] if e not in entries and not kit_hook(e)]
+            hooks[event] = entries + own
     return json.dumps(proj, indent=2, ensure_ascii=False) + "\n"
+
+
+def kit_hook(entry):
+    """True when a settings.json hook entry runs a kit script (an older copy of a kit hook, replaced by a sync)."""
+    text = json.dumps(entry)
+    return any(name in text for name in ("scripts/pii_guard.py", "scripts/check_content.py", "scripts/check.sh --hook",
+                                         "scripts/stop_check.py", "scripts/first_use_check.py"))
 
 
 NEW_ARCS = "| Arc | Span | Summary | Problem | Turning point | Outcome | Lesson |"
@@ -467,7 +482,9 @@ def report_leftovers(root, tier):
             print(f"Tier starter: these advanced files are not synced; delete them by hand if you want: {', '.join(extra)}")
     old = [f for f in MOVED_FILES if (root / f).exists()]
     if old:
-        print(f"These files moved to .claude/skills/; delete the old copies by hand: {', '.join(old)}")
+        print(f"These files moved or were renamed in the kit; delete the old copies by hand: {', '.join(old)}")
+    if (root / ".pii-guard").exists() and not (root / ".check").exists():
+        print("The settings file has a new name: run 'git mv .pii-guard .check' (its lines stay as they are).")
 
 
 def write_files(base, root, new, changed):
@@ -480,7 +497,10 @@ def write_files(base, root, new, changed):
         path.write_text(new[rel])
         if rel.endswith((".sh", ".py")) or rel.startswith("scripts/git-hooks/"):
             shutil.copymode(base / rel, path) if (base / rel).exists() else None
-    print("Written. Review with 'git diff', then commit and push.")
+    locked = [r for r in new if r in COPY_FILES]
+    version = (base / "KIT_VERSION").read_text().strip() if (base / "KIT_VERSION").exists() else "unknown"
+    check_lock.write(root, check_lock.build(root, locked, version, baseline_sha(base).split()[0]))
+    print(f"Written, with the kit lock {check_lock.LOCK} (kit version {version}). Review with 'git diff', then commit and push.")
 
 
 def main():
@@ -498,7 +518,8 @@ def main():
         base = get_baseline(args.baseline, tmp)
         if base.resolve() == root.resolve():
             die("this is the baseline repo itself; run the script in a project repo")
-        print(f"Kit baseline: {baseline_sha(base)}. Projects do not keep the sync tools or a .baseline pin (the owner, 2026-11-13).")
+        print(f"Kit baseline: {baseline_sha(base)}. A sync writes the kit lock {check_lock.LOCK} (the kit version and a "
+              "hash of each kit file); the project does not keep the sync tools.")
         check_placeholders(root)
         new, tier = planned_files(base, root, args)
         changed = show_diff(root, new)
