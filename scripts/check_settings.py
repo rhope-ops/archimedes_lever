@@ -47,8 +47,8 @@ MIGRATE = "python3 scripts/check_settings.py --migrate"
 CODE_DEFAULTS = {"caps": {"max_file_lines": 600, "max_function_lines": 60}, "include": ["*"], "exclude": [],
                  "generated": [], "c1_safety": False, "c2": "lean"}
 AUDIT_DEFAULTS = {"every_days": 14, "every_commits": 300, "start_read": [], "ignore": [],
-                  "budgets": {"session_load_tokens": 6000, "session_load_warn_tokens": 5000, "rules_file_lines": 200,
-                              "handoff_lines": 40, "file_kb": 500, "duplicate_lines": 20, "rules": 35,
+                  "budgets": {"session_load_tokens": 5000, "session_load_warn_tokens": 4500, "rules_file_lines": 200,
+                              "handoff_lines": 40, "file_kb": 500, "duplicate_lines": 20, "rules": 28,
                               "project_rules": 15}}
 # The owner's caps for every repo (2026-11-18): a project can lower one of these budgets, never raise it.
 KIT_CAPS = ("session_load_tokens", "session_load_warn_tokens", "rules_file_lines")
@@ -410,7 +410,7 @@ def test_settings(root, git):
         (root / CHECK).write_text(line + "\n")
         assert code_config(root) == code_config(root / "none"), "an allowed string is not a setting: " + line
     for line, why in (("audit-every-day: 1", "unknown setting"), ("audit-budget-nope: 1", "unknown setting"),
-                      ("audit-every-days: 1.5", "whole number"), ("audit-budget-session_load_tokens: 6001", "never raise")):
+                      ("audit-every-days: 1.5", "whole number"), ("audit-budget-session_load_tokens: 5001", "never raise")):
         (root / CHECK).write_text(line + "\n")
         assert why in fails(audit_config, root), "an audit- line that is not valid fails: " + line
     assert code_config(root) == CODE_DEFAULTS, "a bad audit- line does not fail the code standard"
@@ -464,7 +464,7 @@ def test_migrate(root, git):
     assert "unknown key(s) not moved: odd" in out.getvalue() and "SETTINGS MIGRATED" in out.getvalue(), out.getvalue()
     assert code_config(root) == code_from_old(old_code["config"]) == code_base(root, "HEAD")[0], \
         "the new settings equal the old ones, and the old file at the base is still read"
-    assert audit_config(root)["budgets"]["session_load_tokens"] == 6000, "a raised kit cap is not moved"
+    assert audit_config(root)["budgets"]["session_load_tokens"] == 5000, "a raised kit cap is not moved"
     before = {p.name: p.read_bytes() for p in root.iterdir() if p.is_file()}
     with contextlib.redirect_stdout(out):
         assert migrate(root) == 0, "a second run passes"
