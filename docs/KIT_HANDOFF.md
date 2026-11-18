@@ -2,12 +2,12 @@
 
 The kit's own handoff (AGENTS.md "Handoff"). Kit only: first use deletes it in a project, which uses docs/NEXT_PROMPT.md. Keep it at 40 lines or fewer; evidence goes in docs/reviews/. Times are America/Chicago.
 
-Updated: 2026-11-18 12:20 by the session that wrote the plan below.
+Updated: 2026-11-18 16:25 by the 90-161.Z sync session (step 3 done for 90-161.Z; step 7 gains the two-sessions fix).
 
 ## State
 
 - main: `d226ea3` (kit 2026.11.20.1: two rule tiers, three merge lanes, layered sync, extension files for project code; pull requests 42 to 46).
-- Synced and locked to d226ea3 on their main: 36-3003.Z, 65-601.Z, SPAR (drift 0 of 56 each; second sync merged by pull requests 6, 6 and 11). RADE synced to 1.0.1 (fecf36d; RADE pull request 104, merged 2026-11-18; drift 0 of 56; session load ~4,975 tokens, 25 under the cap). Not synced: 90-161.Z, icf-source, sec-source.
+- Synced and locked to d226ea3 on their main: 36-3003.Z, 65-601.Z, SPAR (drift 0 of 56 each; second sync merged by pull requests 6, 6 and 11). RADE synced to 1.0.1 (fecf36d; RADE pull request 104, merged 2026-11-18; drift 0 of 56; session load ~4,975 tokens, 25 under the cap). 90-161.Z synced to 1.0.1 (fecf36d; 90-161.Z pull request 152, merged 2026-11-18; drift 0 of 56; session load ~4,852 tokens; first sync, "No kit sync" removed). Not synced: icf-source, sec-source.
 
 ## Approved plan (the owner, 2026-11-18 12:15; updates approved 13:25 and 14:35): lean two-tier rules and the kit as a synced baseline
 
@@ -16,20 +16,20 @@ Full text, proposals 1 to 26, risks and targets: [reviews/2026-11-18-lean-rules-
 - [x] 0. Plan saved; toggles set (all Yes).
 - [x] 1. Kit 2026.11.19 and 2026.11.20 merged (pull requests 44 and 45). Rule tests: 10 pass, 1 not valid, of 11 run.
 - [x] 2. Pilot sync merged: 36-3003.Z (pull request 5), 65-601.Z (5), SPAR (10). They keep the tier "full" (the owner, 2026-11-18: the starter tier drops the project log rule).
-- [ ] 3. (RADE done 2026-11-18: RADE pull request 104; kit fix 1.0.1 = pull request 50; tag v1.0.1 for the owner.) RADE and 90-161.Z, one session each (a RADE session does not edit an app repo): steps in `.claude/skills/kit-update/SKILL.md`. First give each project guard a home (PROJECT.md, `scripts/check.local.sh`, `.check`); 90-161.Z tuned `reviewer.md` (now a kit file); both are over the 5,000-token session load. Lane C: ask the owner for each merge. Their own scanner and code-standard code go to `scripts/check_content_local.py` and `scripts/code_standard_gate.py`; notes: docs/reviews/2026-11-18-port-notes/.
+- [x] 3. (RADE done 2026-11-18: RADE pull request 104; 90-161.Z done 2026-11-18: 90-161.Z pull request 152; kit fix 1.0.1 = pull request 50; tag v1.0.1 = fecf36d.) RADE and 90-161.Z, one session each (a RADE session does not edit an app repo): steps in `.claude/skills/kit-update/SKILL.md`. First give each project guard a home (PROJECT.md, `scripts/check.local.sh`, `.check`); 90-161.Z tuned `reviewer.md` (now a kit file); both are over the 5,000-token session load. Lane C: ask the owner for each merge. Their own scanner and code-standard code go to `scripts/check_content_local.py` and `scripts/code_standard_gate.py`; notes: docs/reviews/2026-11-18-port-notes/.
 - [ ] 4. icf-source and sec-source: convert AGENTS.md to the kit layout, then sync. Lane C.
 - [ ] 5. Owner layer and server side: PREFERENCES.md rewrite (draft in pull request 48, waits for the owner's approval of its text); rulesets and secret scanning (the owner's clicks: [github/README.md](github/README.md); RADE and 90-161.Z switch `scan` to `checks` at their sync); fleet status page done: https://claude.ai/artifact/AWtpGxEqCWrjrPa1Afe7qW (private; rows in its database, collection `repos`, doc `meta/kit`; the session that syncs a repo updates its row with `ArtifactData`); allow list (25); "not set yet" lines (24); release tags: semantic versions from 1.0.0, tag `v1.0.0` (8; plugin and CODEOWNERS dropped, docs/DECISIONS.md).
 - [x] 6. Proposal 20 dropped (the owner, 2026-11-18): an import does not lower the context cost.
-- [ ] 7. Next kit release (lane C, one batch, after the sync pull requests of RADE and 90-161.Z are merged): the approved lane C text in "The owner's approval"; a deliver-skill line "after a kit release merges, the releasing session opens the sync pull request in each synced repo" and updates the fleet page rows (proposal 15); rule test 22 (ask for 60 s) and a new "Kit files" scenario; a quieter sync message when nothing changes; kit faults that RADE and 90-161.Z report; then its tag (v1.1.0 or later, docs/CHANGELOG.md), and the sync pull requests of the synced repos.
+- [ ] 7. Next kit release (lane C, one batch, after the sync pull requests of RADE and 90-161.Z are merged): the approved lane C text in "The owner's approval"; a deliver-skill line "after a kit release merges, the releasing session opens the sync pull request in each synced repo" and updates the fleet page rows (proposal 15); rule test 22 (ask for 60 s) and a new "Kit files" scenario; a quieter sync message when nothing changes; kit faults that RADE and 90-161.Z report; a fix for two sessions on one branch (the owner, 2026-11-18: fixes 1, 2 and 4): (1) scripts/session_checkin.sh prints an ACTIVE line for each remote branch with a commit in the last 3 hours and each open pull request, with a self-test; (2) handoff skill, at the start of a session that continues earlier work: before you edit a branch this session did not create, list the running sessions (list_sessions, where the host has it) and the open pull requests, and stop and ask the owner if another running session has it; (4) delegate skill brief format: name the open pull requests and running sessions on the target repo, or say none. Cause: on 2026-11-18 a RADE brief sent a second session to 90-161.Z step 3 while this session had PR 152 open; then its tag (v1.1.0 or later, docs/CHANGELOG.md), and the sync pull requests of the synced repos.
 - [x] 8. Kit 2026.11.20.1 merged (pull request 42, from the session of pull request 41).
 
 ## Open (in order)
 
-1. Steps 3 to 7. Done = `drift.py --strict` shows 0 kit items different in 7 repos, `scripts/check.sh` passes in each, and the targets in the plan's "Verification" table are met (session load target 4,000 not met: about 4,240; the owner accepted it for now).
+1. Steps 4, 5 and 7. Done = `drift.py --strict` shows 0 kit items different in 7 repos, `scripts/check.sh` passes in each, and the targets in the plan's "Verification" table are met (session load target 4,000 not met: about 4,240; the owner accepted it for now).
 
 ## Needs the owner
 
-- Steps 3 and 4: the merge of each sync pull request, and the removal of each "No kit sync" rule.
+- Step 4: the merge of each sync pull request.
 - Step 5: paste the new preferences; 7 rulesets (about 3 minutes each).
 
 ## Do not
@@ -37,4 +37,3 @@ Full text, proposals 1 to 26, risks and targets: [reviews/2026-11-18-lean-rules-
 - Do not merge a kit pull request before you list the kit's open pull requests: on 2026-11-18, pull requests 44 and 45 were merged while 42 was open, and 42 then conflicted in about 15 files.
 - Do not put a command that holds a denied git pattern in a shell heredoc: the deny rules refuse it. Use the file tool.
 - Do not loop on MINOR conflict findings: record them; only a MAJOR finding changes rule text again.
-- Do not run `sync_baseline.py --apply` in a project before its step: RADE and 90-161.Z still have a "No kit sync" rule, and it stands until that step's pull request replaces it.
