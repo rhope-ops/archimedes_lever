@@ -7,7 +7,7 @@ Updated: 2026-11-18 16:50 by the kit owner (session "Archimedes Lever workflow o
 ## State
 
 - main: kit 2.0.1 (79540fe; 2.0.0 = 7b80101, tag v2.0.0 by the owner; 1.0.1 was 591b4cd). Fleet page: https://claude.ai/artifact/AWtpGxEqCWrjrPa1Afe7qW (private; the kit owner updates its rows).
-- Synced: 36-3003.Z, 65-601.Z, SPAR on 2.0.1 (pull requests 8, 8, 13). RADE sync pull request 108 open (2.0.1). 90-161.Z sync pull request 155 open, blocked: its own engine-lock test fails (engine-v16, newest engine-v17), also on main; a 90-161.Z session bumps the lock, then 155 merges. Not synced: icf-source, sec-source.
+- Synced: RADE, 36-3003.Z, 65-601.Z, SPAR on 2.0.1 (pull requests 108, 8, 8, 13). 90-161.Z sync pull request 155 open, blocked: its own engine-lock test fails (engine-v16, newest engine-v17), also on main; a 90-161.Z session bumps the lock, then 155 merges. Not synced: icf-source, sec-source.
 
 ## Approved plan (the owner, 2026-11-18 12:15; updates approved 13:25 and 14:35): lean two-tier rules and the kit as a synced baseline
 
@@ -20,7 +20,7 @@ Full text, proposals 1 to 26, risks and targets: [reviews/2026-11-18-lean-rules-
 - [ ] 4. icf-source and sec-source: convert AGENTS.md to the kit layout, then sync. Lane C.
 - [ ] 5. Owner layer: preferences text and the two account skills (ship, turn-summary) done and pasted by the owner (2026-11-18); tag v1.0.0 done; rulesets and secret scanning are the owner's clicks ([github/README.md](github/README.md)); fleet page done (link under "State"); allow list (25) and "not set yet" lines (24) open.
 - [x] 6. Proposal 20 dropped (the owner, 2026-11-18): an import does not lower the context cost.
-- [ ] 7. Kit 2.0.0 (pull request 53) and 2.0.1 (54: shorter descriptions, so RADE and 90-161.Z stay under 5,000 tokens) merged; 3 of 5 repos synced; RADE and 90-161.Z open (State). Tag v2.0.0: the owner, from a release link.
+- [ ] 7. Kit 2.0.0 (pull request 53) and 2.0.1 (54: shorter descriptions, so RADE and 90-161.Z stay under 5,000 tokens) merged; 4 of 5 repos synced; 90-161.Z open (State). Tag v2.0.0: the owner, from a release link.
 - [x] 8. Kit 2026.11.20.1 merged (pull request 42, from the session of pull request 41).
 
 ## Open (in order)
