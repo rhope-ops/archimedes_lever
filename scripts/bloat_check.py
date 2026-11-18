@@ -314,7 +314,10 @@ def rules_report(root, cfg, gate=False):
         if old is not None:
             break
     if old is not None:
-        was = set(rule_lines(old)[2])
+        import check_lock  # in a synced project the kit checked the locked kit lines: only "Project rules" count here
+        part = 1 if check_lock.kit_text_locked(root) else 2
+        every = (kit, project, every)[part]
+        was = set(rule_lines(old)[part])
         now = set(every)
         added, removed = [l for l in every if l not in was], sorted(was - now)
         for mark, lines in (("+", added), ("-", removed)):
