@@ -22,7 +22,7 @@ AGENTS.md "Handoff" points here. The next session cannot see this chat: it reads
 5. Deliver it like any change (`.claude/skills/deliver/SKILL.md`); AGENTS.md "Delegation" says which changes need a fresh review.
 6. In the turn summary, give a resume prompt: one code block, at most 100 words, that stands alone (goal, state, approved decisions, next step, full links).
 
-In the kit clone itself (the KIT line at start), docs/NEXT_PROMPT.md is the template that projects get: do not fill it. Put the handoff, and an approved plan, in the pull request text and the resume prompt in the summary.
+In the kit clone itself (the KIT line at start), docs/NEXT_PROMPT.md is the template that projects get: do not fill it. The kit's own handoff file is docs/KIT_HANDOFF.md, with the same sections.
 
 ## Start from a handoff
 

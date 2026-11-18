@@ -93,7 +93,7 @@ rm -f -- PREFERENCES.md docs/FILES.md .bloat-audit.json
 find docs/reviews -maxdepth 1 -name '20*.md' -delete 2>/dev/null || true
 # Projects do not stay in sync with the kit (the owner, 2026-11-13): the sync tools stay in the kit only.
 # The token log hook is installed from the kit by the cloud setup scripts (the owner, 2026-11-17).
-rm -f -- scripts/sync_baseline.py scripts/drift.py scripts/token_log.py scripts/token_log_test.py KIT_VERSION docs/CHANGELOG.md
+rm -f -- scripts/sync_baseline.py scripts/drift.py scripts/token_log.py scripts/token_log_test.py KIT_VERSION docs/CHANGELOG.md docs/KIT_HANDOFF.md
 if [ -f LICENSE ]; then mv -- LICENSE docs/archimedes_lever-LICENSE.txt; fi
 
 rm -- "$0"

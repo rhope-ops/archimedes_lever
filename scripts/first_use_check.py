@@ -95,8 +95,8 @@ def messages(root):
 
 
 RESUMED = ("RESUMED: this session restarted or its context was compacted; it is not a new session. Run "
-           "scripts/session_checkin.sh for the git state, then continue the approved plan in docs/NEXT_PROMPT.md (or the "
-           "pull request text, or the plan in the summary above) from the first step that is not done. Do not review the "
+           "scripts/session_checkin.sh for the git state, then continue the approved plan in docs/NEXT_PROMPT.md (in the kit: "
+           "docs/KIT_HANDOFF.md; or the plan in the summary above) from the first step that is not done. Do not review the "
            "plan again and do not ask questions the owner already answered; code reviews and checks still apply.")
 
 

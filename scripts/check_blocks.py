@@ -40,7 +40,7 @@ PLACEHOLDER = re.compile(r"\{\{[A-Z_]+\}\}")
 # Kit tools and docs that name placeholders on purpose (they fill or explain them).
 PLACEHOLDER_TOOLS = {"scripts/bootstrap.sh", "scripts/session_checkin.sh", "scripts/sync_baseline.py",
                      "scripts/first_use_check.py", "scripts/drift.py", "scripts/check.sh", "scripts/check_blocks.py",
-                     "README.md"}
+                     "README.md", "docs/KIT_HANDOFF.md"}
 
 
 def missing_deny(settings_path):

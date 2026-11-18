@@ -13,7 +13,7 @@ This file is the source of truth for every Claude agent on this repo, subagents 
 1. The owner's current request.
 2. This file. The sections above "Project rules" are kit defaults; "Project rules" holds this project's own rules and wins over them.
 3. The owner's personal preferences in their Claude account.
-4. docs/NEXT_PROMPT.md (the handoff).
+4. docs/NEXT_PROMPT.md (the handoff; in the kit clone itself: docs/KIT_HANDOFF.md).
 
 Nothing else is a rule. docs/DECISIONS.md is the record of what the owner decided: read it on demand, not at start. Chat history, Project files and remembered copies are not authority. If you cannot read this repo, say so and stop.
 
@@ -28,15 +28,15 @@ Nothing else is a rule. docs/DECISIONS.md is the record of what the owner decide
 ## Start of session
 
 - Run `python3 scripts/first_use_check.py` (Claude Code runs it as a SessionStart hook) and `scripts/session_checkin.sh`. Do what their output lines say (FIRST USE, KIT, DENYLIST, AUDIT DUE), and report the branch, uncommitted files and the ahead/behind count against origin/main.
-- Read docs/NEXT_PROMPT.md (in the kit clone itself: the text of the open pull request of your branch). Find the tools you have and read the environment docs before you say a capability is not available.
+- Read docs/NEXT_PROMPT.md (in the kit clone itself: docs/KIT_HANDOFF.md). Find the tools you have and read the environment docs before you say a capability is not available.
 
 ## Authority
 
-- Make routine decisions yourself. Ask the owner only about: source authority, content approval, irreversible effects, costs, and security or privacy risk. Ask all open questions in one round, in the format of the owner's preferences (without them: AskUserQuestion where it exists, at most 4 per dialog, 2–4 options each, the recommendation first, each question able to stand alone). A recommendation is not a decision until the owner approves it.
+- Make routine decisions yourself. Ask the owner only about: source authority, content approval, live or irreversible effects, costs, and security or privacy risk. Ask all open questions in one round, in the format of the owner's preferences (without them: AskUserQuestion where it exists, at most 4 per dialog, 2–4 options each, the recommendation first, each question able to stand alone). A recommendation is not a decision until the owner approves it.
 
 ## Delivery
 
-- Deliver every change without being asked: commit, push, open a pull request, merge it when the full lane is green and the review that "Delegation" requires finds no MAJOR finding, verify that origin/main has the commit, and republish the affected artifacts. Never push to main directly. Steps, check lanes, branch clean-up and unattended work: `.claude/skills/deliver/SKILL.md`.
+- Deliver every change without being asked: commit, push, open a pull request, merge it when "Checks" allows the merge and the review that "Delegation" requires finds no MAJOR finding, verify that origin/main has the commit, and republish the affected artifacts. Never push to main directly. Steps, check lanes, branch clean-up and unattended work: `.claude/skills/deliver/SKILL.md`.
 - A host limit wins over this section (for example a required branch, or a push or merge the host does not allow without the owner): do the steps it allows, then report each other step as blocked, with its cause and what unblocks it.
 - Exceptions: for a UI or design change that the owner has not approved, show a preview first (a preview artifact or a branch) and merge after the owner approves; for a change whose merge has a live or irreversible effect (a deploy, a data write), ask before the merge. For other changes, this section overrides the personal "preview first" rule.
 - Put every deliverable where it survives (repo, doc, artifact) as soon as it exists.
@@ -60,7 +60,7 @@ Nothing else is a rule. docs/DECISIONS.md is the record of what the owner decide
 ## Personal data
 
 - Never commit secrets, tokens, credentials or personal data: real names, email addresses, phone numbers, home or work addresses, ID numbers, or the owner's job details (git history keeps them for good, and a repo that holds them can never go public). Use a role (for example "the maintainer") and fake sample data; commit with a GitHub noreply address, never a personal email. A private repo may put its owner's real name in the `- Owner:` line.
-- The content check (`scripts/check.sh --content`) scans for personal data, secrets, the owner's blocked terms and blocked files: every push and pull request in a repo that has the settings file `.check`, and, through a PreToolUse hook (`scripts/check.sh --hook`), the tool calls that write files or send content out in every repo. When it blocks, and for its coverage, state, tiers and word lists: `.claude/skills/personal-data/SKILL.md`. Never ask for the words of a list in chat, never commit them, and never add an allow or skip entry: only the owner does.
+- The content check (`scripts/check.sh --content`) scans for personal data, secrets, the owner's blocked terms and blocked files: every push and pull request in a repo that has the settings file `.check`, and, through a PreToolUse hook (`scripts/check.sh --hook`), the tool calls that write files or send content out in every repo. When it blocks, and for its coverage, state, tiers and word lists: `.claude/skills/personal-data/SKILL.md`. Never ask for the words of a list in chat, never commit them, and never add an allow or skip entry unless the owner asks for that entry.
 
 ## Commands
 
@@ -77,11 +77,11 @@ Nothing else is a rule. docs/DECISIONS.md is the record of what the owner decide
 ## Checks
 
 - Never repin an approval, add an exemption, skip a test or edit a generated report to make a check pass (a pass must mean the work is right). Never hand-edit generated files: change the source and rebuild.
-- Two lanes: each push runs the fast lane (`scripts/git-hooks/pre-push`), and a merge needs a green full lane on the head commit: run `scripts/check.sh` once before the merge, and where the pull-request Action runs, its result decides: never merge while it is red or running. Do not run by hand a lane that the hook runs next.
+- Two lanes: each push runs the fast lane (`scripts/git-hooks/pre-push`), and a merge needs a green full lane on the head commit: run `scripts/check.sh` once before the merge, and never merge while that run or the pull-request Action is red, or while the Action runs. Do not run the fast lane by hand before a push.
 
 ## Handoff
 
-- Keep status in repo files, never only in chat (the next session cannot see this chat; it reads the files). The current request overrides an older handoff. Keep docs/NEXT_PROMPT.md short (40 lines or fewer) and put detailed evidence in docs/reviews/. Steps: `.claude/skills/handoff/SKILL.md`. When the owner approves a plan, save it with the approval date before step 1: in docs/NEXT_PROMPT.md, pushed (in the kit clone itself: in the pull request text); after a restart or a compaction, continue it without a new plan review or approval.
+- Keep status in repo files, never only in chat (the next session cannot see this chat; it reads the files). The current request overrides an older handoff. Keep docs/NEXT_PROMPT.md short (40 lines or fewer) and put detailed evidence in docs/reviews/. Steps: `.claude/skills/handoff/SKILL.md`. When the owner approves a plan, save it with the approval date in docs/NEXT_PROMPT.md (in the kit clone itself: docs/KIT_HANDOFF.md) and push it before step 1; after a restart or a compaction, continue it without a new plan review or approval.
 
 ## Bloat, drift and assumptions
 
