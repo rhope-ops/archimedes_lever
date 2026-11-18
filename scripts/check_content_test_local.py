@@ -123,6 +123,39 @@ def cli(scripts, d, args, text):
     return r.returncode, r.stdout + r.stderr
 
 
+def case_load_ends(check, scripts, d, path, write):
+    """A local module that ends or stalls the process while it loads: the scan fails and the hook blocks.
+
+    Args:
+        check: prints one result line and remembers a failure (label, good).
+        scripts: the folder with the copied scripts.
+        d: the folder to run in.
+        path: the path of the local module file to write.
+        write: the JSON text of a clean Write tool call for the hook.
+    """
+    for label, text in (("exit 0", "import sys\nsys.exit(0)\n"), ("exit 1", "import sys\nsys.exit(1)\n"),
+                        ("a self-test with no main guard", "ADD = {}\nprint('LOCAL TEST PASS')\nraise SystemExit(0)\n")):
+        with open(path, "w") as f:   # a file that ends the process while it loads must not end the scan with its code
+            f.write(text)
+        code, out = cli(scripts, d, ["--stdin"], "clean text")
+        check(f"local module that exits at load ({label}): a scan fails", code == 1 and "CONTENT CHECK FAIL" in out)
+        check(f"local module that exits at load ({label}): the hook blocks (exit 2)", cli(scripts, d, ["--hook"], write)[0] == 2)
+    with open(path, "w") as f:   # a load that hangs: the hook's own time budget ends it with a block
+        f.write("import time\ntime.sleep(20)\n")
+    import time
+    for value, label in (("1", "the timer ends it"), ("abc", "a bad timer value still blocks")):
+        os.environ["CHECK_HOOK_LOAD_S"] = value
+        try:
+            t0 = time.monotonic()
+            code = cli(scripts, d, ["--hook"], write)[0]
+            took = time.monotonic() - t0
+        finally:
+            del os.environ["CHECK_HOOK_LOAD_S"]
+        # with "1" the load timer must end the process long before the 20 s sleep does; with a bad value it is 8 s
+        check(f"local module that hangs at load: the hook blocks, {label} (exit {code}, {took:.0f} s)",
+              code == 2 and took < (5 if value == "1" else 15))
+
+
 def case_cli(check, d, kit_scripts):
     """The command line and the hook with a copy of the scripts and a sample module next to them.
 
@@ -159,27 +192,7 @@ def case_cli(check, d, kit_scripts):
         code, out = cli(scripts, d, ["--status"], "")
         check(f"broken local module ({label}): --status fails and says why", code == 1 and "finders: FAIL" in out and why in out)
     check("broken local module: a local Bash command is not scanned, so it can repair the file", cli(scripts, d, ["--hook"], local_bash)[0] == 0)
-    for label, text in (("exit 0", "import sys\nsys.exit(0)\n"), ("exit 1", "import sys\nsys.exit(1)\n"),
-                        ("a self-test with no main guard", "ADD = {}\nprint('LOCAL TEST PASS')\nraise SystemExit(0)\n")):
-        with open(path, "w") as f:   # a file that ends the process while it loads must not end the scan with its code
-            f.write(text)
-        code, out = cli(scripts, d, ["--stdin"], "clean text")
-        check(f"local module that exits at load ({label}): a scan fails", code == 1 and "CONTENT CHECK FAIL" in out)
-        check(f"local module that exits at load ({label}): the hook blocks (exit 2)", cli(scripts, d, ["--hook"], write)[0] == 2)
-    with open(path, "w") as f:   # a load that hangs: the hook's own time budget ends it with a block
-        f.write("import time\ntime.sleep(20)\n")
-    import time
-    for value, label in (("1", "the timer ends it"), ("abc", "a bad timer value still blocks")):
-        os.environ["CHECK_HOOK_LOAD_S"] = value
-        try:
-            t0 = time.monotonic()
-            code = cli(scripts, d, ["--hook"], write)[0]
-            took = time.monotonic() - t0
-        finally:
-            del os.environ["CHECK_HOOK_LOAD_S"]
-        # with "1" the load timer must end the process long before the 20 s sleep does; with a bad value it is 8 s
-        check(f"local module that hangs at load: the hook blocks, {label} (exit {code}, {took:.0f} s)",
-              code == 2 and took < (5 if value == "1" else 15))
+    case_load_ends(check, scripts, d, path, write)
     with open(path, "w") as f:   # the shape is right, but the finder fails when it runs
         f.write("def bad(line):\n    raise RuntimeError('boom')\n\n\nADD = {'email': [bad]}\n")
     code, out = cli(scripts, d, ["--stdin"], "clean text")
