@@ -9,7 +9,7 @@
 #   2. the rule caps and the paths AGENTS.md names, the lint of changed rule lines (WARN lines), and in the full lane
 #      the conflict-check record for changed rule lines (scripts/bloat_check.py --rules [--gate]; full tier),
 #   3. the project log check (full tier),
-#   4. the personal-data scan of all tracked files (when .pii-guard exists; in GitHub Actions the pii-guard step does it;
+#   4. the personal-data scan of all tracked files (when .pii-guard exists; in GitHub Actions the "checks" workflow's guard step does it;
 #      with --no-pii the caller does it: the pre-push hook scans files and pushed commits in one run),
 #   5. scripts/check.local.sh, when it exists: this project's own tests (SKIP when missing: the review gate in
 #      .claude/skills/deliver/SKILL.md then guards main).
@@ -263,7 +263,7 @@ fi
 if [ ! -f .pii-guard ]; then
   skip "personal-data scan" "no .pii-guard: guard off"
 elif [ "${GITHUB_ACTIONS:-}" = "true" ]; then
-  skip "personal-data scan" "GitHub Actions: the pii-guard step scans with the base allow list"
+  skip "personal-data scan" "GitHub Actions: the checks workflow's guard step scans with the base allow list"
 elif [ "$pii" = 0 ]; then
   skip "personal-data scan" "the pre-push hook scans the files and the pushed commits next"
 else

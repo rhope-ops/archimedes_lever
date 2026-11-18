@@ -15,9 +15,12 @@ It reports:
                     when the user asks to initiate or start a project, follow docs/FIRST_USE.md; for project
                     work, or when it is not clear, ask before changing anything.
     DENYLIST        the repo has a .pii-guard file but this session has no name denylist, so pushes will be blocked.
+    RESUMED         the hook input says source "resume" or "compact" (a restart or a compaction, not a new session):
+                    only this line, so the agent continues the approved plan and does not start over (the owner, 2026-11-18).
 The kit repo itself keeps its placeholders on purpose: it gets the KIT line, never FIRST USE.
 Exit 0 always: a session-start hook informs, it never blocks. Standard library only.
 """
+import json
 import os
 import pathlib
 import re
@@ -89,6 +92,32 @@ def messages(root):
     return out
 
 
+RESUMED = ("RESUMED: this session restarted or its context was compacted; it is not a new session. Do not run the "
+           "start-of-session steps again and do not ask questions the owner already answered. Continue the approved plan "
+           "in docs/NEXT_PROMPT.md (or the plan in the summary above) from the first step that is not done; check its "
+           "state in git first.")
+
+
+def hook_source(raw):
+    """The "source" field of the SessionStart hook input ("" when the input is empty or not JSON)."""
+    try:
+        data = json.loads(raw or "{}")
+        return data.get("source", "") if isinstance(data, dict) else ""
+    except ValueError:
+        return ""
+
+
+def read_hook_input():
+    """The hook input on stdin; "" for a terminal, or when nothing arrives within 2 s (a manual run must not hang)."""
+    try:
+        if sys.stdin is None or sys.stdin.isatty():
+            return ""
+        import select
+        return sys.stdin.read() if select.select([sys.stdin], [], [], 2)[0] else ""
+    except Exception:  # no select on this stdin (for example a Windows pipe): treat as a new session
+        return ""
+
+
 def self_test():
     """Check the messages on a temporary repo through each state (new, kit clone, guard with and without denylist)."""
     ok = True
@@ -133,6 +162,9 @@ def self_test():
             ok = ok and good
             pathlib.Path(d, ".pii-guard").unlink()
             expect("set-up project, guard off", kinds(), [])
+            for raw, want in (('{"source": "resume"}', "resume"), ('{"source": "compact"}', "compact"),
+                              ('{"source": "startup"}', "startup"), ("", ""), ("not json", ""), ("[1]", "")):
+                expect(f"hook source of {raw!r}", hook_source(raw), want)
     finally:
         for k, v in saved.items():
             os.environ.pop(k, None)
@@ -146,6 +178,9 @@ def main():
     """Print the messages for the current repo, or run --test; return the exit code."""
     if "--test" in sys.argv[1:]:
         return self_test()
+    if hook_source(read_hook_input()) in ("resume", "compact"):
+        print(RESUMED)
+        return 0
     r = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True)
     root = r.stdout.strip() if r.returncode == 0 else os.environ.get("CLAUDE_PROJECT_DIR", ".")
     for m in messages(root):
