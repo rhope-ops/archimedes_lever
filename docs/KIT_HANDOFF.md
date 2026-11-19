@@ -14,7 +14,8 @@ Updated: 2026-11-19 14:50. Kit owner: the session "Kit · Fleet decision hub · 
 Full text, decisions and approved rule text: [reviews/2026-11-19-fleet-decision-hub-plan.md](reviews/2026-11-19-fleet-decision-hub-plan.md). Scope: the kit; the owner ports it per project. Earlier plans: kit 4.0.0 session names done except step 3 (tag v4.0.0) ([record](reviews/2026-11-19-session-names-plan.md)); lean rules done except step 5 (Open 1).
 
 - [x] 0. Plan saved.
-- [ ] 1. Survey of the kit's own files. 2. Contract and format texts (lane C). 3. Kit PR. 4. Pilot on the kit. 5. Page (preview first). 6. Loop proof. 7. Port guide, daily harvest task.
+- [x] 1. Survey ([reviews/2026-11-19-fleet-survey.md](reviews/2026-11-19-fleet-survey.md)).
+- [ ] 2. Contract and format texts (lane C). 3. Kit PR. 4. Pilot on the kit. 5. Page (preview first). 6. Loop proof. 7. Port guide, daily harvest task.
 
 ## Open (in order)
 
