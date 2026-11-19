@@ -6,7 +6,7 @@ Updated: 2026-11-19 15:52. Kit owner: the session "Kit · Fleet decision hub · 
 
 ## State
 
-- main: kit 4.1.0 (4135536, PRs 72 and 74, fleet format template; before: 4.0.0, c8339c3, PR 64). Tags (feature releases; the owner makes them): v2.0.0 (7b80101), v3.0.0 (67e7766), v3.1.0 (88185f0); v3.2.0 and v4.0.0 not made yet. Fleet page: https://claude.ai/artifact/AWtpGxEqCWrjrPa1Afe7qW (private; the kit owner updates its rows). Its "Waiting for you" list (2026-11-19) reads the `needs` field (`[{text, url}]`) of `meta/kit` and of each `repos` row: the session that closes or adds an owner action updates that field.
+- main: kit 4.1.0 (4135536, PRs 72 and 74, fleet format template; before: 4.0.0, c8339c3, PR 64). Tags (feature releases; the owner makes them): v2.0.0 (7b80101), v3.0.0 (67e7766), v3.1.0 (88185f0); v3.2.0 and v4.0.0 not made yet. Fleet page: https://claude.ai/artifact/AWtpGxEqCWrjrPa1Afe7qW (private; the kit owner updates its rows; ported projects add `items` and fleet fields by harvest; choices in `choices`). Its "Waiting for you" list (2026-11-19) reads the `needs` field (`[{text, url}]`) of `meta/kit` and of each `repos` row: the session that closes or adds an owner action updates that field.
 - Seven repos on 4.0.0 (c8339c3; merged 2026-11-19): RADE 126, 90-161.Z 179, icf-source 168, 36-3003.Z 12, 65-601.Z 12, sec-source 21, SPAR 17. Session load: RADE ~4,985, icf-source ~4,939, 90-161.Z ~4,850, sec-source ~4,745. First conversions merged 2026-11-19 (owner-approved rule texts): no-more-beyond PR 63 (~4,903 tokens), transcription_assistant PR 6 (~4,887). NMB follow-ups: delete superseded tools (D4); set `.claude/agents/nmb-reviewer.md` to opus (D3).
 
 ## Approved plan (the owner, 2026-11-19 14:45): fleet decision hub (kit template)
@@ -17,7 +17,7 @@ Full text, decisions and approved rule text: [reviews/2026-11-19-fleet-decision-
 - [x] 1. Survey ([reviews/2026-11-19-fleet-survey.md](reviews/2026-11-19-fleet-survey.md)).
 - [x] 2. Contract approved 2026-11-19 15:10 ([reviews/2026-11-19-fleet-contract.md](reviews/2026-11-19-fleet-contract.md)).
 - [x] 3. Kit PR 72 (kit 4.1.0). [-] 4. Pilot on the kit: dropped by the owner (template only; PR 73 closed); its 2 template fixes merged in PR 74.
-- [ ] 5. Page: preview https://claude.ai/artifact/RZwwoMT9fNJDARDcBzn7AR (example data) waits for the owner's approval; then the live page. 6. Loop proof (after the owner ports a first project). 7. Port guide and harvest-task template.
+- [x] 5. Page: approved by the owner (preview https://claude.ai/artifact/RZwwoMT9fNJDARDcBzn7AR); live page version 3 (2026-11-19): db (only the owner writes) and the Start session button (connector create_session). 6. Loop proof (after the owner ports a first project). 7. Port guide and harvest-task template.
 
 ## Open (in order)
 
@@ -26,7 +26,7 @@ Full text, decisions and approved rule text: [reviews/2026-11-19-fleet-decision-
 
 ## Needs the owner
 
-- Tag v4.1.0 (https://github.com/rhope-ops/archimedes_lever/releases/new?tag=v4.1.0&target=4135536a72e9a5e9c63fd57496f9739cefac0966&title=Kit%204.1.0); approve the fleet page preview (plan step 5). Tags v3.2.0 (https://github.com/rhope-ops/archimedes_lever/releases/new?tag=v3.2.0&target=18896fc5ae5e954eeb0182bc4beae264eee9d541&title=Kit%203.2.0) and v4.0.0 (https://github.com/rhope-ops/archimedes_lever/releases/new?tag=v4.0.0&target=c8339c31cc75d50106ede550afd1c36e4c7b529f&title=Kit%204.0.0); rulesets and secret scanning.
+- Tag v4.1.0 (https://github.com/rhope-ops/archimedes_lever/releases/new?tag=v4.1.0&target=4135536a72e9a5e9c63fd57496f9739cefac0966&title=Kit%204.1.0). Tags v3.2.0 (https://github.com/rhope-ops/archimedes_lever/releases/new?tag=v3.2.0&target=18896fc5ae5e954eeb0182bc4beae264eee9d541&title=Kit%203.2.0) and v4.0.0 (https://github.com/rhope-ops/archimedes_lever/releases/new?tag=v4.0.0&target=c8339c31cc75d50106ede550afd1c36e4c7b529f&title=Kit%204.0.0); rulesets and secret scanning.
 
 ## Do not
 
