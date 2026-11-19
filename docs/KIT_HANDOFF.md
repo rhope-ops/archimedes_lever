@@ -2,11 +2,11 @@
 
 The kit's own handoff (AGENTS.md "Handoff"). Kit only: first use deletes it in a project, which uses docs/NEXT_PROMPT.md. Keep it at 40 lines or fewer; evidence goes in docs/reviews/. Times are America/Chicago.
 
-Updated: 2026-11-19 15:12. Kit owner: the session "Kit · Fleet decision hub · 2026-11-19" (fleet hub plan). Before: "Kit · Session names and project tags · 2026-11-19" (kit 4.0.0).
+Updated: 2026-11-19 15:47. Kit owner: the session "Kit · Fleet decision hub · 2026-11-19" (fleet hub plan). Before: "Kit · Session names and project tags · 2026-11-19" (kit 4.0.0).
 
 ## State
 
-- main: kit 4.0.0 (c8339c3, PR 64, session names). Tags (feature releases; the owner makes them): v2.0.0 (7b80101), v3.0.0 (67e7766), v3.1.0 (88185f0); v3.2.0 and v4.0.0 not made yet. Fleet page: https://claude.ai/artifact/AWtpGxEqCWrjrPa1Afe7qW (private; the kit owner updates its rows). Its "Waiting for you" list (2026-11-19) reads the `needs` field (`[{text, url}]`) of `meta/kit` and of each `repos` row: the session that closes or adds an owner action updates that field.
+- main: kit 4.1.0 (383a95b, PR 72, fleet format template; before: 4.0.0, c8339c3, PR 64). Tags (feature releases; the owner makes them): v2.0.0 (7b80101), v3.0.0 (67e7766), v3.1.0 (88185f0); v3.2.0 and v4.0.0 not made yet. Fleet page: https://claude.ai/artifact/AWtpGxEqCWrjrPa1Afe7qW (private; the kit owner updates its rows). Its "Waiting for you" list (2026-11-19) reads the `needs` field (`[{text, url}]`) of `meta/kit` and of each `repos` row: the session that closes or adds an owner action updates that field.
 - Seven repos on 4.0.0 (c8339c3; merged 2026-11-19): RADE 126, 90-161.Z 179, icf-source 168, 36-3003.Z 12, 65-601.Z 12, sec-source 21, SPAR 17. Session load: RADE ~4,985, icf-source ~4,939, 90-161.Z ~4,850, sec-source ~4,745. First conversions merged 2026-11-19 (owner-approved rule texts): no-more-beyond PR 63 (~4,903 tokens), transcription_assistant PR 6 (~4,887). NMB follow-ups: delete superseded tools (D4); set `.claude/agents/nmb-reviewer.md` to opus (D3).
 
 ## Approved plan (the owner, 2026-11-19 14:45): fleet decision hub (kit template)
@@ -16,7 +16,8 @@ Full text, decisions and approved rule text: [reviews/2026-11-19-fleet-decision-
 - [x] 0. Plan saved.
 - [x] 1. Survey ([reviews/2026-11-19-fleet-survey.md](reviews/2026-11-19-fleet-survey.md)).
 - [x] 2. Contract approved 2026-11-19 15:10 ([reviews/2026-11-19-fleet-contract.md](reviews/2026-11-19-fleet-contract.md)).
-- [ ] 3. Kit PR. 4. Pilot on the kit. 5. Page (preview first). 6. Loop proof. 7. Port guide, daily harvest task.
+- [x] 3. Kit PR 72 (kit 4.1.0). [-] 4. Pilot on the kit: dropped by the owner (template only; PR 73 closed); its 2 template fixes go in their own PR.
+- [ ] 5. Page (preview first; shows only ported projects). 6. Loop proof (after the owner ports a first project). 7. Port guide and harvest-task template.
 
 ## Open (in order)
 
@@ -25,7 +26,7 @@ Full text, decisions and approved rule text: [reviews/2026-11-19-fleet-decision-
 
 ## Needs the owner
 
-- Tags v3.2.0 (https://github.com/rhope-ops/archimedes_lever/releases/new?tag=v3.2.0&target=18896fc5ae5e954eeb0182bc4beae264eee9d541&title=Kit%203.2.0) and v4.0.0 (https://github.com/rhope-ops/archimedes_lever/releases/new?tag=v4.0.0&target=c8339c31cc75d50106ede550afd1c36e4c7b529f&title=Kit%204.0.0); rulesets and secret scanning.
+- Tag v4.1.0 at the merge commit of the template-fix PR (link to follow). Tags v3.2.0 (https://github.com/rhope-ops/archimedes_lever/releases/new?tag=v3.2.0&target=18896fc5ae5e954eeb0182bc4beae264eee9d541&title=Kit%203.2.0) and v4.0.0 (https://github.com/rhope-ops/archimedes_lever/releases/new?tag=v4.0.0&target=c8339c31cc75d50106ede550afd1c36e4c7b529f&title=Kit%204.0.0); rulesets and secret scanning.
 
 ## Do not
 

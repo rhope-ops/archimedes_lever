@@ -120,6 +120,11 @@ def harvest_cases(base, p):
     ok("second run: 0 items, the repos row only", second["counts"]["items_changed"] == 0 and not second["deletes"]
        and [w["path"] for w in second["writes"]] == ["repos/demo"])
     repo = [w for w in first["writes"] if w["path"] == "repos/demo"][0]["data"]
+    ok("open steps are read", repo["open_steps"] == ["Build the page."])
+    short = M.to_files(first, pathlib.Path(base) / "out")
+    entry = [w for w in short["writes"] if w["doc_id"] == "demo~D1"][0]
+    ok("--out writes files and prints paths", entry["collection"] == "items" and pathlib.Path(entry["file_path"]).exists()
+       and "data" not in entry)
     ok("repos row has its age", repo["harvested_at"].endswith("Z") and "source_commit" in repo and repo["unread_lines"] == 0)
     ok("unfiled PR and session found, filed PR not", [n["url"] for n in repo["not_filed"]] == ["https://x/pull/13", "https://s/1"])
     agent = [w["data"] for w in first["writes"] if w["path"] == "items/demo~D1"][0]
