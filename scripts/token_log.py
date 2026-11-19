@@ -89,7 +89,14 @@ def git(cwd, *args, env=None, check=True, timeout=None):
 
 def git_net(cwd, *args):
     """A git call that uses the network, with a time limit. On timeout the whole process group is killed: git and
-    the pre-push hook with the check lane it started. Returns (exit code, stdout, stderr)."""
+    the pre-push hook with the check lane it started. Returns (exit code, stdout, stderr).
+
+    Args:
+        cwd: the repo folder.
+        args: the git arguments, after `git -C <cwd>`.
+    Returns:
+        (exit code, stdout, stderr), the output stripped.
+    """
     # Output goes to files, not pipes: a hook child that escapes the kill (its own session) cannot keep this waiting.
     with tempfile.TemporaryFile("w+") as out, tempfile.TemporaryFile("w+") as err:
         p = subprocess.Popen(["git", "-C", cwd, *args], stdout=out, stderr=err, start_new_session=True)
@@ -105,7 +112,13 @@ def git_net(cwd, *args):
 
 
 def prompt_text(d):
-    """The text of a user prompt, or None (tool results, meta lines, compact summaries, interrupt markers)."""
+    """The text of a user prompt, or None (tool results, meta lines, compact summaries, interrupt markers).
+
+    Args:
+        d: one parsed line (a dict) of a session log.
+    Returns:
+        The prompt text, or None when the line is not a user prompt.
+    """
     if d.get("type") != "user" or d.get("isMeta") or d.get("isCompactSummary") or not isinstance(d.get("message"), dict):
         return None
     c = d["message"].get("content")
@@ -119,7 +132,14 @@ def prompt_text(d):
 
 
 def read_log(path, source):
-    """Return ({message id: (timestamp, model, usage, source)}, [prompt timestamps]) for one log file."""
+    """Return ({message id: (timestamp, model, usage, source)}, [prompt timestamps]) for one log file.
+
+    Args:
+        path: the log file.
+        source: "main" or "subagent": where the rows come from (only "main" counts prompts).
+    Returns:
+        (msgs, prompts): a dict of message id to (timestamp, model, usage, source), and the list of prompt timestamps.
+    """
     msgs, prompts = {}, []
     try:
         f = open(path, encoding="utf-8")
@@ -147,7 +167,15 @@ def read_log(path, source):
 
 
 def log_rows(sid, tpath, repo):
-    """One row per API call in the session log and its subagent logs."""
+    """One row per API call in the session log and its subagent logs.
+
+    Args:
+        sid: the session id.
+        tpath: the path of the session's log file.
+        repo: the repo name.
+    Returns:
+        A dict of message id to the row (a dict with the FIELDS).
+    """
     msgs, prompts = read_log(tpath, "main")
     for p in sorted(glob.glob(os.path.join(os.path.splitext(tpath)[0], "**", "*.jsonl"), recursive=True)):
         msgs.update({k: v for k, v in read_log(p, "subagent")[0].items() if k not in msgs})
@@ -172,7 +200,15 @@ def to_csv(rows):
 
 def push(root, sid, tpath):
     """Merge this session's rows into sessions/<sid>.csv on the log branch and push. Tries again at once only
-    after a race with another push. The caller holds the session's push lock."""
+    after a race with another push. The caller holds the session's push lock.
+
+    Args:
+        root: the repo folder.
+        sid: the session id.
+        tpath: the path of the session's log file.
+    Returns:
+        A short result text: "pushed ...", "up to date" or "nothing to log". Raises RuntimeError when git fails.
+    """
     ref, path = branch_name(), f"sessions/{sid}.csv"
     for attempt in (1, 2):
         rc, heads, err = git_net(root, "ls-remote", "--heads", "origin", ref)
@@ -216,7 +252,15 @@ def push(root, sid, tpath):
 
 def locked_push(root, sid, tpath):
     """Coalesce pushes: at most one runs and one waits per session. The waiting one reads the newest rows when it
-    starts, so a third has nothing to add and exits at once ("coalesced")."""
+    starts, so a third has nothing to add and exits at once ("coalesced").
+
+    Args:
+        root: the repo folder.
+        sid: the session id.
+        tpath: the path of the session's log file.
+    Returns:
+        "coalesced" when a push already waits, else the result text of push().
+    """
     os.makedirs(home(), exist_ok=True)
     with open(os.path.join(home(), sid + ".wait"), "w") as wait, open(os.path.join(home(), sid + ".lock"), "w") as run:
         try:
@@ -229,7 +273,14 @@ def locked_push(root, sid, tpath):
 
 
 def push_main(args, delays=RETRY_DELAYS):
-    """Push, and try again later when it fails (no lock is held while it waits). Stops when a newer push waits."""
+    """Push, and try again later when it fails (no lock is held while it waits). Stops when a newer push waits.
+
+    Args:
+        args: [root, sid, tpath] for locked_push().
+        delays: seconds to wait before each try (default RETRY_DELAYS).
+    Returns:
+        True when a try worked, else False.
+    """
     for i, delay in enumerate(delays):
         time.sleep(delay)
         stamp = datetime.now(timezone.utc).isoformat(timespec="seconds")

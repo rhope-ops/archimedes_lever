@@ -133,7 +133,14 @@ def git(*args, cwd=None):
 
 def get_baseline(src, tmp):
     """The baseline folder: `src` itself when it is a folder, else a clone of it in `tmp` (with its history: an older
-    kit copy of a file is known by it, copy_state)."""
+    kit copy of a file is known by it, copy_state).
+
+    Args:
+        src: a baseline folder or a git URL.
+        tmp: a temporary folder to clone into.
+    Returns:
+        The path of the baseline folder.
+    """
     path = Path(src)
     if path.is_dir():
         return path.resolve()
@@ -184,7 +191,13 @@ def header_values(text):
 
 
 def valid_timezone(name):
-    """An IANA name the system knows (UTC always passes, also where the time zone database is missing)."""
+    """An IANA name the system knows (UTC always passes, also where the time zone database is missing).
+
+    Args:
+        name: the time zone name to test.
+    Returns:
+        True when the name is usable, else False.
+    """
     if name == "UTC":
         return True
     if not re.fullmatch(r"[A-Za-z0-9_+/-]+", name):
@@ -345,7 +358,17 @@ def plan_if_missing(base, root, rels, owner, src=None):
 
 
 def build_agents(base_text, proj_text, args, owner, tier="full"):
-    """The new AGENTS.md: baseline text with this project's header values, Commands section and Project rules."""
+    """The new AGENTS.md: baseline text with this project's header values, Commands section and Project rules.
+
+    Args:
+        base_text: the text of the baseline AGENTS.md.
+        proj_text: the text of the project's AGENTS.md, or None when it has none.
+        args: the parsed command line (--name, --repo, --purpose, --timezone).
+        owner: the owner word to apply.
+        tier: the kit tier to apply (default "full").
+    Returns:
+        The text of the new AGENTS.md.
+    """
     found = header_values(proj_text) if proj_text else (None, None, None)
     name = args.name or found[0]
     repo = args.repo or found[1]
@@ -386,7 +409,11 @@ def build_agents(base_text, proj_text, args, owner, tier="full"):
 
 
 def parse_args():
-    """Read the command line; stop when --timezone is not a known IANA name."""
+    """Read the command line; stop when --timezone is not a known IANA name.
+
+    Returns:
+        The parsed command line (argparse.Namespace).
+    """
     ap = argparse.ArgumentParser(description="Sync this project to the archimedes_lever baseline.")
     ap.add_argument("--apply", action="store_true", help="write the files (default: dry run)")
     ap.add_argument("--baseline", default=DEFAULT_BASELINE)
@@ -405,7 +432,13 @@ def parse_args():
 
 
 def baseline_sha(base):
-    """The baseline commit, marked when its folder has uncommitted changes or is not a git repo."""
+    """The baseline commit, marked when its folder has uncommitted changes or is not a git repo.
+
+    Args:
+        base: the baseline folder (a Path).
+    Returns:
+        The commit hash, with a note when the folder has uncommitted changes, or an "unknown" text.
+    """
     try:
         if Path(git("rev-parse", "--show-toplevel", cwd=base)).resolve() != base.resolve():
             raise subprocess.CalledProcessError(1, "git")
@@ -426,7 +459,18 @@ def check_placeholders(root):
 
 
 def new_log(base, root, proj_text, agents_text, owner, tier):
-    """The docs/LOG.md text to write: a new log on a starter-to-full upgrade, or the Arcs migration; else None."""
+    """The docs/LOG.md text to write: a new log on a starter-to-full upgrade, or the Arcs migration; else None.
+
+    Args:
+        base: the baseline folder.
+        root: the project folder.
+        proj_text: the text of the project's AGENTS.md, or None.
+        agents_text: the text of the new AGENTS.md.
+        owner: the owner word to apply.
+        tier: the kit tier to apply.
+    Returns:
+        The new text of docs/LOG.md, or None when it does not change.
+    """
     log = root / "docs/LOG.md"
     result = None
     rules = section(proj_text, RULES_HEADING) if proj_text is not None else ""
@@ -448,7 +492,15 @@ def new_log(base, root, proj_text, agents_text, owner, tier):
 
 
 def planned_files(base, root, args):
-    """Map each project path to its synced text, and return it with the tier."""
+    """Map each project path to its synced text, and return it with the tier.
+
+    Args:
+        base: the baseline folder.
+        root: the project folder.
+        args: the parsed command line.
+    Returns:
+        (new, tier): a dict of project path to the synced text, and the tier.
+    """
     proj_agents = root / "AGENTS.md"
     proj_text = proj_agents.read_text() if proj_agents.exists() else None
     owner = args.owner or header_owner(proj_text or "") or BASELINE_OWNER
@@ -482,7 +534,14 @@ def planned_files(base, root, args):
 
 
 def show_diff(root, new):
-    """Print a unified diff for each file that would change; return their paths."""
+    """Print a unified diff for each file that would change; return their paths.
+
+    Args:
+        root: the project folder.
+        new: a dict of project path to the synced text.
+    Returns:
+        The list of paths whose text would change.
+    """
     changed = []
     for rel, text in new.items():
         path = root / rel
@@ -498,7 +557,12 @@ def show_diff(root, new):
 
 
 def report_leftovers(root, tier):
-    """List the advanced files a starter project keeps and old copies of moved files, for deletion by hand."""
+    """List the advanced files a starter project keeps and old copies of moved files, for deletion by hand.
+
+    Args:
+        root: the project folder.
+        tier: the kit tier.
+    """
     if tier == "starter":
         extra = [f for f in ADVANCED_FILES if (root / f).exists()]
         if extra:
@@ -513,7 +577,14 @@ def report_leftovers(root, tier):
 
 
 def write_files(base, root, new, changed):
-    """Write the changed files (with the baseline's file mode for scripts); stop when the project is not committed."""
+    """Write the changed files (with the baseline's file mode for scripts); stop when the project is not committed.
+
+    Args:
+        base: the baseline folder.
+        root: the project folder.
+        new: a dict of project path to the synced text.
+        changed: the paths to write.
+    """
     if git("status", "--porcelain", cwd=root):
         die("the project has uncommitted changes; commit them first")
     for rel in changed:
