@@ -2,12 +2,12 @@
 
 The kit's own handoff (AGENTS.md "Handoff"). Kit only: first use deletes it in a project, which uses docs/NEXT_PROMPT.md. Keep it at 40 lines or fewer; evidence goes in docs/reviews/. Times are America/Chicago.
 
-Updated: 2026-11-18 17:58 by the kit owner (session "Archimedes Lever workflow optimization", the owner, 2026-11-18 16:20). Only the kit owner changes the kit and runs kit syncs; other sessions report kit faults here or to it.
+Updated: 2026-11-18 18:10 by the kit owner (session "Archimedes Lever workflow optimization", the owner, 2026-11-18 16:20). Only the kit owner changes the kit and runs kit syncs; other sessions report kit faults here or to it.
 
 ## State
 
 - main: kit 3.1.0 (88185f0). Tags (feature releases; the owner makes them): v2.0.0 (7b80101), v3.0.0 (67e7766), v3.1.0 (88185f0). Fleet page: https://claude.ai/artifact/AWtpGxEqCWrjrPa1Afe7qW (private; the kit owner updates its rows).
-- On 3.0.0: RADE, 36-3003.Z, 65-601.Z, SPAR, sec-source (3.1.0 adds only an optional setting). 90-161.Z sync PR 155 (3.0.0) is blocked by its own engine-lock test (engine-v16, newest engine-v17), red on main too: a 90-161.Z session bumps the lock. icf-source on 3.1.0 (PR 135, after the other session's PR 134; session load ~4,967 of 5,000).
+- All seven repos on the kit: icf-source and 90-161.Z on 3.1.0 (PRs 135, 155); RADE, 36-3003.Z, 65-601.Z, SPAR, sec-source on 3.0.0 (3.1.0 adds only an optional setting). Session load near the cap: sec-source ~4,989, icf-source ~4,967.
 
 ## Approved plan (the owner, 2026-11-18 12:15; updates approved 13:25 and 14:35): lean two-tier rules and the kit as a synced baseline
 
