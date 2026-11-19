@@ -15,13 +15,15 @@ Usage:
         (a failed write is sent again on the next run, also when other repos share FILE). --cross: a JSON file {"pull_requests": [{title,
         url}], "sessions": [{title, url}]} from the scheduled session; an entry that the handoff file does not name
         becomes a "Not filed" item. Decision text on the page is the first sentence, at most 140 characters.
+        --out DIR: write each document to DIR/<collection>/<doc>.json and print only the batch entries (file paths),
+        so the page write costs few tokens.
     python3 scripts/fleet_harvest.py --add-ids [ROOT]
-        Adds the `ID` column to docs/DECISIONS.md: D1 = the oldest row. A file that has the column is left as it is.
+        Adds the `ID` column to docs/DECISIONS.md: D1 = the oldest row. A file whose decisions table has the column, or that has no decisions table, is left as it is.
     python3 scripts/fleet_harvest.py --test
         Self-test on fixture files in a temporary folder (cases: scripts/fleet_harvest_test.py); prints FLEET TEST PASS.
 Standard library only.
 Network: none.
-Writes: --harvest FILE.<repo>.pending of --state; --save-state the --state file (and deletes that pending file);
+Writes: --harvest FILE.<repo>.pending of --state and, with --out, one JSON file per document; --save-state the --state file (and deletes that pending file);
     --add-ids docs/DECISIONS.md; --test temporary folders.
 Credentials: none.
 """
@@ -134,7 +136,7 @@ def parse_handoff(text, name):
     needs = [{"id": m.group(1), "text": m.group(2).strip(), "options": [o.strip() for o in m.group(3).split("/")],
               "rec": m.group(4).strip(), "line": n, "raw": s}
              for n, m, s in parse_body(sec.get("Needs the owner", []), NEED, name + " Needs the owner", unread)]
-    steps = [summary(re.sub(r"^(\d+\.|-)\s*", "", ln.strip())) for _, ln in sec.get("Open (in order)", [])
+    steps = [summary(re.sub(r"^(\d+\.|-)\s*", "", ln.strip())) for _, ln in sec.get("Open", [])
              if re.match(r"^(\d+\.|-)\s", ln.strip())]
     return {"updated": updated, "next_update": {"date": nxt.group(1), "text": nxt.group(2).strip()} if nxt else None,
             "timeline": timeline, "needs": needs, "steps": steps, "unread": unread}
@@ -247,7 +249,7 @@ def not_filed(cross, text):
 
 
 def whole(needle, text, subpath=False):
-    """True when needle is in text as a whole: no letter, digit or slash right before it, and none right after it.
+    """True when needle is in text as a whole: no letter, digit or slash right before it, nor right after it (see subpath).
 
     Args:
         needle: a URL or a title; a trailing slash is ignored.
@@ -347,6 +349,27 @@ def pending_file(state_file, repo):
     return pathlib.Path(str(state_file) + "." + repo.replace("/", "_") + ".pending")
 
 
+def to_files(result, out):
+    """--out: write each document of a harvest result to <out>/<collection>/<doc>.json; return the short form.
+
+    Args:
+        result: the harvest result.
+        out: the folder for the document files.
+    Returns:
+        {"writes": [{op, collection, doc_id, file_path}], "deletes": [{collection, doc_id}], "counts"}: the entries of
+        one ArtifactData batch, so the page write sends file paths, not document text (fewer tokens).
+    """
+    writes = []
+    for w in result["writes"]:
+        collection, doc_id = w["path"].split("/", 1)
+        f = out / collection / (doc_id + ".json")
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(json.dumps(w["data"], indent=1, sort_keys=True) + "\n", encoding="utf-8")
+        writes.append({"op": w["op"], "collection": collection, "doc_id": doc_id, "file_path": str(f.resolve())})
+    deletes = [dict(zip(("collection", "doc_id"), p.split("/", 1))) for p in result["deletes"]]
+    return {"writes": writes, "deletes": deletes, "counts": result["counts"]}
+
+
 def save_state(state_file, repo):
     """--save-state: after the page write of repo succeeded, put its pending hashes into state_file.
 
@@ -374,7 +397,8 @@ def add_ids(root):
     Args:
         root: the project folder.
     Returns:
-        The number of rows that got an ID (0 when the file already has the column). Line endings are kept.
+        The number of rows that got an ID (0 when the decisions table already has the column, or there is none). Line
+        endings are kept.
     """
     f = root / "docs/DECISIONS.md"
     with open(f, encoding="utf-8", newline="") as fh:
@@ -417,6 +441,7 @@ def main(argv=None):
     ap.add_argument("--repo")
     ap.add_argument("--url")
     ap.add_argument("--branch", default="main")
+    ap.add_argument("--out", type=pathlib.Path, help="--harvest: write each document to a file; print only the paths")
     ap.add_argument("--state", type=pathlib.Path)
     ap.add_argument("--cross", type=pathlib.Path)
     a = ap.parse_args(argv)
@@ -434,7 +459,8 @@ def main(argv=None):
     if not (a.repo and a.url):
         ap.error("--harvest needs --repo and --url")
     cross = json.loads(a.cross.read_text(encoding="utf-8")) if a.cross else {}
-    print(json.dumps(harvest(pathlib.Path(a.harvest), a.repo, a.url.rstrip("/"), a.state, cross, a.branch), indent=1))
+    result = harvest(pathlib.Path(a.harvest), a.repo, a.url.rstrip("/"), a.state, cross, a.branch)
+    print(json.dumps(to_files(result, a.out) if a.out else result, indent=1))
     return 0
 
 
