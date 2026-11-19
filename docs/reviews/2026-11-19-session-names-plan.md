@@ -12,6 +12,7 @@ Approved in the session "Kit · Session names and project tags · 2026-11-19" (d
 
   - **Session names.** Title each cloud session `<Short name> · <Task, 2-6 words> · YYYY-MM-DD` (start date, header's time zone) with the tag `project:<short name>`; when its first pull request opens, add ` · #<number>`; archive the session when its pull requests are merged and nothing waits on the owner. Child sessions follow the same form. `scripts/session_checkin.sh` prints the TITLE line; steps: `.claude/skills/handoff/SKILL.md`.
 
+- Changed (the owner, 2026-11-19, after the session-load measure): the line above is not added; it would put RADE (~4,976) and icf-source (~4,986) over the 5,000 cap. Instead "Start of session" lists the output lines `TITLE, SESSIONS`, the check-in prints them, and the handoff skill section "Session names" holds the rule in full. Version: 4.0.0 (a changed kit rule text is MAJOR by docs/CHANGELOG.md), not 3.3.0.
 - Approved header line (AGENTS.md header, new): `- Short name: {{SHORT_NAME}}` (for example RADE, ICF, SEC2).
 - Merges: pre-approved when the full check passes and the fresh review finds no MAJOR; stop and ask on a MAJOR or a failure.
 - Sync targets: RADE, 90-161.Z, icf-source (ICF), 36-3003.Z, 65-601.Z, sec-source (SEC2), SPAR, no-more-beyond (NMB), transcription_assistant (TA).

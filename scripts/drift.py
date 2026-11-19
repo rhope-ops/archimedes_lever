@@ -75,7 +75,8 @@ def baseline_head(base_text, proj_text, owner):
     name, repo, purpose = sb.header_values(proj_text or "")
     tier = sb.header_tier(proj_text or "")
     for key, val in (("PROJECT_NAME", name), ("REPO", repo), ("PURPOSE", purpose), ("OWNER", sb.BASELINE_OWNER),
-                     ("TIMEZONE", sb.header_timezone(proj_text or "")), ("TIER", tier)):
+                     ("TIMEZONE", sb.header_timezone(proj_text or "")), ("TIER", tier),
+                     ("SHORT_NAME", sb.header_short_name(proj_text, name))):
         if val:
             head = head.replace("{{" + key + "}}", val)
     return sb.apply_owner(sb.apply_tier(head, tier), owner)
