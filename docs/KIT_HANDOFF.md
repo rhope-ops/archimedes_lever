@@ -2,12 +2,12 @@
 
 The kit's own handoff (AGENTS.md "Handoff"). Kit only: first use deletes it in a project, which uses docs/NEXT_PROMPT.md. Keep it at 40 lines or fewer; evidence goes in docs/reviews/. Times are America/Chicago.
 
-Updated: 2026-11-18 18:35. Kit owner: the session that takes the 3.2.0 plan (the owner, 2026-11-18); the earlier kit owner session stops kit work.
+Updated: 2026-11-18 19:15. Kit owner: the session that takes the 3.2.0 plan (the owner, 2026-11-18); the earlier kit owner session stops kit work.
 
 ## State
 
-- main: kit 3.1.0 (88185f0). Tags (feature releases; the owner makes them): v2.0.0 (7b80101), v3.0.0 (67e7766), v3.1.0 (88185f0). Fleet page: https://claude.ai/artifact/AWtpGxEqCWrjrPa1Afe7qW (private; the kit owner updates its rows).
-- All seven repos on the kit: icf-source and 90-161.Z on 3.1.0 (PRs 135, 155); RADE, 36-3003.Z, 65-601.Z, SPAR, sec-source on 3.0.0 (3.1.0 adds only an optional setting). Session load near the cap: sec-source ~4,989, icf-source ~4,967.
+- main: kit 3.2.0 (18896fc, PR 62). Tags (feature releases; the owner makes them): v2.0.0 (7b80101), v3.0.0 (67e7766), v3.1.0 (88185f0); v3.2.0 not made yet. Fleet page: https://claude.ai/artifact/AWtpGxEqCWrjrPa1Afe7qW (private; the kit owner updates its rows).
+- All seven repos on 3.2.0 (18896fc; lock pass, 2026-11-18): RADE 112, 90-161.Z 164, 36-3003.Z 10, 65-601.Z 10, SPAR 15, icf-source 141, sec-source 17. Session load after the lane A trims: icf-source ~4,797 (PR 143), sec-source ~4,716 (PR 18); RADE ~4,861.
 
 ## Approved plan (the owner, 2026-11-18 12:15; updates approved 13:25 and 14:35): lean two-tier rules and the kit as a synced baseline
 
@@ -25,12 +25,12 @@ Full text, proposals 1 to 26, risks and targets: [reviews/2026-11-18-lean-rules-
 
 ## Open (in order)
 
-0. Kit 3.2.0: [plan](reviews/2026-11-18-kit-3.2.0-plan.md) (approved 2026-11-18 18:15; scope, checks, syncs). Items 1 to 6 are in the kit pull request on branch `claude/archimedes-lever-workflow-0mydsw` (item 5, kit side: measured, not done; DECISIONS row of 2026-11-18). Next: its fresh review, the full lane, the owner's merge (lane C); then the seven syncs (each repo: `--migrate` once; icf-source: `audit-duplicate-ignore` lines from its old `.bloat-audit.json`, 939bec1^), the two NEXT_PROMPT trims, the fleet page and the release link.
+0. Kit fixes for the next PATCH (found by the 3.2.0 reviews; none blocks a repo): (a) the sync swaps "the owner" for each repo's role inside `scripts/check_settings.py`, so `OLD_HEADER_LINES` misses the old "the owner's request" line: exclude that file from the swap or match any role (5 repos got a hand fix in their sync PR); (b) `new_header` stops at a blank line; (c) NITs: the `audit-duplicate-ignore` wording in `bloat_check.py`, the CHANGELOG 3.2.0 row does not name `sync_merge.py`.
 1. Step 5 (rulesets, secret scanning: the owner's clicks, docs/github/README.md).
 
 ## Needs the owner
 
-- The merge of each lane C pull request of the 3.2.0 plan; the v3.2.0 release link; rulesets and secret scanning.
+- The v3.2.0 tag: https://github.com/rhope-ops/archimedes_lever/releases/new?tag=v3.2.0&target=18896fc5ae5e954eeb0182bc4beae264eee9d541&title=Kit%203.2.0; rulesets and secret scanning.
 
 ## Do not
 
