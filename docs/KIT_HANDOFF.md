@@ -2,24 +2,19 @@
 
 The kit's own handoff (AGENTS.md "Handoff"). Kit only: first use deletes it in a project, which uses docs/NEXT_PROMPT.md. Keep it at 40 lines or fewer; evidence goes in docs/reviews/. Times are America/Chicago.
 
-Updated: 2026-11-19 11:52. Kit owner: the session "Kit · Session names and project tags · 2026-11-19" (kit 4.0.0 plan). PREFERENCES.md Sessions section merged (PR 68, f249dd1).
+Updated: 2026-11-19 14:50. Kit owner: the session "Kit · Fleet decision hub · 2026-11-19" (fleet hub plan). Before: "Kit · Session names and project tags · 2026-11-19" (kit 4.0.0).
 
 ## State
 
 - main: kit 4.0.0 (c8339c3, PR 64, session names). Tags (feature releases; the owner makes them): v2.0.0 (7b80101), v3.0.0 (67e7766), v3.1.0 (88185f0); v3.2.0 and v4.0.0 not made yet. Fleet page: https://claude.ai/artifact/AWtpGxEqCWrjrPa1Afe7qW (private; the kit owner updates its rows). Its "Waiting for you" list (2026-11-19) reads the `needs` field (`[{text, url}]`) of `meta/kit` and of each `repos` row: the session that closes or adds an owner action updates that field.
 - Seven repos on 4.0.0 (c8339c3; merged 2026-11-19): RADE 126, 90-161.Z 179, icf-source 168, 36-3003.Z 12, 65-601.Z 12, sec-source 21, SPAR 17. Session load: RADE ~4,985, icf-source ~4,939, 90-161.Z ~4,850, sec-source ~4,745. First conversions merged 2026-11-19 (owner-approved rule texts): no-more-beyond PR 63 (~4,903 tokens), transcription_assistant PR 6 (~4,887). NMB follow-ups: delete superseded tools (D4); set `.claude/agents/nmb-reviewer.md` to opus (D3).
 
-## Approved plan (the owner, 2026-11-19 07:30): kit 4.0.0, session names
+## Approved plan (the owner, 2026-11-19 14:45): fleet decision hub (kit template)
 
-Full text and approved rule text: [reviews/2026-11-19-session-names-plan.md](reviews/2026-11-19-session-names-plan.md). Earlier plan (lean rules, 2026-11-18): done except its step 5 (Open 1); record: [reviews/2026-11-18-lean-rules-sync-plan.md](reviews/2026-11-18-lean-rules-sync-plan.md).
+Full text, decisions and approved rule text: [reviews/2026-11-19-fleet-decision-hub-plan.md](reviews/2026-11-19-fleet-decision-hub-plan.md). Scope: the kit; the owner ports it per project. Earlier plans: kit 4.0.0 session names done except step 3 (tag v4.0.0) ([record](reviews/2026-11-19-session-names-plan.md)); lean rules done except step 5 (Open 1).
 
 - [x] 0. Plan saved.
-- [x] 1. Kit PR (rule, header line, handoff skill, check-in TITLE and SESSIONS lines, CHANGELOG 4.0.0).
-- [x] 2. Fresh review and rule-conflict check.
-- [ ] 3. The owner tags v4.0.0.
-- [x] 4. Sync PRs: seven merged; first conversions no-more-beyond (63) and transcription_assistant (6) merged.
-- [x] 5. Fresh review of each sync; merge on green (pre-approved).
-- [x] 6. Backfill PR numbers on the 306 session titles; archive the finished idle sessions.
+- [ ] 1. Survey of the kit's own files. 2. Contract and format texts (lane C). 3. Kit PR. 4. Pilot on the kit. 5. Page (preview first). 6. Loop proof. 7. Port guide, daily harvest task.
 
 ## Open (in order)
 
