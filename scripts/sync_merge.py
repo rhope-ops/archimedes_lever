@@ -241,7 +241,7 @@ def header_short_name(text, name=None):
     Returns:
         The value; else the first word of `name` (for example "ICF" from "ICF Companion"); else None.
     """
-    found = re.search(r"^- Short name: (.+?)\s*$", text or "", re.M)
+    found = re.search(r"^- Short name:[ \t]*(\S.*?)\s*$", text or "", re.M)  # blank value = missing, as in the check-in
     if found and not found.group(1).startswith("{{"):
         return found.group(1)
     return name.split()[0] if name and name.split() else None

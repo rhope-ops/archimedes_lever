@@ -39,7 +39,7 @@ fix_hooks() {
 # header_value FILE KEY: the value of the "- KEY: value" line in FILE, or nothing; a {{PLACEHOLDER}} counts as nothing
 header_value() {
   local v
-  v=$(tr -d '\r' < "$1" 2>/dev/null | sed -n "s/^- $2: *\(.*[^[:space:]]\)[[:space:]]*\$/\1/p" | head -n 1)  # no CR, no end spaces
+  v=$({ tr -d '\r' < "$1"; } 2>/dev/null | sed -n "s/^- $2: *\(.*[^[:space:]]\)[[:space:]]*\$/\1/p" | head -n 1)  # no CR, no end spaces
   case "$v" in '{{'*) v= ;; esac
   printf '%s' "$v"
 }
