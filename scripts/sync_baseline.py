@@ -74,7 +74,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import check_blocks  # noqa: E402 - the deny rules and the placeholder pattern
 import check_lock  # noqa: E402 - the kit lock that a sync writes into the project
 from sync_merge import REPLACED_HOOKS, changed_matchers, die, merge_lines, merge_settings, migrate_arcs  # noqa: E402,F401 - scripts/sync_merge.py
-from sync_merge import (apply_tier, find_heading, header_timezone, header_tier, header_values,  # noqa: E402,F401
+from sync_merge import (apply_tier, find_heading, header_short_name, header_timezone, header_tier, header_values,  # noqa: E402,F401
                         headings, section, valid_timezone)  # the AGENTS.md header helpers (drift.py reads them here)
 
 DEFAULT_BASELINE = "https://github.com/rhope-ops/archimedes_lever"
@@ -288,7 +288,7 @@ def build_agents(base_text, proj_text, args, owner, tier="full"):
     Args:
         base_text: the text of the baseline AGENTS.md.
         proj_text: the text of the project's AGENTS.md, or None when it has none.
-        args: the parsed command line (--name, --repo, --purpose, --timezone).
+        args: the parsed command line (--name, --repo, --purpose, --timezone, --short-name).
         owner: the owner word to apply.
         tier: the kit tier to apply (default "full").
     Returns:
@@ -307,7 +307,9 @@ def build_agents(base_text, proj_text, args, owner, tier="full"):
     if cut < 0:
         die(f"the baseline AGENTS.md has no '{RULES_HEADING}' heading")
     head = base_text[:cut]
-    for key, val in (("PROJECT_NAME", name), ("REPO", repo), ("PURPOSE", purpose), ("TIMEZONE", timezone), ("TIER", tier)):
+    short = getattr(args, "short_name", None) or header_short_name(proj_text, name)  # session titles start with it
+    for key, val in (("PROJECT_NAME", name), ("REPO", repo), ("PURPOSE", purpose), ("TIMEZONE", timezone), ("TIER", tier),
+                     ("SHORT_NAME", short)):
         head = head.replace("{{" + key + "}}", val)
     head = apply_tier(head, tier)
     if "{{OWNER}}" in head:
@@ -347,6 +349,8 @@ def parse_args():
     ap.add_argument("--purpose")
     ap.add_argument("--owner")
     ap.add_argument("--timezone", help="IANA time zone for project log times, for example Europe/Berlin")
+    ap.add_argument("--short-name", help="the first part of each session title, for example RADE (default: the project's "
+                    "- Short name: line, else the first word of the project name)")
     ap.add_argument("--tier", choices=TIERS, help="kit tier (default: the project's - Tier: line, else full)")
     ap.add_argument("--set-tier", choices=TIERS, help="bootstrap only: apply the tier to this repo in place")
     ap.add_argument("--lock-here", action="store_true", help="bootstrap only: write the kit lock for this repo as it is")

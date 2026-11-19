@@ -232,6 +232,21 @@ def header_timezone(text):
     return tz and tz.group(1)
 
 
+def header_short_name(text, name=None):
+    """The project's "- Short name:" value (the first part of each session title).
+
+    Args:
+        text: the text of an AGENTS.md (may be None).
+        name: the project name, used when the line is missing or still a placeholder.
+    Returns:
+        The value; else the first word of `name` (for example "ICF" from "ICF Companion"); else None.
+    """
+    found = re.search(r"^- Short name:[ \t]*(\S.*?)\s*$", text or "", re.M)  # blank value = missing, as in the check-in
+    if found and not found.group(1).startswith("{{"):
+        return found.group(1)
+    return name.split()[0] if name and name.split() else None
+
+
 def header_tier(text):
     """The project's "- Tier:" value; "full" for projects made before tiers existed."""
     tier = re.search(r"^- Tier: (starter|full)\s*$", text or "", re.M | re.I)
