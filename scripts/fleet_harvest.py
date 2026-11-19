@@ -15,7 +15,8 @@ Usage:
         (a failed write is sent again on the next run, also when other repos share FILE). --cross: a JSON file {"pull_requests": [{title,
         url}], "sessions": [{title, url}]} from the scheduled session; an entry that the handoff file does not name
         becomes a "Not filed" item. Decision text on the page is the first sentence, at most 140 characters.
-        --out DIR: write each document to DIR/<collection>/<doc>.json and print only the batch entries (file paths),
+        --out DIR: write each document to DIR/<collection>/<doc>.json and print only the batch entries (file paths)
+        and the counts; the file of a deleted document is removed from DIR,
         so the page write costs few tokens.
     python3 scripts/fleet_harvest.py --add-ids [ROOT]
         Adds the `ID` column to docs/DECISIONS.md: D1 = the oldest row. A file whose decisions table has the column, or that has no decisions table, is left as it is.
@@ -357,7 +358,8 @@ def to_files(result, out):
         out: the folder for the document files.
     Returns:
         {"writes": [{op, collection, doc_id, file_path}], "deletes": [{collection, doc_id}], "counts"}: the entries of
-        one ArtifactData batch, so the page write sends file paths, not document text (fewer tokens).
+        one ArtifactData batch, so the page write sends file paths, not document text (fewer tokens). The file of a
+        deleted document is removed from out, so a reused folder holds no stale document.
     """
     writes = []
     for w in result["writes"]:
@@ -367,6 +369,8 @@ def to_files(result, out):
         f.write_text(json.dumps(w["data"], indent=1, sort_keys=True) + "\n", encoding="utf-8")
         writes.append({"op": w["op"], "collection": collection, "doc_id": doc_id, "file_path": str(f.resolve())})
     deletes = [dict(zip(("collection", "doc_id"), p.split("/", 1))) for p in result["deletes"]]
+    for d in deletes:
+        (out / d["collection"] / (d["doc_id"] + ".json")).unlink(missing_ok=True)
     return {"writes": writes, "deletes": deletes, "counts": result["counts"]}
 
 

@@ -44,6 +44,7 @@ Every file in the archimedes_lever kit and what it does. Kit only: `scripts/boot
 | scripts/token_log.py | Kit only. Claude Code Stop hook that the cloud setup scripts install from main: in the background, merges one row per API call (by message id, with its turn; subagents included) into `sessions/<session>.csv` on the branch `claude/token-usage` and pushes it, without touching the work tree. Repos only. `--push`, `--test`. |
 | scripts/worker_guard.py | PreToolUse hook that limits what `worker` and `reviewer` may do in git. `--test`. |
 | scripts/log_check.py | Full only. Checks docs/LOG.md against the project log rules. `--test`. |
+| docs/fleet.md | Kit only. The fleet format: how the owner ports a project, the harvest steps to the fleet page, and the daily harvest task template. |
 | scripts/fleet_harvest.py | The fleet format (docs/reviews/2026-11-19-fleet-contract.md): `--check` (run by check.sh where `.check` has `fleet: on`), `--harvest` (changed fleet page documents as JSON; `--save-state FILE --repo NAME` after the page write), `--add-ids` (the ID column of docs/DECISIONS.md), `--test`. |
 | scripts/fleet_harvest_test.py | Self-test cases of fleet_harvest.py. |
 | scripts/timeline.py | Full only. Turns one or more project logs into a single self-contained HTML timeline, or a Markdown story outline per arc for a deck (`--outline FILE`). `--test`. |

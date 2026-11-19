@@ -2,7 +2,7 @@
 
 The kit's own handoff (AGENTS.md "Handoff"). Kit only: first use deletes it in a project, which uses docs/NEXT_PROMPT.md. Keep it at 40 lines or fewer; evidence goes in docs/reviews/. Times are America/Chicago.
 
-Updated: 2026-11-19 15:52. Kit owner: the session "Kit · Fleet decision hub · 2026-11-19" (fleet hub plan). Before: "Kit · Session names and project tags · 2026-11-19" (kit 4.0.0).
+Updated: 2026-11-19 15:59. Kit owner: the session "Kit · Fleet decision hub · 2026-11-19" (fleet hub plan). Before: "Kit · Session names and project tags · 2026-11-19" (kit 4.0.0).
 
 ## State
 
@@ -17,7 +17,7 @@ Full text, decisions and approved rule text: [reviews/2026-11-19-fleet-decision-
 - [x] 1. Survey ([reviews/2026-11-19-fleet-survey.md](reviews/2026-11-19-fleet-survey.md)).
 - [x] 2. Contract approved 2026-11-19 15:10 ([reviews/2026-11-19-fleet-contract.md](reviews/2026-11-19-fleet-contract.md)).
 - [x] 3. Kit PR 72 (kit 4.1.0). [-] 4. Pilot on the kit: dropped by the owner (template only; PR 73 closed); its 2 template fixes merged in PR 74.
-- [x] 5. Page: approved by the owner (preview https://claude.ai/artifact/RZwwoMT9fNJDARDcBzn7AR); live page version 3 (2026-11-19): db (only the owner writes) and the Start session button (connector create_session). 6. Loop proof (after the owner ports a first project). 7. Port guide and harvest-task template.
+- [x] 5. Page: approved by the owner (preview https://claude.ai/artifact/RZwwoMT9fNJDARDcBzn7AR); live page version 3 (2026-11-19): db (only the owner writes) and the Start session button (connector create_session). [x] 7. Port guide and harvest-task template: docs/fleet.md. [ ] 6. Loop proof: after the owner ports a first project.
 
 ## Open (in order)
 
