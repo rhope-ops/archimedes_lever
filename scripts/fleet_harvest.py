@@ -10,17 +10,19 @@ Usage:
         owner", "Timeline" or a docs/DECISIONS.md row cannot be read; it prints the file, line number and reason.
     python3 scripts/fleet_harvest.py --harvest ROOT --repo NAME --url URL [--branch B] [--state FILE] [--cross FILE]
         Prints JSON {"writes": [...], "deletes": [...], "counts": {...}}: the project's repos row (always, with
-        harvested_at) and the items that changed since the hashes in --state. The new hashes go to FILE.pending;
-        after the page write succeeds, `--save-state FILE` moves them into FILE (a failed write is sent again). --cross: a JSON file {"pull_requests": [{title,
+        harvested_at) and the items that changed since the hashes in --state. The repo's new hashes go to
+        FILE.<repo>.pending; after its page write succeeds, `--save-state FILE --repo NAME` merges them into FILE
+        (a failed write is sent again on the next run, also when other repos share FILE). --cross: a JSON file {"pull_requests": [{title,
         url}], "sessions": [{title, url}]} from the scheduled session; an entry that the handoff file does not name
         becomes a "Not filed" item. Decision text on the page is the first sentence, at most 140 characters.
     python3 scripts/fleet_harvest.py --add-ids [ROOT]
         Adds the `ID` column to docs/DECISIONS.md: D1 = the oldest row. A file that has the column is left as it is.
     python3 scripts/fleet_harvest.py --test
-        Self-test on fixture files in a temporary folder; prints FLEET TEST PASS.
+        Self-test on fixture files in a temporary folder (cases: scripts/fleet_harvest_test.py); prints FLEET TEST PASS.
 Standard library only.
 Network: none.
-Writes: --harvest FILE.pending of --state; --save-state the --state file; --add-ids docs/DECISIONS.md; --test temporary folders.
+Writes: --harvest FILE.<repo>.pending of --state; --save-state the --state file (and deletes that pending file);
+    --add-ids docs/DECISIONS.md; --test temporary folders.
 Credentials: none.
 """
 import argparse
@@ -31,7 +33,6 @@ import pathlib
 import re
 import subprocess
 import sys
-import tempfile
 
 OPT_IN = "fleet: on"  # the `.check` line that turns the format on (contract section 1)
 SUMMARY_MAX = 140  # characters of decision text on the page (contract section 3)
@@ -43,6 +44,7 @@ NEED = re.compile(r"^- (D\d+) · (.+?) · Options: (.+?) · REC: (.+?)\s*$")
 ROW = re.compile(r"^\|\s*(D\d+)\s*\|\s*(" + DATE + r")\s*\|(.*)\|\s*$")
 ROW_START = re.compile(r"(?i)^\|\s*(D\d+\s*\||" + DATE + r"\s*\|)")  # any decision row, also one that ROW does not read
 CELL_SPLIT = re.compile(r"(?<!\\)\|")  # a cell border; an escaped pipe (\|) stays inside the cell
+DECISIONS_HEAD = re.compile(r"^\|\s*(ID\s*\|\s*Date|Date\s*\|\s*Decision)\s*\|")  # the decisions table header
 NEEDED = ("Timeline", "Needs the owner")  # handoff sections the format check requires
 NONE_LINE = re.compile(r"^-?\s*(none|nothing)\.?\s*$", re.I)
 
@@ -149,8 +151,9 @@ def parse_decisions(text, name):
     """
     rows, unread = [], []
     lines = text.splitlines()
-    head = next((i for i, ln in enumerate(lines) if re.match(r"^\|\s*(ID|Date)\s*\|", ln)), len(lines))
+    head = next((i for i, ln in enumerate(lines) if DECISIONS_HEAD.match(ln)), len(lines))
     end = next((i for i in range(head + 1, len(lines)) if not lines[i].startswith("|")), len(lines))
+    unread += [(name, n, "a decision row outside the decisions table (a blank line inside the table?)") for n in stray_rows(lines, end)]
     for n, ln in enumerate(lines[head + 2:end], head + 3):  # the decisions table only; other tables are not read
         if not ROW_START.match(ln):
             continue
@@ -162,6 +165,25 @@ def parse_decisions(text, name):
         rows.append({"id": m.group(1), "date": m.group(2), "text": cells[0].strip().replace("\\|", "|"), "by": cells[1].strip(),
                      "line": n, "raw": ln})
     return rows, unread
+
+
+def stray_rows(lines, start):
+    """1-based numbers of decision-shaped rows from start on that are not in a table with its own header row.
+
+    Args:
+        lines: the lines of docs/DECISIONS.md.
+        start: the index after the decisions table.
+    Returns:
+        [line number] of each such row (a later table with a header, for example a list of links, is not reported).
+    """
+    out, headed = [], False
+    for i in range(start, len(lines)):
+        ln = lines[i]
+        if ln.startswith("|") and (i == 0 or not lines[i - 1].startswith("|")):
+            headed = not ROW_START.match(ln)  # a table starts: does it start with a header row?
+        if ROW_START.match(ln) and not headed:
+            out.append(i + 1)
+    return out
 
 
 def read_project(root):
@@ -223,7 +245,8 @@ def not_filed(cross, text):
 
 def whole(needle, text):
     """True when needle is in text with no letter, digit or slash right before or after it (https://s/1 is not https://s/12)."""
-    return bool(needle) and re.search(r"(?<![\w/])" + re.escape(needle) + r"(?![\w/])", text) is not None
+    needle = needle.rstrip("/")
+    return bool(needle) and re.search(r"(?<![\w/])" + re.escape(needle) + r"/?(?![\w/])", text) is not None
 
 
 def source_commit(root):
@@ -285,8 +308,6 @@ def harvest(root, repo, url, state_file, cross, branch="main"):
         merge update with harvested_at and source_commit, so other fields there are kept and the page shows its age.
     """
     docs = documents(root, repo, url, cross, branch)
-    key = "/" + repo.replace("/", "_")
-    mine = lambda p: p.endswith(key) or ("~" in p and p.split("~")[0].endswith(key))  # noqa: E731 (this repo's paths)
     old = json.loads(state_file.read_text(encoding="utf-8")) if state_file and state_file.exists() else {}
     new = {p: digest(json.dumps(d, sort_keys=True)) for p, d in docs.items()}
     writes = [{"path": p, "op": "update" if p.startswith("repos/") else "set", "data": docs[p]}
@@ -295,23 +316,42 @@ def harvest(root, repo, url, state_file, cross, branch="main"):
         if w["path"].startswith("repos/"):
             w["data"].update(harvested_at=dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
                              source_commit=source_commit(root))
-    deletes = sorted(p for p in old if mine(p) and p not in new)
-    if state_file:
-        pending = pathlib.Path(str(state_file) + ".pending")
-        base = json.loads(pending.read_text(encoding="utf-8")) if pending.exists() else old  # another repo's pending run
-        keep = {p: v for p, v in base.items() if not mine(p)}  # other repos that share this state file
-        pending.write_text(json.dumps({**keep, **new}, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+    deletes = sorted(p for p in old if mine(p, repo) and p not in new)
+    if state_file:  # this repo's hashes only; --save-state merges them in after the page write
+        pending_file(state_file, repo).write_text(json.dumps(new, indent=1, sort_keys=True) + "\n", encoding="utf-8")
     items = sum(1 for w in writes if w["path"].startswith("items/"))
     return {"writes": writes, "deletes": deletes, "counts": {"documents": len(docs), "items_changed": items, "deleted": len(deletes)}}
 
 
-def save_state(state_file):
-    """--save-state: move <state_file>.pending into state_file (after the page write succeeded); return 0, or 1 if none."""
-    pending = pathlib.Path(str(state_file) + ".pending")
+def mine(path, repo):
+    """True when a page document path belongs to repo (repos/<key> or items/<key>~<id>; "kit" is not "my-kit")."""
+    key = repo.replace("/", "_")
+    return path == "repos/" + key or path.startswith("items/" + key + "~")
+
+
+def pending_file(state_file, repo):
+    """The file that holds one repo's new hashes until its page write succeeds: <state_file>.<repo>.pending."""
+    return pathlib.Path(str(state_file) + "." + repo.replace("/", "_") + ".pending")
+
+
+def save_state(state_file, repo):
+    """--save-state: after the page write of repo succeeded, put its pending hashes into state_file.
+
+    Args:
+        state_file: the shared state file.
+        repo: the project name of the --harvest run.
+    Returns:
+        0, or 1 when that repo has no pending file. Other repos' hashes in state_file are kept as they are.
+    """
+    pending = pending_file(state_file, repo)
     if not pending.exists():
         print("no " + pending.name + ": run --harvest first")
         return 1
-    pending.replace(state_file)
+    old = json.loads(state_file.read_text(encoding="utf-8")) if state_file.exists() else {}
+    keep = {p: v for p, v in old.items() if not mine(p, repo)}
+    new = json.loads(pending.read_text(encoding="utf-8"))
+    state_file.write_text(json.dumps({**keep, **new}, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+    pending.unlink()
     return 0
 
 
@@ -342,171 +382,10 @@ def add_ids(root):
     return len(rows)
 
 
-HANDOFF_OK = """# Next prompt
-Updated: 2026-11-19 14:50 by a session.
-Next update: 2026-11-25, the pilot result
-
-## State
-- main: abc1234
-
-## Timeline
-
-- 2026-11-20 · Kit pull request · done
-- 2026-12-01 · Pilot · planned
-
-## Open (in order)
-
-1. Build the page. Then test it.
-
-## Needs the owner
-
-- D3 · Drop the old export? · Options: yes / no · REC: yes
-- D4 · Tag v4.0.0 (see #12) · Options: done / not done · REC: done
-"""
-DECISIONS_OLD = """# Decisions
-
-| Date | Decision | By | Replaces |
-|---|---|---|---|
-| 2026-11-19 | Keep CSV. It works. | the owner | - |
-| 2026-11-18 | Use semantic versions. | Agent | - |
-"""
-
-
-def make_project(base, handoff, decisions, opt_in=True):
-    """A fixture project folder under base, with the given files; returns its path."""
-    root = pathlib.Path(tempfile.mkdtemp(dir=base))
-    (root / "docs").mkdir()
-    (root / "docs/NEXT_PROMPT.md").write_text(handoff, encoding="utf-8")
-    (root / "docs/DECISIONS.md").write_text(decisions, encoding="utf-8")
-    (root / ".check").write_text("code-c2: full\n" + (OPT_IN + "\n" if opt_in else ""), encoding="utf-8")
-    return root
-
-
-def quiet(fn, *args):
-    """Run fn(*args) with its printed lines caught; returns (result, printed text)."""
-    import contextlib
-    import io
-    buf = io.StringIO()
-    with contextlib.redirect_stdout(buf):
-        res = fn(*args)
-    return res, buf.getvalue()
-
-
-def test_cases(base):
-    """The self-test cases; returns a list of (name, passed).
-
-    Args:
-        base: a temporary folder for the fixture projects.
-    Returns:
-        [(case name, True when it passed)].
-    """
-    out = []
-    ok = lambda name, cond: out.append((name, bool(cond)))  # noqa: E731 (one-line recorder)
-    p = make_project(base, HANDOFF_OK, DECISIONS_OLD)
-    ok("add-ids numbers 2 rows", add_ids(p) == 2)
-    text = (p / "docs/DECISIONS.md").read_text(encoding="utf-8")
-    ok("oldest row is D1", "| D1 | 2026-11-18 |" in text and "| D2 | 2026-11-19 |" in text and "| ID | Date |" in text)
-    ok("add-ids leaves a file with IDs", add_ids(p) == 0)
-    code, printed = quiet(check, p)
-    ok("a valid project passes the check", code == 0 and "2 open, 2 resolved, 0 lines not read" in printed)
-    h, rows, _ = read_project(p)
-    ok("next update read", h["next_update"] == {"date": "2026-11-25", "text": "the pilot result"})
-    ok("timeline read", [t["state"] for t in h["timeline"]] == ["done", "planned"])
-    ok("options split", h["needs"][0]["options"] == ["yes", "no"] and h["needs"][0]["rec"] == "yes")
-    ok("summary is the first sentence", summary("Keep CSV. It works.") == "Keep CSV.")
-    ok("summary is cut at 140", len(summary("x" * 300)) == SUMMARY_MAX)
-    bad = make_project(base, HANDOFF_OK.replace("- D3 · Drop", "- Drop"), DECISIONS_OLD)
-    code, printed = quiet(check, bad)
-    ok("a need without an ID fails", code == 1 and "NEXT_PROMPT.md Needs the owner:" in printed)
-    ok("rows without IDs fail", printed.count("DECISIONS.md:") == 2)
-    off = make_project(base, "x", "y", opt_in=False)
-    code, printed = quiet(check, off)
-    ok("no opt-in: SKIP", code == 0 and printed.startswith("SKIP"))
-    out += harvest_cases(base, p) + edge_cases(base)
-    return out
-
-
-def harvest_cases(base, p):
-    """The --harvest self-test cases on the fixture project p; returns [(name, passed)].
-
-    Args:
-        base: a temporary folder for the state file.
-        p: a fixture project with IDs.
-    Returns:
-        [(case name, True when it passed)].
-    """
-    out = []
-    ok = lambda name, cond: out.append((name, bool(cond)))  # noqa: E731 (one-line recorder)
-    state = pathlib.Path(base) / "state.json"
-    cross = {"pull_requests": [{"title": "Tag", "url": "https://x/pull/12"}, {"title": "New thing", "url": "https://x/pull/13"}],
-             "sessions": [{"title": "Kit · Fleet · 2026-11-19", "url": "https://s/1"}]}
-    first = harvest(p, "demo", "https://github.com/o/demo", state, cross)
-    ok("first run writes every document", first["counts"] == {"documents": 5, "items_changed": 4, "deleted": 0})
-    ok("state waits for --save-state", not state.exists() and save_state(state) == 0 and state.exists())
-    second = harvest(p, "demo", "https://github.com/o/demo", state, cross)
-    save_state(state)
-    ok("second run: 0 items, the repos row only", second["counts"]["items_changed"] == 0 and not second["deletes"]
-       and [w["path"] for w in second["writes"]] == ["repos/demo"])
-    repo = [w for w in first["writes"] if w["path"] == "repos/demo"][0]["data"]
-    ok("repos row has its age", repo["harvested_at"].endswith("Z") and "source_commit" in repo and repo["unread_lines"] == 0)
-    ok("unfiled PR and session found, filed PR not", [n["url"] for n in repo["not_filed"]] == ["https://x/pull/13", "https://s/1"])
-    agent = [w["data"] for w in first["writes"] if w["path"] == "items/demo~D1"][0]
-    ok("an Agent row is not approved", agent["approved"] is False and agent["kind"] == "resolved")
-    ok("links point at the line", agent["url"].endswith("/blob/main/docs/DECISIONS.md#L6"))
-    other = harvest(p, "other", "https://github.com/o/other", state, {})
-    ok("a shared state file: no delete of another repo", not other["deletes"])
-    save_state(state)
-    hp = p / "docs/NEXT_PROMPT.md"
-    hp.write_text(hp.read_text(encoding="utf-8").replace("- D4 · Tag v4.0.0 (see #12) · Options: done / not done · REC: done\n", ""),
-                  encoding="utf-8")
-    third = harvest(p, "demo", "https://github.com/o/demo", state, cross)
-    ok("a closed need is deleted", third["deletes"] == ["items/demo~D4"])
-    pr1 = {"pull_requests": [{"title": "Fix", "url": "https://x/pull/1"}]}
-    ok("#1 is not #12", not_filed(pr1, "see #12. Fix") != [] and not_filed(pr1, "see https://x/pull/12") != [])
-    ok("#1 is named", not_filed(pr1, "see #1.") == [] and not_filed(pr1, "(https://x/pull/1)") == [])
-    ok("a session URL needs its end", not_filed({"sessions": [{"title": "T", "url": "https://s/1"}]}, "https://s/12") != [])
-    return out
-
-
-def edge_cases(base):
-    """Self-test cases for lines the format check must fail, and --add-ids edge cases; returns [(name, passed)].
-
-    Args:
-        base: a temporary folder for the fixture projects.
-    Returns:
-        [(case name, True when it passed)].
-    """
-    out = []
-    ok = lambda name, cond: out.append((name, bool(cond)))  # noqa: E731 (one-line recorder)
-    rows = "| ID | Date | Decision | By | Replaces |\n|---|---|---|---|---|\n| D1 | 2026-11-18 | A. | the owner | - |\n"
-    dup_need = HANDOFF_OK.replace("- D4 · Tag", "- D3 · Tag")
-    ok("two needs with one ID fail", quiet(check, make_project(base, dup_need, rows))[0] == 1)
-    ok("a need with a row's ID fails", quiet(check, make_project(base, HANDOFF_OK.replace("- D4 ·", "- D1 ·"), rows))[0] == 1)
-    bad_date = rows + "| D9 | 19.11.2026 | y | the owner | - |\n| D8 | | z | the owner | - |\n"
-    code, printed = quiet(check, make_project(base, HANDOFF_OK, bad_date))
-    ok("rows with a bad or empty date fail", code == 1 and printed.count("DECISIONS.md:") == 2)
-    ok("an escaped pipe is shown plain", read_project(make_project(base, HANDOFF_OK, rows.replace("| A. |", "| A \\| B. |")))[1][0]["text"] == "A | B.")
-    ok("a lowercase ID row fails", quiet(check, make_project(base, HANDOFF_OK, rows + "| d4 | 2026-11-19 | x | the owner | - |\n"))[0] == 1)
-    ok("an escaped pipe stays in its cell", quiet(check, make_project(base, HANDOFF_OK, rows.replace("| A. |", "| A \\| B. |")))[0] == 0)
-    ok("a missing section fails", quiet(check, make_project(base, HANDOFF_OK.replace("## Timeline", "## Plan"), rows))[0] == 1)
-    ok("a counted heading is read", quiet(check, make_project(base, HANDOFF_OK.replace("## Needs the owner", "## Needs the owner (2)"), rows))[0] == 0)
-    p = make_project(base, HANDOFF_OK, DECISIONS_OLD.replace("\n", "\r\n") + "\r\n| Date | Other |\r\n|---|---|\r\n| 2026-01-01 | x |\r\n")
-    ok("add-ids numbers only the first table", add_ids(p) == 2)
-    ok("after add-ids the check passes (a second table is not read)", quiet(check, p)[0] == 0)
-    raw = (p / "docs/DECISIONS.md").read_bytes()
-    ok("add-ids keeps CRLF and the second table", b"| D1 | 2026-11-18 |" in raw and b"\r\n| 2026-01-01 | x |\r\n" in raw and b"\n\n" not in raw)
-    return out
-
-
 def selftest():
-    """--test: run the cases in a temporary folder; print each failure and FLEET TEST PASS or FAIL; return the code."""
-    with tempfile.TemporaryDirectory() as base:
-        results = test_cases(base)
-    failed = [n for n, passed in results if not passed]
-    for n in failed:
-        print("FAIL  " + n)
-    print(("FLEET TEST PASS: %d cases" % len(results)) if not failed else "FLEET TEST FAIL: %d of %d" % (len(failed), len(results)))
-    return 1 if failed else 0
+    """--test: run the cases in scripts/fleet_harvest_test.py on this module; return the exit code."""
+    import fleet_harvest_test  # kept apart so this file stays under the 600-line cap (docs/code-standard.md)
+    return fleet_harvest_test.run(sys.modules[__name__])
 
 
 def main(argv=None):
@@ -535,7 +414,9 @@ def main(argv=None):
     if a.check:
         return check(pathlib.Path(a.check))
     if a.save_state:
-        return save_state(a.save_state)
+        if not a.repo:
+            ap.error("--save-state needs --repo")
+        return save_state(a.save_state, a.repo)
     if a.add_ids:
         print("added IDs to %d rows" % add_ids(pathlib.Path(a.add_ids)))
         return 0

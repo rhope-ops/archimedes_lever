@@ -292,7 +292,7 @@ extension() {
 extension check_content_local scripts/check_content_local.py scripts/check_content_scan.py scripts/check_content_finders.py
 extension code_standard_gate scripts/code_standard_gate.py scripts/code_standard.py scripts/code_standard_parse.py \
   scripts/code_standard_docs.py scripts/check_settings.py
-selftest fleet_harvest scripts/fleet_harvest.py -- python3 scripts/fleet_harvest.py --test
+selftest fleet_harvest scripts/fleet_harvest.py scripts/fleet_harvest_test.py -- python3 scripts/fleet_harvest.py --test
 selftest check_blocks scripts/check_blocks.py .claude/settings.json -- python3 scripts/check_blocks.py --test
 selftest check_lock scripts/check_lock.py -- python3 scripts/check_lock.py --test
 selftest first_use_check scripts/first_use_check.py scripts/check_blocks.py scripts/check_content.py scripts/check_content_scan.py -- python3 scripts/first_use_check.py --test
