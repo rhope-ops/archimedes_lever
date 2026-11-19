@@ -178,13 +178,13 @@ def stray_rows(lines, table):
         table: the range of line indexes of the decisions table (empty when there is none).
     Returns:
         [line number] of each such row, above or below the table (another table with a header row, for example a list
-        of links, is not reported).
+        of links, is not reported; with no decisions table, every decision-shaped row is reported).
     """
     out, headed = [], False
     for i, ln in enumerate(lines):
         if ln.startswith("|") and (i == 0 or not lines[i - 1].startswith("|")):
             headed = not ROW_START.match(ln)  # a table starts: does it start with a header row?
-        if i not in table and ROW_START.match(ln) and not headed:
+        if i not in table and ROW_START.match(ln) and not (headed and table):  # no decisions table: report every row
             out.append(i + 1)
     return out
 
@@ -238,7 +238,7 @@ def not_filed(cross, text):
             url, title = e.get("url", ""), e.get("title", "")
             num = re.search(r"/pull/(\d+)/?$", url)
             if num:  # a pull request: its whole URL, or "#<n>" as a whole number; never its title
-                named = whole(url, text) or re.search(r"(?<![\w/#])#" + num.group(1) + r"(?!\d)", text)
+                named = whole(url, text, subpath=True) or re.search(r"(?<![\w/#])#" + num.group(1) + r"(?!\d)", text)
             else:  # a session: its whole URL or its whole title
                 named = whole(url, text) or whole(title, text)
             if not named:
@@ -246,10 +246,19 @@ def not_filed(cross, text):
     return out
 
 
-def whole(needle, text):
-    """True when needle is in text with no letter, digit or slash right before or after it (https://s/1 is not https://s/12)."""
+def whole(needle, text, subpath=False):
+    """True when needle is in text as a whole: no letter, digit or slash right before it, and none right after it.
+
+    Args:
+        needle: a URL or a title; a trailing slash is ignored.
+        text: the handoff file text.
+        subpath: True for a pull request URL: a "/" and a non-digit may follow (.../pull/1/files, never .../pull/1/2).
+    Returns:
+        True when the whole needle is found.
+    """
     needle = needle.rstrip("/")
-    return bool(needle) and re.search(r"(?<![\w/])" + re.escape(needle) + r"(?:/(?!\d)|(?![\w/]))", text) is not None
+    tail = r"(?:/(?!\d)|(?![\w/]))" if subpath else r"/?(?![\w/])"
+    return bool(needle) and re.search(r"(?<![\w/])" + re.escape(needle) + tail, text) is not None
 
 
 def source_commit(root):
@@ -360,7 +369,7 @@ def save_state(state_file, repo):
 
 
 def add_ids(root):
-    """--add-ids: add the ID column to the first table of docs/DECISIONS.md (D1 = the oldest row, the last one).
+    """--add-ids: add the ID column to the decisions table of docs/DECISIONS.md (found by DECISIONS_HEAD) (D1 = the oldest row, the last one).
 
     Args:
         root: the project folder.
@@ -370,10 +379,8 @@ def add_ids(root):
     f = root / "docs/DECISIONS.md"
     with open(f, encoding="utf-8", newline="") as fh:
         lines = fh.read().splitlines(keepends=True)
-    if any(re.match(r"^\|\s*ID\s*\|", ln) for ln in lines):
-        return 0
     head = next((i for i, ln in enumerate(lines) if DECISIONS_HEAD.match(ln)), None)
-    if head is None:
+    if head is None or re.match(r"^\|\s*ID\s*\|", lines[head]):
         return 0
     end = next((i for i in range(head + 2, len(lines)) if not lines[i].startswith("|")), len(lines))
     rows = [i for i in range(head + 2, end) if re.match(r"^\|\s*" + DATE + r"\s*\|", lines[i])]
