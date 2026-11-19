@@ -2,7 +2,7 @@
 
 The kit's own handoff (AGENTS.md "Handoff"). Kit only: first use deletes it in a project, which uses docs/NEXT_PROMPT.md. Keep it at 40 lines or fewer; evidence goes in docs/reviews/. Times are America/Chicago.
 
-Updated: 2026-11-19 18:10 by the kit owner (session "Archimedes Lever workflow optimization", the owner, 2026-11-18 16:20). Only the kit owner changes the kit and runs kit syncs; other sessions report kit faults here or to it.
+Updated: 2026-11-18 18:10 by the kit owner (session "Archimedes Lever workflow optimization", the owner, 2026-11-18 16:20). Only the kit owner changes the kit and runs kit syncs; other sessions report kit faults here or to it.
 
 ## State
 
