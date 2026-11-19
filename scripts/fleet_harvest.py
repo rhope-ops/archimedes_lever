@@ -41,7 +41,7 @@ NEXT = re.compile(r"^Next update:\s*(" + DATE + r"),\s*(.+)$")
 TIMELINE = re.compile(r"^- (" + DATE + r") · (.+?) · (planned|done)\s*$")
 NEED = re.compile(r"^- (D\d+) · (.+?) · Options: (.+?) · REC: (.+?)\s*$")
 ROW = re.compile(r"^\|\s*(D\d+)\s*\|\s*(" + DATE + r")\s*\|(.*)\|\s*$")
-ROW_START = re.compile(r"^\|\s*(D\d+\s*\||" + DATE + r"\s*\|)")  # any decision row, also one that ROW does not read
+ROW_START = re.compile(r"(?i)^\|\s*(D\d+\s*\||" + DATE + r"\s*\|)")  # any decision row, also one that ROW does not read
 CELL_SPLIT = re.compile(r"(?<!\\)\|")  # a cell border; an escaped pipe (\|) stays inside the cell
 NEEDED = ("Timeline", "Needs the owner")  # handoff sections the format check requires
 NONE_LINE = re.compile(r"^-?\s*(none|nothing)\.?\s*$", re.I)
@@ -148,7 +148,10 @@ def parse_decisions(text, name):
         (rows, unread): rows is [{id, date, text, by, line, raw}]; unread is [(name, line number, reason)].
     """
     rows, unread = [], []
-    for n, ln in enumerate(text.splitlines(), 1):
+    lines = text.splitlines()
+    head = next((i for i, ln in enumerate(lines) if re.match(r"^\|\s*(ID|Date)\s*\|", ln)), len(lines))
+    end = next((i for i in range(head + 1, len(lines)) if not lines[i].startswith("|")), len(lines))
+    for n, ln in enumerate(lines[head + 2:end], head + 3):  # the decisions table only; other tables are not read
         if not ROW_START.match(ln):
             continue
         m = ROW.match(ln.rstrip("\r"))
@@ -156,7 +159,7 @@ def parse_decisions(text, name):
         if not m or len(cells) != 3:
             unread.append((name, n, "a decision row needs 5 cells: ID | Date | Decision | By | Replaces"))
             continue
-        rows.append({"id": m.group(1), "date": m.group(2), "text": cells[0].strip(), "by": cells[1].strip(),
+        rows.append({"id": m.group(1), "date": m.group(2), "text": cells[0].strip().replace("\\|", "|"), "by": cells[1].strip(),
                      "line": n, "raw": ln})
     return rows, unread
 
@@ -209,13 +212,18 @@ def not_filed(cross, text):
         for e in cross.get(source, []):
             url, title = e.get("url", ""), e.get("title", "")
             num = re.search(r"/pull/(\d+)/?$", url)
-            if num:  # a pull request is named by its URL, "#<n>" or "pull/<n>" (whole number), never by its title
-                named = (url in text) or re.search(r"(#|pull/)" + num.group(1) + r"(?!\d)", text)
-            else:  # a session is named by its URL or its whole title
-                named = (url and url in text) or (title and title in text)
+            if num:  # a pull request: its whole URL, or "#<n>" as a whole number; never its title
+                named = whole(url, text) or re.search(r"(?<![\w/#])#" + num.group(1) + r"(?!\d)", text)
+            else:  # a session: its whole URL or its whole title
+                named = whole(url, text) or whole(title, text)
             if not named:
                 out.append({"text": summary(title or url), "url": url, "source": source})
     return out
+
+
+def whole(needle, text):
+    """True when needle is in text with no letter, digit or slash right before or after it (https://s/1 is not https://s/12)."""
+    return bool(needle) and re.search(r"(?<![\w/])" + re.escape(needle) + r"(?![\w/])", text) is not None
 
 
 def source_commit(root):
@@ -289,8 +297,9 @@ def harvest(root, repo, url, state_file, cross, branch="main"):
                              source_commit=source_commit(root))
     deletes = sorted(p for p in old if mine(p) and p not in new)
     if state_file:
-        keep = {p: v for p, v in old.items() if not mine(p)}  # other repos that share this state file
         pending = pathlib.Path(str(state_file) + ".pending")
+        base = json.loads(pending.read_text(encoding="utf-8")) if pending.exists() else old  # another repo's pending run
+        keep = {p: v for p, v in base.items() if not mine(p)}  # other repos that share this state file
         pending.write_text(json.dumps({**keep, **new}, indent=1, sort_keys=True) + "\n", encoding="utf-8")
     items = sum(1 for w in writes if w["path"].startswith("items/"))
     return {"writes": writes, "deletes": deletes, "counts": {"documents": len(docs), "items_changed": items, "deleted": len(deletes)}}
@@ -352,7 +361,7 @@ Next update: 2026-11-25, the pilot result
 ## Needs the owner
 
 - D3 · Drop the old export? · Options: yes / no · REC: yes
-- D4 · Tag v4.0.0 (see pull/12) · Options: done / not done · REC: done
+- D4 · Tag v4.0.0 (see #12) · Options: done / not done · REC: done
 """
 DECISIONS_OLD = """# Decisions
 
@@ -448,11 +457,14 @@ def harvest_cases(base, p):
     ok("a shared state file: no delete of another repo", not other["deletes"])
     save_state(state)
     hp = p / "docs/NEXT_PROMPT.md"
-    hp.write_text(hp.read_text(encoding="utf-8").replace("- D4 · Tag v4.0.0 (see pull/12) · Options: done / not done · REC: done\n", ""),
+    hp.write_text(hp.read_text(encoding="utf-8").replace("- D4 · Tag v4.0.0 (see #12) · Options: done / not done · REC: done\n", ""),
                   encoding="utf-8")
     third = harvest(p, "demo", "https://github.com/o/demo", state, cross)
     ok("a closed need is deleted", third["deletes"] == ["items/demo~D4"])
-    ok("#1 is not #12", not_filed({"pull_requests": [{"title": "Fix", "url": "https://x/pull/1"}]}, "see #12. Fix") != [])
+    pr1 = {"pull_requests": [{"title": "Fix", "url": "https://x/pull/1"}]}
+    ok("#1 is not #12", not_filed(pr1, "see #12. Fix") != [] and not_filed(pr1, "see https://x/pull/12") != [])
+    ok("#1 is named", not_filed(pr1, "see #1.") == [] and not_filed(pr1, "(https://x/pull/1)") == [])
+    ok("a session URL needs its end", not_filed({"sessions": [{"title": "T", "url": "https://s/1"}]}, "https://s/12") != [])
     return out
 
 
@@ -473,11 +485,14 @@ def edge_cases(base):
     bad_date = rows + "| D9 | 19.11.2026 | y | the owner | - |\n| D8 | | z | the owner | - |\n"
     code, printed = quiet(check, make_project(base, HANDOFF_OK, bad_date))
     ok("rows with a bad or empty date fail", code == 1 and printed.count("DECISIONS.md:") == 2)
+    ok("an escaped pipe is shown plain", read_project(make_project(base, HANDOFF_OK, rows.replace("| A. |", "| A \\| B. |")))[1][0]["text"] == "A | B.")
+    ok("a lowercase ID row fails", quiet(check, make_project(base, HANDOFF_OK, rows + "| d4 | 2026-11-19 | x | the owner | - |\n"))[0] == 1)
     ok("an escaped pipe stays in its cell", quiet(check, make_project(base, HANDOFF_OK, rows.replace("| A. |", "| A \\| B. |")))[0] == 0)
     ok("a missing section fails", quiet(check, make_project(base, HANDOFF_OK.replace("## Timeline", "## Plan"), rows))[0] == 1)
     ok("a counted heading is read", quiet(check, make_project(base, HANDOFF_OK.replace("## Needs the owner", "## Needs the owner (2)"), rows))[0] == 0)
     p = make_project(base, HANDOFF_OK, DECISIONS_OLD.replace("\n", "\r\n") + "\r\n| Date | Other |\r\n|---|---|\r\n| 2026-01-01 | x |\r\n")
     ok("add-ids numbers only the first table", add_ids(p) == 2)
+    ok("after add-ids the check passes (a second table is not read)", quiet(check, p)[0] == 0)
     raw = (p / "docs/DECISIONS.md").read_bytes()
     ok("add-ids keeps CRLF and the second table", b"| D1 | 2026-11-18 |" in raw and b"\r\n| 2026-01-01 | x |\r\n" in raw and b"\n\n" not in raw)
     return out
