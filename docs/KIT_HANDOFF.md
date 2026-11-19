@@ -2,26 +2,24 @@
 
 The kit's own handoff (AGENTS.md "Handoff"). Kit only: first use deletes it in a project, which uses docs/NEXT_PROMPT.md. Keep it at 40 lines or fewer; evidence goes in docs/reviews/. Times are America/Chicago.
 
-Updated: 2026-11-18 19:15. Kit owner: the session that takes the 3.2.0 plan (the owner, 2026-11-18); the earlier kit owner session stops kit work.
+Updated: 2026-11-19 07:40. Kit owner: the session "Kit · Session names and project tags · 2026-11-19" (kit 3.3.0 plan).
 
 ## State
 
 - main: kit 3.2.0 (18896fc, PR 62). Tags (feature releases; the owner makes them): v2.0.0 (7b80101), v3.0.0 (67e7766), v3.1.0 (88185f0); v3.2.0 not made yet. Fleet page: https://claude.ai/artifact/AWtpGxEqCWrjrPa1Afe7qW (private; the kit owner updates its rows).
 - All seven repos on 3.2.0 (18896fc; lock pass, 2026-11-18): RADE 112, 90-161.Z 164, 36-3003.Z 10, 65-601.Z 10, SPAR 15, icf-source 141, sec-source 17. Session load after the lane A trims: icf-source ~4,797 (PR 143), sec-source ~4,716 (PR 18); RADE ~4,861.
 
-## Approved plan (the owner, 2026-11-18 12:15; updates approved 13:25 and 14:35): lean two-tier rules and the kit as a synced baseline
+## Approved plan (the owner, 2026-11-19 07:30): kit 3.3.0, session names
 
-Full text, proposals 1 to 26, risks and targets: [reviews/2026-11-18-lean-rules-sync-plan.md](reviews/2026-11-18-lean-rules-sync-plan.md). Scope (the owner, 2026-11-18): all 26 proposals; skills may be rewritten or combined. Records: [reviews/2026-11-18-lean-rules-review.md](reviews/2026-11-18-lean-rules-review.md), [reviews/2026-11-18-rule-tests-lean.md](reviews/2026-11-18-rule-tests-lean.md).
+Full text and approved rule text: [reviews/2026-11-19-session-names-plan.md](reviews/2026-11-19-session-names-plan.md). Earlier plan (lean rules, 2026-11-18): done except its step 5 (Open 1); record: [reviews/2026-11-18-lean-rules-sync-plan.md](reviews/2026-11-18-lean-rules-sync-plan.md).
 
-- [x] 0. Plan saved; toggles set (all Yes).
-- [x] 1. Kit 2026.11.19 and 2026.11.20 merged (pull requests 44 and 45). Rule tests: 10 pass, 1 not valid, of 11 run.
-- [x] 2. Pilot sync merged: 36-3003.Z (pull request 5), 65-601.Z (5), SPAR (10). They keep the tier "full" (the owner, 2026-11-18: the starter tier drops the project log rule).
-- [x] 3. RADE and 90-161.Z synced to 1.0.1 (RADE pull requests 104 and 105; 90-161.Z by the session "90-161.Z: kit 1.0.1 sync").
-- [x] 4. sec-source (PR 15) and icf-source (PR 135) converted to the kit layout and synced.
-- [ ] 5. Owner layer: preferences text and the two account skills (ship, turn-summary) done and pasted by the owner (2026-11-18); tag v1.0.0 done; rulesets and secret scanning are the owner's clicks ([github/README.md](github/README.md)); fleet page done (link under "State"); allow list (25) and "not set yet" lines (24) open.
-- [x] 6. Proposal 20 dropped (the owner, 2026-11-18): an import does not lower the context cost.
-- [x] 7. Kit 2.0.0, 2.0.1, 3.0.0 (private repos skip the PR Action), 3.1.0 (`content-max-bytes`) merged; syncs as under State.
-- [x] 8. Kit 2026.11.20.1 merged (pull request 42, from the session of pull request 41).
+- [x] 0. Plan saved.
+- [ ] 1. Kit PR (rule, header line, handoff skill, check-in TITLE and SESSIONS lines, CHANGELOG 3.3.0).
+- [ ] 2. Fresh review and rule-conflict check.
+- [ ] 3. The owner tags v3.3.0.
+- [ ] 4. Nine sync PRs: RADE, 90-161.Z, icf-source, 36-3003.Z, 65-601.Z, sec-source, SPAR, no-more-beyond, transcription_assistant.
+- [ ] 5. Fresh review of each sync; merge on green (pre-approved).
+- [ ] 6. Backfill PR numbers on the 306 session titles; archive the finished idle sessions.
 
 ## Open (in order)
 
