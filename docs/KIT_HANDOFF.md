@@ -6,7 +6,7 @@ Updated: 2026-11-19 07:40. Kit owner: the session "Kit · Session names and proj
 
 ## State
 
-- main: kit 3.2.0 (18896fc, PR 62). Tags (feature releases; the owner makes them): v2.0.0 (7b80101), v3.0.0 (67e7766), v3.1.0 (88185f0); v3.2.0 not made yet. Fleet page: https://claude.ai/artifact/AWtpGxEqCWrjrPa1Afe7qW (private; the kit owner updates its rows).
+- main: kit 3.2.0 (18896fc, PR 62). Tags (feature releases; the owner makes them): v2.0.0 (7b80101), v3.0.0 (67e7766), v3.1.0 (88185f0); v3.2.0 not made yet. Fleet page: https://claude.ai/artifact/AWtpGxEqCWrjrPa1Afe7qW (private; the kit owner updates its rows). Its "Waiting for you" list (2026-11-19) reads the `needs` field (`[{text, url}]`) of `meta/kit` and of each `repos` row: the session that closes or adds an owner action updates that field.
 - All seven repos on 3.2.0 (18896fc; lock pass, 2026-11-18): RADE 112, 90-161.Z 164, 36-3003.Z 10, 65-601.Z 10, SPAR 15, icf-source 141, sec-source 17. Session load after the lane A trims: icf-source ~4,797 (PR 143), sec-source ~4,716 (PR 18); RADE ~4,861.
 
 ## Approved plan (the owner, 2026-11-19 07:30): kit 4.0.0, session names
