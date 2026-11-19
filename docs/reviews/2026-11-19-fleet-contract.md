@@ -1,6 +1,6 @@
-# Fleet decision hub: step 2 contract (draft for the owner's approval)
+# Fleet decision hub: step 2 contract
 
-Date: 2026-11-19 15:05 America/Chicago. Plan: [2026-11-19-fleet-decision-hub-plan.md](2026-11-19-fleet-decision-hub-plan.md). Survey: [2026-11-19-fleet-survey.md](2026-11-19-fleet-survey.md). State: DRAFT, not approved. Lane C: the owner approves the texts in sections 1 and 2 as written here.
+Date: 2026-11-19 15:05 America/Chicago. Plan: [2026-11-19-fleet-decision-hub-plan.md](2026-11-19-fleet-decision-hub-plan.md). Survey: [2026-11-19-fleet-survey.md](2026-11-19-fleet-survey.md). State: APPROVED by the owner on 2026-11-19 at about 15:10, sections 1 and 2 as written (question dialog). Also decided: "By Agent" rows show in the resolved list with a "not approved" tag, not in the inbox.
 
 ## 1. Opt-in
 

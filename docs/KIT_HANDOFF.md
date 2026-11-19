@@ -2,7 +2,7 @@
 
 The kit's own handoff (AGENTS.md "Handoff"). Kit only: first use deletes it in a project, which uses docs/NEXT_PROMPT.md. Keep it at 40 lines or fewer; evidence goes in docs/reviews/. Times are America/Chicago.
 
-Updated: 2026-11-19 14:50. Kit owner: the session "Kit · Fleet decision hub · 2026-11-19" (fleet hub plan). Before: "Kit · Session names and project tags · 2026-11-19" (kit 4.0.0).
+Updated: 2026-11-19 15:12. Kit owner: the session "Kit · Fleet decision hub · 2026-11-19" (fleet hub plan). Before: "Kit · Session names and project tags · 2026-11-19" (kit 4.0.0).
 
 ## State
 
@@ -15,7 +15,8 @@ Full text, decisions and approved rule text: [reviews/2026-11-19-fleet-decision-
 
 - [x] 0. Plan saved.
 - [x] 1. Survey ([reviews/2026-11-19-fleet-survey.md](reviews/2026-11-19-fleet-survey.md)).
-- [ ] 2. Contract and format texts (lane C). 3. Kit PR. 4. Pilot on the kit. 5. Page (preview first). 6. Loop proof. 7. Port guide, daily harvest task.
+- [x] 2. Contract approved 2026-11-19 15:10 ([reviews/2026-11-19-fleet-contract.md](reviews/2026-11-19-fleet-contract.md)).
+- [ ] 3. Kit PR. 4. Pilot on the kit. 5. Page (preview first). 6. Loop proof. 7. Port guide, daily harvest task.
 
 ## Open (in order)
 
