@@ -11,7 +11,7 @@ AGENTS.md "Delivery", "Checks" and "Fresh review" hold the rules; this file hold
 
 1. Commit on a branch (the branch the host requires, else `claude/<topic>`), with a noreply identity. Write a commit message that names a blocked git form (stash, restore, hooksPath, the hook-skip flag) to a file and commit with `git commit -F <file>`; the deny rules match the whole command.
 2. Push. The pre-push hook runs the fast lane.
-3. Open a pull request for the branch (one per branch). Name its merge lane in the text.
+3. Open a pull request for the branch (one per branch). Name its merge lane in the text. In a Claude cloud session, the session's first pull request also goes into its title, and after the last merge the session archives itself (`.claude/skills/handoff/SKILL.md` "Session names", steps 3 and 6).
 4. Make it green: run the full lane one time on the head commit (`scripts/check.sh`), wait for the pull-request Action (a public repo; a private repo skips it), and for lanes B and C get the fresh review on that head commit.
 5. Before a merge, list the repository's open pull requests; AGENTS.md "Git history" says whose pull request you may merge. Merge by lane, with a merge commit. If the base moved, update the branch by merge first; a conflict with another session's work goes to the owner.
 6. Verify: `git fetch origin main && git merge-base --is-ancestor <commit> origin/main`.

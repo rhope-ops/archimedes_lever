@@ -55,7 +55,7 @@ title_lines() {
   tz=$(header_value "$1" "Time zone")
   day=$(TZ="${tz:-UTC}" date +%F)
   tag="project:$(printf '%s' "$short" | tr '[:upper:]' '[:lower:]')"
-  echo "TITLE:       $short · <task, 2-6 words> · $day (tag $tag); keep a title that already has this form"
+  echo "TITLE:       $short · <task, 2-6 words> · $day (tag $tag); keep a title that already has this form; steps: .claude/skills/handoff/SKILL.md \"Session names\""
   echo "SESSIONS:    where the session tools exist, list the sessions tagged $tag that wait on the owner"
 }
 
@@ -93,7 +93,7 @@ if [ "${1:-}" = "--test" ]; then
   today=$(TZ=UTC date +%F)
   printf '# RADE: agent instructions\n\n- Time zone: UTC\n- Short name: RADE\n' > "$t/a1.md"
   eq "TITLE: the short name" "$(title_lines "$t/a1.md" | head -n 1)" \
-    "TITLE:       RADE · <task, 2-6 words> · $today (tag project:rade); keep a title that already has this form"
+    "TITLE:       RADE · <task, 2-6 words> · $today (tag project:rade); keep a title that already has this form; steps: .claude/skills/handoff/SKILL.md \"Session names\""
   printf '# ICF Companion: agent instructions\n\n- Time zone: UTC\n- Short name: {{SHORT_NAME}}\n' > "$t/a2.md"
   eq "TITLE: a placeholder falls back to the name" "$(title_lines "$t/a2.md" | grep -c '^TITLE:       ICF · ')" "1"
   printf '# {{PROJECT_NAME}}: agent instructions\n\n- Time zone: {{TIMEZONE}}\n- Short name: {{SHORT_NAME}}\n' > "$t/a3.md"
