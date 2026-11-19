@@ -111,7 +111,7 @@ For people who know git and don't want an agent to do the setup, or who only hav
 
 ## Keep personal data out
 
-With the guard on in the full kit, every push and every pull-request check fails until your name list exists. In the starter kit, `.check` has the line `denylist: warn`: a push without the list warns, and every other check still runs; delete that line to block. The guard only runs in a repo that has a `.check` file at its root; that file also lists exact strings you want to allow. A private repo that names you on purpose can delete it.
+With the guard on in the full kit, every push fails until your name list exists, and so does every pull-request check in a public repo (a private repo runs no pull-request check). In the starter kit, `.check` has the line `denylist: warn`: a push without the list warns, and every other check still runs; delete that line to block. The guard only runs in a repo that has a `.check` file at its root; that file also lists exact strings you want to allow. A private repo that names you on purpose can delete it.
 
 1. Commit with your GitHub noreply address. On GitHub, go to **Settings → Emails** and turn on "Keep my email addresses private" and "Block command line pushes that expose my email". Then run:
    ```

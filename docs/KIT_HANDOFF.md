@@ -2,7 +2,7 @@
 
 The kit's own handoff (AGENTS.md "Handoff"). Kit only: first use deletes it in a project, which uses docs/NEXT_PROMPT.md. Keep it at 40 lines or fewer; evidence goes in docs/reviews/. Times are America/Chicago.
 
-Updated: 2026-11-18 18:20. Kit owner: the session that takes the 3.2.0 plan (the owner, 2026-11-18); the earlier kit owner session stops kit work.
+Updated: 2026-11-18 18:35. Kit owner: the session that takes the 3.2.0 plan (the owner, 2026-11-18); the earlier kit owner session stops kit work.
 
 ## State
 
@@ -25,7 +25,7 @@ Full text, proposals 1 to 26, risks and targets: [reviews/2026-11-18-lean-rules-
 
 ## Open (in order)
 
-0. Kit 3.2.0: [plan](reviews/2026-11-18-kit-3.2.0-plan.md) (approved 2026-11-18 18:15; scope, checks, syncs).
+0. Kit 3.2.0: [plan](reviews/2026-11-18-kit-3.2.0-plan.md) (approved 2026-11-18 18:15; scope, checks, syncs). Items 1 to 6 are in the kit pull request on branch `claude/archimedes-lever-workflow-0mydsw` (item 5, kit side: measured, not done; DECISIONS row of 2026-11-18). Next: its fresh review, the full lane, the owner's merge (lane C); then the seven syncs (each repo: `--migrate` once; icf-source: `audit-duplicate-ignore` lines from its old `.bloat-audit.json`, 939bec1^), the two NEXT_PROMPT trims, the fleet page and the release link.
 1. Step 5 (rulesets, secret scanning: the owner's clicks, docs/github/README.md).
 
 ## Needs the owner

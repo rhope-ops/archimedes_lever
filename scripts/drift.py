@@ -61,7 +61,15 @@ def sections(text, stop=None):
 
 
 def baseline_head(base_text, proj_text, owner):
-    """The baseline AGENTS.md above "## Project rules", with the project's header values, tier and owner applied."""
+    """The baseline AGENTS.md above "## Project rules", with the project's header values, tier and owner applied.
+
+    Args:
+        base_text: the text of the baseline AGENTS.md.
+        proj_text: the text of the project's AGENTS.md (may be empty).
+        owner: the owner word to put in place of the baseline's.
+    Returns:
+        The baseline text above "## Project rules" as a string.
+    """
     cut = sb.find_heading(base_text, sb.RULES_HEADING)
     head = base_text[:cut] if cut >= 0 else base_text
     name, repo, purpose = sb.header_values(proj_text or "")
@@ -74,7 +82,14 @@ def baseline_head(base_text, proj_text, owner):
 
 
 def agents_rows(proj_text, head):
-    """Rows for each baseline AGENTS.md section: same, changed (with similarity) or missing."""
+    """Rows for each baseline AGENTS.md section: same, changed (with similarity) or missing.
+
+    Args:
+        proj_text: the text of the project's AGENTS.md (may be empty).
+        head: the baseline text from baseline_head().
+    Returns:
+        A list of ("AGENTS.md", section, status, detail) rows.
+    """
     rows = []
     proj_secs = sections(proj_text)
     proj_lines = {norm(l) for l in proj_text.splitlines() if norm(l)}
@@ -140,7 +155,14 @@ def file_rows(project, base, tier, owner):
 
 
 def settings_rows(project, base):
-    """Rows for the .claude/settings.json deny rules and hook events of the baseline."""
+    """Rows for the .claude/settings.json deny rules and hook events of the baseline.
+
+    Args:
+        project: the project folder.
+        base: the baseline folder.
+    Returns:
+        A list of ("settings", item, status, detail) rows (empty when the baseline has no settings file).
+    """
     rows = []
     bset, pset = base / ".claude/settings.json", project / ".claude/settings.json"
     if bset.exists():
@@ -162,7 +184,14 @@ def settings_rows(project, base):
 
 
 def pin_row(project, base):
-    """The row for the kit lock (.check.lock): missing, or same/differs against the baseline's HEAD."""
+    """The row for the kit lock (.check.lock): missing, or same/differs against the baseline's HEAD.
+
+    Args:
+        project: the project folder.
+        base: the baseline folder.
+    Returns:
+        One ("pin", ".check.lock", status, detail) row.
+    """
     try:
         base_sha = sb.git("rev-parse", "HEAD", cwd=base)
     except subprocess.CalledProcessError:
@@ -189,7 +218,16 @@ def log_kept_elsewhere(rules):
 
 
 def log_rows(project, base, proj_text, tier):
-    """The row for docs/LOG.md (none in the starter tier): kept elsewhere, missing, or the log check's verdict."""
+    """The row for docs/LOG.md (none in the starter tier): kept elsewhere, missing, or the log check's verdict.
+
+    Args:
+        project: the project folder.
+        base: the baseline folder.
+        proj_text: the text of the project's AGENTS.md.
+        tier: the project's tier.
+    Returns:
+        A list with one ("log", "docs/LOG.md", status, detail) row, or an empty list.
+    """
     log = project / "docs/LOG.md"
     checker = base / "scripts/log_check.py"
     rules = sb.section(proj_text, sb.RULES_HEADING) or ""
@@ -207,7 +245,15 @@ def log_rows(project, base, proj_text, tier):
 
 
 def report(project, base, owner=None):
-    """Return (rows, not_same_count). rows = list of (area, item, status, detail)."""
+    """Return (rows, not_same_count). rows = list of (area, item, status, detail).
+
+    Args:
+        project: the project folder.
+        base: the baseline folder.
+        owner: the owner word, or None to read it from the project.
+    Returns:
+        (rows, not_same): the rows and the count of rows whose status is not "same".
+    """
     proj_agents = project / "AGENTS.md"
     proj_text = proj_agents.read_text() if proj_agents.exists() else ""
     owner = owner or sb.header_owner(proj_text) or sb.BASELINE_OWNER
@@ -258,7 +304,13 @@ def last_section(base):
 
 
 def legacy_and_synced_cases(proj, base, results):
-    """A legacy AGENTS.md drifts; a synced one with the owner renamed is the same, also a copied file."""
+    """A legacy AGENTS.md drifts; a synced one with the owner renamed is the same, also a copied file.
+
+    Args:
+        proj: an empty temporary project folder.
+        base: the baseline folder.
+        results: the list that gets True or False for each case.
+    """
     get = lambda item: status(proj, base, item)  # noqa: E731
     last = last_section(base)
     (proj / "AGENTS.md").write_text("# Old rules\n\n## Order of authority\n\nBe careful.\n")
@@ -289,7 +341,13 @@ def same(results, name, got, want):
 
 
 def settings_merge_cases(tmp, base, results):
-    """sync merge of .claude/settings.json: the kit's deny rules and hook entries first; the project's own are kept."""
+    """sync merge of .claude/settings.json: the kit's deny rules and hook entries first; the project's own are kept.
+
+    Args:
+        tmp: an empty temporary folder.
+        base: the baseline folder.
+        results: the list that gets True or False for each case.
+    """
     kit_cmd = json.loads((base / ".claude/settings.json").read_text())["hooks"]["PreToolUse"][0]
     own = {"matcher": "^Bash$", "hooks": [{"type": "command", "command": "python3 tools/own_guard.py"}]}
     mixed = {"hooks": [{"type": "command", "command": "python3 scripts/stop_check.py"},
@@ -334,7 +392,13 @@ def run_apply(proj, base):
 
 
 def apply_keeps_project_files_case(tmp, base, results):
-    """A sync --apply keeps a skill's PROJECT.md and the project's own hook entry in settings.json, unchanged."""
+    """A sync --apply keeps a skill's PROJECT.md and the project's own hook entry in settings.json, unchanged.
+
+    Args:
+        tmp: an empty temporary folder.
+        base: the baseline folder.
+        results: the list that gets True or False for each case.
+    """
     proj = tmp / "apply"
     (proj / ".claude/skills/deliver").mkdir(parents=True)
     project_md = proj / ".claude/skills/deliver/PROJECT.md"
@@ -353,7 +417,13 @@ def apply_keeps_project_files_case(tmp, base, results):
 
 
 def tier_cases(proj, base, results):
-    """A starter project is not compared with the advanced parts; apply_tier, header_tier and set_tier work."""
+    """A starter project is not compared with the advanced parts; apply_tier, header_tier and set_tier work.
+
+    Args:
+        proj: an empty temporary project folder.
+        base: the baseline folder.
+        results: the list that gets True or False for each case.
+    """
     get = lambda item: status(proj, base, item)  # noqa: E731
     text = filled((base / "AGENTS.md").read_text(), (("PROJECT_NAME", "Demo"), ("REPO", "D/d"), ("PURPOSE", "P"),
                   ("OWNER", "the owner"), ("TIMEZONE", "UTC"), ("TIER", "starter")))
@@ -439,7 +509,11 @@ def status_of(proj, base, rel):
 
 
 def self_test():
-    """Compare sample projects with this baseline repo; prints one line per case and DRIFT TEST PASS or FAIL."""
+    """Compare sample projects with this baseline repo; prints one line per case and DRIFT TEST PASS or FAIL.
+
+    Returns:
+        0 when every case passes or the test is skipped, else 1.
+    """
     base = pathlib.Path(__file__).resolve().parent.parent
     if "{{PROJECT_NAME}}" not in (base / "AGENTS.md").read_text():
         print("DRIFT TEST SKIP: the self-test needs the baseline repo (rhope-ops/archimedes_lever); run it there")
@@ -460,7 +534,11 @@ def self_test():
 
 
 def main():
-    """Parse the options; run the self-test, or fetch the baseline and print the drift report."""
+    """Parse the options; run the self-test, or fetch the baseline and print the drift report.
+
+    Returns:
+        The exit code: 0, or 1 when --strict is set and anything differs.
+    """
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--project", default=".", help="project repo folder (default: current folder)")
     ap.add_argument("--baseline", default=sb.DEFAULT_BASELINE, help="baseline folder or git URL")
