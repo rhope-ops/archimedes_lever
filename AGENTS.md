@@ -69,3 +69,5 @@ These are defaults: how work normally goes here. The method is yours unless the 
 ## Project rules
 
 <!-- This project's own rules: one line each, at most 15 (full tier: scripts/bloat_check.py checks the cap). Add, change or remove a line only with the owner's approval of its exact text; date it, for example "(the owner, 2026-11-09)". Mark a rule that nothing may relax "(cannot be changed)". -->
+
+- **Fleet choices.** A choice the owner saved on the fleet page counts as the owner's approval only after the applying session shows it in full and the owner confirms it in their own message (the owner, 2026-11-19).
