@@ -1,4 +1,4 @@
-# Plan: kit 3.3.0, session names (approved by the owner, 2026-11-19)
+# Plan: kit 4.0.0 (planned as 3.3.0), session names (approved by the owner, 2026-11-19)
 
 Approved in the session "Kit · Session names and project tags · 2026-11-19" (dialog answers, 2026-11-19 about 07:30 America/Chicago). Scope: the kit and every repo that takes kit syncs.
 
@@ -21,9 +21,15 @@ Approved in the session "Kit · Session names and project tags · 2026-11-19" (d
 
 ## Steps
 
-1. Kit PR: the rule line, the header line (`{{SHORT_NAME}}` filled by bootstrap.sh, sync_baseline.py `--short-name`, drift.py), the handoff skill section, TITLE and SESSIONS lines in session_checkin.sh with self-tests, CHANGELOG 3.3.0, a DECISIONS row. Measure the session load of every repo first (KIT_HANDOFF "Do not").
+1. Kit PR (4.0.0): the rule pointer, the header line (`{{SHORT_NAME}}` filled by bootstrap.sh, sync_baseline.py `--short-name`, drift.py), the handoff skill section, TITLE and SESSIONS lines in session_checkin.sh with self-tests, CHANGELOG 4.0.0, a DECISIONS row. Measure the session load of every repo first (KIT_HANDOFF "Do not").
 2. Fresh review and rule-conflict check (reviewer agents, Opus).
-3. The owner tags v3.3.0.
+3. The owner tags v4.0.0.
 4. Nine sync PRs (worker agents, Sonnet), each sets its short name.
 5. Fresh review of each sync (reviewer, Opus); merge on green.
 6. Backfill PR numbers on the existing titles; archive the finished idle sessions.
+
+## Changes after approval (the owner, 2026-11-19)
+
+- Add to 4.0.0: sessions coordinate when one repo has several open pull requests (deliver skill step 5).
+- Auto-archive approval: one line in the owner's account preferences (no repo tokens), not a rule line.
+- NMB and TA: not on the kit layout; full conversion approved (a first sync each, like sec-source PR 15 and icf-source PR 135).

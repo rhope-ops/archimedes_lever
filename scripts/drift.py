@@ -509,6 +509,33 @@ def status_of(proj, base, rel):
     return {item: s for _, item, s, _ in file_rows(proj, base, "full", "the maintainer")}.get(rel, "absent")
 
 
+def short_name_cases(base, results):
+    """The "- Short name:" header (kit 4.0.0): the line, a placeholder, the fallback, --short-name, and a synced header.
+
+    Args:
+        base: the baseline folder (its AGENTS.md has the {{SHORT_NAME}} placeholder).
+        results: the list that gets one bool per case.
+    """
+    cases = (
+        ("the line wins", sb.header_short_name("- Short name: RADE\n", "Other"), "RADE"),
+        ("a placeholder falls back to the name", sb.header_short_name("- Short name: {{SHORT_NAME}}\n", "ICF Companion"), "ICF"),
+        ("no line: the first word of the name", sb.header_short_name("# x\n", "SEC2 (Security+ Companion)"), "SEC2"),
+        ("no line and no name", sb.header_short_name(None, None), None),
+    )
+    for label, got, want in cases:
+        results.append(got == want)
+        print(("ok   " if got == want else "FAIL ") + f"short name: {label} (got {got!r})")
+    proj = ("# No More Beyond: agent instructions\n\n- Repo: o/r\n- Purpose: P\n- Time zone: UTC\n- Tier: full\n"
+            "\n## Project rules\n")
+    base_text = (base / "AGENTS.md").read_text()
+    for label, flag, want in (("--short-name wins over the name", "NMB", "- Short name: NMB\n"),
+                              ("a sync fills the first word", None, "- Short name: No\n")):
+        args = argparse.Namespace(name=None, repo=None, purpose=None, timezone=None, short_name=flag)
+        good = want in sb.build_agents(base_text, proj, args, "the owner")
+        results.append(good)
+        print(("ok   " if good else "FAIL ") + f"short name: {label}")
+
+
 def self_test():
     """Compare sample projects with this baseline repo; prints one line per case and DRIFT TEST PASS or FAIL.
 
@@ -526,6 +553,7 @@ def self_test():
         tier_cases(proj, base, results)
         settings_merge_cases(proj, base, results)
         log_place_cases(results)
+        short_name_cases(base, results)
         apply_keeps_project_files_case(proj, base, results)
     with tempfile.TemporaryDirectory() as d:
         tunable_cases(pathlib.Path(d), results)

@@ -35,4 +35,4 @@ Full text and approved rule text: [reviews/2026-11-19-session-names-plan.md](rev
 - Do not merge a kit pull request before you list the kit's open pull requests: on 2026-11-18, pull requests 44 and 45 were merged while 42 was open, and 42 then conflicted in about 15 files.
 - Do not put a command that holds a denied git pattern in a shell heredoc: the deny rules refuse it. Use the file tool.
 - Do not loop on MINOR conflict findings: record them; only a MAJOR finding changes rule text again.
-- Do not add kit text without measuring the session load of every repo first: sec-source (~4,989) and icf-source (~4,967) sit near the 5,000 cap.
+- Do not add kit text without measuring the session load of every repo first: after 4.0.0, icf-source (~4,995) and RADE (~4,985) sit at the 5,000 cap; the next kit text needs a cut first.

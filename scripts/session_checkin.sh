@@ -39,7 +39,7 @@ fix_hooks() {
 # header_value FILE KEY: the value of the "- KEY: value" line in FILE, or nothing; a {{PLACEHOLDER}} counts as nothing
 header_value() {
   local v
-  v=$(sed -n "s/^- $2: \(.*\)\$/\1/p" "$1" 2>/dev/null | head -n 1)
+  v=$(tr -d '\r' < "$1" 2>/dev/null | sed -n "s/^- $2: *\(.*[^[:space:]]\)[[:space:]]*\$/\1/p" | head -n 1)  # no CR, no end spaces
   case "$v" in '{{'*) v= ;; esac
   printf '%s' "$v"
 }
@@ -96,6 +96,8 @@ if [ "${1:-}" = "--test" ]; then
     "TITLE:       RADE · <task, 2-6 words> · $today (tag project:rade); keep a title that already has this form; steps: .claude/skills/handoff/SKILL.md \"Session names\""
   printf '# ICF Companion: agent instructions\n\n- Time zone: UTC\n- Short name: {{SHORT_NAME}}\n' > "$t/a2.md"
   eq "TITLE: a placeholder falls back to the name" "$(title_lines "$t/a2.md" | grep -c '^TITLE:       ICF · ')" "1"
+  printf '# R: agent instructions\r\n\r\n- Time zone: UTC\r\n- Short name: RADE  \r\n' > "$t/a4.md"
+  eq "TITLE: CRLF and end spaces trimmed" "$(title_lines "$t/a4.md" | grep -c '(tag project:rade);')" "1"
   printf '# {{PROJECT_NAME}}: agent instructions\n\n- Time zone: {{TIMEZONE}}\n- Short name: {{SHORT_NAME}}\n' > "$t/a3.md"
   eq "TITLE: the kit clone is Kit" "$(title_lines "$t/a3.md" | tail -n 1 | grep -o 'project:kit')" "project:kit"
   [ "$fails" = 0 ] && echo "CHECKIN TEST PASS" || { echo "CHECKIN TEST FAIL"; exit 1; }
