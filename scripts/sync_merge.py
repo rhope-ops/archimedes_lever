@@ -7,6 +7,8 @@ What it gives:
   migrate_arcs     docs/LOG.md: an old 4-column Arcs table gets the story columns
   merge_lines      .gitignore: the kit's lines added at the top
   die              print an error and exit 1 (sync_baseline.py uses it too)
+  headings, find_heading, section, header_values, valid_timezone, header_timezone, header_tier, apply_tier
+                   read and set the parts of an AGENTS.md text (sync_baseline.py imports them; drift.py reads them there)
 Inputs:  the baseline's file and the project's file (paths), or a text. Outputs: the merged text; nothing is written.
 Run:     imported by scripts/sync_baseline.py; proved by `python3 scripts/drift.py --test`.
 Network: none.
@@ -162,3 +164,82 @@ def merge_lines(base_path, proj_path):
     add = [l for l in base_path.read_text().splitlines() if l.strip() and l not in lines]
     # Baseline lines go first, so a later project exception (for example "!.env.example") still wins.
     return "\n".join(add + lines) + "\n"
+
+
+# ---------------------------------------------------------------- AGENTS.md header helpers ----------------------------
+
+def headings(text):
+    """Yield (offset, line) for each '## ' heading line outside ``` code fences."""
+    pos, fenced = 0, False
+    for line in text.splitlines(True):
+        if line.lstrip().startswith("```"):
+            fenced = not fenced
+        elif not fenced and line.startswith("## "):
+            yield pos, line.rstrip()
+        pos += len(line)
+
+
+def find_heading(text, heading):
+    """Offset of the heading line `heading` outside code fences, or -1."""
+    for pos, line in headings(text):
+        if line == heading:
+            return pos
+    return -1
+
+
+def section(text, heading):
+    """Return the block from `heading` to the next '## ' heading (outside code fences), or None."""
+    start = find_heading(text, heading)
+    if start < 0:
+        return None
+    for pos, _ in headings(text):
+        if pos > start:
+            return text[start:pos]
+    return text[start:]
+
+
+def header_values(text):
+    """The (name, repo, purpose) values from an AGENTS.md header; None for each one missing."""
+    name = re.search(r"^# (.+?): agent instructions\s*$", text, re.M)
+    repo = re.search(r"^- Repo: (.+?)\s*$", text, re.M)
+    purpose = re.search(r"^- Purpose: (.+?)\s*$", text, re.M)
+    return (name and name.group(1), repo and repo.group(1), purpose and purpose.group(1))
+
+
+def valid_timezone(name):
+    """An IANA name the system knows (UTC always passes, also where the time zone database is missing).
+
+    Args:
+        name: the time zone name to test.
+    Returns:
+        True when the name is usable, else False.
+    """
+    if name == "UTC":
+        return True
+    if not re.fullmatch(r"[A-Za-z0-9_+/-]+", name):
+        return False
+    try:
+        import zoneinfo
+        zoneinfo.ZoneInfo(name)
+        return True
+    except Exception:
+        return False
+
+
+def header_timezone(text):
+    """The project's "- Time zone:" value, or None."""
+    tz = re.search(r"^- Time zone: (.+?)\s*$", text or "", re.M)
+    return tz and tz.group(1)
+
+
+def header_tier(text):
+    """The project's "- Tier:" value; "full" for projects made before tiers existed."""
+    tier = re.search(r"^- Tier: (starter|full)\s*$", text or "", re.M | re.I)
+    return tier.group(1).lower() if tier else "full"
+
+
+def apply_tier(text, tier):
+    """Keep the marked blocks for `tier`, drop the other tier's blocks, and drop every marker line."""
+    other = "starter" if tier == "full" else "full"
+    text = re.sub(rf"(?ms)^<!-- {other} -->\n.*?^<!-- /{other} -->\n", "", text)
+    return re.sub(rf"(?m)^<!-- /?{tier} -->\n", "", text)

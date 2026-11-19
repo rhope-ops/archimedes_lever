@@ -74,6 +74,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import check_blocks  # noqa: E402 - the deny rules and the placeholder pattern
 import check_lock  # noqa: E402 - the kit lock that a sync writes into the project
 from sync_merge import REPLACED_HOOKS, changed_matchers, die, merge_lines, merge_settings, migrate_arcs  # noqa: E402,F401 - scripts/sync_merge.py
+from sync_merge import (apply_tier, find_heading, header_timezone, header_tier, header_values,  # noqa: E402,F401
+                        headings, section, valid_timezone)  # the AGENTS.md header helpers (drift.py reads them here)
 
 DEFAULT_BASELINE = "https://github.com/rhope-ops/archimedes_lever"
 RULES_HEADING = "## Project rules"
@@ -150,83 +152,6 @@ def get_baseline(src, tmp):
     except subprocess.CalledProcessError as e:
         die(f"cannot clone baseline {src}: {e.stderr.strip()}")
     return dest
-
-
-def headings(text):
-    """Yield (offset, line) for each '## ' heading line outside ``` code fences."""
-    pos, fenced = 0, False
-    for line in text.splitlines(True):
-        if line.lstrip().startswith("```"):
-            fenced = not fenced
-        elif not fenced and line.startswith("## "):
-            yield pos, line.rstrip()
-        pos += len(line)
-
-
-def find_heading(text, heading):
-    """Offset of the heading line `heading` outside code fences, or -1."""
-    for pos, line in headings(text):
-        if line == heading:
-            return pos
-    return -1
-
-
-def section(text, heading):
-    """Return the block from `heading` to the next '## ' heading (outside code fences), or None."""
-    start = find_heading(text, heading)
-    if start < 0:
-        return None
-    for pos, _ in headings(text):
-        if pos > start:
-            return text[start:pos]
-    return text[start:]
-
-
-def header_values(text):
-    """The (name, repo, purpose) values from an AGENTS.md header; None for each one missing."""
-    name = re.search(r"^# (.+?): agent instructions\s*$", text, re.M)
-    repo = re.search(r"^- Repo: (.+?)\s*$", text, re.M)
-    purpose = re.search(r"^- Purpose: (.+?)\s*$", text, re.M)
-    return (name and name.group(1), repo and repo.group(1), purpose and purpose.group(1))
-
-
-def valid_timezone(name):
-    """An IANA name the system knows (UTC always passes, also where the time zone database is missing).
-
-    Args:
-        name: the time zone name to test.
-    Returns:
-        True when the name is usable, else False.
-    """
-    if name == "UTC":
-        return True
-    if not re.fullmatch(r"[A-Za-z0-9_+/-]+", name):
-        return False
-    try:
-        import zoneinfo
-        zoneinfo.ZoneInfo(name)
-        return True
-    except Exception:
-        return False
-
-
-def header_timezone(text):
-    """The project's "- Time zone:" value, or None."""
-    tz = re.search(r"^- Time zone: (.+?)\s*$", text or "", re.M)
-    return tz and tz.group(1)
-
-
-def header_tier(text):
-    """The project's "- Tier:" value; "full" for projects made before tiers existed."""
-    tier = re.search(r"^- Tier: (starter|full)\s*$", text or "", re.M | re.I)
-    return tier.group(1).lower() if tier else "full"
-
-
-def apply_tier(text, tier):
-    """Keep the marked blocks for `tier`, drop the other tier's blocks, and drop every marker line."""
-    other = "starter" if tier == "full" else "full"
-    text = re.sub(rf"(?ms)^<!-- {other} -->\n.*?^<!-- /{other} -->\n", "", text)
-    return re.sub(rf"(?m)^<!-- /?{tier} -->\n", "", text)
 
 
 def tier_files(tier):
