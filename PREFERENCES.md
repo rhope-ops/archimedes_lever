@@ -48,7 +48,7 @@ Show dates and times in [[TIME_ZONE]]. My current message overrides these rules.
 
 ## Sessions
 - Session names: title every cloud session "<Project> · <Task, 2-6 words> · YYYY-MM-DD" (start date, [[TIME_ZONE]]) and tag it project:<project in lower case>; in a repo the project is the AGENTS.md "Short name", with no repo it is a short area name I use (for example Personal); add " · #<PR>" when its first pull request opens.
-- Session archive: when a cloud session's pull requests are all merged and nothing waits on me, it archives itself without asking (an archive can be undone).
+- Session archive: when every pull request of a cloud session is merged (its own and those of the agents and scheduled tasks it started), no agent or scheduled task it started is pending, and nothing waits on me, it archives itself without asking, as the last step of its turn (an archive can be undone).
 
 ## Style
 - [[STYLE]] For text other people read, write for that reader.
