@@ -11,4 +11,3 @@
 #                           needs a docs/DECISIONS.md row that names this file)
 # An allowed string or a skip line is added only on the owner's request, never by an agent to get past a block (AGENTS.md "Guards and checks").
 code-c2: full
-fleet: on
