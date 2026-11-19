@@ -2,7 +2,7 @@
 
 The kit's own handoff (AGENTS.md "Handoff"). Kit only: first use deletes it in a project, which uses docs/NEXT_PROMPT.md. Keep it at 40 lines or fewer; evidence goes in docs/reviews/. Times are America/Chicago.
 
-Updated: 2026-11-18 18:10 by the kit owner (session "Archimedes Lever workflow optimization", the owner, 2026-11-18 16:20). Only the kit owner changes the kit and runs kit syncs; other sessions report kit faults here or to it.
+Updated: 2026-11-18 18:20. Kit owner: the session that takes the 3.2.0 plan (the owner, 2026-11-18); the earlier kit owner session stops kit work.
 
 ## State
 
@@ -25,16 +25,16 @@ Full text, proposals 1 to 26, risks and targets: [reviews/2026-11-18-lean-rules-
 
 ## Open (in order)
 
-1. Steps 3 to 7. Done = `drift.py --strict` shows 0 kit items different in 7 repos, `scripts/check.sh` passes in each, and the targets in the plan's "Verification" table are met (session load target 4,000 not met: about 4,240; the owner accepted it for now).
+0. Kit 3.2.0: [plan](reviews/2026-11-18-kit-3.2.0-plan.md) (approved 2026-11-18 18:15; scope, checks, syncs).
+1. Step 5 (rulesets, secret scanning: the owner's clicks, docs/github/README.md).
 
 ## Needs the owner
 
-- Steps 3 and 4: the merge of each sync pull request, and the removal of each "No kit sync" rule.
-- Step 5: paste the new preferences; 7 rulesets (about 3 minutes each).
+- The merge of each lane C pull request of the 3.2.0 plan; the v3.2.0 release link; rulesets and secret scanning.
 
 ## Do not
 
 - Do not merge a kit pull request before you list the kit's open pull requests: on 2026-11-18, pull requests 44 and 45 were merged while 42 was open, and 42 then conflicted in about 15 files.
 - Do not put a command that holds a denied git pattern in a shell heredoc: the deny rules refuse it. Use the file tool.
 - Do not loop on MINOR conflict findings: record them; only a MAJOR finding changes rule text again.
-- Do not add kit text without measuring RADE and 90-161.Z session load first: they sit near the 5,000 cap (about 4,807 and 4,771 after 2.0.1).
+- Do not add kit text without measuring the session load of every repo first: sec-source (~4,989) and icf-source (~4,967) sit near the 5,000 cap.
