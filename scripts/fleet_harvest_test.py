@@ -169,15 +169,19 @@ def edge_cases(base):
     ok("an escaped pipe is shown plain", M.read_project(make_project(base, HANDOFF_OK, rows.replace("| A. |", "| A \\| B. |")))[1][0]["text"] == "A | B.")
     gap = rows + "\n| D2 | 2026-11-19 | B. | the owner | - |\n"
     ok("a row after a blank line in the table fails", quiet(M.check, make_project(base, HANDOFF_OK, gap))[0] == 1)
+    ok("a file with no decisions table header fails", quiet(M.check, make_project(base, HANDOFF_OK, DECISIONS_OLD.replace("| Decision |", "| Choice |")))[0] == 1)
+    above = "| D5 | 2026-11-19 | x | the owner | - |\n\n" + rows
+    ok("a row above the decisions table fails", quiet(M.check, make_project(base, HANDOFF_OK, above))[0] == 1)
+    ok("a link to the files tab names the PR", M.not_filed({"pull_requests": [{"url": "https://x/pull/1"}]}, "https://x/pull/1/files") == [])
     ok("a lowercase ID row fails", quiet(M.check, make_project(base, HANDOFF_OK, rows + "| d4 | 2026-11-19 | x | the owner | - |\n"))[0] == 1)
     ok("an escaped pipe stays in its cell", quiet(M.check, make_project(base, HANDOFF_OK, rows.replace("| A. |", "| A \\| B. |")))[0] == 0)
     ok("a missing section fails", quiet(M.check, make_project(base, HANDOFF_OK.replace("## Timeline", "## Plan"), rows))[0] == 1)
     ok("a counted heading is read", quiet(M.check, make_project(base, HANDOFF_OK.replace("## Needs the owner", "## Needs the owner (2)"), rows))[0] == 0)
-    p = make_project(base, HANDOFF_OK, DECISIONS_OLD.replace("\n", "\r\n") + "\r\n| Date | Other |\r\n|---|---|\r\n| 2026-01-01 | x |\r\n")
+    p = make_project(base, HANDOFF_OK, "| Date | Event |\r\n|---|---|\r\n| 2025-01-01 | y |\r\n\r\n" + DECISIONS_OLD.replace("\n", "\r\n") + "\r\n| Date | Other |\r\n|---|---|\r\n| 2026-01-01 | x |\r\n")
     ok("add-ids numbers only the first table", M.add_ids(p) == 2)
     ok("after add-ids the check passes (a second table is not read)", quiet(M.check, p)[0] == 0)
     raw = (p / "docs/DECISIONS.md").read_bytes()
-    ok("add-ids keeps CRLF and the second table", b"| D1 | 2026-11-18 |" in raw and b"\r\n| 2026-01-01 | x |\r\n" in raw and b"\n\n" not in raw)
+    ok("add-ids keeps CRLF and the second table", b"| D1 | 2026-11-18 |" in raw and b"\r\n| 2025-01-01 | y |\r\n" in raw and b"\r\n| 2026-01-01 | x |\r\n" in raw and b"\n\n" not in raw)
     return out
 
 

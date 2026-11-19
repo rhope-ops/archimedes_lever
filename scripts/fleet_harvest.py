@@ -153,7 +153,10 @@ def parse_decisions(text, name):
     lines = text.splitlines()
     head = next((i for i, ln in enumerate(lines) if DECISIONS_HEAD.match(ln)), len(lines))
     end = next((i for i in range(head + 1, len(lines)) if not lines[i].startswith("|")), len(lines))
-    unread += [(name, n, "a decision row outside the decisions table (a blank line inside the table?)") for n in stray_rows(lines, end)]
+    if head == len(lines):
+        unread.append((name, 0, "no decisions table: its header must start | ID | Date | or | Date | Decision |"))
+    unread += [(name, n, "a decision row outside the decisions table (a blank line inside the table?)")
+               for n in stray_rows(lines, range(head, end))]
     for n, ln in enumerate(lines[head + 2:end], head + 3):  # the decisions table only; other tables are not read
         if not ROW_START.match(ln):
             continue
@@ -167,21 +170,21 @@ def parse_decisions(text, name):
     return rows, unread
 
 
-def stray_rows(lines, start):
-    """1-based numbers of decision-shaped rows from start on that are not in a table with its own header row.
+def stray_rows(lines, table):
+    """1-based numbers of decision-shaped rows outside the decisions table that are not in a table with its own header.
 
     Args:
         lines: the lines of docs/DECISIONS.md.
-        start: the index after the decisions table.
+        table: the range of line indexes of the decisions table (empty when there is none).
     Returns:
-        [line number] of each such row (a later table with a header, for example a list of links, is not reported).
+        [line number] of each such row, above or below the table (another table with a header row, for example a list
+        of links, is not reported).
     """
     out, headed = [], False
-    for i in range(start, len(lines)):
-        ln = lines[i]
+    for i, ln in enumerate(lines):
         if ln.startswith("|") and (i == 0 or not lines[i - 1].startswith("|")):
             headed = not ROW_START.match(ln)  # a table starts: does it start with a header row?
-        if ROW_START.match(ln) and not headed:
+        if i not in table and ROW_START.match(ln) and not headed:
             out.append(i + 1)
     return out
 
@@ -246,7 +249,7 @@ def not_filed(cross, text):
 def whole(needle, text):
     """True when needle is in text with no letter, digit or slash right before or after it (https://s/1 is not https://s/12)."""
     needle = needle.rstrip("/")
-    return bool(needle) and re.search(r"(?<![\w/])" + re.escape(needle) + r"/?(?![\w/])", text) is not None
+    return bool(needle) and re.search(r"(?<![\w/])" + re.escape(needle) + r"(?:/(?!\d)|(?![\w/]))", text) is not None
 
 
 def source_commit(root):
@@ -299,8 +302,9 @@ def harvest(root, repo, url, state_file, cross, branch="main"):
         root: the project folder.
         repo: the project name on the page.
         url: the repo URL on GitHub.
-        state_file: a JSON file {path: hash} of the last run, or None (then every document is written). The new
-            hashes go to <state_file>.pending; --save-state moves them in after the page write succeeds.
+        state_file: a JSON file {path: hash} of the last run, or None (then every document is written). This repo's
+            new hashes go to <state_file>.<repo>.pending; save_state(state_file, repo) merges them in after the page
+            write succeeds.
         cross: the cross-check input, or {}.
         branch: the branch the links point at.
     Returns:
@@ -368,7 +372,7 @@ def add_ids(root):
         lines = fh.read().splitlines(keepends=True)
     if any(re.match(r"^\|\s*ID\s*\|", ln) for ln in lines):
         return 0
-    head = next((i for i, ln in enumerate(lines) if re.match(r"^\|\s*Date\s*\|", ln)), None)
+    head = next((i for i, ln in enumerate(lines) if DECISIONS_HEAD.match(ln)), None)
     if head is None:
         return 0
     end = next((i for i in range(head + 2, len(lines)) if not lines[i].startswith("|")), len(lines))
