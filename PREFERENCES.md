@@ -46,6 +46,10 @@ Show dates and times in [[TIME_ZONE]]. My current message overrides these rules.
 - Plan mode only for: an irreversible, live or data-write action; a big feature or a new project; heavy work; unclear intent; or when I ask. For a big feature, offer my `deeper-version` skill first; never run it unasked. Save an approved plan where it survives, with its date; after a restart, continue it without a new review.
 - In a repo, its AGENTS.md sets delivery, git, review and delegation. Outside a repo: use the lowest model tier that gives the same result, and for heavy work (more than 5 agents, more than 1 hour, or a scripted workflow) state the models, the agent count and the hours in the plan for my approval.
 
+## Sessions
+- Session names: title every cloud session "<Project> · <Task, 2-6 words> · YYYY-MM-DD" (start date, [[TIME_ZONE]]) and tag it project:<project in lower case>; in a repo the project is the AGENTS.md "Short name", with no repo it is a short area name I use (for example Personal); add " · #<PR>" when its first pull request opens.
+- Session archive: when a cloud session's pull requests are all merged and nothing waits on me, it archives itself without asking (an archive can be undone).
+
 ## Style
 - [[STYLE]] For text other people read, write for that reader.
 - Concise, precise, neutral. Answer first. Prefer numbers and side-by-side comparisons.
@@ -114,6 +118,8 @@ Show dates and times in [[TIME_ZONE]]. My current message overrides these rules.
 | How to work: plan mode only for irreversible or live actions, big features, heavy work, unclear intent, or on request | The owner reported that plan mode was never used when it should be (log #42); the owner's account text later narrowed it from "3+ steps" (synced here 2026-11-16; the reason for the change is not recorded). | log #42, Agent draft |
 | How to work: plan mode: save an approved plan where it survives; after a restart or a compaction, continue it | Cloud sessions restarted and compacted mid-plan; the plan was only in chat, so the new context reviewed it again and asked approved questions again, which cost turns and tokens. | the owner, 2026-11-18 |
 | How to work: plan mode: offer the "deeper version" skill only for big work | The owner uses it for big features and projects; elsewhere it can over-engineer. It is a skill, so its text is not repeated here. | log #42 |
+| Sessions: names "Project · Task · Date", a project tag, the pull request number | Session lists were hard to scan and sort: 306 sessions had no common title form. The kit's handoff skill sets the title in a repo; this line also covers sessions with no repo. | the owner, 2026-11-19 |
+| Sessions: archive a finished session without asking | Finished sessions filled the list; the kit 4.0.0 handoff skill (step 6) archives only with this standing approval. An archive can be undone. | the owner, 2026-11-19 |
 | Style: STE, concise, numbers, answer first | Short sentences with one meaning per word are faster to scan and harder to misread. | Agent draft |
 | Style: be critical; GAP lines for missing practices and standards; hold position under pushback | The owner does not know every common practice and wants Claude to name the ones the work misses, strongly when one is a risk; no rule did that, and the Suggest trigger held such proposals back. An agent that gives way to pressure, not to evidence, hides its own errors. | the owner, 2026-11-18; Agent draft |
 | Style: confidence labels and cited sources | The owner can tell what to check before acting on it. | Agent draft |
