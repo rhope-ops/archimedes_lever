@@ -1,0 +1,4 @@
+message_id,timestamp,turn,session_id,repo,model,source,input_tokens,cache_creation_input_tokens,cache_read_input_tokens,output_tokens
+msg_011ChCGoePRjcV9Pvx9nvVeh,2026-11-19T12:18:08.983Z,1,e18a5d13-ed5b-5a9e-89ad-442e9a283088,archimedes_lever,claude-opus-5-5,main,2,29156,63682,229
+msg_011ChCGoqeM88dxtyCZd4d4s,2026-11-19T12:18:11.564Z,1,e18a5d13-ed5b-5a9e-89ad-442e9a283088,archimedes_lever,claude-opus-5-5,main,2,7911,92838,241
+msg_011ChCGp25epwGcUqQpmLDEa,2026-11-19T12:18:22.757Z,1,e18a5d13-ed5b-5a9e-89ad-442e9a283088,archimedes_lever,claude-opus-5-5,main,2,5077,100749,1132
