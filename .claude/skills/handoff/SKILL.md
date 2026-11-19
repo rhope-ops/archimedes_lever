@@ -17,6 +17,7 @@ AGENTS.md "Handoff" points here. The next session cannot see this chat: it reads
    - Open (in order): the next steps, one line each, with what "done" is.
    - Needs the owner: each open decision in one line, with its options and the recommendation.
    - Do not: approaches that failed, with one line of why.
+   - Fleet format, only where `.check` has the line `fleet: on` (the owner, 2026-11-19): under `Updated:`, the line `Next update: YYYY-MM-DD, <what it delivers>`; a section `## Timeline` after State with lines `- YYYY-MM-DD · <milestone> · planned` (or `done`); each "Needs the owner" line as `- D<n> · <question or action> · Options: <A> / <B> · REC: <option>` (an action: `Options: done / not done`), with the next free ID of docs/DECISIONS.md, whose rows start with an `ID` column (D1 = oldest, never reused; `python3 scripts/fleet_harvest.py --add-ids` adds it once). The decided item keeps its ID in its DECISIONS.md row. `scripts/check.sh` runs the format check (`scripts/fleet_harvest.py --check`).
 3. Put detailed evidence (logs, tables, review findings) in its own file in the place AGENTS.md "Handoff" names (`YYYY-MM-DD-<topic>.md`), and link it.
 4. A decision by the owner: a row in docs/DECISIONS.md (date, scope, what it replaces). Full tier: a story event also gets a project log row (the `project-log` skill).
 5. Deliver it like any change (`.claude/skills/deliver/SKILL.md`): a handoff alone is lane A.
