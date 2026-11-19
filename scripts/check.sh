@@ -353,7 +353,7 @@ else
 fi
 
 # The fleet format (docs/reviews/2026-11-19-fleet-contract.md): both lanes, only where .check has the line `fleet: on`.
-if [ -f scripts/fleet_harvest.py ] && grep -qx 'fleet: on' .check 2>/dev/null; then
+if [ -f scripts/fleet_harvest.py ] && grep -Eq '^[[:space:]]*fleet: on[[:space:]]*$' .check 2>/dev/null; then
   run "fleet format" python3 scripts/fleet_harvest.py --check
 fi
 
