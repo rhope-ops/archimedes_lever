@@ -52,7 +52,11 @@ class Fixture:
     """The temporary repos, the clean environment and the pass/fail count shared by the cases."""
 
     def __init__(self, tl):
-        """Make the temporary root and a git environment with no user or global config."""
+        """Make the temporary root and a git environment with no user or global config.
+
+        Args:
+            tl: the token_log module.
+        """
         self.tl = tl
         env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_") and not k.startswith("TOKEN_LOG")}
         env.update(GIT_AUTHOR_NAME="t", GIT_AUTHOR_EMAIL="t@t", GIT_COMMITTER_NAME="t", GIT_COMMITTER_EMAIL="t@t",
@@ -102,7 +106,11 @@ class Fixture:
 
 
 def case_first_turn(fx):
-    """Set up origin and work clone; outside a repo, turn 1 rows, no-op push."""
+    """Set up origin and work clone; outside a repo, turn 1 rows, no-op push.
+
+    Args:
+        fx: the shared test fixture (Fixture).
+    """
     root, work, t1, logs = fx.root, fx.work, fx.t1, fx.logs
     fx.sh(root, "git", "init", "-q", "--bare", "-b", "main", fx.origin)
     fx.sh(root, "git", "clone", "-q", fx.origin, work)
@@ -134,7 +142,11 @@ def case_first_turn(fx):
 
 
 def case_second_turn(fx):
-    """Another session pushes first; turn 2 adds main and subagent calls."""
+    """Another session pushes first; turn 2 adds main and subagent calls.
+
+    Args:
+        fx: the shared test fixture (Fixture).
+    """
     root, work, t1, logs = fx.root, fx.work, fx.t1, fx.logs
     fx.sh(root, "git", "clone", "-q", fx.origin, fx.other)  # a second session in another clone pushes first
     t2 = os.path.join(root, "proj", "s2.jsonl")
@@ -155,7 +167,11 @@ def case_second_turn(fx):
 
 
 def case_blocked_and_shallow(fx):
-    """A blocking pre-push hook, a lost local folder, and a shallow clone."""
+    """A blocking pre-push hook, a lost local folder, and a shallow clone.
+
+    Args:
+        fx: the shared test fixture (Fixture).
+    """
     root, work, t1, logs, hooks = fx.root, fx.work, fx.t1, fx.logs, fx.hooks
     os.makedirs(hooks)
     fx.set_pre_push("#!/bin/sh\necho blocked >&2\nexit 1\n")
@@ -179,7 +195,11 @@ def case_blocked_and_shallow(fx):
 
 
 def case_retry(fx):
-    """In process: retries after a failed push, and giving up after 3 tries."""
+    """In process: retries after a failed push, and giving up after 3 tries.
+
+    Args:
+        fx: the shared test fixture (Fixture).
+    """
     tl = fx.tl
     os.environ["TOKEN_LOG_HOME"] = os.path.join(fx.root, "locks")  # the in-process tests never touch the real home
     os.makedirs(tl.home())
@@ -210,7 +230,11 @@ def case_retry(fx):
 
 
 def case_coalesce(fx):
-    """In process: a third push exits while one waits; a retry loop stops when a newer push starts waiting."""
+    """In process: a third push exits while one waits; a retry loop stops when a newer push starts waiting.
+
+    Args:
+        fx: the shared test fixture (Fixture).
+    """
     tl = fx.tl
     with open(os.path.join(tl.home(), "s.wait"), "w") as held:  # another push is waiting
         fcntl.flock(held, fcntl.LOCK_EX)
@@ -236,7 +260,11 @@ def case_coalesce(fx):
 
 
 def case_fetch_head_and_timeout(fx):
-    """FETCH_HEAD is not written; a push with no answer is killed; a bad timeout setting falls back."""
+    """FETCH_HEAD is not written; a push with no answer is killed; a bad timeout setting falls back.
+
+    Args:
+        fx: the shared test fixture (Fixture).
+    """
     root, work, t1, logs = fx.root, fx.work, fx.t1, fx.logs
     fetch_head = os.path.join(work, ".git", "FETCH_HEAD")
     with open(fetch_head, "w") as f:
@@ -263,7 +291,14 @@ def case_fetch_head_and_timeout(fx):
 
 def wait_locked(pid, path):
     """True when process pid holds the lock on path (a blocked waiter), read from the kernel's lock table. Probing
-    the lock instead could make the waiter exit as "coalesced". With no lock table (macOS): a short wait, then True."""
+    the lock instead could make the waiter exit as "coalesced". With no lock table (macOS): a short wait, then True.
+
+    Args:
+        pid: the process id of the waiter.
+        path: the lock file it waits for.
+    Returns:
+        True when the process holds the lock.
+    """
     if not os.path.exists("/proc/locks"):
         time.sleep(0.5)
         return True
@@ -279,7 +314,11 @@ def wait_locked(pid, path):
 
 
 def case_waiting_push(fx):
-    """A push that waits for the lock reads the log only when it gets the lock, so it carries rows added meanwhile."""
+    """A push that waits for the lock reads the log only when it gets the lock, so it carries rows added meanwhile.
+
+    Args:
+        fx: the shared test fixture (Fixture).
+    """
     work, t1, logs = fx.work, fx.t1, fx.logs
     os.makedirs(logs, exist_ok=True)
     with open(os.path.join(logs, "s1.lock"), "w") as running:  # a push is running
@@ -311,7 +350,13 @@ def case_bad_input_and_off(fx):
 
 
 def run(tl):
-    """Run every case in order on one fixture; print the total line and return the exit code."""
+    """Run every case in order on one fixture; print the total line and return the exit code.
+
+    Args:
+        tl: the token_log module.
+    Returns:
+        The exit code: 0 when every case passes, else 1.
+    """
     fx = Fixture(tl)
     fx.real_push = tl.push
     saved = {k: os.environ.get(k) for k in ("TOKEN_LOG_HOME", "TOKEN_LOG_NET_TIMEOUT")}  # restored at the end
