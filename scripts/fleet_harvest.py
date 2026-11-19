@@ -357,7 +357,7 @@ def to_files(result, out):
         result: the harvest result.
         out: the folder for the document files.
     Returns:
-        {"writes": [{op, collection, doc_id, file_path}], "deletes": [{collection, doc_id}], "counts"}: the entries of
+        {"writes": [{op, collection, doc_id, file_path}], "deletes": [{op: "delete", collection, doc_id}], "counts"}: the entries of
         one ArtifactData batch, so the page write sends file paths, not document text (fewer tokens). The file of a
         deleted document is removed from out, so a reused folder holds no stale document.
     """
@@ -368,7 +368,7 @@ def to_files(result, out):
         f.parent.mkdir(parents=True, exist_ok=True)
         f.write_text(json.dumps(w["data"], indent=1, sort_keys=True) + "\n", encoding="utf-8")
         writes.append({"op": w["op"], "collection": collection, "doc_id": doc_id, "file_path": str(f.resolve())})
-    deletes = [dict(zip(("collection", "doc_id"), p.split("/", 1))) for p in result["deletes"]]
+    deletes = [dict(zip(("op", "collection", "doc_id"), ["delete"] + p.split("/", 1))) for p in result["deletes"]]
     for d in deletes:
         (out / d["collection"] / (d["doc_id"] + ".json")).unlink(missing_ok=True)
     return {"writes": writes, "deletes": deletes, "counts": result["counts"]}

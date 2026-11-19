@@ -55,6 +55,7 @@ Rules: everyone signed in reads; only the owner (admin) writes. Unchanged from t
 |---|---|---|
 | `repos/<repo>` (existing rows, extended) | today's fields, plus `last_update`, `next_update {date, text}`, `timeline [{date, text, state}]`, `open_count`, `unread_lines`, `not_filed [{text, url, source}]`, `harvested_at`, `source_commit` | the harvest |
 | `items/<repo>~<id>` | `repo`, `id`, `kind` (open or resolved), `date`, `summary` (first sentence, at most 140 characters), `by`, `options []`, `rec`, `url` (link to the line on GitHub), `hash` (of the full line) | the harvest |
+| `meta/harvest~<repo>` (added 2026-11-19 with docs/fleet.md, plan step 7) | `state`: the JSON text of the last harvest's hashes (scripts/fleet_harvest.py `--state`), so a fresh container does not send every item again | the harvest session |
 | `choices/<repo>~<id>` | `repo`, `id`, `item_hash`, `answer` (yes, no, other or modify), `text`, `status` (pending, applied, rejected or stale), `created_at`, `applied_pr` | the page (`answer`, `text`, `status` pending); the applying session (`status`, `applied_pr`) |
 
 One choice document per item (the same key), so two choices on one item cannot exist: a new choice replaces the pending one.

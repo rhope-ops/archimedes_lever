@@ -9,9 +9,9 @@ Needs kit 4.1.0 or later in the project (`scripts/fleet_harvest.py`).
 1. Add the line `fleet: on` to the project's `.check` (a guard file: the owner asks for it; lane C).
 2. Run `python3 scripts/fleet_harvest.py --add-ids`. It numbers the rows of docs/DECISIONS.md: D1 = the oldest row. The row text does not change.
 3. In docs/NEXT_PROMPT.md: add the `Next update:` line under `Updated:`, a `## Timeline` section, and write each "Needs the owner" line as `- D<n> · <question> · Options: <A> / <B> · REC: <option>`, with the next free IDs. Keep the file at 40 lines or fewer.
-4. Run `python3 scripts/fleet_harvest.py --check` until it prints `0 lines not read`; `scripts/check.sh` then runs it on every push.
+4. Run `python3 scripts/fleet_harvest.py --check` until it exits 0 (`0 lines not read`, no duplicate ID); `scripts/check.sh` then runs it on every push.
 5. Optional: add the project's "Fleet choices" line to its own "Project rules" (the owner approves the exact text; the kit's line is in the kit's AGENTS.md).
-6. Merge the pull request, then run the harvest below once for the project, as a dry run first: show the owner the counts (`counts` in the output) before the page write.
+6. Merge the pull request, then run the harvest below once for the project, as a dry run first: show the owner the counts (`counts` in the output) and write to the page only after the owner approves (AGENTS.md "The owner's approval").
 
 ## Harvest a project to the page (one run)
 
@@ -19,8 +19,8 @@ Run it from a session that has the project's checkout and the fleet page's datab
 
 1. Read the state: ArtifactData `get` of `meta/harvest~<repo>` with `out_dir`; write its `state` field to `<tmp>/state.json` (no document yet: start without one).
 2. Cross-check input (optional, for "Not filed" items): write `<tmp>/cross.json` as `{"pull_requests": [{title, url}], "sessions": [{title, url}]}` from the project's open pull requests and its sessions that wait for the owner (`list_sessions`, status "blocked", tag `project:<short name>`).
-3. `python3 scripts/fleet_harvest.py --harvest . --repo <repo> --url https://github.com/<owner>/<repo> --state <tmp>/state.json --cross <tmp>/cross.json --out <tmp>/out`. It prints only batch entries (file paths) and counts.
-4. Write the entries with ArtifactData `batch`, at most 50 per batch. A document that exists needs its `if_version`: `get` each written or deleted path that existed before (the deletes, and the writes whose path is in the old state) and pin it; a new document needs none. The first run of a project writes only new documents.
+3. `python3 scripts/fleet_harvest.py --harvest . --repo <repo> --url https://github.com/<owner>/<repo> --state <tmp>/state.json --cross <tmp>/cross.json --out <tmp>/out` (leave out `--cross` when step 2 was skipped). It prints only batch entries (file paths; deletes as `{op: "delete", collection, doc_id}`) and counts.
+4. Read the versions of the project's documents that exist on the page now, whatever the state says (an earlier run can have written some of them before it failed): ArtifactData `query` of `items` where `repo` equals the project name, with `out_dir`, and `get` of `repos/<repo>`. Write the entries with ArtifactData `batch`, at most 50 per batch, and give each entry whose document exists its `if_version`; a document that does not exist gets none. The repos row usually exists already (the kit sync writes it), so its `update` needs a version.
 5. After every batch succeeded: `python3 scripts/fleet_harvest.py --save-state <tmp>/state.json --repo <repo>`, then write the file back to `meta/harvest~<repo>` (`set`, field `state`, pinned to the version read in step 1). If a batch failed, do not save: the next run sends the same documents again.
 
 Token cost: the first full write of a project with about 90 decisions sends about 5,000 tokens of batch entries (measured 2026-11-19 on a copy of the kit: 20,556 bytes with `--out`, 49,047 inline); a daily run with a few changed items stays under about 1,000 tokens of data (an estimate). Most of a scheduled run's cost is the fixed start of its session.

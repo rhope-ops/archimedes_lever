@@ -146,7 +146,7 @@ def harvest_cases(base, p):
     third = M.harvest(p, "demo", "https://github.com/o/demo", state, cross)
     ok("a closed need is deleted", third["deletes"] == ["items/demo~D4"])
     gone = M.to_files(third, pathlib.Path(base) / "out")
-    ok("--out lists the delete and removes its file", gone["deletes"] == [{"collection": "items", "doc_id": "demo~D4"}]
+    ok("--out lists the delete and removes its file", gone["deletes"] == [{"op": "delete", "collection": "items", "doc_id": "demo~D4"}]
        and not (pathlib.Path(base) / "out/items/demo~D4.json").exists())
     pr1 = {"pull_requests": [{"title": "Fix", "url": "https://x/pull/1"}]}
     ok("#1 is not #12", M.not_filed(pr1, "see #12. Fix") != [] and M.not_filed(pr1, "see https://x/pull/12") != [])
