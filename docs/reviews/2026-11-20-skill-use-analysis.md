@@ -84,7 +84,7 @@ Reading (the analyst's interpretation): the process runs from the rule text in A
 
 | Name | Source | License | Use here | Decision (the owner, 2026-11-20) |
 |---|---|---|---|---|
-| webapp-testing | anthropics/skills | Apache-2.0 (per repo) | Playwright tests of a local web app; tester rounds | Add as an account skill |
+| webapp-testing | anthropics/skills | Apache-2.0 (per repo) | Playwright tests of a local web app; tester rounds | Chosen first, then not added (the owner, same day): it needs Python Playwright, and the cloud image has Node Playwright, which the `verify` skill uses |
 | product-management | anthropics/knowledge-work-plugins | Apache-2.0 | roadmap and stakeholder update | Add; only those two skills, no connectors |
 | superpowers | obra/superpowers | MIT | 15 workflow skills | Not chosen (overlaps delegate, verify, handoff; start hook) |
 | mattpocock skills | mattpocock/skills | MIT | to-spec, handoff, retro | Not chosen (overlap) |

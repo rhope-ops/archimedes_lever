@@ -1,6 +1,6 @@
 ---
 name: handoff
-description: Use when a session ends with work open, before a pause, compaction or new chat, when the owner asks for a handoff, a resume prompt or to archive, and when a session continues earlier work.
+description: Use when a session ends with work open, before a pause, compaction or new chat, when the owner asks for a handoff, a resume prompt or to archive, when you title a session, and when a session continues earlier work.
 ---
 
 # Handoff

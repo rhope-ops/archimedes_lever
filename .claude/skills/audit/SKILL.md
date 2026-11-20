@@ -1,6 +1,6 @@
 ---
 name: audit
-description: Use when a run prints "slower than the baseline" or the owner says something is slow, before you record a time baseline or add a repeated process, for a bloat, drift, rule, speed or skill-use audit the owner asks for, on AUDIT DUE, and before a release.
+description: Use when a run is slower than its baseline or the owner says something is slow, before you record a time baseline or add a repeated process, for an audit the owner asks for (bloat, drift, rules, speed, skill use), on AUDIT DUE, and before a release.
 ---
 
 # Slow runs and the full audit
