@@ -381,7 +381,7 @@ def compare_cases(bloat, root):
     line, slow = bloat.compare_times(json.loads(json.dumps(tc)), [("check", 4.4), ("check:a", 2.4), ("check:tiny", 0.3)])
     assert not slow and line.startswith("TIME  baseline: 3 of 3"), "within +25%, or under 0.5 s slower: ok"
     line, slow = bloat.compare_times(json.loads(json.dumps(tc)), [("check", 5.2), ("check:a", 2.0), ("check:new", 1.0)])
-    assert slow == ["check 5.2 s (baseline 4.0 s, +30%)"] and line.startswith("WARN") and "efficiency" in line, "a slowdown warns and names the skill"
+    assert slow == ["check 5.2 s (baseline 4.0 s, +30%)"] and line.startswith("WARN") and "skills/audit/SKILL.md" in line, "a slowdown warns and names the skill"
     line, _ = bloat.compare_times(json.loads(json.dumps(tc)), [("check:new", 1.0)])
     assert "no baseline yet for 1 (check:new)" in line and "Record a baseline" in line, "no baseline: says how to record one"
     rec = json.loads(json.dumps(tc))
