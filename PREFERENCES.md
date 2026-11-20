@@ -49,7 +49,7 @@ Show dates and times in [[TIME_ZONE]]. My current message overrides these rules.
 
 ## Sessions
 - Session names: title every cloud session "<Project> · <Task, 2-6 words> · YYYY-MM-DD" (start date, [[TIME_ZONE]]) and tag it project:<project in lower case>; in a repo the project is the AGENTS.md "Short name", with no repo it is a short area name I use (for example Personal); add " · #<PR>" when its first pull request opens.
-- Session archive: when every pull request of a cloud session is merged (its own and those of the agents and scheduled tasks it started), no agent or scheduled task it started is pending, and nothing waits on me, it archives itself without asking, as the last step of its turn (an archive can be undone).
+- Session archive: never archive a cloud session without my review. When all its pull requests are merged and nothing is pending, say in the end-of-turn summary that it is ready to archive; archive it only when I ask.
 
 ## Style
 - [[STYLE]] For text other people read, write for that reader.
@@ -120,7 +120,7 @@ Show dates and times in [[TIME_ZONE]]. My current message overrides these rules.
 | How to work: plan mode: save an approved plan where it survives; after a restart or a compaction, continue it | Cloud sessions restarted and compacted mid-plan; the plan was only in chat, so the new context reviewed it again and asked approved questions again, which cost turns and tokens. | the owner, 2026-11-18 |
 | How to work: plan mode: offer the "deeper version" skill only for big work | The owner uses it for big features and projects; elsewhere it can over-engineer. It is a skill, so its text is not repeated here. | log #42 |
 | Sessions: names "Project · Task · Date", a project tag, the pull request number | Session lists were hard to scan and sort: 306 sessions had no common title form. The kit's handoff skill sets the title in a repo; this line also covers sessions with no repo. | the owner, 2026-11-19 |
-| Sessions: archive a finished session without asking | Finished sessions filled the list; the kit 4.0.0 handoff skill (step 6) archives only with this standing approval. An archive can be undone. | the owner, 2026-11-19 |
+| Sessions: never archive a session without the owner's review; say when it is ready | Was (2026-11-19): archive a finished session without asking, because finished sessions filled the list. The owner withdrew it on 2026-11-20: sessions were archived before the owner could review them. Kit 6.1.0 handoff skill step 6. | the owner, 2026-11-20 |
 | Style: STE, concise, numbers, answer first | Short sentences with one meaning per word are faster to scan and harder to misread. | Agent draft |
 | Style: be critical; GAP lines for missing practices and standards; hold position under pushback | The owner does not know every common practice and wants Claude to name the ones the work misses, strongly when one is a risk; no rule did that, and the Suggest trigger held such proposals back. An agent that gives way to pressure, not to evidence, hides its own errors. | the owner, 2026-11-18; Agent draft |
 | Style: confidence labels and cited sources | The owner can tell what to check before acting on it. | Agent draft |
