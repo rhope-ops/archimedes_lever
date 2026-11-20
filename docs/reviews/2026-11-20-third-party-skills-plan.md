@@ -27,4 +27,4 @@ Session load with all 13 descriptions: sec-source ~5,699, 90-161.Z ~5,814, icf-s
 
 ## Change (the owner, 2026-11-20)
 
-The owner asked for one skill usable on any repo. Cloud sessions do not install plugins that a repo or a user's machine enables (https://code.claude.com/docs/en/cloud-environments.md); they load skills enabled on claude.ai. So the wrapper `ui-design` and the 8 packs (each `SKILL.md` renamed `SKILL.vendor.md`, agents under `packs/impeccable/agents/`) are one claude.ai skill. No project repo holds them; kit 5.0.x stays for later third-party skills.
+The owner asked for one skill usable on any repo. Cloud sessions do not install plugins that a repo or a user's machine enables (https://code.claude.com/docs/en/cloud-environments.md); they load skills enabled on claude.ai. So the wrapper `ui-design` and 4 packs (impeccable, ui-ux-pro-max, ui-styling, design-system; the owner dropped design, brand, banner-design and slides on 2026-11-20; each `SKILL.md` renamed `SKILL.vendor.md`, agents under `packs/impeccable/agents/`) are one claude.ai skill. No project repo holds them; kit 5.0.x stays for later third-party skills.
