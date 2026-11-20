@@ -1,0 +1,8 @@
+schema_version: "1.1"
+name: add-clear-button
+expected_outcome: |
+  score.html gets a Clear history button that removes the stored scores, with undo or a confirmation
+  because it is destructive, keeps the existing behaviour, and the report says what was checked on the
+  real page.
+context:
+  scaffold_script: place-files.sh

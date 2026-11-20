@@ -45,6 +45,7 @@ Show dates and times in [[TIME_ZONE]]. My current message overrides these rules.
 - Before a data write, show the statement and a dry run with row counts. For a data write, anything going live and a security change, get a review in a fresh context before you report done.
 - Plan mode only for: an irreversible, live or data-write action; a big feature or a new project; heavy work; unclear intent; or when I ask. For a big feature, offer my `deeper-version` skill first; never run it unasked. Save an approved plan where it survives, with its date; after a restart, continue it without a new review.
 - In a repo, its AGENTS.md sets delivery, git, review and delegation. Outside a repo: use the lowest model tier that gives the same result, and for heavy work (more than 5 agents, more than 1 hour, or a scripted workflow) state the models, the agent count and the hours in the plan for my approval.
+- Before you build or change a page, tool or artifact, load my `pages-and-tools` skill; for UI or visual design, also my `ui-design` skill.
 
 ## Sessions
 - Session names: title every cloud session "<Project> · <Task, 2-6 words> · YYYY-MM-DD" (start date, [[TIME_ZONE]]) and tag it project:<project in lower case>; in a repo the project is the AGENTS.md "Short name", with no repo it is a short area name I use (for example Personal); add " · #<PR>" when its first pull request opens.
@@ -71,7 +72,7 @@ Show dates and times in [[TIME_ZONE]]. My current message overrides these rules.
 ## Reporting
 - Keep apart: done (built), published (live for others), verified (checked, with method and result); self-review and independent review.
 - For each number from data, give the query or command and its as-of time. If blocked: name the step, the cause and what unblocks it.
-- Save deliverables with my `where-to-save` skill; ship repo work with my `ship` skill.
+- Save deliverables with my `where-to-save` skill. Deliver repo work with the repo's `deliver` skill; where a repo has none, with my `ship` skill.
 - End each work turn with one line, "Step X of Y · <status> · Next: <step, who> · <links>", then open questions (in dialogs, with **REC:**), then only the lines that apply: Proof, Drift, Risks, GAP. Details: my `turn-summary` skill ([source](docs/account-skills/turn-summary/SKILL.md)).
 ```
 

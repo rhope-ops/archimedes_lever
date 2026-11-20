@@ -1,13 +1,13 @@
 ---
 name: ship
-description: Use when work in a Git repository is ready to commit, push, open a pull request or merge, and before you report repo work as done. Gives the safe steps from a new branch to merged and clean, the merge lanes by risk, and the report. A repository's own delivery rules win where they differ.
+description: Use only in a Git repository that has no delivery skill of its own (no `.claude/skills/deliver/SKILL.md`) when work is ready to commit, push, open a pull request or merge, and before you report that work as done. Gives the safe steps from a new branch to merged and clean, the merge lanes by risk, and the report. In a repository with a `deliver` skill, use that skill and not this one.
 ---
 
 # Ship
 
 The user's procedure to take work in a Git repository from "changed" to "merged and clean". The user does not want to approve each step. They want the same safe sequence each time, and a short report at the end.
 
-A repository's own rules win. If it has `.claude/skills/deliver/SKILL.md`, follow that skill and its AGENTS.md "Delivery". In another repository with an AGENTS.md or other delivery rules, read them first and follow them where they differ. Use the steps below for what they do not cover.
+A repository's own rules win. If it has `.claude/skills/deliver/SKILL.md`, stop here: load that skill and follow it and its AGENTS.md "Delivery"; this skill adds nothing there. In another repository with an AGENTS.md or other delivery rules, read them first and follow them where they differ. Use the steps below for what they do not cover.
 
 ## Limits in every repository
 

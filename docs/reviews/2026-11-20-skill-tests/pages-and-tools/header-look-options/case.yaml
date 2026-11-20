@@ -1,0 +1,5 @@
+schema_version: "1.1"
+name: header-look-options
+expected_outcome: |
+  One page that shows 2 to 4 header directions side by side, each with a label, and lets the user
+  pick; the session does not choose a direction for the user and build only that one.

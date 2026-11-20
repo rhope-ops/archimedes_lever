@@ -16,4 +16,4 @@ An account skill: the owner uploads this file at claude.ai (Settings, Capabiliti
    - GAP: practices or standards the work misses (the preferences, "Style").
    - Suggest: at most 3 rule or process proposals, each with the exact text, the trigger and what it replaces; also asked as a question. Write nothing until I approve that text.
 4. Notes (one line, or the pull request text when there is one): Applied (rule and source), Assumptions (medium or low confidence only), PII (scan result, only when content left this place), Delegated (task · model · how you checked it).
-5. Only when work stays open after this turn: Copy (each text to paste, with "Paste into: <place>"), and a resume prompt in one code block of at most 100 words (goal, state, approved decisions, next step, full URLs).
+5. Only when work stays open after this turn: Copy (each text to paste, with "Paste into: <place>"), and a resume prompt. In a repository with `.claude/skills/handoff/SKILL.md`, that skill is the home of the resume prompt: load it and follow its step 6. Elsewhere: one code block of at most 100 words (goal, state, approved decisions, next step, full URLs).

@@ -85,13 +85,13 @@ COPY_FILES = ["scripts/session_checkin.sh", "scripts/stop_check.py", "scripts/ch
               "scripts/check_content_scan.py", "scripts/check_content_hook.py", "scripts/check_content_test.py",
               "scripts/check_content_finders.py", "scripts/check_content_test_local.py", "scripts/check_settings_test.py",
               "scripts/check.sh", "scripts/check_settings.py", "scripts/bloat_check.py", "scripts/bloat_check_skills.py", "scripts/bloat_check_test.py",
-              "scripts/bloat_check_rules.py",
+              "scripts/bloat_check_rules.py", "scripts/skill_use.py",
               "scripts/code_standard.py", "scripts/code_standard_test.py", "scripts/code_standard_docs.py", "scripts/code_standard_parse.py",
               "docs/code-standard.md", "scripts/git-hooks/pre-push",
               ".claude/skills/delegate/SKILL.md", ".claude/skills/audit/SKILL.md", ".claude/skills/project-log/SKILL.md", ".claude/rule-tests.md", ".github/workflows/check.yml",
               ".claude/skills/deliver/SKILL.md", ".claude/skills/personal-data/SKILL.md", ".claude/skills/rule-change/SKILL.md",
               ".claude/skills/data-change/SKILL.md", ".claude/skills/verify/SKILL.md", ".claude/skills/verify/measure.mjs",
-              ".claude/skills/efficiency/SKILL.md", ".claude/skills/handoff/SKILL.md",
+              ".claude/skills/handoff/SKILL.md",
               ".claude/skills/kit-update/SKILL.md",
               ".claude/agents/worker.md", ".claude/agents/scout.md", ".claude/agents/reviewer.md"]
 # A file a project may tune: added when missing, replaced when the project's copy is an earlier kit version, else kept
@@ -113,16 +113,17 @@ def log_template(base):
 ADVANCED_FILES = [".claude/skills/delegate/SKILL.md", ".claude/agents/scout.md", ".claude/agents/worker.md",
                   ".claude/skills/project-log/SKILL.md", "docs/LOG.md", "scripts/log_check.py", "scripts/timeline.py",
                   ".claude/skills/audit/SKILL.md", "scripts/bloat_check.py", "scripts/bloat_check_skills.py", "scripts/bloat_check_rules.py",
-                  "scripts/bloat_check_test.py", ".claude/rule-tests.md",
-                  ".claude/skills/efficiency/SKILL.md"]
+                  "scripts/bloat_check_test.py", ".claude/rule-tests.md", "scripts/skill_use.py"]
 # Moved or renamed in the kit (to .claude/skills/ on 2026-11-16; the guard to check_content on 2026-11-18; run-verify
-# and ui-verify merged into verify, and port renamed kit-update, on 2026-11-18): a project synced before then still
+# and ui-verify merged into verify, and port renamed kit-update, on 2026-11-18; efficiency merged into audit in
+# kit 6.0.0): a project synced before then still
 # has the old copies.
 MOVED_FILES = [".claude/orchestration.md", ".claude/bloat-audit.md", ".claude/project-log.md",
                "scripts/pii_guard.py", "scripts/pii_guard_scan.py", "scripts/pii_guard_hook.py",
                "scripts/pii_guard_test.py", ".github/workflows/pii-guard.yml",
                ".claude/skills/run-verify/SKILL.md", ".claude/skills/ui-verify/SKILL.md",
-               ".claude/skills/ui-verify/measure.mjs", ".claude/skills/port/SKILL.md"]
+               ".claude/skills/ui-verify/measure.mjs", ".claude/skills/port/SKILL.md",
+               ".claude/skills/efficiency/SKILL.md"]
 TIERS = ("starter", "full")
 NO_OWNER_RENAME = {"scripts/sync_baseline.py", "scripts/first_use_check.py", "docs/FIRST_USE.md"}
 OWNER_RE = r"[A-Za-z0-9 ._,()-]+"  # safe inside Python strings, JSON and Markdown
