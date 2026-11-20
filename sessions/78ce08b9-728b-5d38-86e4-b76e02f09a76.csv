@@ -1,0 +1,12 @@
+message_id,timestamp,turn,session_id,repo,model,source,input_tokens,cache_creation_input_tokens,cache_read_input_tokens,output_tokens
+msg_011ChEE9J7VZQgfnTTtw5joy,2026-11-20T13:04:29.419Z,1,78ce08b9-728b-5d38-86e4-b76e02f09a76,archimedes_lever,claude-fable-5-2,main,2,44226,63270,761
+msg_011ChEEAQ8vHFMbbq1TEvgmz,2026-11-20T13:04:43.829Z,1,78ce08b9-728b-5d38-86e4-b76e02f09a76,archimedes_lever,claude-fable-5-2,main,2,5537,107496,449
+msg_011ChEEAgi56UeRq4AxwSrYf,2026-11-20T13:04:45.377Z,1,78ce08b9-728b-5d38-86e4-b76e02f09a76,archimedes_lever,claude-fable-5-2,main,2,4395,113033,447
+msg_011ChEEB1Pxof3cAvV4pw29e,2026-11-20T13:04:50.706Z,1,78ce08b9-728b-5d38-86e4-b76e02f09a76,archimedes_lever,claude-fable-5-2,main,2,773,117428,254
+msg_011ChEEBDyFsPfjXZpYjoHZR,2026-11-20T13:04:54.700Z,1,78ce08b9-728b-5d38-86e4-b76e02f09a76,archimedes_lever,claude-fable-5-2,main,2,567,118201,356
+msg_011ChEEBWD5LgzSth6ugaKma,2026-11-20T13:05:09.002Z,1,78ce08b9-728b-5d38-86e4-b76e02f09a76,archimedes_lever,claude-fable-5-2,main,2,10861,118768,1609
+msg_011ChEEHF4ubnQVaCB3ogaj7,2026-11-20T13:06:15.761Z,1,78ce08b9-728b-5d38-86e4-b76e02f09a76,archimedes_lever,claude-fable-5-2,main,2,6703,129629,909
+msg_011ChEEKsv22NFMKHrMjwqgN,2026-11-20T13:07:03.238Z,1,78ce08b9-728b-5d38-86e4-b76e02f09a76,archimedes_lever,claude-fable-5-2,main,2,12597,136332,1897
+msg_011ChEENtS6as9ddmyYuEVkB,2026-11-20T13:07:47.672Z,1,78ce08b9-728b-5d38-86e4-b76e02f09a76,archimedes_lever,claude-fable-5-2,main,2,2705,148929,6243
+msg_011ChEEUCXBEHbVm8XqQExiX,2026-11-20T13:08:42.397Z,1,78ce08b9-728b-5d38-86e4-b76e02f09a76,archimedes_lever,claude-fable-5-2,main,1,7551,151634,46
+msg_011ChEEUCWBNajvc3auuePT7,2026-11-20T13:08:42.837Z,1,78ce08b9-728b-5d38-86e4-b76e02f09a76,archimedes_lever,claude-opus-5-5,subagent,2,54105,0,100
