@@ -30,6 +30,9 @@ It measures:
                   docs/NEXT_PROMPT.md, the `audit-start-read:` files, and the skill and agent names and descriptions.
                   Caps for every repo (KIT_CAPS; a project can lower one, never raise it): 5,000 tokens (warning at
                   4,500) and 200 lines of AGENTS.md; over a cap fails --rules
+    third-party   the names and descriptions of the skills and agents that `.check` names in `audit-third-party:`
+                  lines: counted apart from the session load, against their own kit cap of 1,500 tokens (the owner,
+                  2026-11-20); over it fails --rules
     rules         list items in AGENTS.md (any marker, any indent; a wrapped line is part of its item): the kit
                   sections (the header, "## Commands" and the numbered ranking in "## Order of authority" are not
                   counted) and "## Project rules" (there a paragraph or a table row counts too), each against its
