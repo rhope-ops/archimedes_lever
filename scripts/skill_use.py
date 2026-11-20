@@ -5,7 +5,7 @@ Why: a skill that no session loads costs tokens in every session and gives nothi
 skill loads. The audit skill (.claude/skills/audit/SKILL.md, category 19) runs this on a sample of sessions.
 
 Input: one or more files that hold session records as JSON:
-  - a saved result of the cloud tool `list_events` (the JSON is on one line of the file), or
+  - a saved result of the cloud tool `list_events` (JSON with note lines around it), or
   - a Claude Code session log (.jsonl, one JSON object on each line).
 The script walks every JSON value and counts each `tool_use` block one time (by its id).
 
@@ -58,8 +58,8 @@ def json_values(path):
         try:
             value, at = decoder.raw_decode(text, at)
             yield value
-        except ValueError:
-            at += 1  # not the start of a JSON value: look for the next one
+        except (ValueError, RecursionError):
+            at += 1  # not the start of a JSON value (or nested too deep to read): look for the next one
 
 
 def tool_uses(value, seen):
@@ -116,19 +116,20 @@ def count_files(paths):
         paths: the files to read.
 
     Returns:
-        A pair: a dict (group -> Counter of label -> calls) and the list of files that held no JSON object or array.
+        A pair: a dict (group -> Counter of label -> calls) and the list of files in which no tool call was found.
     """
     counts = {group: collections.Counter() for group in GROUPS}
     seen = set()
     empty = []
     for path in paths:
-        values = list(json_values(path))
-        if not values:
-            empty.append(path)
-        for value in values:
+        calls = 0
+        for value in json_values(path):
             for name, tool_input in tool_uses(value, seen):
+                calls += 1
                 for group, label in classify(name, tool_input):
                     counts[group][label] += 1
+        if not calls:
+            empty.append(path)
     return counts, empty
 
 
@@ -169,7 +170,7 @@ def self_test():
         extra = {"pretty.json": json.dumps({"content": [use("p", "Skill", skill="audit")]}, indent=2),
                  "two.json": json.dumps([use("q", "Skill", skill="a")], indent=2) + "\n[]\n" + json.dumps([use("r", "Skill", skill="b")], indent=2),
                  "no_id.json": json.dumps([use("", "Skill", skill="c"), use("", "Skill", skill="c")]),
-                 "scalar.json": "null\n", "empty.txt": ""}
+                 "scalar.json": "null\n", "empty.txt": "", "note.txt": "see [1] for details"}
         for name, text in extra.items():
             with open(os.path.join(folder, name), "w", encoding="utf-8") as handle:
                 handle.write(text)
@@ -180,9 +181,9 @@ def self_test():
     failed = [group for group in GROUPS if dict(counts[group]) != want[group]]
     for group in failed:
         print(f"FAIL  {group}: got {dict(counts[group])}, want {want[group]}")
-    want_more = {"pretty.json": {"audit": 1}, "two.json": {"a": 1, "b": 1}, "no_id.json": {"c": 2}, "scalar.json": {}, "empty.txt": {}}
+    want_more = {"pretty.json": {"audit": 1}, "two.json": {"a": 1, "b": 1}, "no_id.json": {"c": 2}, "scalar.json": {}, "empty.txt": {}, "note.txt": {}}
     for name, (got, no_json) in more.items():
-        if dict(got["skill"]) != want_more[name] or bool(no_json) != (name in ("scalar.json", "empty.txt")) or empty:
+        if dict(got["skill"]) != want_more[name] or bool(no_json) != (name in ("scalar.json", "empty.txt", "note.txt")) or empty:
             failed.append(name)
             print(f"FAIL  {name}: got {dict(got['skill'])}, no JSON: {bool(no_json)}, want {want_more[name]}")
     print("skill_use self-test:", "FAIL" if failed else "PASS (5 groups; file forms: saved result, log, pretty-printed, 2 values, no id, no JSON)")
@@ -211,7 +212,7 @@ def main(argv):
         return 2
     print(json.dumps({group: dict(counts[group]) for group in GROUPS}, indent=1) if "--json" in argv else report(counts, len(paths)))
     for path in empty:
-        print(f"WARN  no JSON object or array found in {path}: its calls are not counted", file=sys.stderr)
+        print(f"WARN  no tool call found in {path} (no session record, or a format this script cannot read)", file=sys.stderr)
     return 0
 
 

@@ -19,3 +19,17 @@ Reviewer: the `reviewer` subagent, fresh context, the author's model tier. Input
 - NIT 7: the 2026-11-16 decision rows on `efficiency` are replaced in part; the new row's "Replaces" cell names the pointer only.
 
 rule-conflict-check: f50d99df5d12
+
+## Second check (the owner's new "Skills" first sentence), 2026-11-20
+
+The owner answered MINOR 2 and 3 in a dialog with this exact text for the first sentence of "Skills": "When a skill's description matches the step, load the whole skill before the step: with the Skill tool, else read the whole file; read its PROJECT.md too (a slice read through the shell misses steps)." The second sentence and the "Caps and audit" line are as above.
+
+Reviewer: the `reviewer` subagent, fresh context, the author's model tier; same input and brief.
+
+- MAJOR: none.
+- MINOR 1: "Skills" ("read its PROJECT.md too") and "Kit files" ("read it with the skill; it wins over the skill") give the same order in two lines. Recorded; a cut in "Kit files" is the owner's.
+- MINOR 2: the session load (the reviewer's estimate: icf-source about 5,050). Measured by a dry-run sync in scratch copies with the final files: RADE ~4,986, icf-source ~4,977, 90-161.Z ~4,875, sec-source ~4,760, each equal to its number before the sync (5 descriptions were shortened for the longer line).
+- MINOR 3: "uses the same skill" in "Caps and audit" can be read as "run the full audit" (as MINOR 4 above). Recorded.
+- NIT 4: "Skills" and "Verification" both name the verify skill. NIT 5: the "Replaces" cell: fixed (it now names the `efficiency` skill rows).
+
+rule-conflict-check: d1c1909217ed
