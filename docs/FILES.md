@@ -16,6 +16,7 @@ Every file in the archimedes_lever kit and what it does. Kit only: `scripts/boot
 | docs/FILES.md | This list. Kit only: bootstrap deletes it. |
 | docs/reviews/ | Detailed evidence. Bootstrap deletes the kit's own reports, so a project starts with only docs/reviews/README.md. |
 | docs/github/ | The owner's GitHub settings that an agent cannot set: two ruleset files to import on the default branch, and the secret-scanning steps. A project keeps them. |
+| docs/assets/ | The kit's own social preview: `social-preview.png` (1280×640, uploaded by the owner in the repository settings), its source `social-preview.html` (render at 1280×640 with the fonts FreeSerif and Inter) and the Core mark `core-mark.svg` it shows. Kit only. |
 | .check.state.json | Everything tools write (scripts/check_settings.py): the code standard's shrink-only debt list, the last audit and the timing baselines. Bootstrap replaces the kit's own state with a fresh file: the code standard adopted with no debt, no audit, no baselines. |
 | PREFERENCES.md | The maintainer's current Claude account preferences as a template to fill in and paste, with the reason for each rule. Template repo only: bootstrap deletes it. |
 | docs/account-skills/ | Account skills that PREFERENCES.md points to (the owner uploads them at claude.ai): `turn-summary`, `ship`, `where-to-save`, `pages-and-tools`, `spec`, `deeper-version`. Template repo only. |
