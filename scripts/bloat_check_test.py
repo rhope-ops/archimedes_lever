@@ -257,13 +257,15 @@ def third_party_cases(bloat, ro, caps):
     (ro / ".check.lock").write_text("{}")
     assert bloat_check_skills.listing_bytes(ro, [".claude/*"])[1] == 0, "a lock with no files list fails closed"
     (ro / ".check.lock").write_text(json.dumps({"files": {}}))
+    assert bloat_check_skills.listing_bytes(ro, [".claude/*"])[1] == 0, "a lock with an empty files list fails closed"
+    (ro / ".check.lock").write_text(json.dumps({"files": {"scripts/x.py": "x"}}))
     assert both[1] == 0 and both[0] >= 600, "without globs every skill and agent is the project's own"
     split = bloat_check_skills.listing_bytes(ro, [".claude/skills/s", ".claude/agents/vendor-*.md"])
     assert split[0] == 0 and split[1] == both[0], "a matched skill folder and agent file count apart"
     assert bloat_check_skills.listing_bytes(ro, [".claude/skills/s/"])[1] > 0, "a trailing slash matches the folder"
     (ro / ".check.lock").write_text(json.dumps({"files": {".claude/skills/s/SKILL.md": "x"}}))
     assert bloat_check_skills.listing_bytes(ro, [".claude/skills/*"])[1] == 0, "a kit-locked skill is never third-party"
-    (ro / ".check.lock").write_text(json.dumps({"files": {}}))
+    (ro / ".check.lock").write_text(json.dumps({"files": {"scripts/x.py": "x"}}))
     cfg = {**caps, "third_party": [".claude/skills/s", ".claude/agents/vendor-a.md"]}
     assert bloat.start_read(ro, cfg)[2] < bloat.start_read(ro, caps)[2], "third-party descriptions leave the session load"
     rows, problems = bloat.rules_report(ro, cfg)

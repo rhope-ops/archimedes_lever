@@ -7,7 +7,7 @@ Reviewer: the `reviewer` subagent, fresh context, Opus tier (same tier as the au
 ## Findings
 
 - MAJOR: none.
-- MINOR 1: `.claude/skills/rule-change/SKILL.md` "The caps" and the `--rules` failure text still defined the session load with every skill and agent description. Fixed in the same pull request (both now leave out the `audit-third-party` ones).
+- MINOR 1: `.claude/skills/rule-change/SKILL.md` "The caps" and the `--rules` failure text still defined the session load with every skill and agent description. The skill text is fixed in the same pull request. The `--rules` failure text keeps its words, so the output does not change for a project with no `audit-third-party` lines (the third-party cap has its own failure line).
 - MINOR 2: the new DECISIONS row was at the bottom of a newest-first table, with the plan link in "Replaces". Fixed: moved to the top; "Replaces" names the removed text.
 - NIT 3: AGENTS.md no longer defines "session load" in the line; its definition is the `scripts/bloat_check.py` header (a pointer, per "Lean instructions"). The owner approved the whole new text in the plan. No change.
 - NIT 4: the one-home check (`SINGLE_HOME`) still reads third-party skill files. Recorded; a project whose third-party file states a kit rule reports it to the kit owner.

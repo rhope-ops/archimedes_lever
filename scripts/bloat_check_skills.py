@@ -98,7 +98,7 @@ def main_skills(root):
 
 def kit_files(root):
     """The skill and agent files that can never count as third-party: the kit files in a project's `.check.lock`.
-    It fails closed: in the kit clone itself (KIT_VERSION, no lock), with no lock, or with a lock that cannot be read,
+    It fails closed: with no lock (the kit clone itself has none), a lock that cannot be read, or a lock with no files,
     every skill and agent file there is one, so a glob cannot move the kit's own text out of the session load.
 
     Args:
@@ -113,7 +113,7 @@ def kit_files(root):
         files = json.loads((root / ".check.lock").read_text(encoding="utf-8")).get("files")
     except (ValueError, OSError, AttributeError):
         return every
-    return set(files) if isinstance(files, dict) else every
+    return set(files) if isinstance(files, dict) and files else every
 
 
 def listing_bytes(root, third_party=()):
