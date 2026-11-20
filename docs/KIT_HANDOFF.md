@@ -2,7 +2,7 @@
 
 The kit's own handoff (AGENTS.md "Handoff"). Kit only: first use deletes it in a project, which uses docs/NEXT_PROMPT.md. Keep it at 40 lines or fewer; evidence goes in docs/reviews/. Times are America/Chicago.
 
-Updated: 2026-11-20 07:40. Kit owner: the session "Kit · Skill use analysis · 2026-11-20" (skill use plan; it owns kit skills, AGENTS.md and bloat-check files until kit 6.0.0 merges). Fleet hub plan: "Kit · Fleet decision hub · 2026-11-19". Before: "Kit · Session names and project tags · 2026-11-19" (kit 4.0.0).
+Updated: 2026-11-20 08:00. Kit owner: the session "Kit · Skill use analysis · 2026-11-20" (skill use plan; it owns kit skills, AGENTS.md and bloat-check files until kit 6.0.0 merges). Fleet hub plan: "Kit · Fleet decision hub · 2026-11-19". Before: "Kit · Session names and project tags · 2026-11-19" (kit 4.0.0).
 
 ## State
 
@@ -21,7 +21,7 @@ Full text, decisions and approved rule text: [reviews/2026-11-19-fleet-decision-
 
 ## Open (in order)
 
-- Approved plan 2026-11-20 07:36 (in work, continue it after a restart): skill use analysis, skill refinement, kit 6.0.0, then the sync of 9 repos: [reviews/2026-11-20-skill-use-plan.md](reviews/2026-11-20-skill-use-plan.md) (its step boxes show what is done). Measured with the 6.0.0 files (dry-run sync, 2026-11-20): RADE ~4,982, icf-source ~4,973, 90-161.Z ~4,871, sec-source ~4,756 tokens.
+- Approved plan 2026-11-20 07:36 (in work, continue it after a restart): skill use analysis, skill refinement, kit 6.0.0, then the sync of 9 repos: [reviews/2026-11-20-skill-use-plan.md](reviews/2026-11-20-skill-use-plan.md) (its step boxes show what is done). Measured with the 6.0.0 files (dry-run sync, 2026-11-20): RADE ~4,984 (before ~4,986), icf-source ~4,975, 90-161.Z ~4,873, sec-source ~4,758 tokens.
 - Plan 2026-11-20 done: kit 5.0.0 (PR 78) and 5.0.1 (PR 79); the design packs became a claude.ai skill, not repo files. Tags v5.0.0 (24c2391) and v5.0.1 (59528df) not made yet: [reviews/2026-11-20-third-party-skills-plan.md](reviews/2026-11-20-third-party-skills-plan.md).
 
 0. Kit fixes for the next PATCH (found by the 3.2.0 reviews; none blocks a repo): (a) the sync swaps "the owner" for each repo's role inside `scripts/check_settings.py`, so `OLD_HEADER_LINES` misses the old "the owner's request" line: exclude that file from the swap or match any role (5 repos got a hand fix in their sync PR); (b) `new_header` stops at a blank line; (c) NITs: the `audit-duplicate-ignore` wording in `bloat_check.py`, the CHANGELOG 3.2.0 row does not name `sync_merge.py`; (d) `fix_hooks` in session_checkin.sh keeps any non-kit hooks path, so a converted repo with an old `tools/git-hooks` path skipped the content check (NMB and TA fixed it in their project layer; the kit should repoint known old paths or warn); (f) first use keeps the kit's own "Project rules" lines (the Fleet choices line, 4.1.0) in a new project: empty that section at first use (docs/reviews/2026-11-19-rule-conflict-fleet.md finding 4); (e) 90-161.Z commit 50421f2 (DECISIONS "By" Agent to PFM, NIT) is unpushed: its pre-push needs pwsh, which the cloud sandbox lacks.

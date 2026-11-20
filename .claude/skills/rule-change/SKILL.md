@@ -1,6 +1,6 @@
 ---
 name: rule-change
-description: Use when the owner asks to add, change or remove a rule, when a rule, skill or process change would help, when you write Suggest in a turn summary, and on a rule line of check.sh.
+description: Use when the owner asks to add, change or remove a rule, when a rule or skill change would help, when you write Suggest in a turn summary, and on a rule line of check.sh.
 ---
 
 # Change a rule

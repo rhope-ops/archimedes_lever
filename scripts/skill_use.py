@@ -42,13 +42,19 @@ def json_values(path):
         path: the file to read.
 
     Returns:
-        A generator of parsed JSON values; lines that are not JSON are skipped.
+        A generator of parsed JSON values: the whole file when it is one value, else each line that parses;
+        lines that are not JSON are skipped.
     """
     with open(path, encoding="utf-8", errors="replace") as handle:
-        for line in handle:
-            line = line.strip()
-            if not line or line[0] not in "{[":
-                continue
+        text = handle.read()
+    try:
+        yield json.loads(text)  # one JSON value over many lines (a pretty-printed file)
+        return
+    except ValueError:
+        pass
+    for line in text.splitlines():
+        line = line.strip()
+        if line[:1] in ("{", "["):
             try:
                 yield json.loads(line)
             except ValueError:
@@ -72,8 +78,8 @@ def tool_uses(value, seen):
             stack.extend(item)
         elif isinstance(item, dict):
             if item.get("type") == "tool_use" and isinstance(item.get("name"), str):
-                key = item.get("id") or id(item)
-                if key not in seen:
+                key = item.get("id")
+                if key is None or key not in seen:  # a block with no id cannot repeat by id: count it
                     seen.add(key)
                     yield item["name"], item.get("input") if isinstance(item.get("input"), dict) else {}
             stack.extend(item.values())
@@ -109,16 +115,20 @@ def count_files(paths):
         paths: the files to read.
 
     Returns:
-        A dict: group -> Counter of label -> calls.
+        A pair: a dict (group -> Counter of label -> calls) and the list of files that held no JSON value.
     """
     counts = {group: collections.Counter() for group in GROUPS}
     seen = set()
+    empty = []
     for path in paths:
-        for value in json_values(path):
+        values = list(json_values(path))
+        if not values:
+            empty.append(path)
+        for value in values:
             for name, tool_input in tool_uses(value, seen):
                 for group, label in classify(name, tool_input):
                     counts[group][label] += 1
-    return counts
+    return counts, empty
 
 
 def report(counts, files):
@@ -155,26 +165,46 @@ def self_test():
         for path, text in zip(paths, (saved, log)):
             with open(path, "w", encoding="utf-8") as handle:
                 handle.write(text)
-        counts = count_files(paths)
+        pretty = os.path.join(folder, "pretty.json")
+        with open(pretty, "w", encoding="utf-8") as handle:
+            json.dump({"content": [use("p", "Skill", skill="audit")]}, handle, indent=2)
+        counts, empty = count_files(paths)
+        pretty_counts, _ = count_files([pretty])
     want = {"skill": {"deliver": 1, "verify": 1}, "read": {"handoff": 1}, "shell": {"deliver": 1, "audit": 1},
             "agent": {"reviewer": 1, "general-purpose": 1}, "tool": {"Read": 1, "Bash": 1}}
     failed = [group for group in GROUPS if dict(counts[group]) != want[group]]
+    if empty or dict(pretty_counts["skill"]) != {"audit": 1}:
+        failed.append("skill")
+        print(f"FAIL  files with no JSON: {empty}; a pretty-printed file gave {dict(pretty_counts['skill'])}")
     for group in failed:
         print(f"FAIL  {group}: got {dict(counts[group])}, want {want[group]}")
-    print("skill_use self-test:", "FAIL" if failed else "PASS (5 groups, 2 file forms, a repeated id counted once)")
+    print("skill_use self-test:", "FAIL" if failed else "PASS (5 groups, 3 file forms, a repeated id counted once)")
     return 1 if failed else 0
 
 
 def main(argv):
-    """Run the self-test, or print the report for the files named on the command line."""
+    """Run the self-test, or print the report for the files named on the command line.
+
+    Args:
+        argv: the command-line arguments after the script name.
+
+    Returns:
+        The process exit code: 0 ok, 1 a failed self-test, 2 no file named or a file that cannot be read.
+    """
     if "--test" in argv:
         return self_test()
     paths = [arg for arg in argv if not arg.startswith("--")]
     if not paths:
         print(__doc__.strip().splitlines()[0] + "\nRun: python3 scripts/skill_use.py FILE [FILE ...] [--json]")
         return 2
-    counts = count_files(paths)
+    try:
+        counts, empty = count_files(paths)
+    except OSError as error:
+        print(f"skill_use: cannot read a file: {error}")
+        return 2
     print(json.dumps({group: dict(counts[group]) for group in GROUPS}, indent=1) if "--json" in argv else report(counts, len(paths)))
+    for path in empty:
+        print(f"WARN  no JSON value found in {path}: its calls are not counted", file=sys.stderr)
     return 0
 
 
