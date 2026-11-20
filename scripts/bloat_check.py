@@ -53,7 +53,7 @@ It measures:
     timings       (--time) wall time of each named command against its recorded baseline; (--compare) times that
                   a script measured itself: NAME is a timings key, NAME:STEP one of its "steps". Slower means over
                   max_slowdown (default +25%) and over min_slowdown_seconds (default 0.5 s), so noise on a small step
-                  does not warn. A slowdown starts .claude/skills/efficiency/SKILL.md
+                  does not warn. A slowdown starts .claude/skills/audit/SKILL.md "A slow run"
 
 Settings: the `audit-` lines of `.check` (scripts/check_settings.py reads them and lists the keys; all are optional,
 and a line that is not valid fails --rules):
@@ -283,8 +283,8 @@ def compare_times(cfg, pairs, record=False):
         return f"TIME  baseline recorded for {n} time(s) in {STATE}", []
     if slow:
         return ("WARN  slower than the baseline: " + "; ".join(slow) +
-                ". Next: .claude/skills/efficiency/SKILL.md (a measured slowdown starts it)"), slow
-    tail = f"; no baseline yet for {len(new)} ({', '.join(new)}): .claude/skills/efficiency/SKILL.md, Record a baseline" if new else ""
+                ". Next: .claude/skills/audit/SKILL.md, A slow run (a measured slowdown starts it)"), slow
+    tail = f"; no baseline yet for {len(new)} ({', '.join(new)}): .claude/skills/audit/SKILL.md, Record a baseline" if new else ""
     return f"TIME  baseline: {n - len(new)} of {n} within the limit{tail}", []
 
 
