@@ -16,10 +16,15 @@ Install `npx impeccable install --providers=claude --project --yes` (impeccable 
 
 ## Steps
 
-- [ ] 1. Kit PR: `audit-third-party:` list, kit cap `third_party_tokens` 1,500, tests, rule text, CHANGELOG (5.0.0: a changed kit rule text is MAJOR; the plan said 4.2.0). Fresh review and rule conflict check. Lane C.
-- [ ] 2. Tag v5.0.0 (the owner), or sync from the merge commit.
-- [ ] 3. One PR per repo: kit sync, vendor files, `.check` lines (`audit-third-party:` x13, `code-exclude:` vendor skill folders, `skip:` google-fonts.csv, google-font-licenses.json, design-system/scripts/generate-slide.py), no settings.local.json, THIRD_PARTY_NOTICES.md. Fresh review. Lane C.
+- [x] 1. Kit PR 78 (merged 2026-11-20, 24c2391); fix 5.0.1 PR 79 (59528df), found by the first sync.
+- [-] (was 1) Kit PR: `audit-third-party:` list, kit cap `third_party_tokens` 1,500, tests, rule text, CHANGELOG (5.0.0: a changed kit rule text is MAJOR; the plan said 4.2.0). Fresh review and rule conflict check. Lane C.
+- [ ] 2. Tags v5.0.0 and v5.0.1 (the owner; optional). Was: Tag v5.0.0 (the owner), or sync from the merge commit.
+- [-] 3. Dropped by the owner 2026-11-20: the packs became one claude.ai skill (`ui-design`, uploaded by the owner), not files in each repo. Was: One PR per repo: kit sync, vendor files, `.check` lines (`audit-third-party:` x13, `code-exclude:` vendor skill folders, `skip:` google-fonts.csv, google-font-licenses.json, design-system/scripts/generate-slide.py), no settings.local.json, THIRD_PARTY_NOTICES.md. Fresh review. Lane C.
 
 ## Measured (2026-11-20, before)
 
 Session load with all 13 descriptions: sec-source ~5,699, 90-161.Z ~5,814, icf-source ~5,927, RADE ~5,925; without: ~4,760, ~4,875, ~4,988, ~4,986 tokens.
+
+## Change (the owner, 2026-11-20)
+
+The owner asked for one skill usable on any repo. Cloud sessions do not install plugins that a repo or a user's machine enables (https://code.claude.com/docs/en/cloud-environments.md); they load skills enabled on claude.ai. So the wrapper `ui-design` and the 8 packs (each `SKILL.md` renamed `SKILL.vendor.md`, agents under `packs/impeccable/agents/`) are one claude.ai skill. No project repo holds them; kit 5.0.x stays for later third-party skills.
