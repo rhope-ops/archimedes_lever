@@ -192,12 +192,13 @@ def header_owner(text):
 
 
 def apply_owner(text, owner):
-    """Replace the baseline role word ("the owner", "The owner") with the project owner."""
+    """Replace the baseline role word ("the owner", "The owner", "the Owner") with the project owner."""
     if owner == BASELINE_OWNER:
         return text
     cap = owner[:1].upper() + owner[1:]
     # One pass with word boundaries: "the ownership" stays, and an owner that contains the role word is not re-replaced.
-    return re.sub(r"\b([Tt])he owner\b", lambda m: cap if m.group(1) == "T" else owner, text)
+    # "the Owner" (the header's defined term, as in "Instructions people follow") is the same role word.
+    return re.sub(r"\b([Tt])he [Oo]wner\b", lambda m: cap if m.group(1) == "T" else owner, text)
 
 
 def kit_history(base, rel):

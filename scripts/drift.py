@@ -328,6 +328,8 @@ def legacy_and_synced_cases(proj, base, results):
     (proj / "scripts").mkdir()
     (proj / "scripts/stop_check.py").write_text(sb.apply_owner((base / "scripts/stop_check.py").read_text(), "the maintainer"))
     expect(results, "copied file, owner renamed", get(("file", "scripts/stop_check.py")), "same")
+    same(results, "capital Owner renamed", sb.apply_owner("unless the Owner's own message", "the PAM"),
+         "unless the PAM's own message")
     text = filled((base / "AGENTS.md").read_text().replace("- Owner: {{OWNER}}\n", ""),
                   (("PROJECT_NAME", "Demo"), ("REPO", "D/d"), ("PURPOSE", "P"), ("TIMEZONE", "UTC")))
     (proj / "AGENTS.md").write_text(sb.apply_owner(text, "Sam"))
