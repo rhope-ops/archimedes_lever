@@ -2,12 +2,12 @@
 
 The kit's own handoff (AGENTS.md "Handoff"). Kit only: first use deletes it in a project, which uses docs/NEXT_PROMPT.md. Keep it at 40 lines or fewer; evidence goes in docs/reviews/. Times are America/Chicago.
 
-Updated: 2026-11-21 by session "Kit · Instructions hard rule": kit 10.0.0 merged (PR 104, 50450b2; tag v10.0.0 made by the owner). Open: PR for the STE rewrite of the README steps and the kit's `audit-instructions:` lines (lane C, branch claude/kit-readme-ste); 7 steps name claude.ai screens that are not verified (reviews/2026-11-21-fresh-reader.md). Evidence of 10.0.0: reviews/2026-11-21-instructions-rule-reviews.md, reviews/2026-11-21-rule-conflict-instructions.md. Before: session "Kit · Token log and scout review" (PR 100, ce00ac7).
+Updated: 2026-11-21 ~16:30 by session "Kit · Project Studies and fleet sync" (Project Studies canvas https://claude.ai/artifact/UZpzMPxQ692UZ1ZiEceqEe): PRs 103 (8.1.0, deliver skill "Project identity") and 105 (9.0.0, session-load cap 5,500) merged; PR 107 (10.0.1 role fix) closed: the owner keeps "the Owner's". Before: "Kit · Instructions hard rule": PR 104 (10.0.0, 50450b2) and PR 108 merged (29d190c: README steps in STE; `.check` names README.md and docs/github/README.md); 7 README steps name claude.ai screens that are not verified (reviews/2026-11-21-fresh-reader.md); evidence of 10.0.0: reviews/2026-11-21-instructions-rule-reviews.md.
 
 ## State
 
-- main: kit 6.0.0 (43ad952, PR 82: skill use; before: 5.0.1, 59528df, PRs 78 and 79). Tags (feature releases; the owner makes them): v2.0.0 (7b80101), v3.0.0 (67e7766), v3.1.0 (88185f0); v3.2.0 and v4.0.0 not made yet. Fleet page: https://claude.ai/artifact/AWtpGxEqCWrjrPa1Afe7qW (private; the kit owner updates its rows; ported projects add `items` and fleet fields by harvest; choices in `choices`). Its "Waiting for you" list (2026-11-19) reads the `needs` field (`[{text, url}]`) of `meta/kit` and of each `repos` row: the session that closes or adds an owner action updates that field.
-- Seven repos on 4.0.0 (c8339c3; merged 2026-11-19): RADE 126, 90-161.Z 179, icf-source 168, 36-3003.Z 12, 65-601.Z 12, sec-source 21, SPAR 17. Session load: RADE ~4,985, icf-source ~4,939, 90-161.Z ~4,850, sec-source ~4,745. First conversions merged 2026-11-19 (owner-approved rule texts): no-more-beyond PR 63 (~4,903 tokens), transcription_assistant PR 6 (~4,887). NMB follow-ups: delete superseded tools (D4); set `.claude/agents/nmb-reviewer.md` to opus (D3).
+- main: kit 10.0.0 (f397b52; main 29d190c adds PR 108, no synced kit file changed). Tags (the owner makes them): v6.2.0, v7.0.0, v8.0.0, v10.0.0 exist; v8.1.0 and v9.0.0 not made yet.
+- Fleet on 10.0.0 (merged 2026-11-21, each verified on main): RADE 165, 33-332.Z 48, ICF-Source 240, SEC-Source 27, SPAR 19, 36-3003.Z 14, 65-601.Z 14, no-more-beyond 66, transcription_assistant 8. 90-161.Z on 9.0.0 (PR 215); its 10.0.0 sync is PR 216 of its own session (K2). Session load (cap 5,500): 33-332.Z ~5,352, ICF ~5,322, RADE ~5,278, TA ~5,250, SEC ~5,210, NMB ~5,178. Owner steps per repo: `audit-instructions:` lines in `.check`; 33-332.Z README does not open with its Purpose line (warning).
 
 ## Approved plan (the owner, 2026-11-19 14:45): fleet decision hub (kit template)
 
@@ -37,4 +37,4 @@ Full text, decisions and approved rule text: [reviews/2026-11-19-fleet-decision-
 - Do not merge a kit pull request before you list the kit's open pull requests: on 2026-11-18, pull requests 44 and 45 were merged while 42 was open, and 42 then conflicted in about 15 files.
 - Do not put a command that holds a denied git pattern in a shell heredoc: the deny rules refuse it. Use the file tool.
 - Do not loop on MINOR conflict findings: record them; only a MAJOR finding changes rule text again.
-- Do not add kit text without measuring the session load of every repo first: after 4.0.0, RADE (~4,985) and icf-source (~4,939, and ~4,994 on an open branch) sit at the 5,000 cap; the next kit text needs a cut first.
+- Do not add kit text without measuring the session load of every repo first (`scripts/bloat_check.py --brief` on a dry-run sync): after 10.0.0 the highest is 33-332.Z ~5,352 of the 5,500 cap.
