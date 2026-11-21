@@ -29,7 +29,7 @@ What it changes:
                            An AGENTS.md without the baseline layout goes under "## Project rules" as it is.
     CLAUDE.md              Adds "@AGENTS.md" at the top if it is missing. Keeps the rest.
     scripts/session_checkin.sh, scripts/stop_check.py, scripts/worker_guard.py,
-    .claude/skills/ (every kit skill), .claude/agents/worker.md, scout.md, reviewer.md
+    .claude/skills/ (every kit skill), scripts/check_instructions*.py, .claude/agents/worker.md, scout.md, reviewer.md
                            Replaced with the baseline copies.
     docs/FIRST_USE.md      Added when missing. A project may tune it (it holds the denylist places that the
                            session-start check names), so a copy the project changed is kept, with one line that
@@ -93,7 +93,8 @@ COPY_FILES = ["scripts/session_checkin.sh", "scripts/stop_check.py", "scripts/ch
               ".claude/skills/deliver/SKILL.md", ".claude/skills/personal-data/SKILL.md", ".claude/skills/rule-change/SKILL.md",
               ".claude/skills/data-change/SKILL.md", ".claude/skills/verify/SKILL.md", ".claude/skills/verify/measure.mjs",
               ".claude/skills/handoff/SKILL.md",
-              ".claude/skills/kit-update/SKILL.md",
+              ".claude/skills/kit-update/SKILL.md", ".claude/skills/instructions/SKILL.md",
+              "scripts/check_instructions.py", "scripts/check_instructions_test.py",
               ".claude/agents/worker.md", ".claude/agents/scout.md", ".claude/agents/reviewer.md"]
 # A file a project may tune: added when missing, replaced when the project's copy is an earlier kit version, else kept
 # (copy_state). (The kit's agent files are kit files since 2026-11-18: an old copy can restate a rule; a project adds
