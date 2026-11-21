@@ -123,7 +123,7 @@ The bootstrap command takes 6 values, in this order:
 
 Bootstrap moves the kit's MIT license to `docs/archimedes_lever-LICENSE.txt`. Keep that file: it covers the kit's scripts. You can add a `LICENSE` file of your own.
 
-You need git, Python 3 and [gh](https://cli.github.com). On Windows, run each command in Git Bash, not in PowerShell.
+You need git, Python 3.9 or later, bash, perl and [gh](https://cli.github.com). You can also make the repository on GitHub with **Use this template**, then clone it. On Windows, run each command in Git Bash, not in PowerShell.
 
 1. In a terminal, run `gh auth login`. You see questions from gh. Answer each question, and wait until you see `Logged in as` and your GitHub user name.
 2. In your browser, open [github.com/settings/emails](https://github.com/settings/emails). You see the GitHub page **Emails**. Go on.
@@ -143,7 +143,7 @@ You need git, Python 3 and [gh](https://cli.github.com). On Windows, run each co
    gh repo create YOUR_USER/NEW_NAME --private --template rhope-ops/archimedes_lever --clone
    ```
 8. Run `cd NEW_NAME`, with the name that you wrote down. You see the name in the prompt. Go on.
-9. Run the bootstrap command, with your 6 values from the table in place of the examples. You see the list of files that it fills in. Go on.
+9. Run the bootstrap command, with your 6 values from the table in place of the examples. You see the line `Done. Next: review with 'git diff', then commit and push.` Go on.
    ```
    scripts/bootstrap.sh "Project Name" YOUR_USER/NEW_NAME "One-line purpose" "the owner" "Europe/Berlin" starter
    ```
@@ -154,7 +154,7 @@ You need git, Python 3 and [gh](https://cli.github.com). On Windows, run each co
 14. Run `scripts/session_checkin.sh`. It installs the git hooks. You see the line `hooks:` with the hooks folder. Go on.
 15. Run `git add -A`. You see no output. Go on.
 16. Run `git commit -m "First use"`. You see the commit summary. Go on.
-17. Run `git push -u origin main`. You see the pre-push check. Wait until you see `CHECK PASS` and the push ends. If you see `CHECK FAIL`, do not go on: copy the lines above it to the agent or the kit's owner. If you do not use a claude.ai Project, the task is complete.
+17. Run `git push -u origin main`. You see the pre-push check. Wait until you see `CHECK PASS` and the push ends. If you see `CHECK FAIL`, do not go on: the lines above it name the check that failed. If you do not use a claude.ai Project, the task is complete.
 18. If you use a claude.ai Project, run `cat docs/host-prompts.md`. You see the text for the Project in the terminal. Go on.
 19. In the terminal, select the text with the mouse. You see the text selected. Go on.
 20. Copy the text with the copy key of your terminal. The text goes to the clipboard. You see no change. Go on.
@@ -192,7 +192,7 @@ Your name list holds your names, your user name variants and your employer. It n
     4. Click **Save**.
 
     You see the session again. A new session reads the list; this session does not. Go on.
-12. In your browser, open `https://github.com/YOUR_USER/NEW_NAME`, with your GitHub user name and the repository name. You see the tab **Code** of the repository. Go on.
+12. In your browser, open `https://github.com/` with your GitHub user name and the repository name after it, for example `https://github.com/YOUR_USER/NEW_NAME`. You see the tab **Code** of the repository. Go on.
 13. On the page of your repository, click **Settings**. You see the page **General**. Go on.
 14. In the menu on the left, click **Secrets and variables**, then **Actions**. You see the page **Actions secrets and variables**. Go on.
 15. Click **New repository secret**. You see the page **New secret**. Go on.
@@ -208,6 +208,8 @@ Your name list holds your names, your user name variants and your employer. It n
 20. For each finding, open the file at the line that the finding names. Remove the personal data on that line. You see the line without it. If the value must stay, ask the project's owner: only the owner adds an allowed value to `.check`. Go on.
 21. Run `python3 scripts/check_content.py --all` again. You see `CONTENT CHECK PASS`. The task is complete.
 
+An optional second list holds your own blocked terms (words that are not personal data), as `CHECK_TERMS` in the same three places. The steps for agents, the fingerprint check and one master copy of the list: [docs/FIRST_USE.md](docs/FIRST_USE.md), step 4.
+
 ## Update an existing project
 
 A project takes a kit release as one pull request. The kit files in a project are locked (`.check.lock` holds their hashes and the kit version, and the check fails when one differs); a project adds its own rules, commands, checks and skill additions in the places that [the kit-update skill](.claude/skills/kit-update/SKILL.md) lists, and a sync does not touch those. To bring a project up to date, start in the project repo with no uncommitted changes:
@@ -217,7 +219,7 @@ The sync command takes these options:
 | Option | Add it when |
 |---|---|
 | `--tier full` | You move a starter project to the full kit. It adds the advanced files and docs/LOG.md. To make the name guard block, delete the line `denylist: warn` in `.check`. |
-| `--name`, `--repo`, `--purpose` | The project's AGENTS.md has no title line (`--name`), no `- Repo:` line or no `- Purpose:` line, or the line still holds a `{{...}}` placeholder. |
+| `--name`, `--repo`, `--purpose` | The project's AGENTS.md has no title line (`--name`), no `- Repo:` line or no `- Purpose:` line |
 | `--owner NAME` | AGENTS.md has no `- Owner:` line. |
 | `--timezone ZONE` | AGENTS.md has no `- Time zone:` line (ZONE is an IANA name). |
 
@@ -234,8 +236,8 @@ The sync command takes these options:
     ```
     python3 ../archimedes_lever/scripts/sync_baseline.py --baseline ../archimedes_lever
     ```
-11. Read the diff. You see each change of the sync. If you do not want a change, ask the kit's owner in a [kit issue](https://github.com/rhope-ops/archimedes_lever/issues). Do not go on until you have the answer.
-12. Run the same command again, with `--apply` at the end. You see the list of files that the sync wrote. Go on.
+11. Read the diff. You see each change of the sync. If a change is not what you want, do not go on.
+12. Run the same command again, with `--apply` at the end. You see the line `Written, with the kit lock` at the end. Go on.
 13. Run `git --no-pager diff`. You see the changes in the terminal. Go on.
 14. Run `git add -A`. You see no output. Go on.
 15. Run `git commit -m "Kit sync"`. You see the commit summary. Go on.
