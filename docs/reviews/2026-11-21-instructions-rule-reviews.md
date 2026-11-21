@@ -51,6 +51,13 @@ Fresh reviews of the diff (the `reviewer` subagent, a fresh context, model tier 
 | 5 | MINOR | The fail-closed test checks only the exit code | Kept: the reviewer found no other path that returns 2 there |
 | 6 | NIT | A `.check` that is not UTF-8 lets the hook pass | Kept on purpose: `check_settings` reports it as a broken setting (ValueError), the same as a broken line; check.sh fails on it; a test holds the behavior |
 
-## Review 5: the fourth fix commit
+## Review 5: the fourth fix commit (df6bba0..f0dc89c)
 
-Result: added when the review ends.
+No MAJOR finding. Recorded, not fixed (MINOR findings do not start another fix round):
+
+| # | Severity | Finding | Done |
+|---|---|---|---|
+| 1 | MINOR | "You see A and the **Billing** section." or "You see **Saved** and the spinner closes." gives a pointer or wait finding: the next-state span ends at any " and " | Recorded: a false finding makes the check stricter, never looser; fix later if projects report it (end the span at " and " only before a verb or "see") |
+| 2 | NIT | "for a second" is no wait | Recorded: by design ("for a second time" must not be a wait) |
+
+The full lane passed on f0dc89c (27 passed, 2 skipped); CI green on f0dc89c.
