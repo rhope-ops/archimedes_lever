@@ -79,7 +79,13 @@ def palette(tokens):
 
 
 def check_colours(tokens):
-    """Return findings for the primitives (pinned to the standard) and the hex form of every named colour."""
+    """Return findings for the primitives (pinned to the standard) and the hex form of every named colour.
+
+    Args:
+        tokens: the parsed docs/brand/fulcrum.json.
+    Returns:
+        A list of finding lines, empty when the colours pass.
+    """
     found = []
     if tokens.get("primitives") != STANDARD_PRIMITIVES:
         found.append(f"{SOURCE}: primitives differ from the Logo Studies standard: {STANDARD_PRIMITIVES}")
@@ -92,7 +98,13 @@ def check_colours(tokens):
 
 
 def check_roles(tokens):
-    """Return findings for the roles: both themes have the same role names, and each names a known colour."""
+    """Return findings for the roles: both themes have the same role names, and each names a known colour.
+
+    Args:
+        tokens: the parsed docs/brand/fulcrum.json.
+    Returns:
+        A list of finding lines, empty when the roles pass.
+    """
     found, colours, roles = [], palette(tokens), tokens.get("roles", {})
     if sorted(roles) != sorted(THEMES):
         return [f"{SOURCE}: roles must have exactly the themes {list(THEMES)}"]
@@ -107,7 +119,13 @@ def check_roles(tokens):
 
 
 def check_contrast(tokens):
-    """Return findings for each contrast pair, in each theme, that is under its minimum."""
+    """Return findings for each contrast pair, in each theme, that is under its minimum.
+
+    Args:
+        tokens: the parsed docs/brand/fulcrum.json, with valid roles.
+    Returns:
+        A list of finding lines, empty when every pair meets its minimum.
+    """
     found, colours = [], palette(tokens)
     for theme in THEMES:
         roles = tokens["roles"][theme]
@@ -128,7 +146,13 @@ def role_block(tokens, theme):
 
 
 def render_css(tokens):
-    """Return the whole CSS file built from the tokens."""
+    """Return the whole CSS file built from the tokens.
+
+    Args:
+        tokens: the parsed docs/brand/fulcrum.json, with valid roles.
+    Returns:
+        The text of docs/brand/fulcrum.css.
+    """
     primitives = "".join(f"--fm-{name}:{value};" for name, value in tokens["primitives"].items())
     dark = role_block(tokens, "dark") + "color-scheme:dark"
     return (f"/* GENERATED from {SOURCE} by: python3 scripts/fulcrum_tokens.py --write. Do not edit by hand.\n"
@@ -167,7 +191,11 @@ def run(root, write):
 
 
 def self_test():
-    """Run the checks on good and broken copies of the kit's own tokens, then on this repo's files; return 0 on pass."""
+    """Run the checks on good and broken copies of the kit's own tokens, then on this repo's files.
+
+    Returns:
+        The exit code: 0 when every case passes, else 1.
+    """
     good = json.loads((ROOT / SOURCE).read_text(encoding="utf-8"))
     cases = [("the kit's own tokens pass", lambda t: None, ""),
              ("a changed primitive fails", lambda t: t["primitives"].update(ember="#E4572F"), "differ from the Logo Studies"),
@@ -203,7 +231,11 @@ def self_test():
 
 
 def main():
-    """Parse the arguments and run the check, the rebuild or the self-test."""
+    """Parse the arguments and run the check, the rebuild or the self-test.
+
+    Returns:
+        The exit code: 0 on pass, else 1.
+    """
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--write", action="store_true", help="rebuild docs/brand/fulcrum.css, then check")
     parser.add_argument("--test", action="store_true", help="self-test")
