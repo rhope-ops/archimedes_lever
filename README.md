@@ -91,6 +91,8 @@ Open the project with Claude Code and say what you want to do next. The agent fi
 
 Two tiers. **Starter** (recommended for a first project): AGENTS.md, the safety hooks, the personal-data guard, one check command, the `reviewer` agent, the skills and memory in files. **Full** adds the parts marked "Full only" in [docs/FILES.md](docs/FILES.md): multi-agent orchestration, the project log and timeline, the bloat audit and rule tests. The list of advanced files lives in `scripts/sync_baseline.py` (`ADVANCED_FILES`). Every file and what it does: [docs/FILES.md](docs/FILES.md).
 
+Both tiers also get **Fulcrum Minimal**, the shared design tokens for project pages: [docs/brand/fulcrum.css](docs/brand/fulcrum.css), built from [docs/brand/fulcrum.json](docs/brand/fulcrum.json) by `python3 scripts/fulcrum_tokens.py --write`, which also checks that its five colours still match the Logo Studies marks and that every text colour meets WCAG contrast.
+
 ## Set up a project by hand
 
 For people who know git and don't want an agent to do the setup, or who only have a chat with no file access.
