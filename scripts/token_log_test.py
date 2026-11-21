@@ -349,6 +349,32 @@ def case_bad_input_and_off(fx):
     fx.expect("TOKEN_LOG=off: nothing pushed", len(fx.remote_rows("s1") or []), count)
 
 
+def case_agent_type(fx):
+    """A subagent row gets the type of its Agent call; a subagent with no matching call says "unknown".
+
+    Args:
+        fx: the shared test fixture (Fixture).
+    """
+    root, work, logs = fx.root, fx.work, fx.logs
+    t3 = os.path.join(root, "proj", "s3.jsonl")
+    u = json.loads(msg("p1", "2026-01-02T01:00:00Z"))["message"]["usage"]
+    call = {"type": "assistant", "timestamp": "2026-01-02T01:00:00Z",
+            "message": {"id": "p1", "model": "claude-test", "usage": u,
+                        "content": [{"type": "tool_use", "id": "tu1", "name": "Agent", "input": {"subagent_type": "scout"}}]}}
+    done = {"type": "user", "timestamp": "2026-01-02T01:00:01Z", "toolUseResult": {"agentId": "ab1"},
+            "message": {"content": [{"type": "tool_result", "tool_use_id": "tu1", "content": "x"}]}}
+    append(t3, prompt("2026-01-02T00:59:00Z"), json.dumps(call), json.dumps(done))
+    os.makedirs(os.path.join(root, "proj", "s3", "subagents"))
+    append(os.path.join(root, "proj", "s3", "subagents", "agent-ab1.jsonl"),
+           msg("sa2", "2026-01-02T01:00:02Z", side=True))
+    append(os.path.join(root, "proj", "s3", "subagents", "agent-zz9.jsonl"),
+           msg("sa3", "2026-01-02T01:00:03Z", side=True))
+    fx.hook(work, "s3", t3, logs)
+    got = fx.remote_rows("s3") or []
+    fx.expect("agent column: main row, matched subagent type, unmatched subagent",
+              [(x["message_id"], x["agent"]) for x in got], [("p1", "main"), ("sa2", "scout"), ("sa3", "unknown")])
+
+
 def run(tl):
     """Run every case in order on one fixture; print the total line and return the exit code.
 
@@ -362,7 +388,7 @@ def run(tl):
     saved = {k: os.environ.get(k) for k in ("TOKEN_LOG_HOME", "TOKEN_LOG_NET_TIMEOUT")}  # restored at the end
     try:
         for case in (case_first_turn, case_second_turn, case_blocked_and_shallow, case_retry, case_coalesce,
-                     case_fetch_head_and_timeout, case_waiting_push, case_bad_input_and_off):
+                     case_fetch_head_and_timeout, case_waiting_push, case_bad_input_and_off, case_agent_type):
             case(fx)
     finally:
         tl.push = fx.real_push
