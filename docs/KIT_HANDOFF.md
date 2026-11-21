@@ -2,7 +2,7 @@
 
 The kit's own handoff (AGENTS.md "Handoff"). Kit only: first use deletes it in a project, which uses docs/NEXT_PROMPT.md. Keep it at 40 lines or fewer; evidence goes in docs/reviews/. Times are America/Chicago.
 
-Updated: 2026-11-20 20:30. Open: kit 6.2.1, content check speed (PR 94, lane C: waits for the owner's merge; session "Kit · Content check speed · 2026-11-20"; evidence docs/reviews/2026-11-20-content-check-speed.md); after the merge each project syncs. Before: 2026-11-20 10:35, "Kit · Skill use analysis · 2026-11-20". Fleet hub plan: "Kit · Fleet decision hub · 2026-11-19".
+Updated: 2026-11-20 20:45. Done: kit 6.2.1, content check speed (PR 94 merged with the owner's approval, ebfdd0a; session "Kit · Content check speed · 2026-11-20"; evidence docs/reviews/2026-11-20-content-check-speed.md); each project gets it in its next kit sync. Before: 2026-11-20 10:35, "Kit · Skill use analysis · 2026-11-20". Fleet hub plan: "Kit · Fleet decision hub · 2026-11-19".
 
 ## State
 
@@ -29,7 +29,7 @@ Full text, decisions and approved rule text: [reviews/2026-11-19-fleet-decision-
 
 ## Needs the owner
 
-- Delete the kit branch `claude/kit-handoff-6-0-0` (same commit as PR 84; the cloud session's delete got HTTP 403): https://github.com/rhope-ops/archimedes_lever/branches. Account skills to save (files sent in the session of 2026-11-20): `pages-and-tools`, `ship`, `turn-summary`, `roadmap-update`, `stakeholder-update`; the 2 changed preference lines (PREFERENCES.md "Reporting" and "How to work"). Tags v5.0.0 (24c2391), v5.0.1 (59528df), v6.0.0 (43ad952).
+- Delete the kit branches `claude/content-check-speed` (merged in PR 94) and `claude/kit-handoff-6-0-0` (same commit as PR 84; the cloud session's delete got HTTP 403): https://github.com/rhope-ops/archimedes_lever/branches. Account skills to save (files sent in the session of 2026-11-20): `pages-and-tools`, `ship`, `turn-summary`, `roadmap-update`, `stakeholder-update`; the 2 changed preference lines (PREFERENCES.md "Reporting" and "How to work"). Tags v5.0.0 (24c2391), v5.0.1 (59528df), v6.0.0 (43ad952).
 - Tag v4.1.0 (https://github.com/rhope-ops/archimedes_lever/releases/new?tag=v4.1.0&target=4135536a72e9a5e9c63fd57496f9739cefac0966&title=Kit%204.1.0). Tags v3.2.0 (https://github.com/rhope-ops/archimedes_lever/releases/new?tag=v3.2.0&target=18896fc5ae5e954eeb0182bc4beae264eee9d541&title=Kit%203.2.0) and v4.0.0 (https://github.com/rhope-ops/archimedes_lever/releases/new?tag=v4.0.0&target=c8339c31cc75d50106ede550afd1c36e4c7b529f&title=Kit%204.0.0); rulesets and secret scanning.
 
 ## Do not
