@@ -8,6 +8,7 @@ What it gives:
   start_read        what every session loads, in lines, bytes and ~tokens
   rule_lines        the rule lines of an AGENTS.md text: the kit sections, "## Project rules", and every line
   lint              WARN lines: near-duplicate pairs, vague words, untested rules
+  readme_report     README.md exists and opens with the "- Purpose:" line of AGENTS.md (AGENTS.md "README")
   rules_report      the lines of `--rules` and the problems that fail scripts/check.sh
   main_lint         the `--lint` mode
 Inputs:  the repo root, the audit settings (scripts/check_settings.py), AGENTS.md here and on origin/main,
@@ -291,6 +292,51 @@ def changed_rules(root, text, parts, gate):
     return out, problems
 
 
+def readme_opening(text):
+    """The first paragraph of a README text: the first block of lines that are not a heading, an image, a badge or
+    an HTML line, joined by spaces; "" when there is none."""
+    para = []
+    for line in text.splitlines():
+        s = line.strip()
+        if not s:
+            if para:
+                break
+            continue
+        if s.startswith(("#", "![", "[![", "<")):
+            if para:
+                break
+            continue
+        para.append(s)
+    return " ".join(para)
+
+
+def readme_report(root, text):
+    """The AGENTS.md "README" default: README.md exists and opens with the "- Purpose:" value of AGENTS.md. Checked
+    only when that value is filled in (the kit template's {{PURPOSE}} is not). A missing README.md is a problem; an
+    opening that does not start with the purpose is a WARN line (the rule is enforced in part).
+
+    Args:
+        root: the repo root (a Path).
+        text: the text of AGENTS.md.
+
+    Returns:
+        (lines to print, problems).
+    """
+    m = re.search(r"^- Purpose:\s*(.+?)\s*$", text, re.M)
+    if not m or "{{" in m.group(1):
+        return [], []
+    readme = root / "README.md"
+    if not readme.is_file():
+        return [], ["no README.md: it opens with the AGENTS.md \"Purpose\" line (AGENTS.md \"README\")"]
+
+    def norm(s):
+        return " ".join(s.lower().split()).rstrip(".")
+
+    if not norm(readme_opening(readme.read_text(encoding="utf-8", errors="replace"))).startswith(norm(m.group(1))):
+        return ["WARN  README.md does not open with the AGENTS.md \"Purpose\" line; update it (AGENTS.md \"README\")"], []
+    return [], []
+
+
 def rules_report(root, cfg, gate=False):
     """The lines of `--rules`, and the problems that fail scripts/check.sh: a cap passed, a missing path, and with
     gate (the full lane) rule lines changed against origin/main with no conflict-check record in docs/reviews/.
@@ -340,6 +386,9 @@ def rules_report(root, cfg, gate=False):
     gone = missing_pointers(root, text)
     if gone:
         problems.append("missing paths named in AGENTS.md: " + ", ".join(gone))
+    rows, found = readme_report(root, text)
+    out += rows
+    problems += found
     for pr in problems:
         out.append(f"RULES FAIL:  {pr}")
     return out, problems
