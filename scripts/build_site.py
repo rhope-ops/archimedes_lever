@@ -258,7 +258,7 @@ def builders(local):
     need_source = bool(getattr(local, 'REQUIRE_FACT_SOURCE', False))
     found = {'intro': build_intro,
              'key-facts': lambda markdown, indent: build_key_facts(markdown, indent, need_source)}
-    extra = getattr(local, 'BUILDERS', {}) or {}
+    extra = getattr(local, 'BUILDERS', {})  # only a missing BUILDERS means none; 0, [] or None is a mistake
     if not isinstance(extra, dict) or not all(isinstance(k, str) and callable(v) for k, v in extra.items()):
         raise ValueError(f'{LOCAL}: BUILDERS must be a dict of section name to function(markdown, indent)')
     found.update(extra)
@@ -301,8 +301,8 @@ def build_one(kinds, name, markdown, indent):
     """
     try:
         body = kinds[name](markdown, indent)
-    except ValueError as err:
-        raise ValueError(f'site:{name}: {err}') from err
+    except ValueError as err:  # a kit builder names its section already; a project builder's own error gets the name
+        raise (err if f'site:{name}' in str(err) else ValueError(f'site:{name}: {err}')) from err
     except Exception as err:  # a project builder with a wrong signature or a bug: a finding, not a traceback
         raise ValueError(f'site:{name}: the builder failed: {type(err).__name__}: {err}') from err
     if not isinstance(body, str):
@@ -476,7 +476,10 @@ TEST_CASES = (
     ('a local builder that returns no text is a finding', ('<!-- site:intro -->', NOTE + '<!-- site:intro -->'),
      TEST_PAGE + mark('note'), 'BUILDERS = {"note": lambda md, indent: None}\n', ['must return text'], True),
     ('BUILDERS that is not a dict is a finding', None, TEST_PAGE, 'BUILDERS = 5\n', ['BUILDERS must be a dict'], True),
-    ('an empty README section is read as empty', ('A safe_tool & more.\n', ''), TEST_PAGE, None, ['site:intro: ', 'one paragraph'], True))
+    ('BUILDERS that is empty but not a dict is a finding', None, TEST_PAGE, 'BUILDERS = []\n', ['BUILDERS must be a dict'], True),
+    ('text in front of a README end mark fails', ('more.\n<!-- /site:intro -->', 'more. <!-- /site:intro -->'), TEST_PAGE, None,
+     ['a site mark with no pair'], True),
+    ('an empty README section is read as empty', ('A safe_tool & more.\n', ''), TEST_PAGE, None, ['site:intro must be one paragraph'], True))
 # What the fresh build must write: the intro, a key fact without its source, two lines joined, an escaped "&", the
 # block's indent kept.
 TEST_BUILT = ('    <p>A safe_tool &amp; more.</p>', '      <dt>Read-only:</dt><dd>it changes nothing.</dd>',
