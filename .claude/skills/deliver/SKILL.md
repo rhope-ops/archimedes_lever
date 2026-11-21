@@ -20,6 +20,14 @@ AGENTS.md "Delivery", "Checks" and "Fresh review" hold the rules; this file hold
 7. Republish the affected artifacts and pages, then prove the live copy: read it back (the artifact read, or a fetch of the live URL) and compare it with the file built from origin/main (a hash, or a version text that the build writes). Report "published" only when they are equal; a changed preview is not the live copy. Delete previews after they ship.
 8. Clean up branches (below). Report with the states kept apart: done (built and merged), published (live for others, with the proof of step 7), verified (checked, with the method and the result). A step that did not run is reported as not run, with its cause and what unblocks it.
 
+## Project identity (AGENTS.md "README")
+
+When a project's name or Purpose line changes, its public face follows README.md in the same delivery (the owner, 2026-11-21):
+
+1. Card: Google Drive, folder Logos › `<project>`. Edit `<project>-social-preview.html` (title: the repository name; subtitle: the README name and subtitle; mark: the `*-fulcrum.svg` beside it) and render it at 1280 × 640, scale 1, in Chromium. Before you replace the PNG, move the old PNG and `<project>-description.txt` to Logos › Superseded with "(superseded, <reason>)" in the name.
+2. About text: write it in `<project>-description.txt`. The owner uploads the card (Settings › Social preview) and pastes the text (About ⚙): GitHub has no API for the card, so report both as owner steps with links.
+3. Board: republish the project's board in Project Studies (https://claude.ai/artifact/UZpzMPxQ692UZ1ZiEceqEe) with the new card and texts, then prove the live copy as in step 7.
+
 ## Merge lanes
 
 Take the highest lane that any file or effect of the pull request falls in.
