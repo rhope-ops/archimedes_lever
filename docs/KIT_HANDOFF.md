@@ -2,7 +2,7 @@
 
 The kit's own handoff (AGENTS.md "Handoff"). Kit only: first use deletes it in a project, which uses docs/NEXT_PROMPT.md. Keep it at 40 lines or fewer; evidence goes in docs/reviews/. Times are America/Chicago.
 
-Updated: 2026-11-21 by session "Token use tracking" (renamed at handoff). Merged to main: PR 97 (fbdda6d, token log agent column) and PR 98 (f4a1442, token log crash fixes, owner-approved Delegation wording, conflict records). Evidence and open items: reviews/2026-11-21-token-log-and-delegation.md. Earlier work (kit 7.0.0 build_site step 1, RADE README rework) is still as described below.
+Updated: 2026-11-21 by session "Kit · Token log and scout review": PR 100 merged (ce00ac7; narrower scout rule, token log `--report`, `agent_id`, daily self-update; open NITs in reviews/2026-11-21-token-log-and-delegation.md). Before: session "Token use tracking" (renamed at handoff). Merged to main: PR 97 (fbdda6d, token log agent column) and PR 98 (f4a1442, token log crash fixes, owner-approved Delegation wording, conflict records). Evidence and open items: reviews/2026-11-21-token-log-and-delegation.md. Earlier work (kit 7.0.0 build_site step 1, RADE README rework) is still as described below.
 
 ## State
 
