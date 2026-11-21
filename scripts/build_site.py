@@ -39,9 +39,12 @@ SITE = 'index.html'
 LOCAL = 'scripts/build_site_local.py'
 COMMAND = 'scripts/build_site.py --write'
 # A README section and a generated block on the page; NAME is lower-case letters, digits and "-".
-SECTION = re.compile(r'<!-- site:([a-z0-9-]+) -->\n(.*?)\n<!-- /site:\1 -->', re.S)
+SECTION = re.compile(r'<!-- site:([a-z0-9-]+) -->\n(.*?)<!-- /site:\1 -->', re.S)
 BLOCK = re.compile(r'^([ \t]*)<!-- >>> site:([a-z0-9-]+): generated from README\.md by scripts/build_site\.py --write '
-                   r'\(do not edit\) -->\n(.*?)\n[ \t]*<!-- <<< site:\2 -->', re.S | re.M)
+                   r'\(do not edit\) -->\n(.*?)[ \t]*<!-- <<< site:\2 -->', re.S | re.M)
+# Any site mark, also a broken one (a typo in a name or an end mark): each must be used by SECTION or BLOCK (stray_marks).
+README_MARK = re.compile(r'<!-- /?site:[^>]*-->')
+SITE_MARK = re.compile(r'<!-- (?:>>>|<<<) site:[^>]*-->')
 # Plain text in a site section may hold only these characters (an allow list): letters, digits, spaces and ordinary
 # punctuation that GitHub shows as typed. Any other character (* _ at a word's edge, ` ~ [ ] < > @ # = \ | ^ and the
 # like) could be Markdown that GitHub renders differently from this builder, so the check fails on it. An underscore
@@ -258,6 +261,71 @@ def builders(local):
     return found
 
 
+def stray_marks(readme, site):
+    """Return findings for site marks that no section or block uses (a typo, capitals, a missing end mark).
+
+    Args:
+        readme: the text of README.md.
+        site: the text of index.html.
+    Returns:
+        A list of finding lines, empty when every mark belongs to a section or a block.
+    """
+    found = []
+    for text, file, mark, pair in ((readme, README, README_MARK, SECTION), (site, SITE, SITE_MARK, BLOCK)):
+        used = {pm.start() + m.start() for pm in pair.finditer(text) for m in mark.finditer(pm.group(0))}
+        found += [f'{file}: a site mark with no pair or a name not in a-z, 0-9 and "-": {m.group(0)}'
+                  for m in mark.finditer(text) if m.start() not in used]
+    return found
+
+
+def build_one(kinds, name, markdown, indent):
+    """Return one block's HTML from its builder; a project builder's own error becomes a finding.
+
+    Args:
+        kinds: the section builders (builders).
+        name: the section name.
+        markdown: the README section.
+        indent: the indent of the block's start mark.
+    Returns:
+        The HTML text.
+    Raises:
+        ValueError: on any error of the builder, with its name and cause.
+    """
+    try:
+        body = kinds[name](markdown, indent)
+    except ValueError:
+        raise
+    except Exception as err:  # a project builder with a wrong signature or a bug: a finding, not a traceback
+        raise ValueError(f'site:{name}: the builder failed: {type(err).__name__}: {err}') from err
+    if not isinstance(body, str):
+        raise ValueError(f'site:{name}: the builder must return text, not {type(body).__name__}')
+    return body
+
+
+def local_findings(local, root, readme):
+    """Return the findings of the project's extra_checks; a wrong result or an error is a finding too.
+
+    Args:
+        local: the project's module (load_local), or None.
+        root: the repository folder.
+        readme: the text of README.md.
+    Returns:
+        A list of finding lines.
+    """
+    check = getattr(local, 'extra_checks', None)
+    if check is None:
+        return []
+    try:
+        result = check(root, readme)
+    except Exception as err:  # a project's own code: a finding with its cause
+        return [f'{LOCAL}: extra_checks failed: {type(err).__name__}: {err}']
+    if result is None:
+        return []
+    if not isinstance(result, (list, tuple)) or not all(isinstance(line, str) for line in result):
+        return [f'{LOCAL}: extra_checks must return a list of text lines, not {type(result).__name__}']
+    return list(result)
+
+
 def render(readme, site, kinds):
     """Return the site page with every shared block rebuilt from the README.
 
@@ -285,7 +353,7 @@ def render(readme, site, kinds):
         """Return one generated block with its body built from its README section."""
         indent, name = match.group(1), match.group(2)
         start, end = match.group(0).split('\n', 1)[0], match.group(0).rsplit('\n', 1)[1]
-        return f'{start}\n{kinds[name](sections[name], indent)}\n{end}'
+        return f'{start}\n{build_one(kinds, name, sections[name], indent)}\n{end}'
     return BLOCK.sub(rebuild, site)
 
 
@@ -302,11 +370,14 @@ def run(root, write):
         readme = (root / README).read_text(encoding='utf-8')
         site_path = root / SITE
         site = site_path.read_text(encoding='utf-8') if site_path.is_file() else ''
-        if not SECTION.search(readme) and not BLOCK.search(site):
+        if not README_MARK.search(readme) and not SITE_MARK.search(site):
             return [], False
+        stray = stray_marks(readme, site)
+        if stray:
+            return stray, True
         local = load_local(root)
         fresh = render(readme, site, builders(local))
-        findings = list(getattr(local, 'extra_checks', lambda _root, _readme: [])(root, readme) or [])
+        findings = local_findings(local, root, readme)
     except (OSError, ValueError) as err:
         return [str(err)], True
     if write and fresh != site:
@@ -334,6 +405,7 @@ UNSUPPORTED = 'unsupported Markdown'
 BLOCKED_LINE = 'is not supported in a site section'
 TEST_LOCAL = ('from pathlib import Path\nBUILDERS = {"note": lambda md, indent: indent + "<aside>" + md + "</aside>"}\n'
               'def extra_checks(root, readme):\n    return [] if "Ask" in readme else ["local: Ask is missing"]\n')
+EMPTY_PAGE = '<main></main>\n'
 NOTE = '<!-- site:note -->\nplain\n<!-- /site:note -->\n'
 TEST_CASES = (
     ('a fresh build passes', None, TEST_PAGE, None, [], True),
@@ -377,7 +449,18 @@ TEST_CASES = (
       '2026. That year.'), TEST_PAGE, None, [], True),
     ('a quote and a GitHub alert box are read as their plain text',
      ('First line.\nAsk & learn.', '> [!NOTE]\n> First line.\n> Ask & learn.'), TEST_PAGE, None, [], True),
-    ('nothing shared: a skip, not a failure', ('<!-- site:', '<!-- nosite:'), '<main></main>\n', None, [], True))
+    ('nothing shared: a skip, not a failure', ('site:', 'x-site:'), EMPTY_PAGE, None, [], True),
+    ('a README end mark with a typo fails', ('<!-- /site:intro -->', '<!-- /site:intr -->'), mark('key-facts'), None,
+     ['a site mark with no pair'], True),
+    ('a name in capitals fails', ('site:intro -->\nA', 'site:Intro -->\nA'), mark('key-facts'), None, ['a site mark with no pair'], True),
+    ('a page start mark with no end mark fails', None, TEST_PAGE + mark('gone').split('\n')[0] + '\n', None,
+     ['a site mark with no pair'], True),
+    ('an empty block body is rebuilt', None, '<main>\n' + mark('intro', '').replace('-->\n\n', '-->\n') + mark('key-facts')
+     + '</main>\n', None, [], True),
+    ('a local builder with a wrong signature is a finding', ('<!-- site:intro -->', NOTE + '<!-- site:intro -->'),
+     TEST_PAGE + mark('note'), 'BUILDERS = {"note": lambda md: md}\n', ['the builder failed: TypeError'], True),
+    ('extra_checks that return text, not a list, is one finding', None, TEST_PAGE,
+     'def extra_checks(root, readme):\n    return "bad"\n', ['must return a list of text lines'], True))
 # What the fresh build must write: the intro, a key fact without its source, two lines joined, an escaped "&", the
 # block's indent kept.
 TEST_BUILT = ('    <p>A safe_tool &amp; more.</p>', '      <dt>Read-only:</dt><dd>it changes nothing.</dd>',
@@ -404,12 +487,15 @@ def test_case(edit, page, local, expect, write):
         (root / SITE).write_text(page, encoding='utf-8')
         if local is not None:
             (root / LOCAL).write_text(local, encoding='utf-8')
-        found, _shared = run(root, write)
+        found, shared = run(root, write)
+        if page is EMPTY_PAGE:  # the "nothing shared" case: it must skip, not pass a check
+            return not found and not shared, found
         if expect:
             return bool(found) and all(any(word in line for line in found) for word in expect), found
         built = (root / SITE).read_text(encoding='utf-8')
         whole = page is TEST_PAGE and local is None and edit is None
-        return not found and (not whole or all(part in built for part in TEST_BUILT)) and 'source:' not in built, found
+        aside = local != TEST_LOCAL or '    <aside>plain</aside>' in built  # the local builder's block was written
+        return not found and aside and (not whole or all(part in built for part in TEST_BUILT)) and 'source:' not in built, found
 
 
 def self_test():
