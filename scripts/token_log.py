@@ -211,7 +211,7 @@ def tokens(v):
     """
     try:
         return int(v or 0)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return 0
 
 

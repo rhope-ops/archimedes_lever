@@ -411,7 +411,8 @@ def case_agent_type_bad_input(fx):
            result("2026-01-02T02:00:05Z", ["q"], "tC"),  # a list agentId
            asst(["x"], "2026-01-02T02:00:06Z"),  # a list message id: no row
            asst("pD", "2026-01-02T02:00:07Z"),
-           asst("pE", "2026-01-02T02:00:08Z", usage=dict(u, input_tokens="abc")))  # a non-number count
+           asst("pE", "2026-01-02T02:00:08Z", usage=dict(u, input_tokens="abc")),  # a non-number count
+           asst("pF", "2026-01-02T02:00:09Z", usage=dict(u, input_tokens=float("inf"))))  # an infinite count
     d = os.path.join(root, "proj", "s4", "subagents")
     os.makedirs(d)
     append(os.path.join(d, "agent-abA.jsonl"), msg("saA", "2026-01-02T02:00:10Z", side=True))
@@ -421,8 +422,9 @@ def case_agent_type_bad_input(fx):
     fx.expect("bad fields: each row still pushes; a dict type and an unmapped id say unknown",
               [(x["message_id"], x["agent"]) for x in got],
               [("pA", "main"), ("pB", "main"), ("pC", "main"), ("pD", "main"), ("pE", "main"),
-               ("saA", "unknown"), ("saB", "unknown")])
-    fx.expect("non-number count: counted as 0", [x["input_tokens"] for x in got if x["message_id"] == "pE"], ["0"])
+               ("pF", "main"), ("saA", "unknown"), ("saB", "unknown")])
+    fx.expect("non-number and infinite counts: counted as 0",
+              [x["input_tokens"] for x in got if x["message_id"] in ("pE", "pF")], ["0", "0"])
 
 
 def run(tl):
