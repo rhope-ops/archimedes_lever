@@ -4,6 +4,8 @@ The kit's own handoff (AGENTS.md "Handoff"). Kit only: first use deletes it in a
 
 Updated: 2026-11-20 20:45. Done: kit 6.2.1, content check speed (PR 94 merged with the owner's approval, ebfdd0a; session "Kit · Content check speed · 2026-11-20"; evidence docs/reviews/2026-11-20-content-check-speed.md); each project gets it in its next kit sync. Before: 2026-11-20 10:35, "Kit · Skill use analysis · 2026-11-20". Fleet hub plan: "Kit · Fleet decision hub · 2026-11-19".
 
+In work 2026-11-21: kit 7.0.0, `scripts/build_site.py` (README is the site source), step 1 of the RADE plan docs/reviews/2026-11-21-plan-readme-rework.md in rhope-ops/RADE.
+
 ## State
 
 - main: kit 6.0.0 (43ad952, PR 82: skill use; before: 5.0.1, 59528df, PRs 78 and 79). Tags (feature releases; the owner makes them): v2.0.0 (7b80101), v3.0.0 (67e7766), v3.1.0 (88185f0); v3.2.0 and v4.0.0 not made yet. Fleet page: https://claude.ai/artifact/AWtpGxEqCWrjrPa1Afe7qW (private; the kit owner updates its rows; ported projects add `items` and fleet fields by harvest; choices in `choices`). Its "Waiting for you" list (2026-11-19) reads the `needs` field (`[{text, url}]`) of `meta/kit` and of each `repos` row: the session that closes or adds an owner action updates that field.
