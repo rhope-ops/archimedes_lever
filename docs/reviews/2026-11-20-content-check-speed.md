@@ -1,4 +1,4 @@
-# Content check speed (kit 6.1.2)
+# Content check speed (kit 6.2.1)
 
 Date: 2026-11-20, America/Chicago. Request: the owner, from icf-source (the content check step took about 130 s of the 130-145 s full lane; the pre-push scan about 75 s). Rule: same findings, no skip, no raised limit, no weaker rule.
 
