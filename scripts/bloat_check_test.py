@@ -257,7 +257,19 @@ def readme_cases(bloat, ro, caps):
     (ro / "README.md").write_text("# P\n\n[![b](x)](y)\n<p>x</p>\n\ntrack the widgets\nof a unit, with tools.\n\nMore.\n")
     rows, problems = bloat.rules_report(ro, caps)
     assert not problems and not any("does not open with" in r for r in rows), "an opening that starts with the purpose passes"
+    (ro / "README.md").write_text("\ufeff---\nt: x\n---\nTitle\n=====\n\n> Track the **widgets** of a unit.\n")
+    assert not any("does not open with" in r for r in bloat.rules_report(ro, caps)[0]), "BOM, front matter, setext, quote"
+    (ro / "AGENTS.md").write_text("# P: agent instructions\n\n- Purpose: Track\n\n## A\n\n- Rule.\n")
+    (ro / "README.md").write_text("# P\n\nTracker for nothing.\n")
+    assert any("does not open with" in r for r in bloat.rules_report(ro, caps)[0]), "the purpose matches whole words only"
     (ro / "README.md").unlink()
+    (ro / "AGENTS.md").write_text("# P: agent instructions\n\n- Purpose:\n- Owner: me\n\n## A\n\n- Rule.\n")
+    assert bloat.rules_report(ro, caps)[1] == [], "an empty Purpose does not take the next line"
+    (ro / "AGENTS.md").write_text("# P: agent instructions\n\n- Purpose: Track things.\n\n## A\n\n- Rule.\n")
+    (ro / "readme.md").write_text("# P\n\nTrack things.\n")
+    rows, problems = bloat.rules_report(ro, caps)
+    assert not problems and not any("does not open" in r for r in rows), "a lower-case readme.md counts"
+    (ro / "readme.md").unlink()
 
 
 def third_party_cases(bloat, ro, caps):

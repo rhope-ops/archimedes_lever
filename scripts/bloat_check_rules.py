@@ -293,16 +293,28 @@ def changed_rules(root, text, parts, gate):
 
 
 def readme_opening(text):
-    """The first paragraph of a README text: the first block of lines that are not a heading, an image, a badge or
-    an HTML line, joined by spaces; "" when there is none."""
+    """The first paragraph of a README text, for the AGENTS.md "README" check.
+
+    Skipped before it: YAML front matter, headings (ATX and setext), images, badges, HTML lines and blank lines. A
+    blockquote marker is taken off. The lines of the paragraph are joined by spaces.
+
+    Args:
+        text: the README text (a leading BOM is ignored).
+
+    Returns:
+        The first paragraph, or "" when there is none.
+    """
+    lines = text.lstrip("\ufeff").splitlines()
+    if lines and lines[0].strip() == "---":  # YAML front matter: skip to its closing line
+        close = next((i for i, x in enumerate(lines[1:], 1) if x.strip() in ("---", "...")), None)
+        lines = lines[close + 1:] if close else lines
     para = []
-    for line in text.splitlines():
-        s = line.strip()
-        if not s:
-            if para:
-                break
+    for line in lines:
+        s = re.sub(r"^(>\s?)+", "", line.strip()).strip()
+        if para and re.fullmatch(r"=+|-+", s):  # setext underline: the paragraph so far was a heading
+            para = []
             continue
-        if s.startswith(("#", "![", "[![", "<")):
+        if not s or s.startswith(("#", "![", "[![", "<")):
             if para:
                 break
             continue
@@ -310,10 +322,17 @@ def readme_opening(text):
     return " ".join(para)
 
 
+def plain_words(s):
+    """Lower-case s with Markdown emphasis and code marks removed, spaces collapsed and a trailing period dropped."""
+    return " ".join(re.sub(r"[*_`]", "", s).lower().split()).rstrip(".")
+
+
 def readme_report(root, text):
-    """The AGENTS.md "README" default: README.md exists and opens with the "- Purpose:" value of AGENTS.md. Checked
-    only when that value is filled in (the kit template's {{PURPOSE}} is not). A missing README.md is a problem; an
-    opening that does not start with the purpose is a WARN line (the rule is enforced in part).
+    """The AGENTS.md "README" default: README.md exists and opens with the "- Purpose:" value of AGENTS.md.
+
+    Checked only when that value is filled in (empty, or the kit template's {{PURPOSE}}, is not). A missing README.md
+    (any letter case) is a problem; an opening that does not start with the purpose, as whole words, is a WARN line
+    (the rule is enforced in part).
 
     Args:
         root: the repo root (a Path).
@@ -322,18 +341,15 @@ def readme_report(root, text):
     Returns:
         (lines to print, problems).
     """
-    m = re.search(r"^- Purpose:\s*(.+?)\s*$", text, re.M)
+    m = re.search(r"^- Purpose:[ \t]*(\S.*?)[ \t]*$", text, re.M)
     if not m or "{{" in m.group(1):
         return [], []
-    readme = root / "README.md"
-    if not readme.is_file():
+    readme = next((f for f in sorted(root.iterdir()) if f.is_file() and f.name.lower() == "readme.md"), None)
+    if readme is None:
         return [], ["no README.md: it opens with the AGENTS.md \"Purpose\" line (AGENTS.md \"README\")"]
-
-    def norm(s):
-        return " ".join(s.lower().split()).rstrip(".")
-
-    if not norm(readme_opening(readme.read_text(encoding="utf-8", errors="replace"))).startswith(norm(m.group(1))):
-        return ["WARN  README.md does not open with the AGENTS.md \"Purpose\" line; update it (AGENTS.md \"README\")"], []
+    want, got = plain_words(m.group(1)), plain_words(readme_opening(readme.read_text(encoding="utf-8", errors="replace")))
+    if not (got.startswith(want) and (len(got) == len(want) or not got[len(want)].isalnum())):
+        return [f"WARN  {readme.name} does not open with the AGENTS.md \"Purpose\" line; update it (AGENTS.md \"README\")"], []
     return [], []
 
 
