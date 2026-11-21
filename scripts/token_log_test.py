@@ -4,8 +4,8 @@ case stays under the 60-line cap of docs/code-standard.md C3).
 
 It builds a bare origin and clones in a temporary folder (no network) and runs the Stop hook on sample session logs:
 one row per API call, turns, subagent rows, a second session, a blocking pre-push hook, a lost local folder, a shallow
-clone, retries, coalescing, FETCH_HEAD, a push with no answer, a push that waits for the lock, bad input and
-TOKEN_LOG=off.
+clone, retries, coalescing, FETCH_HEAD, a push with no answer, a push that waits for the lock, bad input,
+TOKEN_LOG=off, the agent and agent_id columns, the report and the self-update.
 Input: the token_log module. Output: one PASS or FAIL line per case and a "TOKEN LOG SELF-TEST" total line; returns
 the exit code (0 pass, 1 fail). Needs git.
 Network: none.
@@ -373,6 +373,8 @@ def case_agent_type(fx):
     got = fx.remote_rows("s3") or []
     fx.expect("agent column: main row, matched subagent type, unmatched subagent",
               [(x["message_id"], x["agent"]) for x in got], [("p1", "main"), ("sa2", "scout"), ("sa3", "unknown")])
+    fx.expect("agent_id column: empty for main, the subagent's id from its log file name",
+              [x["agent_id"] for x in got], ["", "ab1", "zz9"])
 
 
 def case_agent_type_bad_input(fx):
@@ -427,6 +429,67 @@ def case_agent_type_bad_input(fx):
               [x["input_tokens"] for x in got if x["message_id"] in ("pE", "pF")], ["0", "0"])
 
 
+def case_report(fx):
+    """Price weights (longest prefix, cache write 1.25 x input), weeks in America/Chicago, tasks, unpriced models.
+
+    Args:
+        fx: the shared test fixture (Fixture).
+    """
+    tl = fx.tl
+    row = {"model": "claude-opus-5-5", "input_tokens": "1000000", "cache_creation_input_tokens": "1000000",
+           "cache_read_input_tokens": "1000000", "output_tokens": "1000000"}
+    fx.expect("row cost: opus-5-5 is 4 + 5 + 0.20 + 20", round(tl.row_cost(row), 2), 29.2)
+    fx.expect("row cost: unknown model is None", tl.row_cost({**row, "model": "claude-test"}), None)
+    fx.expect("week: Sunday 23:00 Chicago is the week of the Monday before",
+              tl.week_of("2026-11-23T05:00:00Z"), "2026-11-16")
+    fx.expect("week: bad timestamp", tl.week_of("not a time"), "unknown")
+    rows = [{**row, "source": "main", "agent": "main", "timestamp": "2026-11-17T12:00:00Z"},
+            {**row, "source": "subagent", "agent": "scout", "agent_id": "a1", "model": "claude-haiku-5-5",
+             "timestamp": "2026-11-17T12:00:00Z"},
+            {**row, "source": "subagent", "agent": "scout", "agent_id": "a1", "model": "claude-haiku-5-5",
+             "timestamp": "2026-11-17T12:00:01Z"},
+            {**row, "source": "main", "model": "claude-test", "timestamp": ""}]
+    text = tl.report(rows)
+    fx.expect("report: week line with main and subagent cost",
+              "2026-11-16                          3   29.20        1.47    30.67" in text, True)
+    fx.expect("report: one scout task of 2 calls", any(l.split()[:3] == ["scout", "1", "2.0"] for l in text.splitlines()),
+              True)
+    fx.expect("report: unpriced model listed", text.splitlines()[-1], "no price (counted as 0): claude-test")
+    old = {k: v for k, v in rows[0].items() if k not in ("agent", "agent_id")}  # a row from before the columns
+    merged = list(csv.DictReader(io.StringIO(tl.to_csv({"m1": {**old, "message_id": "m1"}}))))
+    fx.expect("old row without agent and agent_id: merged with empty values",
+              (merged[0]["agent"], merged[0]["agent_id"]), ("", ""))
+    fx.expect("old row: in the report", "29.20" in tl.report(merged), True)
+
+
+def case_self_update(fx):
+    """Self-update: a newer copy replaces the file; once a day; a copy that does not compile is not used.
+
+    Args:
+        fx: the shared test fixture (Fixture).
+    """
+    tl, root = fx.tl, fx.root
+    kit, target = os.path.join(root, "kit"), os.path.join(root, "installed", "token_log.py")
+    os.makedirs(os.path.join(kit, "scripts"))
+    os.makedirs(os.path.dirname(target))
+    append(target, "old = 1")
+    append(os.path.join(kit, "scripts", "token_log.py"), "import sys", "sys.exit(0)  # new")
+    fx.sh(root, "git", "init", "-q", "-b", "main", kit)
+    fx.sh(kit, "git", "add", ".")
+    fx.sh(kit, "git", "commit", "-q", "-m", "kit")
+    os.environ["TOKEN_LOG_HOME"] = os.path.join(root, "update-home")
+    fx.expect("self-update: newer copy replaces the file", tl.self_update(target, kit, now=1e9), "updated")
+    fx.expect("self-update: file has the new text", open(target).read(), "import sys\nsys.exit(0)  # new\n")
+    fx.expect("self-update: second check the same day is skipped", tl.self_update(target, kit, now=1e9 + 60), "skipped")
+    fx.expect("self-update: next day, same copy", tl.self_update(target, kit, now=1e9 + 90000), "up to date")
+    with open(os.path.join(kit, "scripts", "token_log.py"), "w") as f:
+        f.write("import sys\nsys.exit(1)  # compiles, fails its self-test\n")
+    fx.sh(kit, "git", "commit", "-q", "-am", "fails")
+    fx.expect("self-update: a copy whose self-test fails is not used",
+              tl.self_update(target, kit, now=1e9 + 200000).startswith("not updated: self-test failed"), True)
+    fx.expect("self-update: file kept", open(target).read(), "import sys\nsys.exit(0)  # new\n")
+
+
 def run(tl):
     """Run every case in order on one fixture; print the total line and return the exit code.
 
@@ -441,7 +504,7 @@ def run(tl):
     try:
         for case in (case_first_turn, case_second_turn, case_blocked_and_shallow, case_retry, case_coalesce,
                      case_fetch_head_and_timeout, case_waiting_push, case_bad_input_and_off, case_agent_type,
-                     case_agent_type_bad_input):
+                     case_agent_type_bad_input, case_report, case_self_update):
             case(fx)
     finally:
         tl.push = fx.real_push
