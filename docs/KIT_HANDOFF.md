@@ -2,9 +2,7 @@
 
 The kit's own handoff (AGENTS.md "Handoff"). Kit only: first use deletes it in a project, which uses docs/NEXT_PROMPT.md. Keep it at 40 lines or fewer; evidence goes in docs/reviews/. Times are America/Chicago.
 
-Updated: 2026-11-20 20:45. Done: kit 6.2.1, content check speed (PR 94 merged with the owner's approval, ebfdd0a; session "Kit · Content check speed · 2026-11-20"; evidence docs/reviews/2026-11-20-content-check-speed.md); each project gets it in its next kit sync. Before: 2026-11-20 10:35, "Kit · Skill use analysis · 2026-11-20". Fleet hub plan: "Kit · Fleet decision hub · 2026-11-19".
-
-In work 2026-11-21: kit 7.0.0, `scripts/build_site.py` (README is the site source), step 1 of the RADE plan docs/reviews/2026-11-21-plan-readme-rework.md in rhope-ops/RADE.
+Updated: 2026-11-21. In work: kit 7.0.0, `scripts/build_site.py` (step 1 of rhope-ops/RADE docs/reviews/2026-11-21-plan-readme-rework.md). Before: 2026-11-20 20:45. Done: kit 6.2.1, content check speed (PR 94 merged with the owner's approval, ebfdd0a; session "Kit · Content check speed · 2026-11-20"; evidence docs/reviews/2026-11-20-content-check-speed.md); each project gets it in its next kit sync. Before: 2026-11-20 10:35, "Kit · Skill use analysis · 2026-11-20". Fleet hub plan: "Kit · Fleet decision hub · 2026-11-19".
 
 ## State
 
