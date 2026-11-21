@@ -159,7 +159,7 @@ def read_log(path, source):
             if d.get("type") != "assistant" or not isinstance(m, dict):
                 continue
             mid, u = m.get("id"), m.get("usage")
-            if mid and isinstance(u, dict):
+            if isinstance(mid, str) and mid and isinstance(u, dict):
                 src = "subagent" if d.get("isSidechain") else source
                 ts = msgs[mid][0] if mid in msgs else d.get("timestamp") or ""  # the first block's time
                 msgs[mid] = (ts, m.get("model") or "unknown", u, src)  # the last block's usage (final counts)
@@ -201,6 +201,20 @@ def agent_types(tpath):
     return types
 
 
+def tokens(v):
+    """A token count as an int; a value that is not a whole number counts as 0 (the row is kept).
+
+    Args:
+        v: the usage value from the log.
+    Returns:
+        The count, or 0 when v is not an int or a text of digits.
+    """
+    try:
+        return int(v or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
 def log_rows(sid, tpath, repo):
     """One row per API call in the session log and its subagent logs.
 
@@ -226,7 +240,7 @@ def log_rows(sid, tpath, repo):
     for mid, (ts, model, u, src) in msgs.items():
         rows[mid] = {"message_id": mid, "timestamp": ts, "turn": bisect.bisect_right(prompts, ts) if ts else len(prompts),
                      "session_id": sid, "repo": repo, "model": model, "source": src, "agent": agent[mid],
-                     **{k: int(u.get(k) or 0) for k in USAGE_KEYS}}
+                     **{k: tokens(u.get(k)) for k in USAGE_KEYS}}
     return rows
 
 

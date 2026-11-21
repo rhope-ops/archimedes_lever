@@ -376,30 +376,53 @@ def case_agent_type(fx):
 
 
 def case_agent_type_bad_input(fx):
-    """Non-text ids and types do not stop the hook: the row says "unknown" and the rows still push.
+    """Each bad field alone: a non-text type, an unmapped id, a non-text id and a non-number count. Each row still
+    pushes; the bad type and the unmapped id say "unknown".
 
     Args:
         fx: the shared test fixture (Fixture).
     """
     root, work, logs = fx.root, fx.work, fx.logs
     t4 = os.path.join(root, "proj", "s4.jsonl")
-    u = json.loads(msg("p4", "2026-01-02T02:00:00Z"))["message"]["usage"]
-    call = {"type": "assistant", "timestamp": "2026-01-02T02:00:00Z",
-            "message": {"id": "p4", "model": "claude-test", "usage": u, "content": [
-                {"type": "tool_use", "id": ["x"], "name": "Agent", "input": {"subagent_type": ["a"]}},
-                {"type": "tool_use", "id": "tu4", "name": "Task", "input": {}}]}}
-    bad = {"type": "user", "timestamp": "2026-01-02T02:00:01Z", "toolUseResult": {"agentId": ["q"]},
-           "message": {"content": [{"type": "tool_result", "tool_use_id": {"a": 1}, "content": "x"}]}}
-    done = {"type": "user", "timestamp": "2026-01-02T02:00:02Z", "toolUseResult": {"agentId": "ab4"},
-            "message": {"content": [{"type": "tool_result", "tool_use_id": "tu4", "content": "x"}]}}
-    append(t4, prompt("2026-01-02T01:59:00Z"), json.dumps(call), json.dumps(bad), json.dumps(done))
-    os.makedirs(os.path.join(root, "proj", "s4", "subagents"))
-    append(os.path.join(root, "proj", "s4", "subagents", "agent-ab4.jsonl"),
-           msg("sa4", "2026-01-02T02:00:03Z", side=True))
+    u = json.loads(msg("p", "2026-01-02T02:00:00Z"))["message"]["usage"]
+
+    def asst(mid, ts, content=None, usage=u):
+        """One assistant log line with this id, time, content and usage."""
+        m = {"id": mid, "model": "claude-test", "usage": usage}
+        if content is not None:
+            m["content"] = content
+        return json.dumps({"type": "assistant", "timestamp": ts, "message": m})
+
+    def use(tid, name, sub):
+        """One tool_use block: an Agent or Task call with a subagent type."""
+        return {"type": "tool_use", "id": tid, "name": name, "input": {"subagent_type": sub}}
+
+    def result(ts, agent, tool_use_id):
+        """One tool_result line with the agent id and the tool_use id it answers."""
+        return json.dumps({"type": "user", "timestamp": ts, "toolUseResult": {"agentId": agent},
+                           "message": {"content": [{"type": "tool_result", "tool_use_id": tool_use_id, "content": "x"}]}})
+
+    append(t4, prompt("2026-01-02T01:59:00Z"),
+           asst("pA", "2026-01-02T02:00:00Z", [use("tA", "Task", {"a": 1})]),  # a dict type
+           result("2026-01-02T02:00:01Z", "abA", "tA"),
+           asst("pB", "2026-01-02T02:00:02Z", [use("tB", "Agent", "scout")]),
+           result("2026-01-02T02:00:03Z", "abB", {"a": 1}),  # a dict tool_use_id: abB stays unmapped
+           asst("pC", "2026-01-02T02:00:04Z", [use("tC", "Agent", "scout")]),
+           result("2026-01-02T02:00:05Z", ["q"], "tC"),  # a list agentId
+           asst(["x"], "2026-01-02T02:00:06Z"),  # a list message id: no row
+           asst("pD", "2026-01-02T02:00:07Z"),
+           asst("pE", "2026-01-02T02:00:08Z", usage=dict(u, input_tokens="abc")))  # a non-number count
+    d = os.path.join(root, "proj", "s4", "subagents")
+    os.makedirs(d)
+    append(os.path.join(d, "agent-abA.jsonl"), msg("saA", "2026-01-02T02:00:10Z", side=True))
+    append(os.path.join(d, "agent-abB.jsonl"), msg("saB", "2026-01-02T02:00:11Z", side=True))
     fx.hook(work, "s4", t4, logs)
     got = fx.remote_rows("s4") or []
-    fx.expect("bad ids and types: rows still push; a Task with no type says unknown",
-              [(x["message_id"], x["agent"]) for x in got], [("p4", "main"), ("sa4", "unknown")])
+    fx.expect("bad fields: each row still pushes; a dict type and an unmapped id say unknown",
+              [(x["message_id"], x["agent"]) for x in got],
+              [("pA", "main"), ("pB", "main"), ("pC", "main"), ("pD", "main"), ("pE", "main"),
+               ("saA", "unknown"), ("saB", "unknown")])
+    fx.expect("non-number count: counted as 0", [x["input_tokens"] for x in got if x["message_id"] == "pE"], ["0"])
 
 
 def run(tl):
