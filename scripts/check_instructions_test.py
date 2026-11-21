@@ -77,6 +77,14 @@ def test_steps():
            "   You see the button **Sign in** turn blue. Go on.\n2. Click **Sign in**. You see the start page. The task is complete.\n"
     assert findings(lead) == [], findings(lead)
     assert kinds("1. Click **A** and click **B**. You see C. Go on.\n2. Click **D**. You see E. Go on.\n") == ["actions"]
+    for seen in ("the table **Totals**", "the list of files", "the guide **Start**", "the **Backup** section"):
+        assert kinds(step(f"Click **Report**. You see {seen}. Go on.")) == [], seen
+    assert kinds(step("Click **Report**. You see 5 minutes in May. Go on.")) == []
+    bad_lead = "1. Open the app and click **Settings**, then do these actions:\n   1. Type `a` in **A**.\n" \
+               "   2. Type `b` in **B**.\n   You see **Saved**. Go on.\n2. Click **D**. You see E. Go on.\n"
+    assert kinds(bad_lead) == ["actions"], findings(bad_lead)
+    tabbed = lead.replace("   1.", "\t1.").replace("   2.", "\t2.").replace("   You", "\tYou")
+    assert findings(tabbed) == [], findings(tabbed)
 
 
 def test_html_and_globs():
@@ -84,6 +92,9 @@ def test_html_and_globs():
     page = ("<ol><li>Click <b>Restore</b>. You see the card <code>Restore code</code>. Go on.</li>"
             "<li>Read <a href='other.html'>the notes</a>. You see the notes. Go on.</li></ol>")
     assert kinds(page, "page.html") == ["pointer"], findings(page, "page.html")
+    mixed = ("<ol><li>Click <b>A</b> and click <b>B</b>. You see C. Go on.<ul><li>a note</li></ul>"
+             "<li>Click <b>D</b>. You see E. Go on.</ol>")
+    assert kinds(mixed, "page.html") == ["actions"], "a <ul> is no lead-in, and an <li> with no end tag ends at the next"
     rx = ci.glob_regex
     assert rx("docs/**/*.md").match("docs/a/b/go.md") and rx("docs/**/*.md").match("docs/go.md")
     assert not rx("*.md").match("docs/go.md") and rx("**/README.md").match("README.md")
@@ -179,6 +190,9 @@ def test_hook(root):
     log.write_text(json.dumps(use) + "\n" + json.dumps({"type": "system", "subtype": "compact_boundary"}) + "\n")
     assert hook(root, "go.md", str(log)) == 2, "a compaction needs a new load"
     assert hook(root, "go.md", "", "s2") == 2 and hook(root, "go.md", "", "s2") == 0, "no transcript: the first write only"
+    (root / ".check").write_text("audit-instructions:\n")
+    assert hook(root, "src.py", str(log)) == 0, "a broken setting line does not block every write"
+    (root / ".check").write_text("audit-instructions: go.md\n")
 
 
 def run():

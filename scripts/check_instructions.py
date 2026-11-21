@@ -30,7 +30,8 @@ Usage:   python3 scripts/check_instructions.py [FILE ...]   check the files (def
          python3 scripts/check_instructions.py --test       self-test (cases: scripts/check_instructions_test.py)
 Exit 0 and "INSTRUCTIONS PASS" when there is no finding; 1 with the findings; 2 from --hook to block.
 Network: none (it runs local git read commands).
-Writes:  none; --hook without a readable transcript writes one marker file per session in .git/.
+Writes:  none; --hook without a readable transcript writes one marker file per session in .git/ (then it blocks
+         only the first write of that session: a host with no transcript gets a reminder, not a proof).
 Credentials: none.
 """
 import argparse
@@ -38,6 +39,7 @@ import html
 import html.parser
 import importlib.util
 import json
+import os
 import re
 import subprocess
 import sys
@@ -64,14 +66,14 @@ VAGUE = [r"\bappropriate(?:ly)?\b", r"\bas (?:needed|necessary|required|applicab
          r"\bwhere possible\b", r"\bproperly\b", r"\bcorrectly\b", r"\bsuitable\b", r"\brelevant\b", r"\bvarious\b",
          r"\bseveral\b", r"\bsome\b", r"\ba few\b", r"\ba while\b", r"\bsoon\b", r"\bshortly\b", r"\bquickly\b",
          r"\bsimply\b", r"\bjust\b", r"\beasily\b", r"\betc\b", r"\band so on\b", r"\bsomewhere\b", r"\bsomething\b",
-         r"\bstuff\b", r"\bthings?\b", r"\bshould\b", r"\bmight\b", r"\bmay\b", r"\bmaybe\b", r"\bperhaps\b",
+         r"\bstuff\b", r"\bthings?\b", r"\bshould\b", r"\bmight\b", r"\bmaybe\b", r"\bperhaps\b",
          r"\bprobably\b", r"\busually\b", r"\bnormally\b", r"\btypically\b", r"\blikely\b", r"\btry to\b"]
-POINTERS = [r"\bsee (?:step|section|above|below|page|the (?:previous|section|file|table|list|readme|docs?|guide))\b",
+POINTERS = [r"\bsee (?:step|above|below|the (?:previous|next) (?:step|section|page))\b", r"\bsee (?:the )?(?:section|chapter|readme|docs?)\b",
             r"\bsteps? \d+\b", r"\b(?:as|shown|described|listed|mentioned|explained|given) (?:above|below|earlier|before|previously)\b",
-            r"\b(?:previous|preceding|earlier) (?:steps?|sections?|instructions?|list)\b", r"\bsections?\b",
+            r"\b(?:previous|preceding|earlier|next|following|this|that|other) (?:steps?|sections?|instructions?|chapters?)\b", r"\bsection \d",
             r"\bgo back to\b", r"\brepeat (?:the |these |this )?steps?\b", r"\b[\w./-]+\.md\b"]
 LOCAL_LINK = re.compile(r"\]\((?!https?://|mailto:)[^)\s]+\)")
-WAIT_WORDS = re.compile(r"\b(?:wait|waiting|loading|takes|minutes?|seconds?|restarts?|restarting|reboots?|processing|"
+WAIT_WORDS = re.compile(r"\b(?:wait|waiting|loading|takes|restarts?|restarting|reboots?|processing|"
                         r"syncing|in progress|spinner|progress bar)\b")
 WAIT_STATE = re.compile(r"\bwait until\b|\bwait for\b[^.]*\b(?:to|until)\b|\bdo not [^.]*\buntil\b|\buntil you see\b")
 NEXT_STATE = re.compile(r"\byou (?:now |will )?(?:see|get|hear)\b|\b(?:shows|opens|appears|closes|changes|turns|loads|"
@@ -84,6 +86,7 @@ WORD = re.compile(r"[A-Za-z0-9][A-Za-z0-9'’-]*")
 CLAUSES = re.compile(r"\s*[,;]?\s*(?:and\s+)?then\s+|;\s*|,\s+and\s+|\s+and\s+", re.IGNORECASE)
 SENTENCES = re.compile(r"(?<=[.!?])\s+")
 TOKEN = " X "  # what code, bold and quoted text become: one word, no verb, no vague word
+LEAD_SEP = "\n\x1e\n"  # between a lead-in's own text and the text of its actions (procedure_steps)
 
 
 def glob_regex(pattern):
@@ -176,7 +179,7 @@ def markdown_items(text):
         Items as dicts: line (1-based), indent, parts (text pieces), parent (index or None), kids (count).
     """
     items, stack, fenced, blank = [], [], False, False
-    for n, line in enumerate(text.splitlines(), 1):
+    for n, line in enumerate(text.expandtabs(4).splitlines(), 1):
         if FENCE.match(line):
             fenced = not fenced
             if stack:
@@ -225,9 +228,10 @@ class _ListParser(html.parser.HTMLParser):
             tag: the tag name.
             attrs: the attributes, as (name, value) pairs.
         """
-        if tag == "ol":
-            self.ols.append(len(self.stack))
-        elif tag == "li" and self.ols:
+        if tag in ("ol", "ul"):
+            self.ols.append((tag, len(self.stack)))
+        elif tag == "li" and self.ols and self.ols[-1][0] == "ol":
+            del self.stack[self.ols[-1][1]:]  # an <li> with no end tag ends here
             parent = self.stack[-1] if self.stack else None
             if parent is not None:
                 self.items[parent]["kids"] += 1
@@ -247,9 +251,9 @@ class _ListParser(html.parser.HTMLParser):
         Args:
             tag: the tag name.
         """
-        if tag == "ol" and self.ols:
-            del self.stack[self.ols.pop():]
-        elif tag == "li" and self.stack:
+        if tag in ("ol", "ul") and self.ols:
+            del self.stack[self.ols.pop()[1]:]
+        elif tag == "li" and self.stack and self.ols and self.ols[-1][0] == "ol" and len(self.stack) > self.ols[-1][1]:
             self.stack.pop()
         elif tag in self.TOKEN_TAGS and self.token:
             self.token -= 1
@@ -305,7 +309,7 @@ def procedure_steps(items, verbs=ACTION_VERBS):
         kind = "lead" if item["kids"] else ("action" if item["parent"] in in_procedure else "step")
         text = " ".join(item["parts"])
         if kind == "lead":  # the next state and the cue can follow the actions: read them with the lead-in
-            text += " " + " ".join(" ".join(items[k]["parts"]) for k in range(len(items)) if items[k]["parent"] == i)
+            text += LEAD_SEP + " ".join(" ".join(items[k]["parts"]) for k in range(len(items)) if items[k]["parent"] == i)
         out.append((item["line"], text, kind))
     return out
 
@@ -321,21 +325,22 @@ def step_findings(raw, kind, rules):
     Returns:
         A list of messages.
     """
-    text, out = plain(raw), []
-    sentences = [s for s in SENTENCES.split(text) if WORD.search(s)]
-    words = len(WORD.findall(text))
-    if kind != "lead" and words > rules["step_words"]:
+    own_raw = raw.split(LEAD_SEP, 1)[0]
+    own, text, out = plain(own_raw), plain(raw), []
+    sentences = [s for s in SENTENCES.split(own) if WORD.search(s)]
+    words = len(WORD.findall(own))
+    if words > rules["step_words"]:
         out.append(f"long: the step has {words} words (at most {rules['step_words']}): split it into steps")
     for s in sentences:
         if len(WORD.findall(s)) > rules["sentence_words"]:
             out.append(f"long: a sentence has {len(WORD.findall(s))} words (at most {rules['sentence_words']}): \"{s.strip()[:60]}\"")
     acts = sum(count_actions(s, rules["verbs"]) for s in sentences)
-    if kind != "lead" and acts > 1:
+    if acts > 1:
         out.append(f"actions: {acts} actions in one step: give each action its own step, or number the actions on one screen")
-    pointers = [p for p in rules["pointers"] if re.search(p, text)] + (["a link to a local file or section"] if LOCAL_LINK.search(raw) else [])
+    pointers = [p for p in rules["pointers"] if re.search(p, own)] + (["a link to a local file or section"] if LOCAL_LINK.search(own_raw) else [])
     if pointers:
         out.append(f"pointer: the step points to another file, step or section ({pointers[0]}): put the words here")
-    vague = sorted({m.group(0) for p in rules["vague"] for m in re.finditer(p, text)})
+    vague = sorted({m.group(0) for p in rules["vague"] for m in re.finditer(p, own)})
     if vague:
         out.append(f"vague: {', '.join(vague)}: name the exact thing, number or condition")
     if kind == "action":
@@ -503,10 +508,14 @@ def run_hook(stream):
         if found is None or found[1] == check_settings.CHECK:
             return 0  # `.check` itself is never blocked here, so a broken setting line can be fixed
         root, rel = found
-        globs = globs_of(root)
     except Exception as err:  # noqa: BLE001 - any error blocks: the hook fails closed
         print(f"BLOCKED by scripts/check_instructions.py --hook: {err}", file=sys.stderr)
         return 2
+    try:
+        globs = globs_of(root)
+    except ValueError as err:  # a broken `.check` line: scripts/check.sh fails on it; it must not block every write
+        print(f"WARN scripts/check_instructions.py --hook: {err}", file=sys.stderr)
+        return 0
     if not matches(rel, globs):
         return 0
     try:
@@ -540,7 +549,8 @@ def main():
         import check_instructions_test
         return check_instructions_test.run()
     top = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True)
-    return run_check(Path(top.stdout.strip() or "."), args.files)
+    root = Path(top.stdout.strip() or ".").resolve()
+    return run_check(root, [os.path.relpath(Path(n).resolve(), root) for n in args.files])
 
 
 if __name__ == "__main__":

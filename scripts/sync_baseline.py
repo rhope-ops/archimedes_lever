@@ -55,7 +55,8 @@ What it changes:
                            (--owner NAME); a public repo uses a role. Owner: letters, digits, space . _ , ( ) -
 What it never changes: README.md, docs/ (except docs/FIRST_USE.md as said above, docs/code-standard.md and the kit
 license), .check and all other files. A project's own code lives in its own files (scripts/check.local.sh,
-scripts/check_content_local.py, scripts/code_standard_gate.py), which a sync never touches.
+scripts/check_content_local.py, scripts/check_instructions_local.py, scripts/code_standard_gate.py), which a sync
+never touches.
 Standard library only. Needs git.
 Network: the baseline repo, only when --baseline is a URL (one git clone); none for a local folder.
 Writes: with --apply, the kit files of the project and its kit lock .check.lock (the list: "What it changes" above); without it, nothing.
