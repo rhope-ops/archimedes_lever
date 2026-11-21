@@ -327,7 +327,7 @@ def case_pool(check):
             check_content_scan.PARALLEL_BYTES = keep
         serial = scan_files(paths, d, ["Jane Doe"], set(), True)
     check(f"pool: the same findings in the same order as one process ({len(serial)}; pool ran: {ran})",
-          pooled == serial and len(serial) > 40 and (ran or (os.cpu_count() or 1) < 2))   # with 2 or more cores the pool must run
+          pooled == serial and len(serial) > 40 and (ran or check_content_scan.usable_cores() < 2))   # 2 or more usable cores: the pool must run
 
 
 def run(check):

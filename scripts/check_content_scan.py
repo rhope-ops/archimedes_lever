@@ -401,6 +401,11 @@ def scan_files(paths, root, deny, allow, dod=False, named=False, terms=()):
 PARALLEL_BYTES = 4_000_000   # a scan of fewer bytes runs in this process: starting a pool costs more than it saves
 
 
+def usable_cores():
+    """The number of cores this process may use (its CPU affinity where the system has one), at least 1."""
+    return len(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity") else (os.cpu_count() or 1)
+
+
 def _in_parallel(paths, root, job):
     """The findings of each path, in the order of paths, from a pool of processes (speed only; the same findings as
     the scan in this process). None when the scan is small, the machine has one core, or a pool cannot start.
@@ -414,7 +419,7 @@ def _in_parallel(paths, root, job):
         A list with the findings of each path, or None.
     """
     try:
-        cores = len(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity") else (os.cpu_count() or 1)
+        cores = usable_cores()
         size = sum(os.path.getsize(f) for f in (os.path.join(root, p) for p in paths) if os.path.isfile(f))
     except OSError:
         return None

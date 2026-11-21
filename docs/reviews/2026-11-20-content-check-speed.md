@@ -27,7 +27,7 @@ Date: 2026-11-20, America/Chicago. Request: the owner, from icf-source (the cont
 - Planted corpus (a temporary git repo: 60 docs, 4 large JSON files over the pool limit, an oversize file, a binary, a PNG, a non-UTF-8 file, a blocked file, a skipped file, 6 commits with findings in messages and added lines; every line break that `splitlines` knows; samples split over lines): 7 modes (`--all`, `--range`, `--push`, files, `--stdin`, `--all --require-denylist`, `--status`) in both tiers, 14 of 14 runs byte-identical in stdout, stderr and exit code; all 11 finding kinds present (blocked, dodid, email, id, marking, milhost, name, phone, secret, term, unscanned).
 - New self-test cases (`check_content_test_blocks.py`): `FOLD_EXTRAS` equals what the regex engine matches over every code point; 400 seeded random texts from samples of every kind give the same findings with and without the gates in both tiers; the pool gives the same findings in the same order; the gates are off with a project's own finder.
 - Mutation test of the gates: 22 of 22 broken gates (one piece removed or changed each) make the random-text case fail.
-- `python3 scripts/check_content.py --test`: PASS, 285 cases (the 280 before, all still there, and 5 new). `scripts/check.sh --test`: PASS. `scripts/check.sh` (full lane): CHECK PASS, 24 passed, 1 skipped.
+- `python3 scripts/check_content.py --test`: PASS, 285 cases (the 280 before, all still there, and 5 new). `scripts/check.sh --test`: PASS. `scripts/check.sh` (full lane): CHECK PASS, 25 passed, 1 skipped.
 
 ## Limits
 
