@@ -202,7 +202,7 @@ def agent_types(tpath):
 
 
 def tokens(v):
-    """A token count as int(v), or 0 when int() rejects v (text, an infinite number); the row is kept.
+    """A token count as int(v), or 0 when int() rejects v (non-numeric text, NaN or an infinite number); the row is kept.
 
     Args:
         v: the usage value from the log.
