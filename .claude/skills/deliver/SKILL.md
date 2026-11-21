@@ -20,13 +20,13 @@ AGENTS.md "Delivery", "Checks" and "Fresh review" hold the rules; this file hold
 7. Republish the affected artifacts and pages, then prove the live copy: read it back (the artifact read, or a fetch of the live URL) and compare it with the file built from origin/main (a hash, or a version text that the build writes). Report "published" only when they are equal; a changed preview is not the live copy. Delete previews after they ship.
 8. Clean up branches (below). Report with the states kept apart: done (built and merged), published (live for others, with the proof of step 7), verified (checked, with the method and the result). A step that did not run is reported as not run, with its cause and what unblocks it.
 
-## Project identity (AGENTS.md "README")
+## Project identity
 
-When a project's name or Purpose line changes, its public face follows README.md in the same delivery (the owner, 2026-11-21):
+A change to a project's product name (the README title) or its AGENTS.md Purpose line also updates, in the same delivery, its social preview card, its GitHub About text and its board in Project Studies (https://claude.ai/artifact/UZpzMPxQ692UZ1ZiEceqEe). README.md is the source; the card, the About text and the board are copies, never the reverse (the owner, 2026-11-21). The owner's request for the name or Purpose change covers these writes; a new card design is a UI change (lane C: preview first).
 
-1. Card: Google Drive, folder Logos › `<project>`. Edit `<project>-social-preview.html` (title: the repository name; subtitle: the README name and subtitle; mark: the `*-fulcrum.svg` beside it) and render it at 1280 × 640, scale 1, in Chromium. Before you replace the PNG, move the old PNG and `<project>-description.txt` to Logos › Superseded with "(superseded, <reason>)" in the name.
-2. About text: write it in `<project>-description.txt`. The owner uploads the card (Settings › Social preview) and pastes the text (About ⚙): GitHub has no API for the card, so report both as owner steps with links.
-3. Board: republish the project's board in Project Studies (https://claude.ai/artifact/UZpzMPxQ692UZ1ZiEceqEe) with the new card and texts, then prove the live copy as in step 7.
+1. Card. A project: Google Drive, folder Logos › `<project>`: edit `<project>-social-preview.html` (title: the repository name; subtitle: the README title, then the line under it) and render it at 1280 × 640, scale 1, in Chromium, with the `*-fulcrum.svg` mark beside it. First move the old PNG and `<project>-description.txt` to Logos › Superseded, with "(superseded, <reason>)" in each name. The kit: `docs/assets/` (docs/FILES.md), in the same pull request.
+2. About text: the new text in `<project>-description.txt` (the kit: in the pull request text). GitHub has no API for the card, so report the upload (Settings › Social preview) and the About text (About ⚙ on the repository page) as owner steps, with links.
+3. Board: republish the project's board with the new card and texts, then prove the live copy as in step 7.
 
 ## Merge lanes
 
