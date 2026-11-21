@@ -22,10 +22,10 @@ AGENTS.md "Delivery", "Checks" and "Fresh review" hold the rules; this file hold
 
 ## Project identity
 
-A change to a project's product name (the README title) or its AGENTS.md Purpose line also updates, in the same delivery, its social preview card, its GitHub About text and its board in Project Studies (https://claude.ai/artifact/UZpzMPxQ692UZ1ZiEceqEe). README.md is the source; the card, the About text and the board are copies, never the reverse (the owner, 2026-11-21). The owner's request for the name or Purpose change covers these writes; a new card design is a UI change (lane C: preview first).
+A change to a project's product name (the README title) or its AGENTS.md Purpose line also updates, in the same delivery, its social preview card, its GitHub About text and its board in Project Studies (https://claude.ai/artifact/UZpzMPxQ692UZ1ZiEceqEe). README.md is the source; the card, the About text and the board are copies, never the reverse (the owner, 2026-11-21). The Drive writes and the board republish are writes to data and a live page: ask the owner first unless their request names them (AGENTS.md "The owner's approval"). A new card design is a UI change (lane C: preview first).
 
 1. Card. A project: Google Drive, folder Logos › `<project>`: edit `<project>-social-preview.html` (title: the repository name; subtitle: the README title, then the line under it) and render it at 1280 × 640, scale 1, in Chromium, with the `*-fulcrum.svg` mark beside it. First move the old PNG and `<project>-description.txt` to Logos › Superseded, with "(superseded, <reason>)" in each name. The kit: `docs/assets/` (docs/FILES.md), in the same pull request.
-2. About text: the new text in `<project>-description.txt` (the kit: in the pull request text). GitHub has no API for the card, so report the upload (Settings › Social preview) and the About text (About ⚙ on the repository page) as owner steps, with links.
+2. About text: the new text in `<project>-description.txt` (the kit: in the pull request text). GitHub has no API for the card: report its upload (Settings › Social preview) as an owner step, with a link. Set the About text with `gh repo edit --description` when the owner's request names it; else report it as an owner step (About ⚙ on the repository page).
 3. Board: republish the project's board with the new card and texts, then prove the live copy as in step 7.
 
 ## Merge lanes
