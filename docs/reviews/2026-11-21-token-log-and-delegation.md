@@ -35,3 +35,10 @@ Checks on the merged head (54fe9e6): full lane 26 passed, 1 skipped; CI `checks`
 
 - Subagent findings were checked against the code; several were fixes that needed their own review (a fix after a review gets its own review).
 - A failed CI on intermediate commits (2b9af52, 109aa95) was caused by a missing conflict-check record for the rule text in force then; the head that merged was green.
+
+## PR 100 (merged 2026-11-21, ce00ac7)
+
+- Done: narrower scout exception (owner-approved text); `agent_id` column; `--report` (estimated cost by week in America/Chicago, by agent and model, per subagent task; prices as of 2026-11-03); the installed hook updates itself from main at most once a day after its own `--test` passes. Two fresh reviews: review 1 had 1 MAJOR and 5 MINOR, all fixed; review 2 had none.
+- Measured: one scout call 12,116 tokens (about 0.002 USD); one main-session opus call at about 100,000 tokens of context about 0.03 USD. Report on 2026-11-21: week of 2026-11-16 about 128 USD, subagents about 44 USD (35%).
+- Open NITs (review 2): `scripts/token_log.py` clone line is 140 characters; a named constant for the 600 s self-test timeout; a test for `--report` with a bad ref (checked by hand: exit 1); two unclosed `open()` calls in `scripts/token_log_test.py`.
+- Next: about 2026-11-28, run `python3 scripts/token_log.py --report` and compare the cost per task of `reviewer`, built-in agents and `scout`. The open items 1 and 4 above still hold.
