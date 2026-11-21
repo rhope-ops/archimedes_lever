@@ -33,7 +33,7 @@ AGENTS.md "Instructions people follow" holds the rule; this file holds the steps
 
 Each step has these parts, in this order:
 
-1. Where: the screen or window, by its name on the screen ("In the window **Backup**,").
+1. Where: the screen or window, by its name on the screen ("In the window **Backup**,"). A step in chat names the screen where the action happens ("On GitHub, on the page **Settings**,").
 2. The action: one verb and the exact thing ("click **Restore**"). Text to type in `code`, exactly as it must be typed.
 3. What the person sees next: "You see the card **Restore code**."
 4. The cue, one of:
