@@ -455,6 +455,11 @@ def case_report(fx):
     fx.expect("report: one scout task of 2 calls", any(l.split()[:3] == ["scout", "1", "2.0"] for l in text.splitlines()),
               True)
     fx.expect("report: unpriced model listed", text.splitlines()[-1], "no price (counted as 0): claude-test")
+    old = {k: v for k, v in rows[0].items() if k not in ("agent", "agent_id")}  # a row from before the columns
+    merged = list(csv.DictReader(io.StringIO(tl.to_csv({"m1": {**old, "message_id": "m1"}}))))
+    fx.expect("old row without agent and agent_id: merged with empty values",
+              (merged[0]["agent"], merged[0]["agent_id"]), ("", ""))
+    fx.expect("old row: in the report", "29.20" in tl.report(merged), True)
 
 
 def case_self_update(fx):
@@ -468,20 +473,21 @@ def case_self_update(fx):
     os.makedirs(os.path.join(kit, "scripts"))
     os.makedirs(os.path.dirname(target))
     append(target, "old = 1")
-    append(os.path.join(kit, "scripts", "token_log.py"), "new = 2")
-    fx.sh(root, "git", "init", "-q", kit)
+    append(os.path.join(kit, "scripts", "token_log.py"), "import sys", "sys.exit(0)  # new")
+    fx.sh(root, "git", "init", "-q", "-b", "main", kit)
     fx.sh(kit, "git", "add", ".")
     fx.sh(kit, "git", "commit", "-q", "-m", "kit")
     os.environ["TOKEN_LOG_HOME"] = os.path.join(root, "update-home")
     fx.expect("self-update: newer copy replaces the file", tl.self_update(target, kit, now=1e9), "updated")
-    fx.expect("self-update: file has the new text", open(target).read(), "new = 2\n")
+    fx.expect("self-update: file has the new text", open(target).read(), "import sys\nsys.exit(0)  # new\n")
     fx.expect("self-update: second check the same day is skipped", tl.self_update(target, kit, now=1e9 + 60), "skipped")
     fx.expect("self-update: next day, same copy", tl.self_update(target, kit, now=1e9 + 90000), "up to date")
-    append(os.path.join(kit, "scripts", "token_log.py"), "def broken(:")
-    fx.sh(kit, "git", "commit", "-q", "-am", "broken")
-    fx.expect("self-update: a copy that does not compile is not used",
-              tl.self_update(target, kit, now=1e9 + 200000).startswith("not updated"), True)
-    fx.expect("self-update: file kept", open(target).read(), "new = 2\n")
+    with open(os.path.join(kit, "scripts", "token_log.py"), "w") as f:
+        f.write("import sys\nsys.exit(1)  # compiles, fails its self-test\n")
+    fx.sh(kit, "git", "commit", "-q", "-am", "fails")
+    fx.expect("self-update: a copy whose self-test fails is not used",
+              tl.self_update(target, kit, now=1e9 + 200000).startswith("not updated: self-test failed"), True)
+    fx.expect("self-update: file kept", open(target).read(), "import sys\nsys.exit(0)  # new\n")
 
 
 def run(tl):

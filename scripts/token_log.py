@@ -27,13 +27,14 @@ cache_creation_input_tokens, cache_read_input_tokens, output_tokens.
 
 Settings (environment): TOKEN_LOG=off turns it off; TOKEN_LOG_BRANCH (default claude/token-usage); TOKEN_LOG_SYNC=1
 pushes in the foreground; TOKEN_LOG_HOME (default ~/.claude/token-log) holds push.log and the lock files;
-TOKEN_LOG_NET_TIMEOUT (seconds, default 600) limits each ls-remote, fetch and push.
+TOKEN_LOG_NET_TIMEOUT (seconds, default 600) limits each ls-remote, fetch and push; TOKEN_LOG_UPDATE=off turns the
+self-update off; TOKEN_LOG_KIT_URL (default KIT_URL) is the repo the self-update clones.
 
 Manual push:  python3 scripts/token_log.py --push REPO_DIR SESSION_ID TRANSCRIPT_PATH
 Report:  python3 scripts/token_log.py --report [REF]  (in a repo: fetches the log branch, or reads REF; prints the
   estimated cost by week in America/Chicago, by source, agent and model, and per subagent task, from PRICES)
 Self-update: after each background push, the installed copy (only a token_log.py in ~/.claude/hooks) checks the
-  kit's main branch at most once a day and replaces itself with a newer copy that compiles (TOKEN_LOG_UPDATE=off
+  kit's main branch at most once a day and replaces itself with a newer copy whose self-test passes (TOKEN_LOG_UPDATE=off
   turns it off). The setup script installs it only when a container is built, so a resumed container kept an old copy.
 Self-test (temporary repos, no network):  python3 scripts/token_log.py --test
 Standard library only.
@@ -384,10 +385,11 @@ KIT_URL = "https://github.com/rhope-ops/archimedes_lever"
 UPDATE_EVERY = 24 * 3600  # seconds between self-update checks
 # Prices in USD per million tokens: (input, output, cache read); a cache write costs 1.25 x input (5-minute cache).
 # Source: the claude-api skill price table (cached 2026-11-03); a cache read not listed there is 10% of input.
+# Haiku 5.5 costs more above 100,000 prompt tokens ($0.50 / $2.50); not modelled.
 # The weekly usage limit is assumed to weigh tokens like these prices. Longest matching model id prefix wins.
 PRICES_AS_OF = "2026-11-03"
 PRICES = {
-    "claude-fable-5-2": (8.0, 40.0, 0.20), "claude-fable-5-1": (10.0, 50.0, 1.0), "claude-fable-5": (10.0, 50.0, 1.0),
+    "claude-fable-5-2": (8.0, 40.0, 0.20), "claude-fable-5-1": (10.0, 50.0, 0.25), "claude-fable-5": (10.0, 50.0, 1.0),
     "claude-opus-5-5": (4.0, 20.0, 0.20), "claude-opus-5": (5.0, 25.0, 0.50), "claude-opus-4": (5.0, 25.0, 0.50),
     "claude-sonnet-5-5": (2.0, 10.0, 0.10), "claude-sonnet-5": (2.0, 10.0, 0.20), "claude-sonnet-4": (3.0, 15.0, 0.30),
     "claude-haiku-5-5": (0.10, 0.50, 0.01), "claude-haiku-4": (1.0, 5.0, 0.10),
@@ -395,7 +397,8 @@ PRICES = {
 
 
 def self_update(path, url=None, now=None):
-    """Replace the installed hook file with the kit's main copy when it differs and compiles; at most once a day.
+    """Replace the installed hook file with the kit's main copy when it differs and its self-test passes; at most
+    once a day.
 
     Args:
         path: the installed token_log.py to replace.
@@ -404,7 +407,6 @@ def self_update(path, url=None, now=None):
     Returns:
         A short result text: "skipped", "up to date", "updated" or "not updated: <reason>".
     """
-    import py_compile
     stamp, now = os.path.join(home(), "update.stamp"), time.time() if now is None else now
     if os.path.exists(stamp) and now - os.path.getmtime(stamp) < UPDATE_EVERY:
         return "skipped"
@@ -413,7 +415,7 @@ def self_update(path, url=None, now=None):
         pass
     os.utime(stamp, (now, now))  # a failed check also waits a day
     with tempfile.TemporaryDirectory() as tmp:
-        r = subprocess.run(["git", "clone", "-q", "--depth", "1", url or os.environ.get("TOKEN_LOG_KIT_URL") or KIT_URL,
+        r = subprocess.run(["git", "clone", "-q", "--depth", "1", "--branch", "main", url or os.environ.get("TOKEN_LOG_KIT_URL") or KIT_URL,
                             os.path.join(tmp, "k")], capture_output=True, text=True, timeout=net_timeout())
         new = os.path.join(tmp, "k", "scripts", "token_log.py")
         if r.returncode != 0 or not os.path.isfile(new):
@@ -421,10 +423,12 @@ def self_update(path, url=None, now=None):
         with open(new, "rb") as f, open(path, "rb") as g:
             if f.read() == g.read():
                 return "up to date"
-        try:
-            py_compile.compile(new, cfile=os.path.join(tmp, "c.pyc"), doraise=True)
-        except py_compile.PyCompileError as e:
-            return f"not updated: {e.msg.strip()[-200:]}"
+        # The new copy must pass its own self-test (temporary repos, no network): a copy that fails when run would
+        # break every later Stop, and then no later update could repair it.
+        t = subprocess.run([sys.executable, "-E", "-s", new, "--test"], cwd=os.path.dirname(new), capture_output=True,
+                           text=True, timeout=600, env={k: v for k, v in os.environ.items() if not k.startswith("GIT_")})
+        if t.returncode != 0:
+            return "not updated: self-test failed " + (t.stdout + t.stderr).strip()[-200:]
         shutil.copyfile(new, path + ".new")
         os.replace(path + ".new", path)
     return "updated"
@@ -546,7 +550,11 @@ def report_main(args):
         if rc != 0:
             print("token_log --report: fetch: " + err, file=sys.stderr)
             return 1
-    print(report(report_rows(root, ref)))
+    try:
+        print(report(report_rows(root, ref)))
+    except RuntimeError as e:
+        print(f"token_log --report: {e}", file=sys.stderr)
+        return 1
     return 0
 
 
