@@ -349,6 +349,59 @@ def case_bad_input_and_off(fx):
     fx.expect("TOKEN_LOG=off: nothing pushed", len(fx.remote_rows("s1") or []), count)
 
 
+def case_agent_type(fx):
+    """A subagent row gets the type of its Agent call; a subagent with no matching call says "unknown".
+
+    Args:
+        fx: the shared test fixture (Fixture).
+    """
+    root, work, logs = fx.root, fx.work, fx.logs
+    t3 = os.path.join(root, "proj", "s3.jsonl")
+    u = json.loads(msg("p1", "2026-01-02T01:00:00Z"))["message"]["usage"]
+    call = {"type": "assistant", "timestamp": "2026-01-02T01:00:00Z",
+            "message": {"id": "p1", "model": "claude-test", "usage": u,
+                        "content": [{"type": "tool_use", "id": "tu1", "name": "Agent", "input": {"subagent_type": "scout"}}]}}
+    done = {"type": "user", "timestamp": "2026-01-02T01:00:01Z", "toolUseResult": {"agentId": "ab1"},
+            "message": {"content": [{"type": "tool_result", "tool_use_id": "tu1", "content": "x"}]}}
+    append(t3, prompt("2026-01-02T00:59:00Z"), json.dumps(call), json.dumps(done))
+    os.makedirs(os.path.join(root, "proj", "s3", "subagents"))
+    append(os.path.join(root, "proj", "s3", "subagents", "agent-ab1.jsonl"),
+           msg("sa2", "2026-01-02T01:00:02Z", side=True))
+    append(os.path.join(root, "proj", "s3", "subagents", "agent-zz9.jsonl"),
+           msg("sa3", "2026-01-02T01:00:03Z", side=True))
+    fx.hook(work, "s3", t3, logs)
+    got = fx.remote_rows("s3") or []
+    fx.expect("agent column: main row, matched subagent type, unmatched subagent",
+              [(x["message_id"], x["agent"]) for x in got], [("p1", "main"), ("sa2", "scout"), ("sa3", "unknown")])
+
+
+def case_agent_type_bad_input(fx):
+    """Non-text ids and types do not stop the hook: the row says "unknown" and the rows still push.
+
+    Args:
+        fx: the shared test fixture (Fixture).
+    """
+    root, work, logs = fx.root, fx.work, fx.logs
+    t4 = os.path.join(root, "proj", "s4.jsonl")
+    u = json.loads(msg("p4", "2026-01-02T02:00:00Z"))["message"]["usage"]
+    call = {"type": "assistant", "timestamp": "2026-01-02T02:00:00Z",
+            "message": {"id": "p4", "model": "claude-test", "usage": u, "content": [
+                {"type": "tool_use", "id": ["x"], "name": "Agent", "input": {"subagent_type": ["a"]}},
+                {"type": "tool_use", "id": "tu4", "name": "Task", "input": {}}]}}
+    bad = {"type": "user", "timestamp": "2026-01-02T02:00:01Z", "toolUseResult": {"agentId": ["q"]},
+           "message": {"content": [{"type": "tool_result", "tool_use_id": {"a": 1}, "content": "x"}]}}
+    done = {"type": "user", "timestamp": "2026-01-02T02:00:02Z", "toolUseResult": {"agentId": "ab4"},
+            "message": {"content": [{"type": "tool_result", "tool_use_id": "tu4", "content": "x"}]}}
+    append(t4, prompt("2026-01-02T01:59:00Z"), json.dumps(call), json.dumps(bad), json.dumps(done))
+    os.makedirs(os.path.join(root, "proj", "s4", "subagents"))
+    append(os.path.join(root, "proj", "s4", "subagents", "agent-ab4.jsonl"),
+           msg("sa4", "2026-01-02T02:00:03Z", side=True))
+    fx.hook(work, "s4", t4, logs)
+    got = fx.remote_rows("s4") or []
+    fx.expect("bad ids and types: rows still push; a Task with no type says unknown",
+              [(x["message_id"], x["agent"]) for x in got], [("p4", "main"), ("sa4", "unknown")])
+
+
 def run(tl):
     """Run every case in order on one fixture; print the total line and return the exit code.
 
@@ -362,7 +415,8 @@ def run(tl):
     saved = {k: os.environ.get(k) for k in ("TOKEN_LOG_HOME", "TOKEN_LOG_NET_TIMEOUT")}  # restored at the end
     try:
         for case in (case_first_turn, case_second_turn, case_blocked_and_shallow, case_retry, case_coalesce,
-                     case_fetch_head_and_timeout, case_waiting_push, case_bad_input_and_off):
+                     case_fetch_head_and_timeout, case_waiting_push, case_bad_input_and_off, case_agent_type,
+                     case_agent_type_bad_input):
             case(fx)
     finally:
         tl.push = fx.real_push

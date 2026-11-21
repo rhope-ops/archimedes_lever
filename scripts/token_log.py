@@ -21,7 +21,7 @@ does nothing: sessions with no repo are not logged, and the repo is the folder t
      push with no answer in time (TOKEN_LOG_NET_TIMEOUT) is killed with its pre-push hook.
 
 One row per API call. Columns: message_id, timestamp (UTC, of the reply), turn (prompts up to that time: user messages and
-system wake-ups such as task notifications, not tool results or interrupt markers; total by turn for a chart), session_id, repo, model, source (main, subagent), input_tokens,
+system wake-ups such as task notifications, not tool results or interrupt markers; total by turn for a chart), session_id, repo, model, source (main, subagent), agent (main; the subagent type of the Agent call, else unknown; empty for an old row whose log is gone), input_tokens,
 cache_creation_input_tokens, cache_read_input_tokens, output_tokens.
 
 Settings (environment): TOKEN_LOG=off turns it off; TOKEN_LOG_BRANCH (default claude/token-usage); TOKEN_LOG_SYNC=1
@@ -50,7 +50,7 @@ import tempfile
 import time
 from datetime import datetime, timezone
 
-FIELDS = ["message_id", "timestamp", "turn", "session_id", "repo", "model", "source", "input_tokens",
+FIELDS = ["message_id", "timestamp", "turn", "session_id", "repo", "model", "source", "agent", "input_tokens",
           "cache_creation_input_tokens", "cache_read_input_tokens", "output_tokens"]
 USAGE_KEYS = FIELDS[-4:]
 PRIVATE_REF = "refs/token-log/remote"
@@ -166,6 +166,41 @@ def read_log(path, source):
     return msgs, prompts
 
 
+def agent_types(tpath):
+    """The subagent type of each Agent call in the session log, by agent id. A call whose type or id is not found
+    is left out (the row then says "unknown").
+
+    Args:
+        tpath: the path of the session's log file.
+    Returns:
+        A dict of agent id to subagent type (for example "scout").
+    """
+    calls, types = {}, {}
+    try:
+        f = open(tpath, encoding="utf-8")
+    except OSError:
+        return types
+    with f:
+        for line in f:
+            try:
+                d = json.loads(line)
+            except ValueError:
+                continue
+            c = d.get("message", {}).get("content") if isinstance(d, dict) and isinstance(d.get("message"), dict) else None
+            for b in c if isinstance(c, list) else []:
+                if not isinstance(b, dict):
+                    continue
+                if b.get("type") == "tool_use" and b.get("name") in ("Agent", "Task") and isinstance(b.get("input"), dict):
+                    t = b["input"].get("subagent_type")
+                    if isinstance(b.get("id"), str):
+                        calls[b["id"]] = t if isinstance(t, str) and t else "unknown"
+                if b.get("type") == "tool_result" and isinstance(d.get("toolUseResult"), dict):
+                    aid, tid = d["toolUseResult"].get("agentId"), b.get("tool_use_id")
+                    if isinstance(aid, str) and aid and isinstance(tid, str) and tid in calls:
+                        types[aid] = calls[tid]
+    return types
+
+
 def log_rows(sid, tpath, repo):
     """One row per API call in the session log and its subagent logs.
 
@@ -177,13 +212,20 @@ def log_rows(sid, tpath, repo):
         A dict of message id to the row (a dict with the FIELDS).
     """
     msgs, prompts = read_log(tpath, "main")
+    types = agent_types(tpath)
+    agent = {mid: "main" if src == "main" else "unknown" for mid, (_, _, _, src) in msgs.items()}
     for p in sorted(glob.glob(os.path.join(os.path.splitext(tpath)[0], "**", "*.jsonl"), recursive=True)):
-        msgs.update({k: v for k, v in read_log(p, "subagent")[0].items() if k not in msgs})
+        name = os.path.basename(p)
+        aid = name[len("agent-"):-len(".jsonl")] if name.startswith("agent-") else ""
+        for k, v in read_log(p, "subagent")[0].items():
+            if k not in msgs:
+                msgs[k] = v
+                agent[k] = types.get(aid, "unknown")
     prompts.sort()
     rows = {}
     for mid, (ts, model, u, src) in msgs.items():
         rows[mid] = {"message_id": mid, "timestamp": ts, "turn": bisect.bisect_right(prompts, ts) if ts else len(prompts),
-                     "session_id": sid, "repo": repo, "model": model, "source": src,
+                     "session_id": sid, "repo": repo, "model": model, "source": src, "agent": agent[mid],
                      **{k: int(u.get(k) or 0) for k in USAGE_KEYS}}
     return rows
 
