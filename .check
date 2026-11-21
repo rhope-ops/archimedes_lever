@@ -11,3 +11,6 @@
 #                           needs a docs/DECISIONS.md row that names this file)
 # An allowed string or a skip line is added only on the owner's request, never by an agent to get past a block (AGENTS.md "Guards and checks").
 code-c2: full
+# The files whose steps a person follows (scripts/check_instructions.py; the owner, 2026-11-21).
+audit-instructions: README.md
+audit-instructions: docs/github/README.md

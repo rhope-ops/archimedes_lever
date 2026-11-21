@@ -2,7 +2,7 @@
 
 The kit's own handoff (AGENTS.md "Handoff"). Kit only: first use deletes it in a project, which uses docs/NEXT_PROMPT.md. Keep it at 40 lines or fewer; evidence goes in docs/reviews/. Times are America/Chicago.
 
-Updated: 2026-11-21 by session "Kit · Instructions hard rule" (from 90-161.Z, the owner's brief): PR 104 merged (50450b2, kit 10.0.0, the owner's approval): hard rule "Instructions people follow" (with the owner's chat clause), skill `instructions`, `scripts/check_instructions.py` and its hook; the 90-161.Z session has the version. Open: tag v10.0.0 (the owner: https://github.com/rhope-ops/archimedes_lever/releases/new?tag=v10.0.0&target=50450b2b858eb2a1faa54e98013910b0d7657aa1&title=Kit%2010.0.0); the owner's decision: rewrite the kit's own README steps in STE and add the kit's `audit-instructions:` lines (47 findings) in a new lane C pull request. Evidence: reviews/2026-11-21-instructions-rule-reviews.md, reviews/2026-11-21-rule-conflict-instructions.md. Before: session "Kit · Token log and scout review" (PR 100, ce00ac7; reviews/2026-11-21-token-log-and-delegation.md).
+Updated: 2026-11-21 by session "Kit · Instructions hard rule": kit 10.0.0 merged (PR 104, 50450b2; tag v10.0.0 made by the owner). Open: PR for the STE rewrite of the README steps and the kit's `audit-instructions:` lines (lane C, branch claude/kit-readme-ste); 7 steps name claude.ai screens that are not verified (reviews/2026-11-21-fresh-reader.md). Evidence of 10.0.0: reviews/2026-11-21-instructions-rule-reviews.md, reviews/2026-11-21-rule-conflict-instructions.md. Before: session "Kit · Token log and scout review" (PR 100, ce00ac7).
 
 ## State
 
