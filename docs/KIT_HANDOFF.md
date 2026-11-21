@@ -2,11 +2,11 @@
 
 The kit's own handoff (AGENTS.md "Handoff"). Kit only: first use deletes it in a project, which uses docs/NEXT_PROMPT.md. Keep it at 40 lines or fewer; evidence goes in docs/reviews/. Times are America/Chicago.
 
-Updated: 2026-11-21 ~16:25 by session "Kit · Project Studies and fleet sync" (social previews, Project Studies canvas https://claude.ai/artifact/UZpzMPxQ692UZ1ZiEceqEe): PRs 103 (8.1.0, deliver skill "Project identity"), 105 (9.0.0, session-load cap 5,500) merged; PR 107 (10.0.1 role fix) closed: the owner keeps "the Owner's" in the hard rule. Before: "Kit · Instructions hard rule" (PR 104, 10.0.0).
+Updated: 2026-11-21 ~16:30 by session "Kit · Project Studies and fleet sync" (Project Studies canvas https://claude.ai/artifact/UZpzMPxQ692UZ1ZiEceqEe): PRs 103 (8.1.0, deliver skill "Project identity") and 105 (9.0.0, session-load cap 5,500) merged; PR 107 (10.0.1 role fix) closed: the owner keeps "the Owner's". Before: "Kit · Instructions hard rule": PR 104 (10.0.0, 50450b2) and PR 108 merged (29d190c: README steps in STE; `.check` names README.md and docs/github/README.md); 7 README steps name claude.ai screens that are not verified (reviews/2026-11-21-fresh-reader.md); evidence of 10.0.0: reviews/2026-11-21-instructions-rule-reviews.md.
 
 ## State
 
-- main: kit 10.0.0 (f397b52). Tags (the owner makes them): v6.2.0, v7.0.0, v8.0.0 exist; v8.1.0, v9.0.0 and v10.0.0 not made yet.
+- main: kit 10.0.0 (f397b52; main 29d190c adds PR 108, no synced kit file changed). Tags (the owner makes them): v6.2.0, v7.0.0, v8.0.0, v10.0.0 exist; v8.1.0 and v9.0.0 not made yet.
 - Fleet on 10.0.0 (merged 2026-11-21, each verified on main): RADE 165, 33-332.Z 48, ICF-Source 240, SEC-Source 27, SPAR 19, 36-3003.Z 14, 65-601.Z 14, no-more-beyond 66, transcription_assistant 8. 90-161.Z on 9.0.0 (PR 215); its 10.0.0 sync is PR 216 of its own session (K2). Session load (cap 5,500): 33-332.Z ~5,352, ICF ~5,322, RADE ~5,278, TA ~5,250, SEC ~5,210, NMB ~5,178. Owner steps per repo: `audit-instructions:` lines in `.check`; 33-332.Z README does not open with its Purpose line (warning).
 
 ## Approved plan (the owner, 2026-11-19 14:45): fleet decision hub (kit template)
