@@ -66,7 +66,7 @@ Before you write, and again before a release, answer for each step:
 
 1. Start a fresh agent that has not seen the build: the `reviewer` subagent where the host has subagents, else a new session. Give it only the steps, as the person sees them, with the screen names, and this brief: "For each step, say back the screen or window, the one action, the exact text to type, what you see next, and whether you wait, go on or note a value (and where you use that value). Mark each step where you cannot say one of these, or where you would act before you should."
 2. Rewrite each marked step. Give the rewritten steps to a new fresh agent with the same brief.
-3. Record the result in `docs/reviews/YYYY-MM-DD-fresh-reader.md`: the date, the files, the reader and its model tier, the marked steps, and the result. A release with a marked step that is not fixed goes to the owner.
+3. Record the result in `docs/reviews/YYYY-MM-DD-fresh-reader.md`: the date, the files, the reader and its model tier, the marked steps, and the result. Fix each marked step before the release.
 
 ## A project's own layer
 

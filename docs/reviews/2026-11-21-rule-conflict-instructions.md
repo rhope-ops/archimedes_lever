@@ -19,3 +19,17 @@
 Checked and OK: the DECISIONS row agrees with the rule; no conflict with "Rule text", "Guards and checks", "Fresh review" or "README".
 
 rule-conflict-check: 4fc72c5af855
+
+## Second check: the changed line (2026-11-21)
+
+The owner changed the line in this session's question dialog: "(in chat: the step names the screen where the action happens)" after "at the time it is needed" (finding 1 above); the exception stays "the Owner's own message" (finding 2 above: no change). A fresh `reviewer` subagent (opus) checked the changed line with the same input and brief.
+
+- Result: no MAJOR finding. 6 MINOR, recorded:
+  1. "Delivery" lane A merges a README step change on green checks, while the rule asks for "a fresh-reader test before release" ("release" is not defined).
+  2. "Owner changes" accepts a brief from a task the owner started; the exception needs "the Owner's own message".
+  3. The step form is in the rule and in the skill ("One home", "Lean instructions").
+  4. "on every push" is not true in the kit while `.check` has no `audit-instructions:` line (the owner decided: a later pull request rewrites the kit's own README steps and adds the lines).
+  5. "Reporting" (the owner's preferences) and the rule both cover steps in a turn summary.
+  6. The skill added an owner-approval case ("goes to the owner"): fixed in the skill ("Fix each marked step before the release").
+
+rule-conflict-check: 62190488efd6
