@@ -40,6 +40,17 @@ Fresh reviews of the diff (the `reviewer` subagent, a fresh context, model tier 
 | 5 | MINOR | "for ten minutes" and "for 2 mins" are no wait | Fixed, with tests |
 | 6 | NIT | "You see the timer count for 10 minutes." is a wait finding | Fixed: wait words are read outside "You see" clauses, with a test |
 
-## Review 4: the third fix commit
+## Review 4: the third fix commit (d2be104..3b2e49f)
+
+| # | Severity | Finding | Done |
+|---|---|---|---|
+| 1 | MAJOR | A wait after "and" inside a "You see" clause is lost ("You see the spinner and wait for 10 minutes.") | Fixed: only the "you see <thing>" span is skipped, up to the next "and", "then" or mark; tests |
+| 2 | MINOR | "You see the form then see step 3." gives no pointer | Fixed by the same change; test |
+| 3 | MINOR | "for a second time" is a wait | Fixed ("a minute" and "an hour" only); test |
+| 4 | MINOR | "this list", "that list", "chapter name" are pointers | Fixed: "list" only with previous, preceding or earlier; no bare "chapter"; tests |
+| 5 | MINOR | The fail-closed test checks only the exit code | Kept: the reviewer found no other path that returns 2 there |
+| 6 | NIT | A `.check` that is not UTF-8 lets the hook pass | Kept on purpose: `check_settings` reports it as a broken setting (ValueError), the same as a broken line; check.sh fails on it; a test holds the behavior |
+
+## Review 5: the fourth fix commit
 
 Result: added when the review ends.

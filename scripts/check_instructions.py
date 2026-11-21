@@ -70,12 +70,12 @@ VAGUE = [r"\bappropriate(?:ly)?\b", r"\bas (?:needed|necessary|required|applicab
          r"\bprobably\b", r"\busually\b", r"\bnormally\b", r"\btypically\b", r"\blikely\b", r"\btry to\b"]
 POINTERS = [r"\bsee (?:step|section|chapter|above|below|page|the (?:previous|next|following|section|file|table|list|readme|docs?|guide))\b",
             r"\bsteps? \d+\b", r"\b(?:as|shown|described|listed|mentioned|explained|given) (?:above|below|earlier|before|previously)\b",
-            r"\b(?:previous|preceding|earlier|next|following|this|that|other) (?:steps?|sections?|instructions?|list|chapters?)\b",
-            r"\bsections?\b", r"\bchapters?\b", r"\breadme\b",
+            r"\b(?:previous|preceding|earlier) (?:steps?|sections?|instructions?|list|chapters?)\b",
+            r"\b(?:next|following|this|that|other) (?:steps?|sections?|instructions?|chapters?)\b", r"\bsections?\b", r"\breadme\b",
             r"\bgo back to\b", r"\brepeat (?:the |these |this )?steps?\b", r"\b[\w./-]+\.md\b"]
 LOCAL_LINK = re.compile(r"\]\((?!https?://|mailto:)[^)\s]+\)")
-WAIT_WORDS = re.compile(r"\b(?:wait|waiting|loading|takes|for (?:about )?(?:\d+|one|two|three|four|five|ten|fifteen|twenty|thirty|"
-                        r"a|an) (?:secs?|seconds?|mins?|minutes?|hrs?|hours?)\b|restarts?|restarting|reboots?|processing|"
+WAIT_WORDS = re.compile(r"\b(?:wait|waiting|loading|takes|for (?:about )?(?:\d+|one|two|three|four|five|ten|fifteen|twenty|thirty) "
+                        r"(?:secs?|seconds?|mins?|minutes?|hrs?|hours?)\b|for (?:about )?(?:a minute|an hour)\b|restarts?|restarting|reboots?|processing|"
                         r"syncing|in progress|spinner|progress bar)\b")
 WAIT_STATE = re.compile(r"\bwait until\b|\bwait for\b[^.]*\b(?:to|until)\b|\bdo not [^.]*\buntil\b|\buntil you see\b")
 NEXT_STATE = re.compile(r"\byou (?:now |will )?(?:see|get|hear)\b|\b(?:shows|opens|appears|closes|changes|turns|loads|"
@@ -87,8 +87,9 @@ FENCE = re.compile(r"^\s*(?:```|~~~)")
 WORD = re.compile(r"[A-Za-z0-9][A-Za-z0-9'’-]*")
 CLAUSES = re.compile(r"\s*[,;]?\s*(?:and\s+)?then\s+|;\s*|,\s+and\s+|\s+and\s+", re.IGNORECASE)
 SENTENCES = re.compile(r"(?<=[.!?])\s+")
-SEEN = re.compile(r"^\s*you (?:now |will )?see\b")  # a next-state clause: what it names is on the screen, no pointer
-TOLD_SPLIT = re.compile(r"[;,:]\s*(?:and\s+)?|\s+and\s+(?=see\b)")  # the clauses of a sentence, for SEEN
+# A next-state span ("you see <the thing>", up to the next "and", "then" or mark): it names what is on the screen,
+# so it is not read for pointers or wait words; the rest of the sentence is.
+SEEN = re.compile(r"\byou (?:now |will )?see\b.*?(?=\s+(?:and|then)\s+|[,;:.!?]|$)")
 TOKEN = " X "  # what code, bold and quoted text become: one word, no verb, no vague word
 LEAD_SEP = "\n\x1e\n"  # between a lead-in's own text and the text of its actions (procedure_steps)
 
@@ -341,7 +342,7 @@ def step_findings(raw, kind, rules):
     acts = sum(count_actions(s, rules["verbs"]) for s in sentences)
     if acts > 1:
         out.append(f"actions: {acts} actions in one step: give each action its own step, or number the actions on one screen")
-    told = " ".join(c for s in sentences for c in TOLD_SPLIT.split(s) if not SEEN.match(c))
+    told = SEEN.sub(" ", own)
     pointers = [p for p in rules["pointers"] if re.search(p, told)] + (["a link to a local file or section"] if LOCAL_LINK.search(own_raw) else [])
     if pointers:
         out.append(f"pointer: the step points to another file, step or section ({pointers[0]}): put the words here")
@@ -350,8 +351,7 @@ def step_findings(raw, kind, rules):
         out.append(f"vague: {', '.join(vague)}: name the exact thing, number or condition")
     if kind == "action":
         return out
-    told_all = " ".join(c for s in SENTENCES.split(text) for c in TOLD_SPLIT.split(s) if not SEEN.match(c))
-    if WAIT_WORDS.search(told_all) and not WAIT_STATE.search(text):
+    if WAIT_WORDS.search(SEEN.sub(" ", text)) and not WAIT_STATE.search(text):
         out.append("wait: the step names a wait but not the state to wait for: write \"Wait until <what the person sees>.\"")
     if not NEXT_STATE.search(text):
         out.append("next: the step does not say what the person sees next: write \"You see <the thing on the screen>.\"")
@@ -519,7 +519,7 @@ def run_hook(stream):
         return 2
     try:
         globs = globs_of(root)
-    except ValueError as err:  # a broken `.check` line: scripts/check.sh fails on it; it must not block every write
+    except ValueError as err:  # a broken `.check` line, or a `.check` that is not UTF-8: scripts/check.sh fails on it; it must not block every write
         print(f"WARN scripts/check_instructions.py --hook: {err}", file=sys.stderr)
         return 0
     except Exception as err:  # noqa: BLE001 - `.check` cannot be read: block (fail closed)

@@ -90,6 +90,12 @@ def test_steps():
         assert kinds(step(run + " You see **Done**. Go on.")) == ["wait"], run
     assert kinds(step("Click **Go**. You see the timer count for 10 minutes. Go on.")) == []
     assert kinds(step("Click **Go**. You see the form, and see step 3. Go on.")) == ["pointer"]
+    assert kinds(step("Click **Go**. You see the form then see step 3. Go on.")) == ["pointer"]
+    assert kinds(step("Click **Go**. You see the spinner and wait for 10 minutes. Go on.")) == ["wait"]
+    assert kinds(step("Click **Go**. You see the page and it restarts. Go on.")) == ["wait"]
+    for plain_ui in ("Click **A** for a second time.", "Click **A** in this list.", "Click **A** in that list.",
+                     "Type the chapter name.", "Open the chapters list."):
+        assert kinds(step(plain_ui + " You see the form. Go on.")) == [], plain_ui
     bad_lead = "1. Open the app and click **Settings**, then do these actions:\n   1. Type `a` in **A**.\n" \
                "   2. Type `b` in **B**.\n   You see **Saved**. Go on.\n2. Click **D**. You see E. Go on.\n"
     assert kinds(bad_lead) == ["actions"], findings(bad_lead)
@@ -216,6 +222,8 @@ def test_hook(root):
         assert hook(root, "src.py", str(log)) == 2, "a .check that cannot be read blocks (fail closed)"
     finally:
         ci.check_settings.read = real_read
+    (root / ".check").write_bytes(b"audit-instructions: \xff\n")
+    assert hook(root, "src.py", str(log)) == 0, "a .check that is not UTF-8 is a broken setting: check.sh fails on it"
     (root / ".check").write_text("audit-instructions: go.md\n")
 
 
