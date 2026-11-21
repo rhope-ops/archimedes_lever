@@ -82,9 +82,14 @@ def test_steps():
         assert kinds(step(f"Click **Report**. You see {seen}. Go on.")) == [], seen
     assert kinds(step("Click **Report**. You see 5 minutes in May. Go on.")) == []
     for told in ("See page 4.", "See the file **notes.txt**.", "Read the section **Install**.",
-                 "Follow the **Install** section of the README.", "Do the earlier list again."):
+                 "Follow the **Install** section of the README.", "Do the earlier list again.", "See the next step.",
+                 "See the next page.", "Do the next step again.", "Skip the following steps.", "Repeat that step.",
+                 "Do the other steps again.", "See chapter 2.", "Click **A**, and see step 3."):
         assert kinds(step(told + " You see the form. Go on.")) == ["pointer"], told
-    assert kinds(step("Let it run for 10 minutes. You see **Done**. Go on.")) == ["wait"]
+    for run in ("Let it run for 10 minutes.", "Let it run for ten minutes.", "Let it run for 2 mins."):
+        assert kinds(step(run + " You see **Done**. Go on.")) == ["wait"], run
+    assert kinds(step("Click **Go**. You see the timer count for 10 minutes. Go on.")) == []
+    assert kinds(step("Click **Go**. You see the form, and see step 3. Go on.")) == ["pointer"]
     bad_lead = "1. Open the app and click **Settings**, then do these actions:\n   1. Type `a` in **A**.\n" \
                "   2. Type `b` in **B**.\n   You see **Saved**. Go on.\n2. Click **D**. You see E. Go on.\n"
     assert kinds(bad_lead) == ["actions"], findings(bad_lead)
@@ -201,6 +206,16 @@ def test_hook(root):
     assert hook(root, "go.md", "", "s2") == 2 and hook(root, "go.md", "", "s2") == 0, "no transcript: the first write only"
     (root / ".check").write_text("audit-instructions:\n")
     assert hook(root, "src.py", str(log)) == 0, "a broken setting line does not block every write"
+    real_read = ci.check_settings.read
+
+    def refuse(*_args, **_kwargs):
+        """A `.check` that cannot be read."""
+        raise PermissionError("no access")
+    ci.check_settings.read = refuse
+    try:
+        assert hook(root, "src.py", str(log)) == 2, "a .check that cannot be read blocks (fail closed)"
+    finally:
+        ci.check_settings.read = real_read
     (root / ".check").write_text("audit-instructions: go.md\n")
 
 

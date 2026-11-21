@@ -31,4 +31,15 @@ Fresh reviews of the diff (the `reviewer` subagent, a fresh context, model tier 
 
 ## Review 3: the second fix commit (1d00910..6d78dba)
 
-Result: see the last section, added when the review ends.
+| # | Severity | Finding | Done |
+|---|---|---|---|
+| 1 | MAJOR | Pointer words dropped in 1d00910 (next, following, this, that, other, chapter) still pass ("See the next step.", "Repeat that step.") | Fixed in the next commit, with tests |
+| 2 | MAJOR | The "You see" filter drops a whole sentence, so "You see the form, and see step 3." passes | Fixed: the filter works clause by clause, with a test |
+| 3 | MINOR | Bare "section" flags on-screen text ("Open the Sections tab.") | Kept: the skill says to write on-screen names in bold, and bold text is not read |
+| 4 | MINOR | No test of the fail-closed hook path | Fixed: a test with a `.check` that cannot be read |
+| 5 | MINOR | "for ten minutes" and "for 2 mins" are no wait | Fixed, with tests |
+| 6 | NIT | "You see the timer count for 10 minutes." is a wait finding | Fixed: wait words are read outside "You see" clauses, with a test |
+
+## Review 4: the third fix commit
+
+Result: added when the review ends.
