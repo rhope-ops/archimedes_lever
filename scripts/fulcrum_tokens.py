@@ -29,6 +29,8 @@ OUTPUT = "docs/brand/fulcrum.css"
 # accent, dots, gold). The marks and the UI share these five values exactly.
 STANDARD_PRIMITIVES = {"ink": "#15171D", "cream": "#F3EEE4", "ember": "#E4572E", "slate": "#5A5E6A", "gold": "#D4AF37"}
 THEMES = ("light", "dark")
+# The keys the CSS header and the checks read.
+REQUIRED_KEYS = ("name", "version", "date", "source", "primitives", "derived", "roles", "contrast")
 HEX = re.compile(r"^#[0-9A-F]{6}$")
 # WCAG 2.x relative luminance: the sRGB threshold and the flare term of the contrast ratio.
 SRGB_LINEAR_LIMIT = 0.03928
@@ -41,6 +43,8 @@ a{color:var(--fm-page-link)}
 /* The header band: ink with the gold rule, as the disc and the phrase. */
 .fm-band{background:var(--fm-band);color:var(--fm-band-fg);border-bottom:3px solid var(--fm-rule)}
 .fm-band .fm-muted{color:var(--fm-band-muted)}
+.fm-band a{color:var(--fm-band-link)}
+.fm-band .fm-error{color:var(--fm-band-error)}
 /* The disc: a card drawn as the logo, an ink disc with a ring inset 5px. */
 .fm-disc{background:var(--fm-disc);color:var(--fm-disc-fg);border-radius:14px;padding:22px;
   box-shadow:inset 0 0 0 5px var(--fm-disc),inset 0 0 0 6px var(--fm-disc-ring)}
@@ -76,6 +80,21 @@ def contrast(fore, back):
 def palette(tokens):
     """Return every named colour: the primitives and the derived colours."""
     return {**tokens.get("primitives", {}), **tokens.get("derived", {})}
+
+
+def check_shape(tokens):
+    """Return findings for missing header keys and malformed contrast entries, so later steps never crash.
+
+    Args:
+        tokens: the parsed docs/brand/fulcrum.json.
+    Returns:
+        A list of finding lines, empty when the file has every key and each contrast entry is [role, role, number].
+    """
+    found = [f"{SOURCE}: missing key {key}" for key in REQUIRED_KEYS if key not in tokens]
+    for entry in tokens.get("contrast", []):
+        if not (isinstance(entry, list) and len(entry) == 3 and isinstance(entry[2], (int, float))):
+            found.append(f"{SOURCE}: contrast entry is not [role, role, minimum]: {entry}")
+    return found
 
 
 def check_colours(tokens):
@@ -159,7 +178,7 @@ def render_css(tokens):
             f"   {tokens['name']} {tokens['version']} ({tokens['date']}). Source of the primitives: {tokens['source']}.\n"
             "   Use: link this file, put class fm-band on the header band, fm-disc on the main card, fm-dots on dividers\n"
             "   (an <hr>), fm-fulcrum on section headings, fm-btn on the primary button, fm-error on error text. */\n"
-            f":root{{{primitives}{role_block(tokens, 'light')}}}\n"
+            f":root{{{primitives}{role_block(tokens, 'light')}color-scheme:light}}\n"
             f"@media (prefers-color-scheme:dark){{:root:not([data-theme=\"light\"]){{{dark}}}}}\n"
             f":root[data-theme=\"dark\"]{{{dark}}}\n" + COMPONENTS.lstrip("\n"))
 
@@ -177,6 +196,9 @@ def run(root, write):
         tokens = json.loads((root / SOURCE).read_text(encoding="utf-8"))
     except (OSError, ValueError) as err:
         return [f"{SOURCE}: cannot read: {err}"]
+    found = check_shape(tokens)
+    if found:
+        return found
     found = check_colours(tokens) + check_roles(tokens)
     if found:
         return found
@@ -202,7 +224,12 @@ def self_test():
              ("an unknown colour name fails", lambda t: t["roles"]["dark"].update(page="night"), "unknown colour"),
              ("a missing dark role fails", lambda t: t["roles"]["dark"].pop("rule"), "different roles"),
              ("low contrast fails", lambda t: t["roles"]["light"].update({"page-muted": "hair-light"}), "under 4.5:1"),
-             ("an unused derived colour fails", lambda t: t["derived"].update(spare="#123456"), "not used")]
+             ("an unused derived colour fails", lambda t: t["derived"].update(spare="#123456"), "not used"),
+             ("a malformed hex value fails", lambda t: t["derived"].update(mist="#a9acb5"), "not #RRGGBB"),
+             ("a contrast pair with an unknown role fails", lambda t: t["contrast"].append(["nope", "page", 3]), "unknown role"),
+             ("a missing header key fails", lambda t: t.pop("version"), "missing key version"),
+             ("a malformed contrast entry fails", lambda t: t["contrast"].append(["page-fg", "page"]), "not [role, role"),
+             ("a band link under 4.5:1 fails", lambda t: t["roles"]["light"].update({"band-link": "ember-deep"}), "band-link on band")]
     failed = 0
     for label, change, expect in cases:
         with tempfile.TemporaryDirectory() as tmp:
