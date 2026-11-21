@@ -202,12 +202,12 @@ def agent_types(tpath):
 
 
 def tokens(v):
-    """A token count as an int; a value that is not a whole number counts as 0 (the row is kept).
+    """A token count as int(v), or 0 when int() rejects v (text, an infinite number); the row is kept.
 
     Args:
         v: the usage value from the log.
     Returns:
-        The count, or 0 when v is not an int or a text of digits.
+        int(v), or 0 when int() raises TypeError, ValueError or OverflowError.
     """
     try:
         return int(v or 0)
