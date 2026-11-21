@@ -36,7 +36,7 @@ HEX = re.compile(r"^#[0-9A-F]{6}$")
 SRGB_LINEAR_LIMIT = 0.03928
 FLARE = 0.05
 COMPONENTS = """
-/* Components: each one is a shape from the marks (the owner, 2026-11-21). */
+/* Components: each one is a shape from the marks (the owner, 2026-11-20). */
 body{background:var(--fm-page);color:var(--fm-page-fg)}
 a{color:var(--fm-page-link)}
 :focus-visible{outline:3px solid var(--fm-focus);outline-offset:2px}
