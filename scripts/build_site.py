@@ -38,10 +38,11 @@ README = 'README.md'
 SITE = 'index.html'
 LOCAL = 'scripts/build_site_local.py'
 COMMAND = 'scripts/build_site.py --write'
-# A README section and a generated block on the page; NAME is lower-case letters, digits and "-".
-SECTION = re.compile(r'<!-- site:([a-z0-9-]+) -->\n(.*?)<!-- /site:\1 -->', re.S)
+# A README section and a generated block on the page; NAME is lower-case letters, digits and "-". Each end mark starts
+# its own line (after the indent), so no old text can stay in front of it; the body may be empty.
+SECTION = re.compile(r'<!-- site:([a-z0-9-]+) -->\n(?:(.*?)\n)?<!-- /site:\1 -->', re.S)
 BLOCK = re.compile(r'^([ \t]*)<!-- >>> site:([a-z0-9-]+): generated from README\.md by scripts/build_site\.py --write '
-                   r'\(do not edit\) -->\n(.*?)[ \t]*<!-- <<< site:\2 -->', re.S | re.M)
+                   r'\(do not edit\) -->\n(?:(.*?)\n)?[ \t]*<!-- <<< site:\2 -->', re.S | re.M)
 # Any site mark, also a broken one (a typo in a name or an end mark): each must be used by SECTION or BLOCK (stray_marks).
 README_MARK = re.compile(r'<!-- /?site:[^>]*-->')
 SITE_MARK = re.compile(r'<!-- (?:>>>|<<<) site:[^>]*-->')
@@ -94,7 +95,7 @@ def readme_sections(readme):
     for name, body in SECTION.findall(readme):
         if name in found:
             raise ValueError(f'{README}: two sections <!-- site:{name} -->')
-        found[name] = unquote(body).strip()
+        found[name] = unquote(body or '').strip()
     return found
 
 
@@ -257,12 +258,16 @@ def builders(local):
     need_source = bool(getattr(local, 'REQUIRE_FACT_SOURCE', False))
     found = {'intro': build_intro,
              'key-facts': lambda markdown, indent: build_key_facts(markdown, indent, need_source)}
-    found.update(getattr(local, 'BUILDERS', {}) or {})
+    extra = getattr(local, 'BUILDERS', {}) or {}
+    if not isinstance(extra, dict) or not all(isinstance(k, str) and callable(v) for k, v in extra.items()):
+        raise ValueError(f'{LOCAL}: BUILDERS must be a dict of section name to function(markdown, indent)')
+    found.update(extra)
     return found
 
 
 def stray_marks(readme, site):
-    """Return findings for site marks that no section or block uses (a typo, capitals, a missing end mark).
+    """Return findings for site marks that are not the two ends of a section or block (a typo, capitals, a missing end
+    mark, or a mark inside another block, which a rebuild would drop).
 
     Args:
         readme: the text of README.md.
@@ -272,7 +277,10 @@ def stray_marks(readme, site):
     """
     found = []
     for text, file, mark, pair in ((readme, README, README_MARK, SECTION), (site, SITE, SITE_MARK, BLOCK)):
-        used = {pm.start() + m.start() for pm in pair.finditer(text) for m in mark.finditer(pm.group(0))}
+        used = set()
+        for pm in pair.finditer(text):  # only the first and the last mark of a match are its two ends
+            ends = list(mark.finditer(pm.group(0)))
+            used |= {pm.start() + ends[0].start(), pm.start() + ends[-1].start()}
         found += [f'{file}: a site mark with no pair or a name not in a-z, 0-9 and "-": {m.group(0)}'
                   for m in mark.finditer(text) if m.start() not in used]
     return found
@@ -293,8 +301,8 @@ def build_one(kinds, name, markdown, indent):
     """
     try:
         body = kinds[name](markdown, indent)
-    except ValueError:
-        raise
+    except ValueError as err:
+        raise ValueError(f'site:{name}: {err}') from err
     except Exception as err:  # a project builder with a wrong signature or a bug: a finding, not a traceback
         raise ValueError(f'site:{name}: the builder failed: {type(err).__name__}: {err}') from err
     if not isinstance(body, str):
@@ -460,7 +468,15 @@ TEST_CASES = (
     ('a local builder with a wrong signature is a finding', ('<!-- site:intro -->', NOTE + '<!-- site:intro -->'),
      TEST_PAGE + mark('note'), 'BUILDERS = {"note": lambda md: md}\n', ['the builder failed: TypeError'], True),
     ('extra_checks that return text, not a list, is one finding', None, TEST_PAGE,
-     'def extra_checks(root, readme):\n    return "bad"\n', ['must return a list of text lines'], True))
+     'def extra_checks(root, readme):\n    return "bad"\n', ['must return a list of text lines'], True),
+    ('old text in front of an end mark fails', None, TEST_PAGE.replace('old\n    <!-- <<< site:intro', 'old <!-- <<< site:intro'), None,
+     ['a site mark with no pair'], True),
+    ('a start mark inside another block fails', None, TEST_PAGE.replace('old\n    <!-- <<< site:intro', mark('intro').split('\n')[0]
+     + '\n    <!-- <<< site:intro'), None, ['a site mark with no pair'], True),
+    ('a local builder that returns no text is a finding', ('<!-- site:intro -->', NOTE + '<!-- site:intro -->'),
+     TEST_PAGE + mark('note'), 'BUILDERS = {"note": lambda md, indent: None}\n', ['must return text'], True),
+    ('BUILDERS that is not a dict is a finding', None, TEST_PAGE, 'BUILDERS = 5\n', ['BUILDERS must be a dict'], True),
+    ('an empty README section is read as empty', ('A safe_tool & more.\n', ''), TEST_PAGE, None, ['site:intro: ', 'one paragraph'], True))
 # What the fresh build must write: the intro, a key fact without its source, two lines joined, an escaped "&", the
 # block's indent kept.
 TEST_BUILT = ('    <p>A safe_tool &amp; more.</p>', '      <dt>Read-only:</dt><dd>it changes nothing.</dd>',
