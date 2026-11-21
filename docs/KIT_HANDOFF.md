@@ -2,7 +2,7 @@
 
 The kit's own handoff (AGENTS.md "Handoff"). Kit only: first use deletes it in a project, which uses docs/NEXT_PROMPT.md. Keep it at 40 lines or fewer; evidence goes in docs/reviews/. Times are America/Chicago.
 
-Updated: 2026-11-20 10:35. Kit owner: the session "Kit · Skill use analysis · 2026-11-20" (skill use plan; it owns kit skills, AGENTS.md and bloat-check files until kit 6.0.0 merges). Fleet hub plan: "Kit · Fleet decision hub · 2026-11-19". Before: "Kit · Session names and project tags · 2026-11-19" (kit 4.0.0).
+Updated: 2026-11-20 20:30. Open: kit 6.2.1, content check speed (PR 94, lane C: waits for the owner's merge; session "Kit · Content check speed · 2026-11-20"; evidence docs/reviews/2026-11-20-content-check-speed.md); after the merge each project syncs. Before: 2026-11-20 10:35, "Kit · Skill use analysis · 2026-11-20". Fleet hub plan: "Kit · Fleet decision hub · 2026-11-19".
 
 ## State
 
