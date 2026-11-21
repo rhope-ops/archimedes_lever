@@ -140,6 +140,7 @@ The sync replaces every kit file, so a project keeps its own code in its own fil
 
 - `scripts/check.local.sh`: the project's own tests (`scripts/check.sh` runs it last).
 - `scripts/check_content_local.py`: its own finders for the content check, for example its own pattern for a kind of finding (the interface: the header of `scripts/check_content_scan.py`).
+- `scripts/check_instructions_local.py`: its own words, lower limits, a parser for another file type or more checks for the steps a person follows (the interface: the header of `scripts/check_instructions.py`).
 - `scripts/code_standard_gate.py`: its own stricter code-standard rules (the interface: the header of `scripts/code_standard.py`; [docs/code-standard.md](docs/code-standard.md) "A project's own gate").
 
 A kit file that the owner wants different in one project is recorded with `python3 scripts/check_lock.py --relock <file>` on the owner's request, and each check run lists it. The steps, the approval of changed rule lines and the before and after proof: [.claude/skills/kit-update/SKILL.md](.claude/skills/kit-update/SKILL.md).
