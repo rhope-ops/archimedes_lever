@@ -14,7 +14,7 @@ Updated: 2026-11-21 17:10 by session "Kit · Fleet cleanup 10.1.0 · 2026-11-21"
 
 Full text, owner decisions and the approved Delegation rule text: [reviews/2026-11-21-fleet-cleanup-10-1-0-plan.md](reviews/2026-11-21-fleet-cleanup-10-1-0-plan.md).
 
-- [x] 1. Plan saved.
+- [x] 1. Plan saved. Paused by the owner 2026-11-21 17:15 (7-day usage limit; no work on overage): continue at step 2 after the reset, 2026-11-23 05:00.
 - [ ] 2. Kit PR 10.1.0: placeholder false positive; backlog (a)(b)(c)(d)(f) below; token_log timestamp crash and `tokens()` docstring; Delegation text and skill sentence; 9c record; session-load trim; CHANGELOG; review; lane C merge.
 - [ ] 3. Sync 10.1.0 to the 9 repos on 10.0.0 (plan approval covers green merges with no MAJOR finding).
 - [ ] 4. TA audit (report only).
