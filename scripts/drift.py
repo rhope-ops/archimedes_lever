@@ -349,7 +349,8 @@ def settings_merge_cases(tmp, base, results):
         base: the baseline folder.
         results: the list that gets True or False for each case.
     """
-    kit_cmd = json.loads((base / ".claude/settings.json").read_text())["hooks"]["PreToolUse"][0]
+    kit_pre = json.loads((base / ".claude/settings.json").read_text())["hooks"]["PreToolUse"]
+    kit_cmd = kit_pre[0]
     own = {"matcher": "^Bash$", "hooks": [{"type": "command", "command": "python3 tools/own_guard.py"}]}
     mixed = {"hooks": [{"type": "command", "command": "python3 scripts/stop_check.py"},
                        {"type": "command", "command": "python3 tools/own_stop.py"}]}
@@ -361,7 +362,7 @@ def settings_merge_cases(tmp, base, results):
     got = json.loads(sb.merge_settings(base / ".claude/settings.json", path))
     pre, stop = got["hooks"]["PreToolUse"], got["hooks"]["Stop"]
     same(results, "merge: the kit hook first, the project's own entry kept, the older kit copy gone",
-           [pre[0] == kit_cmd, own in pre, old_kit not in pre, len(pre)], [True, True, True, 2])
+           [pre[0] == kit_cmd, own in pre, old_kit not in pre, len(pre)], [True, True, True, len(kit_pre) + 1])
     same(results, "merge: a mixed entry keeps only the project's command",
            [h["command"] for e in stop[1:] for h in e["hooks"]], ["python3 tools/own_stop.py"])
     same(results, "merge: the matcher of a replaced kit entry is noted", sb.REPLACED_HOOKS, ["^(Agent|mcp__slack__post)$"])

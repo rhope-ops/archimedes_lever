@@ -144,7 +144,15 @@ def plain(raw):
 
 def count_actions(sentence, verbs=ACTION_VERBS):
     """The number of actions in one sentence: clauses (split on "then", "and", ";") whose first word, after a
-    leading condition up to its comma, is one of `verbs`."""
+    leading condition up to its comma, is one of `verbs`.
+
+    Args:
+        sentence: one sentence of a step, in plain text (plain()).
+        verbs: the action verbs in force.
+
+    Returns:
+        The count of actions.
+    """
     n = 0
     for clause in CLAUSES.split(sentence.strip()):
         clause = clause.strip(" ,.")
@@ -234,7 +242,11 @@ class _ListParser(html.parser.HTMLParser):
             self.items[self.stack[-1]]["parts"].append(f"[link]({href})")
 
     def handle_endtag(self, tag):
-        """Close the list, item or span that `tag` ends."""
+        """Close the list, item or span that `tag` ends.
+
+        Args:
+            tag: the tag name.
+        """
         if tag == "ol" and self.ols:
             del self.stack[self.ols.pop():]
         elif tag == "li" and self.stack:
@@ -452,7 +464,14 @@ def skill_loaded(transcript):
 
 
 def hook_target(event):
-    """(repo root, repo-relative path) of the file a Write, Edit, MultiEdit or NotebookEdit call changes, or None."""
+    """The file that a Write, Edit, MultiEdit or NotebookEdit call changes.
+
+    Args:
+        event: the hook event (tool_name, cwd, tool_input).
+
+    Returns:
+        (repo root, repo-relative path), or None for another tool or a file outside a repo.
+    """
     args = event.get("tool_input") or {}
     target = args.get("file_path") or args.get("notebook_path")
     if event.get("tool_name") not in ("Write", "Edit", "MultiEdit", "NotebookEdit") or not target:
@@ -505,7 +524,11 @@ def run_hook(stream):
 
 
 def main():
-    """Parse the command line and run the check, the hook or the self-test."""
+    """Parse the command line and run the check, the hook or the self-test.
+
+    Returns:
+        The exit code.
+    """
     ap = argparse.ArgumentParser(description="Check the steps that a person follows (AGENTS.md \"Instructions people follow\").")
     ap.add_argument("files", nargs="*", help="files to check (default: the audit-instructions globs of .check)")
     ap.add_argument("--hook", action="store_true", help="the Claude Code PreToolUse hook (reads the event on stdin)")
