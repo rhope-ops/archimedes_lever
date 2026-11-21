@@ -21,7 +21,7 @@ does nothing: sessions with no repo are not logged, and the repo is the folder t
      push with no answer in time (TOKEN_LOG_NET_TIMEOUT) is killed with its pre-push hook.
 
 One row per API call. Columns: message_id, timestamp (UTC, of the reply), turn (prompts up to that time: user messages and
-system wake-ups such as task notifications, not tool results or interrupt markers; total by turn for a chart), session_id, repo, model, source (main, subagent), agent (main; the subagent type of the Agent call, else unknown), input_tokens,
+system wake-ups such as task notifications, not tool results or interrupt markers; total by turn for a chart), session_id, repo, model, source (main, subagent), agent (main; the subagent type of the Agent call, else unknown; empty for an old row whose log is gone), input_tokens,
 cache_creation_input_tokens, cache_read_input_tokens, output_tokens.
 
 Settings (environment): TOKEN_LOG=off turns it off; TOKEN_LOG_BRANCH (default claude/token-usage); TOKEN_LOG_SYNC=1
@@ -191,11 +191,13 @@ def agent_types(tpath):
                 if not isinstance(b, dict):
                     continue
                 if b.get("type") == "tool_use" and b.get("name") in ("Agent", "Task") and isinstance(b.get("input"), dict):
-                    calls[b.get("id")] = b["input"].get("subagent_type") or "unknown"
+                    t = b["input"].get("subagent_type")
+                    if isinstance(b.get("id"), str):
+                        calls[b["id"]] = t if isinstance(t, str) and t else "unknown"
                 if b.get("type") == "tool_result" and isinstance(d.get("toolUseResult"), dict):
-                    aid = d["toolUseResult"].get("agentId")
-                    if aid and b.get("tool_use_id") in calls:
-                        types[aid] = calls[b["tool_use_id"]]
+                    aid, tid = d["toolUseResult"].get("agentId"), b.get("tool_use_id")
+                    if isinstance(aid, str) and aid and isinstance(tid, str) and tid in calls:
+                        types[aid] = calls[tid]
     return types
 
 
