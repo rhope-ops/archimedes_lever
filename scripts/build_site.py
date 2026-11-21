@@ -258,11 +258,29 @@ def builders(local):
     need_source = bool(getattr(local, 'REQUIRE_FACT_SOURCE', False))
     found = {'intro': build_intro,
              'key-facts': lambda markdown, indent: build_key_facts(markdown, indent, need_source)}
-    extra = getattr(local, 'BUILDERS', {})  # only a missing BUILDERS means none; 0, [] or None is a mistake
+    extra = getattr(local, 'BUILDERS', {})  # only a missing BUILDERS means none; 0, "", [] or None is a mistake
     if not isinstance(extra, dict) or not all(isinstance(k, str) and callable(v) for k, v in extra.items()):
         raise ValueError(f'{LOCAL}: BUILDERS must be a dict of section name to function(markdown, indent)')
-    found.update(extra)
+    found.update({name: project_builder(name, build) for name, build in extra.items()})
     return found
+
+
+def project_builder(name, build):
+    """Return a project builder wrapped so that its own ValueError names its section (kit builders name it already).
+
+    Args:
+        name: the section name.
+        build: the project's function(markdown, indent).
+    Returns:
+        A function with the same arguments.
+    """
+    def run_it(markdown, indent):
+        """Run the project builder; give its ValueError the prefix "site:NAME: "."""
+        try:
+            return build(markdown, indent)
+        except ValueError as err:
+            raise ValueError(f'site:{name}: {err}') from err
+    return run_it
 
 
 def stray_marks(readme, site):
@@ -301,8 +319,8 @@ def build_one(kinds, name, markdown, indent):
     """
     try:
         body = kinds[name](markdown, indent)
-    except ValueError as err:  # a kit builder names its section already; a project builder's own error gets the name
-        raise (err if f'site:{name}' in str(err) else ValueError(f'site:{name}: {err}')) from err
+    except ValueError:  # a kit builder names its section; a project builder's error got its name in project_builder
+        raise
     except Exception as err:  # a project builder with a wrong signature or a bug: a finding, not a traceback
         raise ValueError(f'site:{name}: the builder failed: {type(err).__name__}: {err}') from err
     if not isinstance(body, str):
@@ -479,7 +497,10 @@ TEST_CASES = (
     ('BUILDERS that is empty but not a dict is a finding', None, TEST_PAGE, 'BUILDERS = []\n', ['BUILDERS must be a dict'], True),
     ('text in front of a README end mark fails', ('more.\n<!-- /site:intro -->', 'more. <!-- /site:intro -->'), TEST_PAGE, None,
      ['a site mark with no pair'], True),
-    ('an empty README section is read as empty', ('A safe_tool & more.\n', ''), TEST_PAGE, None, ['site:intro must be one paragraph'], True))
+    ('an empty README section is read as empty', ('A safe_tool & more.\n', ''), TEST_PAGE, None, ['^README.md: site:intro must be one paragraph'], True),
+    ('a project builder error that names another section still gets its own name', ('<!-- site:intro -->', NOTE + '<!-- site:intro -->'),
+     TEST_PAGE + mark('note'), 'def bad(md, indent):\n    raise ValueError("see site:notes")\nBUILDERS = {"note": bad}\n',
+     ['^site:note: see site:notes'], True))
 # What the fresh build must write: the intro, a key fact without its source, two lines joined, an escaped "&", the
 # block's indent kept.
 TEST_BUILT = ('    <p>A safe_tool &amp; more.</p>', '      <dt>Read-only:</dt><dd>it changes nothing.</dd>',
@@ -493,7 +514,8 @@ def test_case(edit, page, local, expect, write):
         edit: an (old, new) change to the invented README (all places), or None for the README as it is.
         page: the text of the invented index.html.
         local: the text of an invented scripts/build_site_local.py, or None for none.
-        expect: the words each finding must hold; empty when the case must pass.
+        expect: the words some finding must hold (a word that starts with "^": a finding must start with the rest); empty
+            when the case must pass.
         write: True to rebuild the site before the check.
     Returns:
         A pair: True when the case behaved as expected, and the list of findings.
@@ -510,7 +532,8 @@ def test_case(edit, page, local, expect, write):
         if page is EMPTY_PAGE:  # the "nothing shared" case: it must skip, not pass a check
             return not found and not shared, found
         if expect:
-            return bool(found) and all(any(word in line for line in found) for word in expect), found
+            hit = lambda word, line: line.startswith(word[1:]) if word.startswith('^') else word in line  # "^": the finding starts so
+            return bool(found) and all(any(hit(word, line) for line in found) for word in expect), found
         built = (root / SITE).read_text(encoding='utf-8')
         whole = page is TEST_PAGE and local is None and edit is None
         aside = local != TEST_LOCAL or '    <aside>plain</aside>' in built  # the local builder's block was written
