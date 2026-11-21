@@ -77,9 +77,14 @@ def test_steps():
            "   You see the button **Sign in** turn blue. Go on.\n2. Click **Sign in**. You see the start page. The task is complete.\n"
     assert findings(lead) == [], findings(lead)
     assert kinds("1. Click **A** and click **B**. You see C. Go on.\n2. Click **D**. You see E. Go on.\n") == ["actions"]
-    for seen in ("the table **Totals**", "the list of files", "the guide **Start**", "the **Backup** section"):
+    for seen in ("the table **Totals**", "the list of files", "the guide **Start**", "the **Backup** section",
+                 "the section **Backup**", "the other steps in the panel"):
         assert kinds(step(f"Click **Report**. You see {seen}. Go on.")) == [], seen
     assert kinds(step("Click **Report**. You see 5 minutes in May. Go on.")) == []
+    for told in ("See page 4.", "See the file **notes.txt**.", "Read the section **Install**.",
+                 "Follow the **Install** section of the README.", "Do the earlier list again."):
+        assert kinds(step(told + " You see the form. Go on.")) == ["pointer"], told
+    assert kinds(step("Let it run for 10 minutes. You see **Done**. Go on.")) == ["wait"]
     bad_lead = "1. Open the app and click **Settings**, then do these actions:\n   1. Type `a` in **A**.\n" \
                "   2. Type `b` in **B**.\n   You see **Saved**. Go on.\n2. Click **D**. You see E. Go on.\n"
     assert kinds(bad_lead) == ["actions"], findings(bad_lead)
@@ -151,6 +156,10 @@ def test_run(root):
     try:
         assert ci.run_check(root, []) == 0, "go.md is clean; bad.md is not named"
         assert ci.run_check(root, ["bad.md"]) == 1, "a named file is checked"
+        (root / "sub").mkdir(exist_ok=True)
+        got = subprocess.run([sys.executable, str(Path(ci.__file__).resolve()), "../go.md"], cwd=root / "sub",
+                             capture_output=True, text=True)
+        assert got.returncode == 0 and "INSTRUCTIONS PASS" in got.stdout, "a relative name from a subfolder: " + got.stdout + got.stderr
         (root / ".check").write_text("")
         assert ci.run_check(root, []) == 0 and "no instruction files" in out.getvalue()
         (root / ".check").write_text("audit-instructions:\n")

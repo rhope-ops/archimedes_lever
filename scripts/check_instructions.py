@@ -68,12 +68,12 @@ VAGUE = [r"\bappropriate(?:ly)?\b", r"\bas (?:needed|necessary|required|applicab
          r"\bsimply\b", r"\bjust\b", r"\beasily\b", r"\betc\b", r"\band so on\b", r"\bsomewhere\b", r"\bsomething\b",
          r"\bstuff\b", r"\bthings?\b", r"\bshould\b", r"\bmight\b", r"\bmaybe\b", r"\bperhaps\b",
          r"\bprobably\b", r"\busually\b", r"\bnormally\b", r"\btypically\b", r"\blikely\b", r"\btry to\b"]
-POINTERS = [r"\bsee (?:step|above|below|the (?:previous|next) (?:step|section|page))\b", r"\bsee (?:the )?(?:section|chapter|readme|docs?)\b",
+POINTERS = [r"\bsee (?:step|section|above|below|page|the (?:previous|section|file|table|list|readme|docs?|guide))\b",
             r"\bsteps? \d+\b", r"\b(?:as|shown|described|listed|mentioned|explained|given) (?:above|below|earlier|before|previously)\b",
-            r"\b(?:previous|preceding|earlier|next|following|this|that|other) (?:steps?|sections?|instructions?|chapters?)\b", r"\bsection \d",
+            r"\b(?:previous|preceding|earlier) (?:steps?|sections?|instructions?|list)\b", r"\bsections?\b", r"\breadme\b",
             r"\bgo back to\b", r"\brepeat (?:the |these |this )?steps?\b", r"\b[\w./-]+\.md\b"]
 LOCAL_LINK = re.compile(r"\]\((?!https?://|mailto:)[^)\s]+\)")
-WAIT_WORDS = re.compile(r"\b(?:wait|waiting|loading|takes|restarts?|restarting|reboots?|processing|"
+WAIT_WORDS = re.compile(r"\b(?:wait|waiting|loading|takes|for (?:about )?\d+ (?:seconds?|minutes?|hours?)|restarts?|restarting|reboots?|processing|"
                         r"syncing|in progress|spinner|progress bar)\b")
 WAIT_STATE = re.compile(r"\bwait until\b|\bwait for\b[^.]*\b(?:to|until)\b|\bdo not [^.]*\buntil\b|\buntil you see\b")
 NEXT_STATE = re.compile(r"\byou (?:now |will )?(?:see|get|hear)\b|\b(?:shows|opens|appears|closes|changes|turns|loads|"
@@ -85,6 +85,7 @@ FENCE = re.compile(r"^\s*(?:```|~~~)")
 WORD = re.compile(r"[A-Za-z0-9][A-Za-z0-9'’-]*")
 CLAUSES = re.compile(r"\s*[,;]?\s*(?:and\s+)?then\s+|;\s*|,\s+and\s+|\s+and\s+", re.IGNORECASE)
 SENTENCES = re.compile(r"(?<=[.!?])\s+")
+SEEN = re.compile(r"^\s*you (?:now |will )?see\b")  # a next-state sentence: what it names is on the screen, no pointer
 TOKEN = " X "  # what code, bold and quoted text become: one word, no verb, no vague word
 LEAD_SEP = "\n\x1e\n"  # between a lead-in's own text and the text of its actions (procedure_steps)
 
@@ -337,7 +338,8 @@ def step_findings(raw, kind, rules):
     acts = sum(count_actions(s, rules["verbs"]) for s in sentences)
     if acts > 1:
         out.append(f"actions: {acts} actions in one step: give each action its own step, or number the actions on one screen")
-    pointers = [p for p in rules["pointers"] if re.search(p, own)] + (["a link to a local file or section"] if LOCAL_LINK.search(own_raw) else [])
+    told = " ".join(s for s in sentences if not SEEN.match(s))
+    pointers = [p for p in rules["pointers"] if re.search(p, told)] + (["a link to a local file or section"] if LOCAL_LINK.search(own_raw) else [])
     if pointers:
         out.append(f"pointer: the step points to another file, step or section ({pointers[0]}): put the words here")
     vague = sorted({m.group(0) for p in rules["vague"] for m in re.finditer(p, own)})
@@ -516,6 +518,9 @@ def run_hook(stream):
     except ValueError as err:  # a broken `.check` line: scripts/check.sh fails on it; it must not block every write
         print(f"WARN scripts/check_instructions.py --hook: {err}", file=sys.stderr)
         return 0
+    except Exception as err:  # noqa: BLE001 - `.check` cannot be read: block (fail closed)
+        print(f"BLOCKED by scripts/check_instructions.py --hook: {err}", file=sys.stderr)
+        return 2
     if not matches(rel, globs):
         return 0
     try:
