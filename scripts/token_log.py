@@ -21,7 +21,8 @@ does nothing: sessions with no repo are not logged, and the repo is the folder t
      push with no answer in time (TOKEN_LOG_NET_TIMEOUT) is killed with its pre-push hook.
 
 One row per API call. Columns: message_id, timestamp (UTC, of the reply), turn (prompts up to that time: user messages and
-system wake-ups such as task notifications, not tool results or interrupt markers; total by turn for a chart), session_id, repo, model, source (main, subagent), agent (main; the subagent type of the Agent call, else unknown; empty for an old row whose log is gone), input_tokens,
+system wake-ups such as task notifications, not tool results or interrupt markers; total by turn for a chart), session_id, repo, model, source (main, subagent), agent (main; the subagent type of the Agent call, else unknown; empty for an old row whose log is gone),
+agent_id (the subagent's id, one per Agent call, so its calls group into one task; empty for main), input_tokens,
 cache_creation_input_tokens, cache_read_input_tokens, output_tokens.
 
 Settings (environment): TOKEN_LOG=off turns it off; TOKEN_LOG_BRANCH (default claude/token-usage); TOKEN_LOG_SYNC=1
@@ -29,11 +30,17 @@ pushes in the foreground; TOKEN_LOG_HOME (default ~/.claude/token-log) holds pus
 TOKEN_LOG_NET_TIMEOUT (seconds, default 600) limits each ls-remote, fetch and push.
 
 Manual push:  python3 scripts/token_log.py --push REPO_DIR SESSION_ID TRANSCRIPT_PATH
+Report:  python3 scripts/token_log.py --report [REF]  (in a repo: fetches the log branch, or reads REF; prints the
+  estimated cost by week in America/Chicago, by source, agent and model, and per subagent task, from PRICES)
+Self-update: after each background push, the installed copy (only a token_log.py in ~/.claude/hooks) checks the
+  kit's main branch at most once a day and replaces itself with a newer copy that compiles (TOKEN_LOG_UPDATE=off
+  turns it off). The setup script installs it only when a container is built, so a resumed container kept an old copy.
 Self-test (temporary repos, no network):  python3 scripts/token_log.py --test
 Standard library only.
-Network: the git remote "origin" of the repo (fetch and push of the branch claude/token-usage); none in the self-test.
-Writes: the branch claude/token-usage (one CSV file for each session), through a temporary index; push.log and lock
-files in TOKEN_LOG_HOME; never the work tree.
+Network: the git remote "origin" of the repo (fetch and push of the branch claude/token-usage); the self-update: a
+shallow clone of KIT_URL at most once a day; none in the self-test.
+Writes: the branch claude/token-usage (one CSV file for each session), through a temporary index; push.log, lock
+files and update.stamp in TOKEN_LOG_HOME; the installed hook file (self-update); never the work tree.
 Credentials: none itself; the push uses the credentials git already has for origin.
 """
 import bisect
@@ -43,15 +50,16 @@ import glob
 import io
 import json
 import os
+import shutil
 import signal
 import subprocess
 import sys
 import tempfile
 import time
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
-FIELDS = ["message_id", "timestamp", "turn", "session_id", "repo", "model", "source", "agent", "input_tokens",
-          "cache_creation_input_tokens", "cache_read_input_tokens", "output_tokens"]
+FIELDS = ["message_id", "timestamp", "turn", "session_id", "repo", "model", "source", "agent", "agent_id",
+          "input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens", "output_tokens"]
 USAGE_KEYS = FIELDS[-4:]
 PRIVATE_REF = "refs/token-log/remote"
 NOT_PROMPTS = ("[Request interrupted",)
@@ -228,18 +236,20 @@ def log_rows(sid, tpath, repo):
     msgs, prompts = read_log(tpath, "main")
     types = agent_types(tpath)
     agent = {mid: "main" if src == "main" else "unknown" for mid, (_, _, _, src) in msgs.items()}
+    agent_id = {}
     for p in sorted(glob.glob(os.path.join(os.path.splitext(tpath)[0], "**", "*.jsonl"), recursive=True)):
         name = os.path.basename(p)
         aid = name[len("agent-"):-len(".jsonl")] if name.startswith("agent-") else ""
         for k, v in read_log(p, "subagent")[0].items():
             if k not in msgs:
                 msgs[k] = v
-                agent[k] = types.get(aid, "unknown")
+                agent[k], agent_id[k] = types.get(aid, "unknown"), aid
     prompts.sort()
     rows = {}
     for mid, (ts, model, u, src) in msgs.items():
         rows[mid] = {"message_id": mid, "timestamp": ts, "turn": bisect.bisect_right(prompts, ts) if ts else len(prompts),
                      "session_id": sid, "repo": repo, "model": model, "source": src, "agent": agent[mid],
+                     "agent_id": agent_id.get(mid, ""),
                      **{k: tokens(u.get(k)) for k in USAGE_KEYS}}
     return rows
 
@@ -370,6 +380,176 @@ def hook_main():
                      stdout=logf, stderr=logf, start_new_session=True)
 
 
+KIT_URL = "https://github.com/rhope-ops/archimedes_lever"
+UPDATE_EVERY = 24 * 3600  # seconds between self-update checks
+# Prices in USD per million tokens: (input, output, cache read); a cache write costs 1.25 x input (5-minute cache).
+# Source: the claude-api skill price table (cached 2026-11-03); a cache read not listed there is 10% of input.
+# The weekly usage limit is assumed to weigh tokens like these prices. Longest matching model id prefix wins.
+PRICES_AS_OF = "2026-11-03"
+PRICES = {
+    "claude-fable-5-2": (8.0, 40.0, 0.20), "claude-fable-5-1": (10.0, 50.0, 1.0), "claude-fable-5": (10.0, 50.0, 1.0),
+    "claude-opus-5-5": (4.0, 20.0, 0.20), "claude-opus-5": (5.0, 25.0, 0.50), "claude-opus-4": (5.0, 25.0, 0.50),
+    "claude-sonnet-5-5": (2.0, 10.0, 0.10), "claude-sonnet-5": (2.0, 10.0, 0.20), "claude-sonnet-4": (3.0, 15.0, 0.30),
+    "claude-haiku-5-5": (0.10, 0.50, 0.01), "claude-haiku-4": (1.0, 5.0, 0.10),
+}
+
+
+def self_update(path, url=None, now=None):
+    """Replace the installed hook file with the kit's main copy when it differs and compiles; at most once a day.
+
+    Args:
+        path: the installed token_log.py to replace.
+        url: the kit repo to clone (default TOKEN_LOG_KIT_URL, else KIT_URL).
+        now: the current time in seconds (default time.time()), for the self-test.
+    Returns:
+        A short result text: "skipped", "up to date", "updated" or "not updated: <reason>".
+    """
+    import py_compile
+    stamp, now = os.path.join(home(), "update.stamp"), time.time() if now is None else now
+    if os.path.exists(stamp) and now - os.path.getmtime(stamp) < UPDATE_EVERY:
+        return "skipped"
+    os.makedirs(home(), exist_ok=True)
+    with open(stamp, "w"):
+        pass
+    os.utime(stamp, (now, now))  # a failed check also waits a day
+    with tempfile.TemporaryDirectory() as tmp:
+        r = subprocess.run(["git", "clone", "-q", "--depth", "1", url or os.environ.get("TOKEN_LOG_KIT_URL") or KIT_URL,
+                            os.path.join(tmp, "k")], capture_output=True, text=True, timeout=net_timeout())
+        new = os.path.join(tmp, "k", "scripts", "token_log.py")
+        if r.returncode != 0 or not os.path.isfile(new):
+            return "not updated: " + (r.stderr.strip()[-200:] or "no scripts/token_log.py")
+        with open(new, "rb") as f, open(path, "rb") as g:
+            if f.read() == g.read():
+                return "up to date"
+        try:
+            py_compile.compile(new, cfile=os.path.join(tmp, "c.pyc"), doraise=True)
+        except py_compile.PyCompileError as e:
+            return f"not updated: {e.msg.strip()[-200:]}"
+        shutil.copyfile(new, path + ".new")
+        os.replace(path + ".new", path)
+    return "updated"
+
+
+def update_main():
+    """Self-update the installed copy after a background push (never a copy in a repo); errors go to push.log."""
+    here = os.path.abspath(__file__)
+    if os.environ.get("TOKEN_LOG_UPDATE", "").lower() == "off" or \
+            os.path.dirname(here) != os.path.expanduser("~/.claude/hooks"):
+        return
+    try:
+        print(datetime.now(timezone.utc).isoformat(timespec="seconds"), "self-update:", self_update(here), flush=True)
+    except Exception as e:
+        print("self-update error:", e, flush=True)
+
+
+def row_cost(r):
+    """The estimated cost of one row in USD, or None for a model with no price.
+
+    Args:
+        r: a row (a dict with the FIELDS; token counts as text or int).
+    Returns:
+        The cost as a float, or None.
+    """
+    keys = [k for k in PRICES if (r.get("model") or "").startswith(k)]
+    if not keys:
+        return None
+    inp, out, read = PRICES[max(keys, key=len)]
+    n = {k: tokens(r.get(k)) for k in USAGE_KEYS}
+    return (n["input_tokens"] * inp + n["cache_creation_input_tokens"] * inp * 1.25
+            + n["cache_read_input_tokens"] * read + n["output_tokens"] * out) / 1e6
+
+
+def week_of(ts, tz="America/Chicago"):
+    """The Monday (YYYY-MM-DD) of the week of a UTC timestamp in the time zone, or "unknown"."""
+    from zoneinfo import ZoneInfo
+    try:
+        d = datetime.fromisoformat(str(ts).replace("Z", "+00:00")).astimezone(ZoneInfo(tz))
+    except (ValueError, TypeError):
+        return "unknown"
+    return date.fromordinal(d.toordinal() - d.weekday()).isoformat()
+
+
+def report(rows):
+    """The report text: estimated cost by week, by source, agent and model, and per subagent task.
+
+    Args:
+        rows: a list of rows (dicts with the FIELDS).
+    Returns:
+        The report as text, one table per part.
+    """
+    week, group, task, unpriced = {}, {}, {}, set()
+    for r in rows:
+        c = row_cost(r)
+        if c is None:
+            unpriced.add(r.get("model") or "unknown")
+            c = 0.0
+        w = week.setdefault(week_of(r.get("timestamp")), [0, 0.0, 0.0])
+        w[0] += 1
+        w[1 if r.get("source") == "main" else 2] += c
+        g = group.setdefault((r.get("source") or "", r.get("agent") or "", r.get("model") or ""), [0, 0, 0, 0, 0, 0.0])
+        g[0] += 1
+        for i, k in enumerate(USAGE_KEYS):
+            g[i + 1] += tokens(r.get(k))
+        g[5] += c
+        if r.get("agent_id"):
+            task.setdefault(r.get("agent") or "unknown", {}).setdefault(r["agent_id"], [0, 0.0])
+            t = task[r.get("agent") or "unknown"][r["agent_id"]]
+            t[0], t[1] = t[0] + 1, t[1] + c
+    out = [f"Estimated cost in USD (prices as of {PRICES_AS_OF}; a proxy for the weekly usage limit)", "",
+           "week (America/Chicago, Monday)  calls  main $  subagent $  total $"]
+    out += [f"{k:<31} {v[0]:>5} {v[1]:>7.2f} {v[2]:>11.2f} {v[1] + v[2]:>8.2f}" for k, v in sorted(week.items())]
+    out += ["", "source    agent              model                  calls       input  cache write   cache read"
+                "      output   cost $"]
+    out += [f"{s:<9} {a:<18} {m:<22} {v[0]:>5} {v[1]:>11} {v[2]:>12} {v[3]:>12} {v[4]:>11} {v[5]:>8.2f}"
+            for (s, a, m), v in sorted(group.items(), key=lambda kv: -kv[1][5])]
+    out += ["", "subagent tasks: agent  tasks  calls/task  $/task  total $"]
+    for a, ts in sorted(task.items()):
+        n, calls, cost = len(ts), sum(t[0] for t in ts.values()), sum(t[1] for t in ts.values())
+        out.append(f"{a:<22} {n:>6} {calls / n:>11.1f} {cost / n:>7.3f} {cost:>8.2f}")
+    if unpriced:
+        out += ["", "no price (counted as 0): " + ", ".join(sorted(unpriced))]
+    return "\n".join(out)
+
+
+def report_rows(root, ref):
+    """Every row in sessions/*.csv at a git ref.
+
+    Args:
+        root: the repo folder.
+        ref: the git ref that holds the log branch's files.
+    Returns:
+        A list of rows (dicts).
+    """
+    rows = []
+    for f in git(root, "ls-tree", "-r", "--name-only", ref, "sessions/").splitlines():
+        if f.endswith(".csv"):
+            rows += list(csv.DictReader(io.StringIO(git(root, "show", f"{ref}:{f}"))))
+    return rows
+
+
+def report_main(args):
+    """Print the report for the repo in the current folder: fetch the log branch, or read the ref in args.
+
+    Args:
+        args: the arguments after --report: [] or [REF].
+    Returns:
+        The exit code: 0, or 1 when the repo or the branch cannot be read.
+    """
+    root = git(os.getcwd(), "rev-parse", "--show-toplevel", check=False)
+    if not root:
+        print("token_log --report: not in a git repo", file=sys.stderr)
+        return 1
+    ref = args[0] if args else "refs/token-log/report"
+    if not args:
+        rc, _, err = git_net(root, "fetch", "-q", "--no-write-fetch-head", "origin",
+                             f"+refs/heads/{branch_name()}:{ref}")
+        if rc != 0:
+            print("token_log --report: fetch: " + err, file=sys.stderr)
+            return 1
+    print(report(report_rows(root, ref)))
+    return 0
+
+
 def self_test():
     """Run the self-test in scripts/token_log_test.py on this module (temporary repos, no network)."""
     import token_log_test  # scripts/token_log_test.py: kept apart so each case stays short (rule C3)
@@ -379,8 +559,11 @@ def self_test():
 if __name__ == "__main__":
     if sys.argv[1:2] == ["--test"]:
         sys.exit(self_test())
+    if sys.argv[1:2] == ["--report"] and len(sys.argv) <= 3:
+        sys.exit(report_main(sys.argv[2:]))
     if sys.argv[1:2] == ["--push"] and len(sys.argv) == 5:
         push_main(sys.argv[2:])
+        update_main()
         sys.exit(0)
     try:
         hook_main()

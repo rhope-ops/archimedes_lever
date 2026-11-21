@@ -54,6 +54,7 @@ Branch per worker: the branch the host requires (Claude cloud sessions: `claude/
 ## When to delegate
 
 - Size rule: AGENTS.md "Delegation". Where the host has no subagents, do it yourself. Do other small tasks yourself.
+- Scout cost (measured 2026-11-21): a scout call costs about 0.002 USD; each main-session tool call re-reads the whole context (about 0.03 USD at 100,000 tokens on opus). Scout is cheaper from about 2 tool calls; `python3 scripts/token_log.py --report` shows the cost per task.
 - Keep for the orchestrator: merges, conflict choices, design and open decisions, artifacts, deploys, release versions.
 - One worker at a time by default. Two only when their allowed files do not overlap. Start each worker in its own worktree (`isolation: "worktree"`; elsewhere `git worktree add ../<repo>-<topic> -b <branch>`).
 
