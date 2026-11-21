@@ -2,7 +2,7 @@
 
 The kit's own handoff (AGENTS.md "Handoff"). Kit only: first use deletes it in a project, which uses docs/NEXT_PROMPT.md. Keep it at 40 lines or fewer; evidence goes in docs/reviews/. Times are America/Chicago.
 
-Updated: 2026-11-21. In work: kit 7.0.0, `scripts/build_site.py` (step 1 of rhope-ops/RADE docs/reviews/2026-11-21-plan-readme-rework.md). Before: 2026-11-20 20:45. Done: kit 6.2.1, content check speed (PR 94 merged with the owner's approval, ebfdd0a; session "Kit · Content check speed · 2026-11-20"; evidence docs/reviews/2026-11-20-content-check-speed.md); each project gets it in its next kit sync. Before: 2026-11-20 10:35, "Kit · Skill use analysis · 2026-11-20". Fleet hub plan: "Kit · Fleet decision hub · 2026-11-19".
+Updated: 2026-11-21 by session "Token use tracking" (renamed at handoff). Merged to main: PR 97 (fbdda6d, token log agent column) and PR 98 (f4a1442, token log crash fixes, owner-approved Delegation wording, conflict records). Evidence and open items: reviews/2026-11-21-token-log-and-delegation.md. Earlier work (kit 7.0.0 build_site step 1, RADE README rework) is still as described below.
 
 ## State
 
@@ -28,10 +28,10 @@ Full text, decisions and approved rule text: [reviews/2026-11-19-fleet-decision-
 1. Step 5 (rulesets, secret scanning: the owner's clicks, docs/github/README.md).
 
 ## Needs the owner
+- 2026-11-21 items (decide in order): (a) fix the non-text timestamp crash in a separate PR, REC yes; (b) approve or change the five MINOR Delegation wording items, REC: approve 1, 3, 5; delete the skill sentence in 2; reword 4 to "Exception to size, files and done criteria"; (c) confirm or remove the DECISIONS claim of an earlier MAJOR check (no record file); (d) docstring of tokens(): "text that is not an integer" (with a).
 
 - Delete the kit branches `claude/content-check-speed` (merged in PR 94) and `claude/kit-handoff-6-0-0` (same commit as PR 84; the cloud session's delete got HTTP 403): https://github.com/rhope-ops/archimedes_lever/branches. Account skills to save (files sent in the session of 2026-11-20): `pages-and-tools`, `ship`, `turn-summary`, `roadmap-update`, `stakeholder-update`; the 2 changed preference lines (PREFERENCES.md "Reporting" and "How to work"). Tags v5.0.0 (24c2391), v5.0.1 (59528df), v6.0.0 (43ad952).
 - Tag v4.1.0 (https://github.com/rhope-ops/archimedes_lever/releases/new?tag=v4.1.0&target=4135536a72e9a5e9c63fd57496f9739cefac0966&title=Kit%204.1.0). Tags v3.2.0 (https://github.com/rhope-ops/archimedes_lever/releases/new?tag=v3.2.0&target=18896fc5ae5e954eeb0182bc4beae264eee9d541&title=Kit%203.2.0) and v4.0.0 (https://github.com/rhope-ops/archimedes_lever/releases/new?tag=v4.0.0&target=c8339c31cc75d50106ede550afd1c36e4c7b529f&title=Kit%204.0.0); rulesets and secret scanning.
-
 ## Do not
 
 - Do not merge a kit pull request before you list the kit's open pull requests: on 2026-11-18, pull requests 44 and 45 were merged while 42 was open, and 42 then conflicted in about 15 files.
