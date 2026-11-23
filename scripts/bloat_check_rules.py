@@ -8,7 +8,7 @@ What it gives:
   start_read        what every session loads, in lines, bytes and ~tokens
   rule_lines        the rule lines of an AGENTS.md text: the kit sections, "## Project rules", and every line
   lint              WARN lines: near-duplicate pairs, vague words, untested rules
-  readme_report     README.md exists and opens with the "- Purpose:" line of AGENTS.md (AGENTS.md "README")
+  readme_report     README.md exists and opens with the "- Purpose:" line of AGENTS.md (AGENTS.md "One home")
   rules_report      the lines of `--rules` and the problems that fail scripts/check.sh
   main_lint         the `--lint` mode
 Inputs:  the repo root, the audit settings (scripts/check_settings.py), AGENTS.md here and on origin/main,
@@ -214,11 +214,10 @@ def conflict_hash(added, removed):
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:12]
 
 
-def conflict_recorded(root, h):
-    """True when a file in docs/reviews/ holds the line "rule-conflict-check: <h>"."""
+def conflict_recorded(root, h, label="rule-conflict-check", pattern="*.md"):
+    """True when a file of docs/reviews/ that matches pattern holds the line "<label>: <h>" (the debt record: "debt-check", "*-debt.md")."""
     d = root / REVIEWS
-    return d.is_dir() and any(f"rule-conflict-check: {h}" in f.read_text(encoding="utf-8", errors="replace")
-                              for f in d.rglob("*.md"))
+    return d.is_dir() and any(f"{label}: {h}" in f.read_text(encoding="utf-8", errors="replace") for f in d.rglob(pattern))
 
 
 def missing_pointers(root, text):
@@ -289,11 +288,39 @@ def changed_rules(root, text, parts, gate):
             else:
                 out.append(f"WARN  {need} (the full lane fails without it)")
         out += lint(root, rule_lines(text, with_sections=True), only=set(added))
-    return out, problems
+    rows, found = debt_record(root, added, removed, gate)
+    return out + rows, problems + found
+
+
+def debt_record(root, added, removed, gate):
+    """T5, in the kit: changed rule lines, a check entry point added to scripts/check.sh and a stricter KIT_CAPS cap need a file
+    docs/reviews/*-debt.md with the line "debt-check: <hash>" (what the change fails today in every fleet repo, and its fix plan).
+    The hash is the conflict-check hash for rule lines alone; debt_triggers' lines join it. As the conflict record: WARN, or in the full lane a problem.
+
+    Args:
+        root: the repo root (a Path).
+        added: the rule lines added against the default branch.
+        removed: the rule lines removed.
+        gate: True in the full lane.
+
+    Returns:
+        (lines to print, problems).
+    """
+    import bloat_check_skills  # scripts/bloat_check_skills.py: kept apart (code standard C4)
+    extra = bloat_check_skills.debt_triggers(root)
+    if not bloat_check_skills.is_kit(root) or not (added or removed or extra):
+        return [], []
+    out = [f"  debt check: {x}" for x in extra]
+    h = conflict_hash(added + extra, removed)
+    if conflict_recorded(root, h, "debt-check", "*-debt.md"):
+        return out + [f"  debt check: recorded (debt-check: {h})"], []
+    need = (f"no fleet debt list for these changes (T5): list what each changed rule line, new check and stricter cap fails today in "
+            f"every fleet repo, with a fix plan, and record the line \"debt-check: {h}\" in a {REVIEWS}/*-debt.md file")
+    return (out, [need]) if gate else (out + [f"WARN  {need} (the full lane fails without it)"], [])
 
 
 def readme_opening(text):
-    """The first paragraph of a README text, for the AGENTS.md "README" check.
+    """The first paragraph of a README text, for the AGENTS.md "One home" check.
 
     Skipped before it: YAML front matter, headings (ATX and setext), images, badges, HTML lines and blank lines. A
     blockquote marker is taken off. The lines of the paragraph are joined by spaces.
@@ -328,7 +355,7 @@ def plain_words(s):
 
 
 def readme_report(root, text):
-    """The AGENTS.md "README" default: README.md exists and opens with the "- Purpose:" value of AGENTS.md.
+    """The AGENTS.md "One home" default: README.md exists and opens with the "- Purpose:" value of AGENTS.md.
 
     Checked only when that value is filled in (empty, or the kit template's {{PURPOSE}}, is not). A missing README.md
     (any letter case) is a problem; an opening that does not start with the purpose, as whole words, is a WARN line
@@ -346,10 +373,10 @@ def readme_report(root, text):
         return [], []
     readme = next((f for f in sorted(root.iterdir()) if f.is_file() and f.name.lower() == "readme.md"), None)
     if readme is None:
-        return [], ["no README.md: it opens with the AGENTS.md \"Purpose\" line (AGENTS.md \"README\")"]
+        return [], ["no README.md: it opens with the AGENTS.md \"Purpose\" line (AGENTS.md \"One home\")"]
     want, got = plain_words(m.group(1)), plain_words(readme_opening(readme.read_text(encoding="utf-8", errors="replace")))
     if not (got.startswith(want) and (len(got) == len(want) or not got[len(want)].isalnum())):
-        return [f"WARN  {readme.name} does not open with the AGENTS.md \"Purpose\" line; update it (AGENTS.md \"README\")"], []
+        return [f"WARN  {readme.name} does not open with the AGENTS.md \"Purpose\" line; update it (AGENTS.md \"One home\")"], []
     return [], []
 
 
@@ -396,6 +423,9 @@ def rules_report(root, cfg, gate=False):
         out.append(f"WARN  {len(project)} project rule bullets (guide {b['project_rules']})")
     import bloat_check_skills  # scripts/bloat_check_skills.py: kept apart (code standard C4)
     problems += bloat_check_skills.second_homes(root)
+    rows, found = bloat_check_skills.file_report(root)  # tool rows (T1), script lines (T2), role word (T6)
+    out += rows
+    problems += found
     rows, found = changed_rules(root, text, (kit, project, every), gate)
     out += rows
     problems += found

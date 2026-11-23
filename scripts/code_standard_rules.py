@@ -15,6 +15,7 @@ Credentials: none.
 """
 import fnmatch
 import hashlib
+import re
 
 import check_settings as settings   # scripts/check_settings.py: STRICT, dash, OPT_IN_CAPS
 import code_standard_docs as docs   # scripts/code_standard_docs.py: rule C2 full
@@ -27,6 +28,8 @@ SAFETY_LABELS = ('Network:', 'Writes:', 'Credentials:')   # C1 safety: what a re
 # The opt-in rules: the debt kind of each and its level in a config (0 = off). Only these can be adopted later.
 OPT_IN = {'docs': lambda c: int(c.get('c2') == 'full'),
           'safety': lambda c: 2 if c.get('c1_safety') == settings.STRICT else int(bool(c.get('c1_safety')))}
+PREVENTS = re.compile(r'^[ \t]*Prevents:[ \t]*\S', re.M)   # C1 Prevents: the header line that names the defect a check stops
+ENTRY_FILES = ('scripts/check.sh', '.claude/settings.json')   # plus scripts/git-hooks/* and .github/workflows/*: what runs a check
 MIN_DUP_LINES = 4          # a body this short (a one-line wrapper) is not counted as a duplicate
 
 
@@ -105,11 +108,56 @@ def unique_key(p, name, seen):
 RULE = {'header': ('C1 no header comment', None), 'comment': ('C2 function without a comment', None),
         'length': ('C3 function longer than %d lines', 'max_function_lines'),
         'file_size': ('C4 file longer than %d lines', 'max_file_lines'),
+        'prevents': ('C1 check entry point without a "Prevents: <defect>" header line', None),
         'duplicate': ('C5 same body as another function', None),
         'generated': ('C6 generated file without a GENERATED banner', None),
         'parse': ('C10 PowerShell or Python file that does not parse', None),
         'safety': ('C1 safety: header without the Network:, Writes: and Credentials: lines', None),
         'docs': ('C2 full: function without full docs (--report names the missing parts)', None)}
+
+
+# Debt kinds that only warn (the Maintainer, 2026-11-23): no FAIL, not in the baseline. C4 file size (decision 1 = A: a line
+# count is a proxy that a split games); C1 Prevents (AUD-1: 0 of the entry points have the line yet). Plan P2 makes
+# `prevents` a FAIL again: remove it from this tuple, then list its debt with --adopt.
+WARN_KINDS = ('file_size', 'prevents')
+
+
+def entry_points(root):
+    """Return the check entry points of a repo: the non-test scripts (scripts/*.py and scripts/*.sh) that a file that
+    runs checks names (scripts/check.sh, a git hook, a Claude Code hook setting or a workflow). A *_test file never counts.
+
+    Args:
+        root: the repo root (a Path).
+
+    Returns:
+        A set of repo-relative paths of scripts that exist.
+    """
+    files = [root / f for f in ENTRY_FILES] + sorted((root / 'scripts/git-hooks').glob('*')) \
+        + sorted((root / '.github/workflows').glob('*.y*ml'))
+    text = '\n'.join(f.read_text(encoding='utf-8', errors='replace') for f in files if f.is_file())
+    named = set(re.findall(r'scripts/[\w.-]+?\.(?:py|sh)\b', text))
+    return {n for n in named if (root / n).is_file() and not re.search(r'_test|^test_', n.split('/')[-1])}
+
+
+def warn_lines(now, caps, limit=10):
+    """Return the WARN lines of the kinds in WARN_KINDS: each file with its number (file size), at most `limit` per kind.
+
+    Args:
+        now: the violations measured now {kind: {key: value}}.
+        caps: the caps of the settings.
+        limit: the most files named per kind; the rest is a count.
+
+    Returns:
+        A list of WARN lines.
+    """
+    out = []
+    for kind in WARN_KINDS:
+        items = sorted(now.get(kind, {}).items(), key=lambda kv: (-kv[1], kv[0]))
+        label = RULE[kind][0] % caps.get(RULE[kind][1], 0) if RULE[kind][1] else RULE[kind][0]
+        out += ['WARN  %s: %s%s' % (label, k, '' if v == 1 else ' (%d)' % v) for k, v in items[:limit]]
+        if len(items) > limit:
+            out.append('WARN  %s: and %d more (--report lists every file)' % (label, len(items) - limit))
+    return out
 
 
 def summary(v):
