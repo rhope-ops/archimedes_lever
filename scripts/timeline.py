@@ -200,7 +200,7 @@ def render(title, arcs, events, zones=(), security=None):
     counts = {t: sum(1 for x in events if x["type"] == t) for t in TYPE_ORDER}
     first = min((x["day"] for x in events if x["day"]), default="")
     last = max((x["day"] for x in events if x["day"]), default="")
-    out = [page_head(e(title), CSS, JS, security),
+    out = [page_head(e(title), CSS, JS, security, theme=('#f7f8fa', '#111317')),
            f"<h1>{e(title)}</h1><p class='sub'>{len(events)} events in {len(projects)} project(s), {e(first)} to {e(last)}.{e(zone_note(zones))}</p>",
            "<div class='stats'>"]
     for t in TYPE_ORDER:

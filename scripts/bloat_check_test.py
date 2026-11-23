@@ -433,9 +433,11 @@ def compare_cases(bloat, root):
     assert (root / bloat.STATE).read_text() == check_settings.state_text(saved), "the state file has sorted keys and indent 1"
     rows, _ = bloat.run_timings(root, {"timings": {"nocmd": {"seconds": 1}}}, record=False)
     assert rows == [], "--time skips a timing with no cmd"
-    for good in ("python3 scripts/bloat_check.py --brief", "bash scripts/check.sh", "bash scripts/session_checkin.sh"):
-        assert bloat.timing_argv(good)[0] in ("python3", "bash"), f"allowed timed command: {good}"
-    for bad in ("echo pwned; true", "rm -rf /", "bash scripts/x.sh && id", "python3 scripts/a.py $(id)", "python3 scripts/a.py\nid"):
+    for good in ("python3 scripts/bloat_check.py --brief", "bash scripts/check.sh", "scripts/check.sh", "tests/run.sh",
+                 "bash scripts/check_project.sh"):  # the kit's and the fleet's timed commands
+        assert bloat.timing_argv(good) == good.split(), f"allowed timed command: {good}"
+    for bad in ("echo pwned; true", "rm -rf /", "bash scripts/x.sh && id", "python3 scripts/a.py $(id)", "python3 scripts/a.py\nid",
+                "python3 scripts/../../x.py", "bash /tmp/x.sh", "curl scripts/x", "python3 -c scripts/x", ""):
         try:
             bloat.timing_argv(bad)
         except ValueError:

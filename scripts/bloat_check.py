@@ -223,15 +223,20 @@ def audit_due(root, cfg, today):
     return "; ".join(reasons)
 
 
-TIMING_PREFIXES = ("python3 scripts/", "bash scripts/")
+TIMING_DIRS = ("scripts/", "tests/")  # a timed command runs a file of the repo, from one of these folders
 SHELL_CHARS = set(";|&`$()<>\n")
 
 
 def timing_argv(cmd):
-    """The argument list of a timed command (no shell, CWE-78); ValueError for a shell character or a command outside scripts/."""
-    if SHELL_CHARS & set(cmd) or not cmd.startswith(TIMING_PREFIXES):
-        raise ValueError(f"timed command not allowed (shell character, or not 'python3 scripts/' or 'bash scripts/'): {cmd!r}")
-    return shlex.split(cmd)
+    """The argument list of a timed command (no shell, CWE-78): [python3|bash] <scripts/ or tests/ path> [args].
+
+    ValueError for a shell character, another program, an absolute path or "..".
+    """
+    argv = shlex.split(cmd) if not SHELL_CHARS & set(cmd) else []
+    path = argv[1] if argv[:1] in (["python3"], ["bash"]) and len(argv) > 1 else (argv[0] if argv else "")
+    if not path.startswith(TIMING_DIRS) or ".." in path.split("/"):
+        raise ValueError(f"timed command not allowed (shell character, or not a scripts/ or tests/ file): {cmd!r}")
+    return argv
 
 
 def run_timings(root, cfg, record):

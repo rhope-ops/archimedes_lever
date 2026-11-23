@@ -23,8 +23,10 @@ SHELL_CSS = (
     '@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms !important;'
     'animation-iteration-count:1 !important;transition-duration:.01ms !important;scroll-behavior:auto !important}}')
 SKIP_LINK = '<a class="skip-link" href="#main">Skip to content</a>'
-THEME_META = (f'<meta name="theme-color" media="(prefers-color-scheme: light)" content="{THEME_LIGHT}">'
-              f'<meta name="theme-color" media="(prefers-color-scheme: dark)" content="{THEME_DARK}">')
+def theme_meta(light, dark):
+    """The 2 theme-color tags (light, dark), so the browser chrome matches the page background."""
+    return (f'<meta name="theme-color" media="(prefers-color-scheme: light)" content="{light}">'
+            f'<meta name="theme-color" media="(prefers-color-scheme: dark)" content="{dark}">')
 
 
 def dod_security(root):
@@ -65,7 +67,7 @@ def security_meta(style, script=''):
             '<meta name="referrer" content="no-referrer">')
 
 
-def page_head(title, style, script='', security=False):
+def page_head(title, style, script='', security=False, theme=(THEME_LIGHT, THEME_DARK)):
     """Return the start of a page: doctype, head (with the shell tags), skip link and the opening of main.
 
     Args:
@@ -73,13 +75,14 @@ def page_head(title, style, script='', security=False):
         style: the page's CSS; the shell CSS is added after it.
         script: the page's inline script text ('' for none); used for its CSP hash only.
         security: True to add the DoD meta tags (dod_security).
+        theme: the page's own (light, dark) background colors, for the 2 theme-color tags.
     Returns:
         HTML up to and including <main id="main">; close it with "</main>".
     """
     css = style + SHELL_CSS
     extra = security_meta(css, script) if security else ''
     return (f"<!DOCTYPE html><html lang='en'><head><meta charset='utf-8'>{extra}"
-            f"<meta name='viewport' content='width=device-width,initial-scale=1'>{THEME_META}"
+            f"<meta name='viewport' content='width=device-width,initial-scale=1'>{theme_meta(*theme)}"
             f'<title>{title}</title><style>{css}</style></head><body>{SKIP_LINK}<main id="main">')
 
 

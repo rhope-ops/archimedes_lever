@@ -304,7 +304,7 @@ selftest fleet_harvest scripts/fleet_harvest.py scripts/fleet_harvest_test.py --
 selftest check_blocks scripts/check_blocks.py .claude/settings.json -- python3 scripts/check_blocks.py --test
 selftest check_lock scripts/check_lock.py -- python3 scripts/check_lock.py --test
 selftest fulcrum_tokens scripts/fulcrum_tokens.py docs/brand/fulcrum.json docs/brand/fulcrum.css -- python3 scripts/fulcrum_tokens.py --test
-selftest build_site scripts/build_site.py -- python3 scripts/build_site.py --test
+selftest build_site scripts/build_site.py scripts/build_site_html.py -- python3 scripts/build_site.py --test
 extension build_site_local scripts/build_site_local.py scripts/build_site.py
 selftest first_use_check scripts/first_use_check.py scripts/check_blocks.py scripts/check_content.py scripts/check_content_scan.py -- python3 scripts/first_use_check.py --test
 # Kit only: projects have no sync tools. The drift self-test reads the kit's AGENTS.md and stop_check.py.
