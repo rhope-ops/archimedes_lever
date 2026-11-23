@@ -96,7 +96,7 @@ COPY_FILES = ["kit.config.json", "scripts/kit_config.py", "scripts/session_check
               "scripts/code_standard_rules.py", "scripts/code_standard_ratchet.py", "scripts/code_standard_test_gate.py", "scripts/code_standard_test_docs.py",
               "scripts/code_standard_strict.py", "scripts/code_standard_strict_test.py",
               "docs/code-standard.md", "scripts/git-hooks/pre-push",
-              "scripts/fulcrum_tokens.py", "docs/brand/fulcrum.json", "docs/brand/fulcrum.css", "scripts/build_site.py", "scripts/build_site_html.py",
+              "scripts/fulcrum_palette.py", "docs/brand/fulcrum.json", "docs/brand/fulcrum.css", "scripts/build_site.py", "scripts/build_site_html.py",
               ".claude/skills/delegate/SKILL.md", ".claude/skills/audit/SKILL.md", ".claude/skills/project-log/SKILL.md", ".claude/rule-tests.md", ".github/workflows/check.yml",
               ".claude/skills/deliver/SKILL.md", ".claude/skills/personal-data/SKILL.md", ".claude/skills/rule-change/SKILL.md",
               ".claude/skills/data-change/SKILL.md", ".claude/skills/verify/SKILL.md", ".claude/skills/verify/measure.mjs",
@@ -133,7 +133,7 @@ MOVED_FILES = [".claude/orchestration.md", ".claude/bloat-audit.md", ".claude/pr
                "scripts/pii_guard_test.py", ".github/workflows/pii-guard.yml",
                ".claude/skills/run-verify/SKILL.md", ".claude/skills/ui-verify/SKILL.md",
                ".claude/skills/ui-verify/measure.mjs", ".claude/skills/port/SKILL.md",
-               ".claude/skills/efficiency/SKILL.md"]
+               ".claude/skills/efficiency/SKILL.md", "scripts/fulcrum_tokens.py"]  # renamed to fulcrum_palette.py in 11.0.0 (a secret scan read its name as a key)
 TIERS = ("starter", "full")
 NO_OWNER_RENAME = {"scripts/sync_baseline.py", "scripts/first_use_check.py", "docs/FIRST_USE.md"}
 OWNER_RE = r"[A-Za-z0-9 ._,()-]+"  # safe inside Python strings, JSON and Markdown

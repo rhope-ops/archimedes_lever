@@ -2,10 +2,10 @@
 """Build and check the Fulcrum Minimal design tokens: docs/brand/fulcrum.json is the source, docs/brand/fulcrum.css is built from it.
 
 Usage:
-    python3 scripts/fulcrum_tokens.py            # check: primitives match the Logo Studies standard, every role names a
+    python3 scripts/fulcrum_palette.py            # check: primitives match the Logo Studies standard, every role names a
                                                  # known colour, every contrast pair meets its minimum, the CSS is current
-    python3 scripts/fulcrum_tokens.py --write    # rebuild docs/brand/fulcrum.css from the JSON, then check
-    python3 scripts/fulcrum_tokens.py --test     # self-test; prints FULCRUM TEST PASS
+    python3 scripts/fulcrum_palette.py --write    # rebuild docs/brand/fulcrum.css from the JSON, then check
+    python3 scripts/fulcrum_palette.py --test     # self-test; prints FULCRUM TEST PASS
 
 Inputs: docs/brand/fulcrum.json (primitives, derived colours, roles per theme, contrast pairs).
 Outputs: "FULCRUM PASS" and exit 0, or one line per finding and exit 1; with --write, docs/brand/fulcrum.css.
@@ -198,7 +198,7 @@ def render_css(tokens):
     """
     primitives = "".join(f"--fm-{name}:{value};" for name, value in tokens["primitives"].items())
     dark = role_block(tokens, "dark") + "color-scheme:dark"
-    return (f"/* GENERATED from {SOURCE} by: python3 scripts/fulcrum_tokens.py --write. Do not edit by hand.\n"
+    return (f"/* GENERATED from {SOURCE} by: python3 scripts/fulcrum_palette.py --write. Do not edit by hand.\n"
             f"   {tokens['name']} {tokens['version']} ({tokens['date']}). Source of the primitives: {tokens['source']}.\n"
             "   Use: link this file, put class fm-band on the header band, fm-disc on the main card, fm-dots on dividers\n"
             "   (an <hr>), fm-fulcrum on section headings, fm-btn on the primary button, fm-error on error text. */\n"
@@ -232,7 +232,7 @@ def run(root, write):
         (root / OUTPUT).write_text(css, encoding="utf-8")
     current = (root / OUTPUT).read_text(encoding="utf-8") if (root / OUTPUT).exists() else ""
     if current != css:
-        found.append(f"{OUTPUT}: out of date; run: python3 scripts/fulcrum_tokens.py --write")
+        found.append(f"{OUTPUT}: out of date; run: python3 scripts/fulcrum_palette.py --write")
     return found
 
 

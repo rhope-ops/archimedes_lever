@@ -1,4 +1,4 @@
-/* GENERATED from docs/brand/fulcrum.json by: python3 scripts/fulcrum_tokens.py --write. Do not edit by hand.
+/* GENERATED from docs/brand/fulcrum.json by: python3 scripts/fulcrum_palette.py --write. Do not edit by hand.
    Fulcrum Minimal 2.0.0 (2026-11-23). Source of the primitives: Logo Studies canvas, rho-family-standard.json v2.9, palettes.fulcrum (the five primitives); UI roles: the Maintainer's decisions of 2026-11-20 (docs/DECISIONS.md).
    Use: link this file, put class fm-band on the header band, fm-disc on the main card, fm-dots on dividers
    (an <hr>), fm-fulcrum on section headings, fm-btn on the primary button, fm-error on error text. */
