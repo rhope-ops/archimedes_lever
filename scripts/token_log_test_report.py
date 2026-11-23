@@ -15,6 +15,9 @@ import csv
 import io
 import json
 import os
+import shutil
+import subprocess
+import sys
 
 
 def msg(mid, ts, model="claude-test", side=False, n=1):
@@ -264,3 +267,26 @@ def case_self_update(fx):
               open(os.path.join(os.path.dirname(target), "token_log_rows.py")).read(), "rows = 1\n")
     os.remove(os.path.join(os.path.dirname(target), "token_log_rows.py"))
     fx.expect("self-update: a missing part is not up to date", tl.self_update(target, kit, now=1e9 + 400000), "updated")
+    case_installed_hook_works(fx)
+
+
+def case_installed_hook_works(fx):
+    """A fresh install (the UPDATE_FILES of this kit in an empty hooks folder) gives a working hook: the Stop path
+    outside a repo exits 0, and the row and report parts load through token_log.<name>.
+
+    Args:
+        fx: the shared test fixture (Fixture).
+    """
+    tl = fx.tl
+    hooks = os.path.join(fx.root, "fresh-hooks")
+    os.makedirs(hooks)
+    for n in tl.UPDATE_FILES:
+        shutil.copyfile(os.path.join(os.path.dirname(os.path.abspath(tl.__file__)), n), os.path.join(hooks, n))
+    run = subprocess.run([sys.executable, "-E", "-s", os.path.join(hooks, "token_log.py")], input="{}", text=True,
+                         capture_output=True, cwd=fx.root, timeout=60)
+    fx.expect("installed hook: Stop outside a repo exits 0", (run.returncode, run.stderr), (0, ""))
+    probe = ("import sys; sys.path.insert(0, sys.argv[1]); import token_log as t; "
+             "print(callable(t.log_rows), callable(t.row_cost), bool(t.PRICES))")
+    run = subprocess.run([sys.executable, "-E", "-s", "-c", probe, hooks], text=True, capture_output=True, cwd=fx.root,
+                         timeout=60)
+    fx.expect("installed hook: the parts load from the hooks folder", run.stdout.strip(), "True True True")
