@@ -27,7 +27,7 @@ You can take 1 without 2: [PREFERENCES.md, "How to adopt them"](PREFERENCES.md#h
 
 ## The lessons behind the rules
 
-These are things that went wrong across 5 real projects, and the rule each one led to. The reason for every preference rule is in [PREFERENCES.md](PREFERENCES.md#why-each-rule-exists); the owner's decisions are in [docs/DECISIONS.md](docs/DECISIONS.md); the story is in the public [docs/LOG.md](docs/LOG.md). Each rule now lives either in [PREFERENCES.md](PREFERENCES.md) (your account) or in the kit (your projects).
+These are things that went wrong across 5 real projects, and the rule each one led to. The reason for every preference rule is in [PREFERENCES.md](PREFERENCES.md#why-each-rule-exists); the Maintainer's decisions are in [docs/DECISIONS.md](docs/DECISIONS.md); the story is in the public [docs/LOG.md](docs/LOG.md). Each rule now lives either in [PREFERENCES.md](PREFERENCES.md) (your account) or in the kit (your projects).
 
 | Lesson | What happened | Where the rule lives |
 |---|---|---|
@@ -117,7 +117,7 @@ The bootstrap command takes 6 values, in this order:
 | 1 | The project name | `"Project Name"` | |
 | 2 | The repository | `YOUR_USER/NEW_NAME` | |
 | 3 | The purpose, in one line | `"One-line purpose"` | |
-| 4 | What agents call you | `"the owner"` | A public repo uses a role, for example `"the maintainer"`. A private repo can use your first name only with the guard off (no `.check` file): the guard blocks each push that has a name from your list. |
+| 4 | What agents call you | `"the Maintainer"` | A public repo uses a role, for example `"the Maintainer"`. A private repo can use your first name only with the guard off (no `.check` file): the guard blocks each push that has a name from your list. |
 | 5 | Your time zone, as an IANA name | `"Europe/Berlin"` | Default: UTC. |
 | 6 | The tier | `starter` | `starter` (default) or `full`. |
 
@@ -145,7 +145,7 @@ You need git, Python 3.9 or later, bash, perl and [gh](https://cli.github.com). 
 8. Run `cd NEW_NAME`, with the name that you wrote down. You see the name in the prompt. Go on.
 9. Run the bootstrap command, with your 6 values from the table in place of the examples. You see the line `Done. Next: review with 'git diff', then commit and push.` Go on.
    ```
-   scripts/bootstrap.sh "Project Name" YOUR_USER/NEW_NAME "One-line purpose" "the owner" "Europe/Berlin" starter
+   scripts/bootstrap.sh "Project Name" YOUR_USER/NEW_NAME "One-line purpose" "the Maintainer" "Europe/Berlin" starter
    ```
 10. Run `mkdir -p ~/.config/pii-guard && nano ~/.config/pii-guard/denylist.txt`. You see the editor **nano**. Go on.
 11. In **nano**, type your names, your user name variants and your employer, one on each line. You see the names in **nano**. Go on.
@@ -205,7 +205,7 @@ Your name list holds your names, your user name variants and your employer. It n
 17. On your computer, in a terminal, run `cd` with the path of the project folder. You see the project folder name in the prompt. Go on.
 18. Run `python3 scripts/check_content.py --status`. On Windows, the command starts with `py`, not `python3`. You see where the list comes from and the number of entries, never the names. Go on.
 19. Run `python3 scripts/check_content.py --all`. You see `CONTENT CHECK PASS`, or each finding with its value masked. If you see `CONTENT CHECK PASS`, the task is complete. Go on only for a finding.
-20. For each finding, open the file at the line that the finding names. Remove the personal data on that line. You see the line without it. If the value must stay, ask the project's owner: only the owner adds an allowed value to `.check`. Go on.
+20. For each finding, open the file at the line that the finding names. Remove the personal data on that line. You see the line without it. If the value must stay, ask the project's Maintainer: only the Maintainer adds an allowed value to `.check`. Go on.
 21. Run `python3 scripts/check_content.py --all` again. You see `CONTENT CHECK PASS`. The task is complete.
 
 An optional second list holds your own blocked terms (words that are not personal data), as `CHECK_TERMS` in the same three places. The steps for agents, the fingerprint check and one master copy of the list: [docs/FIRST_USE.md](docs/FIRST_USE.md), step 4.
@@ -254,7 +254,7 @@ The sync replaces every kit file, so a project keeps its own code in its own fil
 - `scripts/check_instructions_local.py`: its own words, lower limits, a parser for another file type or more checks for the steps a person follows (the interface: the header of `scripts/check_instructions.py`).
 - `scripts/code_standard_gate.py`: its own stricter code-standard rules (the interface: the header of `scripts/code_standard.py`; [docs/code-standard.md](docs/code-standard.md) "A project's own gate").
 
-A kit file that the owner wants different in one project is recorded with `python3 scripts/check_lock.py --relock <file>` on the owner's request, and each check run lists it. The steps, the approval of changed rule lines and the before and after proof: [.claude/skills/kit-update/SKILL.md](.claude/skills/kit-update/SKILL.md).
+A kit file that the Maintainer wants different in one project is recorded with `python3 scripts/check_lock.py --relock <file>` on the Maintainer's request, and each check run lists it. The steps, the approval of changed rule lines and the before and after proof: [.claude/skills/kit-update/SKILL.md](.claude/skills/kit-update/SKILL.md).
 
 ## Limits
 
