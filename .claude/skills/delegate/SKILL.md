@@ -65,6 +65,8 @@ Branch per worker: the branch the host requires (Claude cloud sessions: `claude/
 - Done criteria that can be measured (numbers, test names, PASS lines).
 - Checks to run.
 - "No design decisions: list candidates with trade-offs."
+- "A blocked command or a blocked check stops the task: report it; do not run it another way and do not change the text to pass."
+- For a change made to pass a check: the design goal, not the metric (AGENTS.md "Fresh review").
 - The tier and model, when the routing table says strong.
 
 ## Review and merge
