@@ -2,7 +2,7 @@
 
 The kit's own handoff (AGENTS.md "Handoff"). Kit only: first use deletes it in a project, which uses docs/NEXT_PROMPT.md. Keep it at 40 lines or fewer; evidence goes in docs/reviews/. Times are America/Chicago.
 
-Updated: 2026-11-23 ~09:45 by session "Kit · Fleet v2 coordinator · 2026-11-23 · #114": kit 11.0.0 (PR 114, dedc3b3) and 11.0.1 (PR 118, 9e3f6fa) on main; the 4 project sessions run; full coordinator state (session ids, waits, rules learned): [reviews/2026-11-23-fleet-v2-coordinator-state.md](reviews/2026-11-23-fleet-v2-coordinator-state.md). Before: 2026-11-23 ~06:20, "Kit · Fleet v2 remediation": plan saved.
+Updated: 2026-11-23 ~15:10 by "Kit · Fleet v2 coordinator 2": fleet v2 stages 1-4 done; Step 3 (rule text) moved into the Part 2 program, not approved or built yet; lessons [reviews/2026-11-23-fleet-v2-lessons.md](reviews/2026-11-23-fleet-v2-lessons.md); state [reviews/2026-11-23-fleet-v2-coordinator-state.md](reviews/2026-11-23-fleet-v2-coordinator-state.md). Program session "Kit · Tool retirement · 2026-11-23": prompt [reviews/2026-11-23-tool-retirement-prompt.md](reviews/2026-11-23-tool-retirement-prompt.md), coverage list approved.
 
 ## State
 
@@ -15,7 +15,7 @@ Full text, gate baseline, corrections and 11 decisions: [reviews/2026-11-23-flee
 - [x] 0. Plan verified against the 5 repos and saved.
 - [x] 1. Kit 11.0.0 merged; 11.0.1 merged (PR 118, 9e3f6fa, the Maintainer's OK; 2 check.sh lines under 200 chars). 11.0.0 merged 2026-11-23 ~09:15 (PR 114, main dedc3b3; verified on origin/main). DEC 15 (the owner, "1a 2a"): AGENTS.md "Decisions" names the Content Approver; shorter deliver/audit/handoff descriptions. Reviews: 8 fresh reviews, every MAJOR fixed; rule conflict records reviews/2026-11-23-rule-conflict.md (open MINOR 2-7). Session load after sync: RADE ~5,232, 90-161.Z ~5,427, 33-332.Z ~5,482 (thin), ICF ~5,341. Sync trigger sent to the 4 sessions. Owner steps: tag v11.0.0; Default setup script installs the token_log parts and kit.config.json (Work done). Follow-ups: bootstrap.sh NITs (one dod-security check; errors not hidden); fix-review MINOR 2 (--validate-config has no fleet: key).
   Session briefs for the parallel tracks: [reviews/2026-11-23-fleet-v2-session-briefs.md](reviews/2026-11-23-fleet-v2-session-briefs.md).
-- [ ] 2. RADE engine-v36 (running; then relay "engine-v36 released" to 90-161.Z after you verify the release and attestation). [ ] 3. 33-332.Z (sync waits for the PAM's By message), 90-161.Z (sync local, waits for v36), ICF (#241 review, then Stage 4 and sync). [ ] 4. ICF UX/UI and handover check. [ ] 5. Rule text for recurrence (owner approval). Sessions and ids: coordinator state file above.
+- [x] 2. RADE: engine-v36 released and verified (#167, 6efe5c7), kit sync #169, guard files #168, role word #171. [x] 3. 90-161.Z #217-#222; 33-332.Z #51, #53-#56; ICF #241-#246. [x] 4. ICF Stage 4 #242, #247-#250; Site 2.12.2 live on /icf/ (4.3 drill out). [ ] 5. Rule text: moved into the Part 2 program (approved through its plan); not approved or built yet.
 
 - Earlier approved plan 2026-11-19 (fleet decision hub, kit template): steps 0-5 and 7 done, step 4 dropped; open: step 6 loop proof after the owner ports a first project. Record: [reviews/2026-11-19-fleet-decision-hub-plan.md](reviews/2026-11-19-fleet-decision-hub-plan.md); live page preview https://claude.ai/artifact/RZwwoMT9fNJDARDcBzn7AR.
 

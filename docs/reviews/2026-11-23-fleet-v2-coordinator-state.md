@@ -84,3 +84,16 @@ to report to it.
   <repo>-2026-11-23.7z with full git history (all branches and tags), no password, to Drive › Rhope.
 - Token totals (2026-11-23 ~11:15): measured since tracking 7.52 B tokens, ~$2,665 at list prices (5 repos);
   estimated before tracking ~6.0 B, ~$2,230 (low-medium confidence); sum ~13.9 B, ~$5,000.
+
+### Coordinator 2 close (~15:10 America/Chicago)
+
+- Fleet v2 stages 1-4 done (RADE #167-#171, 90-161.Z #217-#222, 33-332.Z #51-#56, ICF #241-#250). Site 2.12.2 deployed by the
+  coordinator at the Maintainer's request (rhope-ops/icf aadd154; 61 of 61 files equal live). Live pages 200: icf, RADE, 90-161.Z,
+  33-332.Z and its Ion-script.txt link (2026-11-23 ~15:05).
+- Step 3 (rule text) is NOT done: it moved into the Part 2 program (the Maintainer's choice 1C; rule texts approved through the
+  program plan). The R1-R4 draft (2026-11-23-fleet-v2-step3-rules.md) is input only: R1, R3 kept; R2 replaced by T1, T2; R4 became T6.
+- Lessons: 2026-11-23-fleet-v2-lessons.md (also Drive > Rhope). Exports: 6 full-mirror .7z archives (5 repos + icf) built and
+  checked (fsck 0 errors, 7z t, RADE restore test, content check 0 findings); the Drive connector limit (~3.1 MB per call) blocked
+  the upload, so they were sent to the Maintainer in the chat for a hand upload.
+- Open: tags v11.0.0/v11.0.1; branch deletes (host 403); ICF modulepreload A/B; R41 r2 device run; attestation chain unverified;
+  33-332.Z AUDIT DUE and the PAM role-line suggestion; plan GAPS "Get-ExecutionPolicy -List" proof and per-stage rollback notes.
