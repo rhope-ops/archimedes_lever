@@ -35,7 +35,7 @@ the fleet v2 [lessons](2026-11-23-fleet-v2-lessons.md) (5 causes).
 | ICF handover | 2 non-noreply addresses in history; ICF-Source cannot have rulesets or secret scanning on its plan; icf settings not checked (attach denied) | R3 |
 | Content check vs gitleaks / trufflehog / detect-secrets | With custom rules gitleaks covers 10 of 11 checks, the others 9 of 11; none covers `unscanned`, the commit author and message scan (809 findings in ICF history), the `.check` semantics or the hook mode; default rules give 0 true findings. Seeded: content tool 22 of 23 (the 23rd is exempt by design), gitleaks custom 19, trufflehog 18, detect-secrets 17 | W-B |
 | Instruction check vs Vale | 4 of 7 finding kinds match with 0 false positives on 225 real steps; next, cue and long need the step reader (54 false positives without it) | W-B |
-| Session load after the rule texts | +285 bytes, ~+71 tokens: RADE ~5,484, 90-161.Z ~5,452, ICF ~5,214, **33-332.Z ~5,539 (over the 5,500 cap: it trims ~50 tokens of its own handoff before any sync that carries P1)** | measured on a copy |
+| Session load after the rule texts | full tier ~+69 tokens: RADE ~5,482, 90-161.Z ~5,450, ICF ~5,212, **33-332.Z ~5,537 (over the 5,500 cap: it trims ~50 tokens of its own handoff before any sync that carries P1)** | measured on a copy |
 
 ## 2. Decisions for the Maintainer (answer each; REC first)
 
@@ -49,29 +49,29 @@ the fleet v2 [lessons](2026-11-23-fleet-v2-lessons.md) (5 causes).
 6. **shellcheck.** **REC:** add it as a WARN step in the code standard first, with the measured fleet list (rule T5), then fix per repo.
 7. **90-161.Z revision files** (75 `-rN` files, 67,606 lines; 0 base names with two revisions on disk, so nothing is superseded) and **pac solution**. A. **REC:** keep the `-rN` names (each is the current revision a person pastes; a versioned module changes the paste path: a later 90-161.Z decision); `pac solution` for the packaging part only (~130-180 lines), when `pac` can run on a dev machine. B. Versioned module now (one module, version in the file header).
 8. **ICF trial items** (`==term==`, Block split, 2 history addresses, no branch protection). **REC:** write them into the ICF handover runbook for the incoming maintainer; no ICF code change in this program.
-9. **Content check (W-B).** A. **REC:** keep `check_content*`; gitleaks stays the CI second net (it already runs in `security.yml`); W-B's final report: gitleaks with the ported rules matched all 1,137 content-tool findings, found 43 more (matching differences: a split address, `%40` in a URL, a phrase over two lines) and missed 0; the kit gains those 4 matching fixes. B. Shrink to the parts no tool covers and run gitleaks with generated custom rules (two scanners, two outputs).
+9. **Content check (W-B).** A. **REC:** keep `check_content*`; gitleaks stays the CI second net (it already runs in `security.yml`); W-B's final report: gitleaks with the ported rules matched all 1,137 content-tool findings, found 43 more (matching differences: a split address, `%40` in a URL, a phrase over two lines) and missed 0; the kit gains those 3 matching fixes. B. Shrink to the parts no tool covers and run gitleaks with generated custom rules (two scanners, two outputs).
 10. **Instruction check (W-B).** A. **REC:** keep `check_instructions.py` (0 false positives, the step reader is the value). B. Shrink: keep the step reader, send steps to Vale for actions, pointer, vague and wait.
 
 ## 3. Rule texts (exact text for approval)
 
-Result on a copy of AGENTS.md: 76 -> 73 lines, kit rule bullets 31 -> 28 (+1 project rule), session load +285 bytes
-(~+71 tokens). No new AGENTS.md line. Three bullets are merged (cuts 1-3: "The Maintainer's decisions" into "Decisions", "Host limit" into "Delivery", "README" into "One home", which also takes T1); four are extended; three role-word texts change (C10-C12). C5 and C6 are not used. All changed bullets are in every tier: no text points a starter project to a file it does not have (`ADVANCED_FILES` in `scripts/sync_baseline.py`), so enforcing checks are named here, not in AGENTS.md. Rules a check enforces
+Result on a copy of AGENTS.md: 76 -> 73 lines, kit rule bullets 31 -> 28 (+1 project rule), kit AGENTS.md +309 bytes
+A project gets +279 bytes (~69 tokens) in the full tier and +91 bytes (~22 tokens) in the starter tier: C9 sits in the `<!-- full -->` block, and C11 and C12 sit in "Project rules", which a sync does not touch. No new AGENTS.md line. Three bullets are merged (cuts 1-3: "The Maintainer's decisions" into "Decisions", "Host limit" into "Delivery", "README" into "One home"); three are extended (C7, C8, C9; C9 also takes T1, because `bloat_check.py` exists only in the full tier); three role-word texts change (C10-C12). C4-C6 are not used. The only starter-tier pointer to an advanced file is the old README one ("Enforced in part: `scripts/bloat_check.py`"), unchanged. Rules a check enforces
 get a pointer only; the check's FAIL line states the full rule. Where each prompt rule lives:
 
 | Prompt rule | Home | Enforcing check (trigger) | Defect it prevents |
 |---|---|---|---|
-| T1 search first | C3 "One home" ("(a script: docs/tools.md)") + check message | `bloat_check.py`: every tool file the repo owns (any folder; kit-locked files are listed in the kit's own docs/tools.md) has a docs/tools.md row with 3 candidates searched, or "none known" with the search terms (every push) | new tools instead of existing ones (cause 1) |
+| T1 search first | C9 "Caps and audit" ("or a script has no docs/tools.md row") + check message | `bloat_check.py`: every tool file the repo owns (any folder; kit-locked files are listed in the kit's own docs/tools.md) has a docs/tools.md row with 3 candidates searched, or "none known" with the search terms (every push) | new tools instead of existing ones (cause 1) |
 | T2 ratchet | C9 "Caps and audit" ("their approved baseline") | `bloat_check.py`: total custom script lines <= the baseline; a higher baseline needs a DECISIONS row By the Maintainer with the number (every push) | custom code grows back (causes 1, 3) |
 | T5 debt list first | C8 "Lean instructions" | `bloat_check.py --rules`: a pull request that adds a rule line, a check entry point in `check.sh` or a stricter cap in `KIT_CAPS` fails without a `docs/reviews/*-debt.md` record that names its hash (like the conflict-check record) | caps stricter than the fleet can meet (cause 3; ICF 21 files) |
-| T6 one role word, approval channels | C4 hard rule "The Maintainer's approval" (the ways "Maintainer changes" and "Rule text" name: the Maintainer's own message, a brief or scheduled task the Maintainer started, the merge of a pull request that shows the text), C10, C11, C12 ("Owner"/"the owner" -> "the Maintainer") | `log_check.py`: a new DECISIONS row (dated after the rule) By the Maintainer quotes the approval of its exact text; `bloat_check.py`: no other role word in kit-synced text (every push) | 3 rows written from dialog answers on 2026-11-23 (cause 4) |
+| T6 one role word, approval channels | no new text: the hard rule "The Maintainer's approval" already says "The Maintainer's own request for that action is the approval", "Maintainer changes" names the other channels, and "Rule text" covers approval of shown texts; the role word changes in C10, C11, C12 ("Owner"/"the owner" -> "the Maintainer") | `log_check.py`: a new DECISIONS row (dated after the rule) By the Maintainer quotes the approval of its exact text; `bloat_check.py`: no other role word in kit-synced text (every push) | 3 rows written from dialog answers on 2026-11-23 (cause 4) |
 | T7 plan coverage | `.claude/skills/handoff/SKILL.md` (moved out of AGENTS.md for the token cap) | `log_check.py --coverage <file>`: rows marked = rows, no "ask" (before a plan PR) | the Part 2 miss of fleet v2 |
-| R1 80 % split | option B of decision 1 only | `code_standard.py` C4 | cap met at sync time |
+| R1 80 % split | not added (decision 1 = A) | none | (cap met at sync time: handled by the goal-based review, C7) |
 | R3 fleet audit | C9 "Caps and audit" + audit skill "Fleet" section | `bloat_check.py`: AUDIT DUE (fleet) at a kit tag or 14 days (kit check-in) | drift found only at sync (cause 5) |
 | AUD-1 goal per check | C8 + `code_standard.py` C1: a check script's header has a `Prevents:` line | C1 (every push) | checks with no testable goal |
 | AUD-2 goal-based review | C7 "Fresh review" | reviewer brief (delegate skill) | splits that only move a number (R4f) |
 | AUD-3 outcome metrics | C9 (file size warns) + audit skill (defects per check, mutant kill rate, files per kit change, fix-of-a-fix rate) | audit report | proxies gamed by splits |
 
-**Change against the prompt's T6 text (disclosed):** the prompt says "an approval counts only in the acting session's own chat". That text conflicts with "Maintainer changes" (briefs from a session the Maintainer started), "Rule text" (a pull-request merge) and the plan-continuation rule in "Handoff"; C4 keeps those ways and names them. C10-C12 also reverse two DECISIONS rows: row 13 (2026-11-21: the exception stays "the Owner's own message") and row 108 (2026-11-23: "Not changed: ... the kit's own Project rules"); C11 changes the recorded approver of "Fleet choices" from "the owner" to "the Maintainer" (the same person, the new role word).
+**Change against the prompt's T6 text (disclosed):** the prompt says "an approval counts only in the acting session's own chat". That text conflicts with "Maintainer changes" (briefs from a session the Maintainer started), "Rule text" (a pull-request merge) and the plan-continuation rule in "Handoff"; So the plan adds no approval text (an earlier draft, C4, did and caused these conflicts); the check enforces the DECISIONS quote. C10-C12 also reverse two DECISIONS rows: row 13 (2026-11-21: the exception stays "the Owner's own message") and row 108 (2026-11-23: "Not changed: ... the kit's own Project rules"); C11 changes the recorded approver of "Fleet choices" from "the owner" to "the Maintainer" (the same person, the new role word).
 
 **T5 fleet debt of the new checks** (measured 2026-11-23; P1 makes each one FAIL in the kit and WARN in projects until its debt is 0):
 
@@ -82,10 +82,10 @@ get a pointer only; the check's FAIL line states the full rule. Where each promp
 | T6 DECISIONS quote | 0 (new rows only) | 0 |
 | T7 coverage | 0 (this list: 85 rows, 0 ask) | 0 |
 | AUD-1 `Prevents:` header | 47 of 47 check entry points (0 have it) | counted in P1 per repo |
-| T6 role word | 54 lines in 11 kit-synced files still say "the owner" or "Owner's" (for example `scripts/bootstrap.sh:109`, `first_use_check.py:20`, `sync_baseline.py:22`, `token_log.py:5`); P1 renames them | each project's own text, counted in P1 |
+| T6 role word | 13 lines in 3 files of the sync copy set; 50 lines in 10 tracked files outside docs/ (reviewer's count, 2026-11-23). Some must keep the literal: `scripts/sync_baseline.py:116-117`, test values in `sync_baseline_cli_test.py`, dated attributions. P1 renames only the others, so the check needs an allow list of those lines | each project's own text, counted in P1 |
 | R3 fleet AUDIT DUE | 1 (no fleet audit yet: P5) | n/a |
 
-Also changed in P1 so no reference breaks: `.claude/rule-tests.md` line 26 (Section "Host limit" -> "Delivery"), lines 46 and 48 ("The Maintainer's decisions" -> "Decisions"), and a new scenario for C4 (a hard-rule change). The T5 debt record names the hash of the changed rule lines as `bloat_check.py --rules` prints it (the same hash as the conflict record).
+Also changed in P1 so no reference breaks: `.claude/rule-tests.md` line 26 (Section "Host limit" -> "Delivery"), lines 46 and 48 ("The Maintainer's decisions" -> "Decisions"), and the cites of the "README" label in `scripts/bloat_check.py:50`, `scripts/bloat_check_rules.py:11,296,331` and `scripts/bloat_check_test_rules.py:128` (C3 removes that label). The T5 debt record names the hash of the changed rule lines as `bloat_check.py --rules` prints it (the same hash as the conflict record).
 
 Full texts of the skill additions (not rules; shown for review):
 - handoff skill, "Plans" step: "A plan made from a source plan first lists every source item as in, out or later, with a count table; the Maintainer approves that list before the plan; `python3 scripts/log_check.py --coverage <file>` fails on an unmarked or 'ask' row or a count mismatch."
@@ -128,7 +128,7 @@ Old:
 New:
 
 ```text
-- **Delivery.** Deliver every change without being asked: commit, push, open a pull request, then merge it by its lane. Lane A, docs that are not rules: merge when the checks are green. Lane B, code, scripts and checks: merge when the checks are green and the fresh review finds no MAJOR finding. Lane C, rule text, instruction and guard files, a UI or design change the Maintainer has not approved (show a preview first), a MAJOR finding you cannot fix, a self-review, a pull request not opened for this work ("Git history"), and each case in "The Maintainer's approval": ask the Maintainer. Then verify that origin/main has the commit and republish the affected artifacts. Steps: `.claude/skills/deliver/SKILL.md`. A host limit wins over the lanes: do the steps it allows and report the rest as blocked, with the cause and what unblocks it.
+- **Delivery.** Deliver every change without being asked: commit, push, open a pull request, then merge it by its lane. Lane A, docs that are not rules: merge when the checks are green. Lane B, code, scripts and checks: merge when the checks are green and the fresh review finds no MAJOR finding. Lane C, rule text, instruction and guard files, a UI or design change the Maintainer has not approved (show a preview first), a MAJOR finding you cannot fix, a self-review, a pull request not opened for this work ("Git history"), and each case in "The Maintainer's approval": ask the Maintainer. Then verify that origin/main has the commit and republish the affected artifacts. Steps: `.claude/skills/deliver/SKILL.md`. A host limit (a required branch, or a push or merge the host does not allow without the Maintainer) wins over "Delivery": do the steps it allows and report the rest as blocked, with the cause and what unblocks it.
 ```
 
 ### C3. One home (absorbs "README" (bullet cut 3))
@@ -148,21 +148,7 @@ Old:
 New:
 
 ```text
-- **One home.** One fact, rule or value lives in one place; other places link to it. Before you add a file, rule, script, check or doc section, extend or replace an existing one (a script: docs/tools.md). A change removes what it makes obsolete (code, docs, files, rules) in the same commit. A change that alters what the project is, does, or how to install, run or use it updates README.md in the same pull request; README.md opens with the "Purpose" line of this file. Enforced in part: `scripts/bloat_check.py`.
-```
-
-### C4. The Maintainer's approval (T6 (hard rule))
-
-Old:
-
-```text
-- **The Maintainer's approval.** Ask the Maintainer before: a data write, a live or irreversible effect, a cost, a security or privacy risk, and a lane C merge ("Delivery"; a project rule may add a lane C case, never remove one). The Maintainer's own request for that action is the approval; a recommendation is not a decision until the Maintainer approves it.
-```
-
-New:
-
-```text
-- **The Maintainer's approval.** Ask the Maintainer before: a data write, a live or irreversible effect, a cost, a security or privacy risk, and a lane C merge ("Delivery"; a project rule may add a lane C case, never remove one). The Maintainer's own request for that action is the approval; a recommendation is not a decision until the Maintainer approves it. Approval comes only in the ways "Maintainer changes" and "Rule text" name.
+- **One home.** One fact, rule or value lives in one place; other places link to it. Before you add a file, rule, script, check or doc section, extend or replace an existing one. A change removes what it makes obsolete (code, docs, files, rules) in the same commit. A change that alters what the project is, does, or how to install, run or use it updates README.md in the same pull request; README.md opens with the "Purpose" line of this file. Enforced in part: `scripts/bloat_check.py`.
 ```
 
 ### C7. Fresh review (AUD-2)
@@ -221,7 +207,7 @@ New:
 - **Fleet choices.** A choice the Maintainer saved on the fleet page counts as the Maintainer's approval only after the applying session shows it in full and the Maintainer confirms it in their own message (the Maintainer, 2026-11-19).
 ```
 
-### C9. Caps and audit (T2, R3, AUD-3 (option A; R1 as option B))
+### C9. Caps and audit (T1, T2, R3, AUD-3 (decision 1 = A))
 
 Old:
 
@@ -232,7 +218,7 @@ Old:
 New:
 
 ```text
-- **Caps and audit.** `scripts/bloat_check.py` (run by the check-in and by check.sh) fails when this file passes 200 lines, when the session load passes 5,500 tokens (third-party skills and agents in `.check`: own cap 1,500), when a skill or agent file states a rule whose home is this file, or when custom script lines pass their approved baseline; file size only warns. The full audit runs when the Maintainer asks for it and for all fleet repos at each kit release or 14 days after the last one, and a run slower than its baseline uses the same skill: `.claude/skills/audit/SKILL.md`.
+- **Caps and audit.** `scripts/bloat_check.py` (run by the check-in and by check.sh) fails when this file passes 200 lines, when the session load passes 5,500 tokens (third-party skills and agents in `.check`: own cap 1,500), when a skill or agent file states a rule whose home is this file, or when custom script lines pass their approved baseline or a script has no docs/tools.md row; file size only warns. The full audit runs when the Maintainer asks for it and for all fleet repos at each kit release or 14 days after the last one, and a run slower than its baseline uses the same skill: `.claude/skills/audit/SKILL.md`.
 ```
 
 ### C12. Project rules comment (T6 one role word (kit comment, not a rule))
