@@ -108,7 +108,7 @@ stages in reverse order (4, 3, 2, 1), because each later stage depends on the on
 | 4 ICF | ICF-Source #250, #249 (kit sync), #248 (split), #247, #246, #245, #244, #243 (guard files), #242 | Site: after the revert is on main, run `publish_pages.py <clone of rhope-ops/icf> --push`; it publishes main's site/dist (the script refuses any commit not on origin/main). Today's live release: rhope-ops/icf aadd154 (2.12.2); before: e08c341 (2.10.2) |
 | 3C ICF | ICF-Source #241 | Same Site step |
 | 3B 33-332.Z | #56 (kit sync), #55 (guard files), #54 (palette), #53, #51 | Ion-script.txt link stays valid (only the .ps1 copy was deleted) |
-| 3A 90-161.Z | #221 (engine-v36 lock + kit sync), then #217-#220 | Re-pin the engine: `python3 scripts/bump_lock.py engine-v32`, then the R41 rebuild; the paste bundles return to r1 |
+| 3A 90-161.Z | #221 (engine-v36 lock + kit sync), then #217-#220 | The revert restores the engine-v32 lock and its bundles. To move forward instead: `python3 scripts/bump_lock.py engine-v35` (or another tag) downloads that release lock, rebuilds the round bundles with the next revision, traces them and runs check.sh |
 | 2 RADE | #171, #170, #169, #168, #167 | engine-v36 stays published (a release is not deleted); apps pin their lock, so no app changes unless it bumps. Release a fixed engine as v37 if needed |
 | 1 Kit | PR 118 (11.0.1), PR 114 (11.0.0) | Each project then needs its own revert of its kit sync PR |
 
