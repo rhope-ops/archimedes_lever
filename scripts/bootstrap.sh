@@ -105,6 +105,7 @@ find docs/reviews -maxdepth 1 -name '20*.md' -delete 2>/dev/null || true
 # The token log hook is installed from the kit by the cloud setup scripts (the owner, 2026-11-17).
 python3 scripts/sync_baseline.py --lock-here  # the kit lock (.check.lock) of the new project
 rm -f -- scripts/sync_baseline.py scripts/sync_merge.py scripts/drift.py scripts/token_log.py scripts/token_log_test.py \
+  scripts/drift_test.py scripts/sync_baseline_repo.py scripts/sync_baseline_run.py \
   KIT_VERSION docs/CHANGELOG.md docs/KIT_HANDOFF.md
 if [ -f LICENSE ]; then mv -- LICENSE docs/archimedes_lever-LICENSE.txt; fi
 

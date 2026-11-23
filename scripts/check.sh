@@ -311,7 +311,8 @@ extension build_site_local scripts/build_site_local.py scripts/build_site.py
 selftest first_use_check scripts/first_use_check.py scripts/check_blocks.py scripts/check_content.py scripts/check_content_scan.py \
   scripts/check_content_scan_settings.py -- python3 scripts/first_use_check.py --test
 # Kit only: projects have no sync tools. The drift self-test reads the kit's AGENTS.md and stop_check.py.
-selftest drift scripts/drift.py scripts/sync_baseline.py scripts/sync_merge.py AGENTS.md scripts/stop_check.py -- python3 scripts/drift.py --test
+selftest drift scripts/drift.py scripts/sync_baseline.py scripts/sync_merge.py AGENTS.md scripts/stop_check.py \
+  scripts/drift_test.py scripts/sync_baseline_repo.py scripts/sync_baseline_run.py -- python3 scripts/drift.py --test
 selftest pre-push scripts/git-hooks/pre-push -- scripts/git-hooks/pre-push --test
 selftest session_checkin scripts/session_checkin.sh -- bash scripts/session_checkin.sh --test
 # This script's own self-test (not inside that self-test: it runs this script in temporary repos).

@@ -57,26 +57,28 @@ What it never changes: README.md, docs/ (except docs/FIRST_USE.md as said above,
 license), .check and all other files. A project's own code lives in its own files (scripts/check.local.sh,
 scripts/check_content_local.py, scripts/check_instructions_local.py, scripts/code_standard_gate.py), which a sync
 never touches.
-Standard library only. Needs git.
+Parts: scripts/sync_baseline_repo.py (the reads of the baseline repo, the diff) and scripts/sync_baseline_run.py (main). Standard library only. Needs git.
 Network: the baseline repo, only when --baseline is a URL (one git clone); none for a local folder.
 Writes: with --apply, the kit files of the project and its kit lock .check.lock (the list: "What it changes" above); without it, nothing.
 Credentials: none itself; a clone uses the credentials git already has.
 """
 import argparse
-import difflib
 import re
 import shutil
-import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import check_blocks  # noqa: E402 - the deny rules and the placeholder pattern
+import check_blocks  # noqa: E402,F401 - the deny rules and the placeholder pattern
 import check_lock  # noqa: E402 - the kit lock that a sync writes into the project
 from sync_merge import REPLACED_HOOKS, changed_matchers, die, merge_lines, merge_settings, migrate_arcs  # noqa: E402,F401 - scripts/sync_merge.py
 from sync_merge import (apply_tier, find_heading, header_short_name, header_timezone, header_tier, header_values,  # noqa: E402,F401
                         headings, section, valid_timezone)  # the AGENTS.md header helpers (drift.py reads them here)
+# scripts/sync_baseline_repo.py: the reads of the baseline repo and the diff (kept apart, docs/code-standard.md C4).
+from sync_baseline_repo import (baseline_sha, get_baseline, git, header_owner, kit_history, log_stamp,  # noqa: E402,F401
+                                log_template, show_diff)
+import sync_baseline_run  # noqa: E402 - scripts/sync_baseline_run.py: the steps of one run (main)
+from sync_baseline_run import check_placeholders  # noqa: E402,F401 - re-exported
 
 DEFAULT_BASELINE = "https://github.com/rhope-ops/archimedes_lever"
 RULES_HEADING = "## Project rules"
@@ -109,10 +111,6 @@ BASELINE_OWNER = "the owner"  # role word in baseline text; no real name lives i
 # Never rename the owner inside this script: it holds BASELINE_OWNER as a literal.
 # first_use_check.py and docs/FIRST_USE.md use "the owner" as an answer option and a role: keep them as written
 # (bootstrap.sh skips them too).
-def log_template(base):
-    """The blank project log: docs/templates/LOG.md (the kit's docs/LOG.md is its own log); older baselines: docs/LOG.md."""
-    t = base / "docs/templates/LOG.md"
-    return t if t.exists() else base / "docs/LOG.md"
 
 
 # Advanced parts: a starter project has none of these (one list for bootstrap, sync and drift).
@@ -136,32 +134,6 @@ NO_OWNER_RENAME = {"scripts/sync_baseline.py", "scripts/first_use_check.py", "do
 OWNER_RE = r"[A-Za-z0-9 ._,()-]+"  # safe inside Python strings, JSON and Markdown
 
 
-def git(*args, cwd=None):
-    """Run git and return its stripped stdout; raise on failure."""
-    return subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True, text=True).stdout.strip()
-
-
-def get_baseline(src, tmp):
-    """The baseline folder: `src` itself when it is a folder, else a clone of it in `tmp` (with its history: an older
-    kit copy of a file is known by it, copy_state).
-
-    Args:
-        src: a baseline folder or a git URL.
-        tmp: a temporary folder to clone into.
-    Returns:
-        The path of the baseline folder.
-    """
-    path = Path(src)
-    if path.is_dir():
-        return path.resolve()
-    dest = Path(tmp) / "baseline"
-    try:
-        git("clone", "--quiet", src, str(dest))
-    except subprocess.CalledProcessError as e:
-        die(f"cannot clone baseline {src}: {e.stderr.strip()}")
-    return dest
-
-
 def tier_files(tier):
     """Files the kit copies for this tier."""
     skip = set(ADVANCED_FILES) if tier == "starter" else set()
@@ -178,23 +150,6 @@ def set_tier(root, tier):
     print(f"Tier: {tier}" + (f" ({len(ADVANCED_FILES)} advanced files removed)" if tier == "starter" else ""))
 
 
-def log_stamp(zone):
-    """'YYYY-MM-DD HH:MM' now, in the project time zone (UTC when the zone database is missing)."""
-    import datetime
-    try:
-        import zoneinfo
-        tz = zoneinfo.ZoneInfo(zone)
-    except Exception:
-        tz = datetime.timezone.utc
-    return datetime.datetime.now(tz).strftime("%Y-%m-%d %H:%M")
-
-
-def header_owner(text):
-    """The project's "- Owner:" value, or None."""
-    owner = re.search(r"^- Owner: (.+?)\s*$", text or "", re.M)
-    return owner and owner.group(1)
-
-
 def apply_owner(text, owner):
     """Replace the baseline role word ("the owner", "The owner") with the project owner."""
     if owner == BASELINE_OWNER:
@@ -202,27 +157,6 @@ def apply_owner(text, owner):
     cap = owner[:1].upper() + owner[1:]
     # One pass with word boundaries: "the ownership" stays, and an owner that contains the role word is not re-replaced.
     return re.sub(r"\b([Tt])he owner\b", lambda m: cap if m.group(1) == "T" else owner, text)
-
-
-def kit_history(base, rel):
-    """The earlier versions of a baseline file, from the baseline's git history.
-
-    Args:
-        base: the baseline folder.
-        rel: the file's path in it.
-
-    Returns:
-        A list of the file's bytes at each commit that changed it, newest first; None when the baseline folder is
-        not the top of a git repo (no history to read).
-    """
-    try:
-        if Path(git("rev-parse", "--show-toplevel", cwd=base)).resolve() != Path(base).resolve():
-            return None
-        shas = git("log", "--format=%H", "--", rel, cwd=base).split()
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return None
-    shown = [subprocess.run(["git", "show", f"{sha}:{rel}"], cwd=base, capture_output=True) for sha in shas]
-    return [r.stdout for r in shown if r.returncode == 0]   # a commit that deleted the file has no version
 
 
 def copy_state(base, root, rel, owner):
@@ -368,33 +302,6 @@ def parse_args():
     return args
 
 
-def baseline_sha(base):
-    """The baseline commit, marked when its folder has uncommitted changes or is not a git repo.
-
-    Args:
-        base: the baseline folder (a Path).
-    Returns:
-        The commit hash, with a note when the folder has uncommitted changes, or an "unknown" text.
-    """
-    try:
-        if Path(git("rev-parse", "--show-toplevel", cwd=base)).resolve() != base.resolve():
-            raise subprocess.CalledProcessError(1, "git")
-        sha = git("rev-parse", "HEAD", cwd=base)
-        if git("status", "--porcelain", cwd=base):
-            sha += " (with uncommitted baseline changes)"
-        return sha
-    except subprocess.CalledProcessError:
-        return "unknown (baseline folder is not a git repo)"
-
-
-def check_placeholders(root):
-    """Stop when AGENTS.md, README.md or docs/*.md still holds a {{PLACEHOLDER}} (bootstrap has not run)."""
-    for f in [root / "AGENTS.md", root / "README.md", *sorted(root.glob("docs/*.md"))]:
-        rel = f.relative_to(root)
-        if f.is_file() and check_blocks.placeholders([f]):
-            die(f"{rel} still has template placeholders; run scripts/bootstrap.sh first")
-
-
 def new_log(base, root, proj_text, agents_text, owner, tier):
     """The docs/LOG.md text to write: a new log on a starter-to-full upgrade, or the Arcs migration; else None.
 
@@ -470,29 +377,6 @@ def planned_files(base, root, args):
     return new, tier
 
 
-def show_diff(root, new):
-    """Print a unified diff for each file that would change; return their paths.
-
-    Args:
-        root: the project folder.
-        new: a dict of project path to the synced text.
-    Returns:
-        The list of paths whose text would change.
-    """
-    changed = []
-    for rel, text in new.items():
-        path = root / rel
-        old = path.read_text() if path.exists() else ""
-        if old == text:
-            continue
-        changed.append(rel)
-        sys.stdout.writelines(difflib.unified_diff(
-            old.splitlines(True), text.splitlines(True), f"a/{rel}", f"b/{rel}"))
-        if not text.endswith("\n"):
-            print()
-    return changed
-
-
 def report_leftovers(root, tier):
     """List the advanced files a starter project keeps and old copies of moved files, for deletion by hand.
 
@@ -543,44 +427,9 @@ def write_lock(base, root, files):
 
 
 def main():
-    """Sync the project: show the diff (dry run) or write it (--apply); or apply --set-tier in place."""
-    args = parse_args()
-    try:
-        root = Path(git("rev-parse", "--show-toplevel"))
-    except subprocess.CalledProcessError:
-        die("run this inside the project git repo")
-    if args.set_tier:
-        set_tier(root, args.set_tier)
-        return
-    if args.lock_here:  # bootstrap: this clone of the kit becomes a project; lock its kit files as they are now
-        write_lock(root, root, COPY_FILES)
-        return
-
-    with tempfile.TemporaryDirectory() as tmp:
-        base = get_baseline(args.baseline, tmp)
-        if base.resolve() == root.resolve():
-            die("this is the baseline repo itself; run the script in a project repo")
-        print(f"Kit baseline: {baseline_sha(base)}. A sync writes the kit lock {check_lock.LOCK} (the kit version and a "
-              "hash of each kit file); the project does not keep the sync tools.")
-        check_placeholders(root)
-        new, tier = planned_files(base, root, args)
-        changed = show_diff(root, new)
-        report_leftovers(root, tier)
-        for note in COPY_NOTES:
-            print(note)
-        for matcher in changed_matchers(REPLACED_HOOKS, base / ".claude/settings.json"):
-            print("An older kit hook entry is replaced by the kit's. If you had added tool names to its matcher, add a "
-                  f"hook entry of your own for them. The old matcher: {matcher}")
-        if not changed:
-            print("No changes: the project already matches the baseline.")
-            if args.apply:
-                write_lock(base, root, new)
-            return
-        print(f"\n{len(changed)} file(s) to change: {', '.join(changed)}")
-        if not args.apply:
-            print("Dry run: nothing written. Run again with --apply to write.")
-            return
-        write_files(base, root, new, changed)
+    """Sync the project: show the diff (dry run) or write it (--apply); or apply --set-tier in place (the steps:
+    scripts/sync_baseline_run.py)."""
+    sync_baseline_run.run(sys.modules[__name__])
 
 
 if __name__ == "__main__":
