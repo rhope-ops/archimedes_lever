@@ -98,9 +98,9 @@ if ! python3 scripts/check_blocks.py --placeholders "${present[@]}"; then
   exit 1
 fi
 
-# The maintainer's preferences template (PREFERENCES.md) and the kit's file list (docs/FILES.md) live only in the template repo. The kit's license moves next to the docs: the copied scripts
+# The maintainer's preferences template (PREFERENCES.md), the kit's file list (docs/FILES.md) and its tool list (docs/tools.md) live only in the template repo. The kit's license moves next to the docs: the copied scripts
 # stay under it, and the root LICENSE is the project's own choice (docs/FIRST_USE.md, question 6).
-rm -f -- PREFERENCES.md docs/FILES.md
+rm -f -- PREFERENCES.md docs/FILES.md docs/tools.md
 # The kit's state (.check.state.json: its last audit and time baselines) is the kit's own. The project starts with a
 # fresh file: the code standard adopted with no debt (the kit's code meets it), no audit yet and no time baselines.
 printf '%s\n' '{' ' "code_standard": {' '  "debt": {}' ' }' '}' > .check.state.json

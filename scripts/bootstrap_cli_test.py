@@ -113,7 +113,7 @@ class BootstrapCli(unittest.TestCase):
     def test_starter_run_removes_kit_files(self):
         """Prove: a starter run deletes the kit-only files and the script itself."""
         self.assertEqual(self.starter().returncode, 0)
-        for gone in ("scripts/bootstrap.sh", "scripts/sync_baseline.py", "scripts/drift.py", "KIT_VERSION", "docs/FILES.md",
+        for gone in ("scripts/bootstrap.sh", "scripts/sync_baseline.py", "scripts/drift.py", "KIT_VERSION", "docs/FILES.md", "docs/tools.md",
                      "scripts/sync_baseline_cli_test.py", "scripts/bootstrap_cli_test.py", "docs/threat-model.md",
                      "SECURITY.md", ".github/dependabot.yml", ".github/workflows/security.yml"):  # DoD group: key off
             self.assertFalse((self.path / gone).exists(), gone)
