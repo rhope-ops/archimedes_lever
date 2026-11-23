@@ -9,6 +9,13 @@
  "code_standard": {
   "debt": {}
  },
+ "script_lines": {
+  "baseline": 17096,
+  "command": "cat scripts/*.py scripts/*.sh | wc -l",
+  "commit": "adf489b",
+  "files": 65,
+  "measured": "2026-11-23"
+ },
  "timings": {
   "bloat-brief": {
    "cmd": "python3 scripts/bloat_check.py --brief",

@@ -255,3 +255,135 @@ def lint_cases(bloat, ro):
         assert bloat.main_rules(ro) == 0, "--rules passes over the bullet guide of 28 (a warning)"
         (ro / "AGENTS.md").write_text("## A\n\n" + "- r.\n" * 199)
         assert bloat.main_rules(ro) == 1, "--rules fails over the default cap of 200 lines"
+
+
+def sample_kit(d, files):
+    """A sample repo in folder d with these files ({path: text}) and kit.config.json, committed and set as origin/main.
+
+    Args:
+        d: an empty temporary folder (a Path).
+        files: the files to write.
+
+    Returns:
+        The folder d.
+    """
+    subprocess.run(["git", "init", "-q", str(d)], check=True)
+    for rel, text in {"kit.config.json": "{}", **files}.items():
+        (d / rel).parent.mkdir(parents=True, exist_ok=True)
+        (d / rel).write_text(text)
+    git_in(d, "add", "-A")
+    git_in(d, "commit", "-qm", "base")
+    git_in(d, "update-ref", "refs/remotes/origin/main", "HEAD")
+    return d
+
+
+def file_check_cases(bloat, d):
+    """The file checks of --rules (scripts/bloat_check_skills.py): T1 tool rows, T2 script lines ratchet, T6 role word.
+
+    Args:
+        bloat: the module under test.
+        d: an empty temporary folder (a Path).
+    """
+    sk = bloat.bloat_check_skills
+    table = "| File | Job | Candidates |\n|---|---|---|\n"
+    root = sample_kit(d, {"scripts/a.py": "x\n", "scripts/b.sh": "x\n", "tools/c.js": "x\n", "node_modules/v.js": "x\n"})
+    assert sk.tool_files(root) == ["scripts/a.py", "scripts/b.sh", "tools/c.js"], "tool files: any folder, not vendor"
+    problems = sk.tool_report(root)[1]
+    assert len(problems) == 1 and "3 tool file(s)" in problems[0], "the kit: no docs/tools.md fails"
+    (root / "docs").mkdir()
+    (root / "docs/tools.md").write_text(table + "| scripts/a.py | a | ruff, pylint, radon |\n| `b.sh` | b | none known (searched: shell lint) |\n"
+                                        "| tools/c.js | c | one, two |\n")
+    problems = sk.tool_report(root)[1]
+    assert len(problems) == 1 and "1 tool file(s)" in problems[0] and "tools/c.js" in problems[0], "2 candidates is not 3: %s" % problems
+    (root / "docs/tools.md").write_text(table + "| a.py, b.sh, tools/c.js | all | one, two |\n| tools/c.js | c | none known |\n")
+    assert "3 tool file(s)" in sk.tool_report(root)[1][0], "a files cell is not a candidates cell; none known needs search terms"
+    (root / "docs/tools.md").write_text(table + "| scripts/a.py | a | x, y, z |\n| b.sh | b | none known (terms: q) |\n| tools/c.js | c | x; y; z |\n")
+    assert sk.tool_report(root) == ([], []), "3 candidates, or none known with terms: every row counts"
+    (root / "docs/tools.md").unlink()
+    (root / ".check.lock").write_text(json.dumps({"files": {"scripts/a.py": "h"}}))
+    warns, problems = sk.tool_report(root)
+    assert not problems and len(warns) == 1 and "2 tool file(s)" in warns[0], "a project: WARN, and a kit-locked file is not listed"
+    (root / ".check.lock").unlink()
+    ratchet_cases(sk, root)
+    role_cases(sk, root)
+
+
+def ratchet_cases(sk, root):
+    """T2: script lines over the baseline fail; a baseline above main's needs a DECISIONS row that names it.
+
+    Args:
+        sk: the module bloat_check_skills.
+        root: the sample repo (a Path) with 3 script lines.
+    """
+    assert sk.script_lines(root) == 2 and sk.ratchet_report(root) == ([], []), "no baseline: not checked"
+    (root / check_settings.STATE).write_text(json.dumps({"script_lines": {"baseline": 2}}))
+    assert not sk.ratchet_report(root)[1], "at the baseline: passes"
+    (root / "scripts/a.py").write_text("x\nx\n")
+    problems = sk.ratchet_report(root)[1]
+    assert len(problems) == 1 and "pass the baseline 2 (+1)" in problems[0] and "By the Maintainer" in problems[0], problems
+    git_in(root, "add", "-A")
+    git_in(root, "commit", "-qm", "state")
+    git_in(root, "update-ref", "refs/remotes/origin/main", "HEAD")
+    (root / check_settings.STATE).write_text(json.dumps({"script_lines": {"baseline": 3}}))
+    problems = sk.ratchet_report(root)[1]
+    assert len(problems) == 1 and "rose from 2 to 3" in problems[0], "a higher baseline needs a row: %s" % problems
+    (root / "docs").mkdir(exist_ok=True)
+    (root / "docs/DECISIONS.md").write_text("| 2026-11-23 | Script lines baseline 3 | By the Maintainer |\n")
+    git_in(root, "add", "-A")
+    assert not sk.ratchet_report(root)[1], "a new row By the Maintainer with the number passes"
+
+
+def role_cases(sk, root):
+    """T6: kit-synced text with "the owner" or "Owner's" warns; a dated attribution and the sync's own literals do not.
+
+    Args:
+        sk: the module bloat_check_skills.
+        root: the sample kit repo (a Path).
+    """
+    (root / "scripts/sync_baseline.py").write_text('COPY_FILES = ["docs/x.md"]\nCOPY_IF_MISSING = []\n# Never rename the owner inside this script\n')
+    (root / "docs/x.md").write_text("the owner decides\nRule (the owner, 2026-11-23: ok)\nThe Owner's word\nthe Maintainer\n")
+    warn = sk.role_report(root)
+    assert len(warn) == 1 and warn[0].startswith("WARN") and "2 line(s)" in warn[0] and "docs/x.md:1, docs/x.md:3" in warn[0], warn
+    (root / ".check.lock").write_text("{}")
+    assert sk.role_report(root) == [], "a project keeps its own role word"
+    (root / ".check.lock").unlink()
+    (root / "docs/x.md").write_text("the Maintainer\n")
+    assert sk.role_report(root) == [], "no role word: no line"
+
+
+def debt_gate_cases(bloat, d, caps):
+    """T5: in the kit, changed rule lines, a new check.sh entry point and a lower KIT_CAPS cap each need a docs/reviews/*-debt.md
+    file with "debt-check: <hash>"; the hash is the conflict hash for rule lines alone; a project has no such gate.
+
+    Args:
+        bloat: the module under test.
+        d: an empty temporary folder (a Path).
+        caps: audit settings with the default budgets.
+    """
+    base = {"AGENTS.md": "## A\n\n- Old rule.\n\n## Project rules\n\n", "scripts/check.sh": "python3 scripts/a.py\n",
+            "scripts/check_settings_read.py": 'KIT_CAPS = ("c1",)\nAUDIT_DEFAULTS = {"budgets": {"c1": 5, "c2": 9}}\n'}
+    root = sample_kit(d, base)
+    debt = lambda: [p for p in bloat.rules_report(root, caps, gate=True)[1] if "T5" in p]
+    assert debt() == [] and bloat.bloat_check_skills.debt_triggers(root) == [], "nothing changed: no gate"
+    (root / "AGENTS.md").write_text("## A\n\n- New rule.\n\n## Project rules\n\n")
+    h = bloat.conflict_hash(["New rule."], ["Old rule."])
+    assert len(debt()) == 1 and f"debt-check: {h}" in debt()[0], "a changed rule line needs the record, with the conflict hash"
+    (root / "docs/reviews").mkdir(parents=True)
+    (root / "docs/reviews/r.md").write_text(f"debt-check: {h}\n")
+    assert len(debt()) == 1, "a record outside a *-debt.md file does not count"
+    (root / "docs/reviews/r-debt.md").write_text(f"debt-check: {h}\n")
+    assert debt() == [], "a *-debt.md record with the hash passes"
+    (root / "AGENTS.md").write_text(base["AGENTS.md"])
+    (root / "scripts/check.sh").write_text("python3 scripts/a.py\nrun x python3 scripts/b.py\nselftest n scripts/c.py -- python3 scripts/c.py --test\n")
+    assert bloat.bloat_check_skills.debt_triggers(root) == ["check entry point scripts/b.py", "check entry point scripts/c.py"], "new entry points"
+    h = bloat.conflict_hash(["check entry point scripts/b.py", "check entry point scripts/c.py"], [])
+    assert len(debt()) == 1 and f"debt-check: {h}" in debt()[0], "the hash covers the entry points"
+    (root / "scripts/check.sh").write_text(base["scripts/check.sh"])
+    (root / "scripts/check_settings_read.py").write_text('KIT_CAPS = ("c1", "c3")\nAUDIT_DEFAULTS = {"budgets": {"c1": 4, "c2": 9, "c3": 1}}\n')
+    assert bloat.bloat_check_skills.debt_triggers(root) == ["stricter kit cap c1", "stricter kit cap c3"], "a lower cap and a new cap"
+    (root / "scripts/check_settings_read.py").write_text('KIT_CAPS = ("c1",)\nAUDIT_DEFAULTS = {"budgets": {"c1": 6, "c2": 1}}\n')
+    assert debt() == [], "a higher kit cap, or a lower cap that is not a kit cap, needs no record"
+    (root / "AGENTS.md").write_text("## A\n\n- New rule.\n\n## Project rules\n\n")
+    (root / "docs/reviews/r-debt.md").unlink()
+    (root / "kit.config.json").unlink()
+    assert debt() == [], "a project (not the kit): no debt gate"
