@@ -395,6 +395,7 @@ UPDATE_EVERY = 24 * 3600  # seconds between self-update checks
 # Prices in USD per million tokens: (input, output, cache read, inference_geo "us" applies). A cache write costs 1.25 x
 # input (5-minute) or 2 x input (1-hour). Source: https://platform.claude.com/docs/en/about-claude/pricing (fetched
 # 2026-11-23). Longest matching model id prefix wins. The weekly usage limit is assumed to weigh tokens like these prices.
+# Assumptions (no price listed): a fast-mode cache read costs read x fast input / base input; US 1.1x not on web search.
 PRICES_AS_OF = "2026-11-23"
 PRICES = {
     "claude-fable-5-2": (8, 40, 0.20, 1), "claude-fable-5-1": (10, 50, 0.25, 1), "claude-fable-5": (10, 50, 1, 1),
@@ -407,7 +408,7 @@ PRICES = {
 }
 FAST_PRICES = {"claude-fable-5-2": (16, 80), "claude-opus-5-5": (8, 40), "claude-opus-5": (10, 50), "claude-opus-4-8": (10, 50)}  # speed fast
 LONG_PROMPT, LONG_PRICES = 100_000, {"claude-haiku-5-5": (0.50, 2.50, 0.05)}  # prompt over 100,000: (input, output, read)
-WEB_SEARCH_USD, GEO_US_FACTOR = 10.0 / 1000, 1.1  # per search; on all token categories
+WEB_SEARCH_USD, GEO_US_FACTOR = 10.0 / 1000, 1.1  # per search; US factor: token categories only
 
 
 def self_update(path, url=None, now=None):
@@ -461,16 +462,17 @@ def update_main():
 
 
 def row_cost(r):
-    """The estimated cost of one row in USD, or None for a model with no price.
+    """The estimated cost of one row in USD, or None for a model with no price and no web search.
 
     Args:
         r: a row (a dict with the FIELDS; token counts as text or int).
     Returns:
-        The cost as a float, or None.
+        The cost as a float (only the web search fee for a model with no token price), or None.
     """
     key = max((k for k in PRICES if (r.get("model") or "").startswith(k)), key=len, default=None)
+    search = tokens(r.get("web_search_requests")) * WEB_SEARCH_USD
     if key is None:
-        return None
+        return search or None
     inp, out, read, geo = PRICES[key]
     n, write = [tokens(r.get(k)) for k in USAGE_KEYS], tokens(r.get("cache_creation_input_tokens"))
     if key in LONG_PRICES and sum(n[:3]) > LONG_PROMPT:
@@ -479,7 +481,7 @@ def row_cost(r):
         read, (inp, out) = read * FAST_PRICES[key][0] / inp, FAST_PRICES[key]
     w1h = min(max(tokens(r.get("cache_write_1h_tokens")), 0), write)  # an old row has none: all writes are 5-minute
     cost = (n[0] * inp + (write - w1h) * inp * 1.25 + w1h * inp * 2 + n[2] * read + n[3] * out) / 1e6
-    return cost * (GEO_US_FACTOR if geo and r.get("inference_geo") == "us" else 1) + tokens(r.get("web_search_requests")) * WEB_SEARCH_USD
+    return cost * (GEO_US_FACTOR if geo and r.get("inference_geo") == "us" else 1) + search
 
 
 def week_of(ts, tz="America/Chicago"):
@@ -500,23 +502,20 @@ def report(rows):
     Returns:
         The report as text, one table per part.
     """
-    week, group, task, unpriced = {}, {}, {}, set()
+    week, group, task, unpriced, old = {}, {}, {}, set(), 0
     for r in rows:
-        c = row_cost(r)
-        if c is None:
+        if row_cost({**r, "web_search_requests": 0}) is None:  # no token price; its web searches still count
             unpriced.add(r.get("model") or "unknown")
-            c = 0.0
+        old += r.get("cache_write_1h_tokens") in (None, "")  # a row from before the column
+        c = row_cost(r) or 0.0
         w = week.setdefault(week_of(r.get("timestamp")), [0, 0.0, 0.0])
         w[0] += 1
         w[1 if r.get("source") == "main" else 2] += c
         g = group.setdefault((r.get("source") or "", r.get("agent") or "", r.get("model") or ""), [0, 0, 0, 0, 0, 0.0])
-        g[0] += 1
-        for i, k in enumerate(USAGE_KEYS):
-            g[i + 1] += tokens(r.get(k))
-        g[5] += c
+        for i, x in enumerate([1, *(tokens(r.get(k)) for k in USAGE_KEYS), c]):  # calls, the 4 token counts, cost
+            g[i] += x
         if r.get("agent_id"):
-            task.setdefault(r.get("agent") or "unknown", {}).setdefault(r["agent_id"], [0, 0.0])
-            t = task[r.get("agent") or "unknown"][r["agent_id"]]
+            t = task.setdefault(r.get("agent") or "unknown", {}).setdefault(r["agent_id"], [0, 0.0])
             t[0], t[1] = t[0] + 1, t[1] + c
     out = [f"Estimated cost in USD (prices as of {PRICES_AS_OF}; a proxy for the weekly usage limit)", "",
            "week (America/Chicago, Monday)  calls  main $  subagent $  total $"]
@@ -530,8 +529,9 @@ def report(rows):
         n, calls, cost = len(ts), sum(t[0] for t in ts.values()), sum(t[1] for t in ts.values())
         out.append(f"{a:<22} {n:>6} {calls / n:>11.1f} {cost / n:>7.3f} {cost:>8.2f}")
     if unpriced:
-        out += ["", "no price (counted as 0): " + ", ".join(sorted(unpriced))]
-    return "\n".join(out + ["", "Rows from before the cache_write_1h_tokens column: cache writes priced as 5-minute."])
+        out += ["", "no token price (tokens counted as 0, web searches counted): " + ", ".join(sorted(unpriced))]
+    out += ["", f"Rows from before the cache_write_1h_tokens column ({old}): cache writes priced as 5-minute."] if old else []
+    return "\n".join(out)
 
 
 def report_rows(root, ref):
