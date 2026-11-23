@@ -57,7 +57,7 @@ Why: two audits of one project found layered bloat that made a simple operation 
 
 ## Fleet audit
 
-At each kit release, or 14 days after the last fleet audit (AUDIT DUE (fleet) at the kit check-in), run the full audit for every fleet repo in a fresh session. Report per repo: kit version and lock state, caps, open branches, kit lag; and the outcome metrics: defects found per check in the last 30 days, mutant kill rate where measured, files changed per kit change, and fix-of-a-fix rate (commits that fix a commit of the last 7 days). File size and file counts are warnings only. Write the date to `fleet.last_audit` in kit.config.json. Each check, and this skill, gets a retire / shrink / keep line in docs/tools.md.
+At each kit release, or 14 days after the last fleet audit (AUDIT DUE (fleet) at the kit check-in), report it and ask the Maintainer; when the Maintainer says yes, run the full audit for every fleet repo in a fresh session. Report per repo: kit version and lock state, caps, open branches, kit lag; and the outcome metrics: defects found per check in the last 30 days, mutant kill rate where measured, files changed per kit change, and fix-of-a-fix rate (commits that fix a commit of the last 7 days). File size and file counts are warnings only. Write the date to `fleet.last_audit` in kit.config.json. Each check, and this skill, gets a retire / shrink / keep line in docs/tools.md.
 
 ## Rules for the auditor
 
