@@ -1,7 +1,8 @@
 # Tool retirement program: plan coverage list (step 7, rule T7)
 
-DRAFT, not approved. Written 2026-11-23 ~14:45 America/Chicago by session "Kit · Tool retirement · 2026-11-23"
-(session_01PyXpdTtcLuv26JT5RFfzye). It needs the Maintainer's approval in this session's own chat before the plan starts.
+APPROVED by the Maintainer, 2026-11-23 ~14:50 America/Chicago, in this session's chat (own message: "1approve 2yes";
+item 1 = approve the whole list, item 2 = the 4 features stay out). Written 2026-11-23 ~14:45 America/Chicago by session "Kit · Tool retirement · 2026-11-23"
+(session_01PyXpdTtcLuv26JT5RFfzye). The plan starts from this list.
 
 Sources: FLEET-MASTER-PLAN-v2.md (the Maintainer's Drive, folder Rhope, compiled 2026-11-22; read 2026-11-23) and the
 approved prompt [2026-11-23-tool-retirement-prompt.md](2026-11-23-tool-retirement-prompt.md). Rows name items by ID and a
@@ -153,10 +154,11 @@ The coordinator reported other choices from its chat; the Maintainer settled eac
 5. Start time: the Maintainer chose "after fleet v2 closes". The coordinator reported fleet v2 closed on 2026-11-23
    (ICF #248, #249, #250 merged). Work starts when the Maintainer approves this list.
 
-## Still open (block the plan)
+## Approval
 
-1. Features out (P2-3a, P2-9, P2-10, P2-11): the prompt file says "pending"; the coordinator relayed "out for now".
-2. The Maintainer's approval of the whole list, in this session's chat.
+The Maintainer's own message in this session's chat, 2026-11-23: "1approve 2yes". Item 1: the whole list (79 rows) is
+approved. Item 2: FSRS (P2-9), the installable PWA (P2-10), OKLCH (P2-11) and Authenticode signing (P2-3a) stay out.
+Scope: this program. Nothing blocks the plan.
 
 ## F. Counts (the T7 check compares these)
 
