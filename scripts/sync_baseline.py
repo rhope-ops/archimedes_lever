@@ -96,7 +96,7 @@ COPY_FILES = ["scripts/session_checkin.sh", "scripts/stop_check.py", "scripts/ch
               ".claude/skills/data-change/SKILL.md", ".claude/skills/verify/SKILL.md", ".claude/skills/verify/measure.mjs",
               ".claude/skills/handoff/SKILL.md",
               ".claude/skills/kit-update/SKILL.md", ".claude/skills/instructions/SKILL.md",
-              "scripts/check_instructions.py", "scripts/check_instructions_test.py",
+              "scripts/check_instructions.py", "scripts/check_instructions_test.py", "scripts/check_instructions_steps.py",
               ".claude/agents/worker.md", ".claude/agents/scout.md", ".claude/agents/reviewer.md"]
 # A file a project may tune: added when missing, replaced when the project's copy is an earlier kit version, else kept
 # (copy_state). (The kit's agent files are kit files since 2026-11-18: an old copy can restate a rule; a project adds
