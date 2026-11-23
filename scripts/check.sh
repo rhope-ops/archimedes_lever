@@ -274,16 +274,18 @@ for s in stop_check worker_guard log_check; do
   selftest "$s" "scripts/$s.py" -- python3 "scripts/$s.py" --test
 done
 # A script whose cases or parts live in sibling modules lists them, so the fast lane reruns its self-test when they change.
-selftest check_settings scripts/check_settings.py scripts/check_settings_test.py -- python3 scripts/check_settings.py --test
+selftest check_settings scripts/check_settings.py scripts/check_settings_test.py scripts/check_settings_read.py -- python3 scripts/check_settings.py --test
 selftest bloat_check scripts/bloat_check.py scripts/bloat_check_test.py scripts/bloat_check_skills.py scripts/bloat_check_rules.py \
-  scripts/check_settings.py -- python3 scripts/bloat_check.py --test
-selftest token_log scripts/token_log.py scripts/token_log_test.py -- python3 scripts/token_log.py --test
+  scripts/bloat_check_timing.py scripts/bloat_check_test_rules.py \
+  scripts/check_settings.py scripts/check_settings_read.py -- python3 scripts/bloat_check.py --test
+selftest token_log scripts/token_log.py scripts/token_log_test.py scripts/token_log_test_report.py -- python3 scripts/token_log.py --test
 selftest code_standard scripts/code_standard.py scripts/code_standard_test.py scripts/code_standard_docs.py \
-  scripts/code_standard_parse.py scripts/check_settings.py -- python3 scripts/code_standard.py --test
+  scripts/code_standard_parse.py scripts/check_settings.py scripts/check_settings_read.py scripts/code_standard_rules.py \
+  scripts/code_standard_ratchet.py scripts/code_standard_test_gate.py scripts/code_standard_test_docs.py -- python3 scripts/code_standard.py --test
 selftest timeline scripts/timeline.py scripts/log_check.py -- python3 scripts/timeline.py --test  # it imports log_check
 selftest check_content scripts/check_content.py scripts/check_content_scan.py scripts/check_content_finders.py \
   scripts/check_content_hook.py scripts/check_content_test.py scripts/check_content_test_blocks.py \
-  scripts/check_content_test_local.py -- python3 scripts/check_content.py --test
+  scripts/check_content_test_local.py scripts/check_content_scan_settings.py scripts/check_content_test_cli.py -- python3 scripts/check_content.py --test
 # A project's own extension files (the kit has none): each proves itself when it has a self-test. The deps are the
 # file, its sibling files (for example its test cases: scripts/check_content_local_test.py) and the kit files it extends.
 # extension NAME FILE [KIT FILES IT EXTENDS...]: run "python3 FILE --test" when its code names "--test" (not only a comment); else a SKIP line
@@ -296,19 +298,21 @@ extension() {
 extension check_content_local scripts/check_content_local.py scripts/check_content_scan.py scripts/check_content_finders.py
 extension code_standard_gate scripts/code_standard_gate.py scripts/code_standard.py scripts/code_standard_parse.py \
   scripts/code_standard_docs.py scripts/check_settings.py
-selftest check_instructions scripts/check_instructions.py scripts/check_instructions_test.py scripts/check_settings.py \
-  -- python3 scripts/check_instructions.py --test
+selftest check_instructions scripts/check_instructions.py scripts/check_instructions_test.py scripts/check_settings.py scripts/check_settings_read.py \
+  scripts/check_instructions_steps.py -- python3 scripts/check_instructions.py --test
 extension check_instructions_local scripts/check_instructions_local.py scripts/check_instructions.py
 selftest skill_use scripts/skill_use.py -- python3 scripts/skill_use.py --test
-selftest fleet_harvest scripts/fleet_harvest.py scripts/fleet_harvest_test.py -- python3 scripts/fleet_harvest.py --test
+selftest fleet_harvest scripts/fleet_harvest.py scripts/fleet_harvest_test.py scripts/fleet_harvest_parse.py -- python3 scripts/fleet_harvest.py --test
 selftest check_blocks scripts/check_blocks.py .claude/settings.json -- python3 scripts/check_blocks.py --test
 selftest check_lock scripts/check_lock.py -- python3 scripts/check_lock.py --test
 selftest fulcrum_tokens scripts/fulcrum_tokens.py docs/brand/fulcrum.json docs/brand/fulcrum.css -- python3 scripts/fulcrum_tokens.py --test
 selftest build_site scripts/build_site.py scripts/build_site_html.py -- python3 scripts/build_site.py --test
 extension build_site_local scripts/build_site_local.py scripts/build_site.py
-selftest first_use_check scripts/first_use_check.py scripts/check_blocks.py scripts/check_content.py scripts/check_content_scan.py -- python3 scripts/first_use_check.py --test
+selftest first_use_check scripts/first_use_check.py scripts/check_blocks.py scripts/check_content.py scripts/check_content_scan.py \
+  scripts/check_content_scan_settings.py -- python3 scripts/first_use_check.py --test
 # Kit only: projects have no sync tools. The drift self-test reads the kit's AGENTS.md and stop_check.py.
-selftest drift scripts/drift.py scripts/sync_baseline.py scripts/sync_merge.py AGENTS.md scripts/stop_check.py -- python3 scripts/drift.py --test
+selftest drift scripts/drift.py scripts/sync_baseline.py scripts/sync_merge.py AGENTS.md scripts/stop_check.py \
+  scripts/drift_test.py scripts/sync_baseline_repo.py scripts/sync_baseline_run.py -- python3 scripts/drift.py --test
 selftest pre-push scripts/git-hooks/pre-push -- scripts/git-hooks/pre-push --test
 selftest session_checkin scripts/session_checkin.sh -- bash scripts/session_checkin.sh --test
 # This script's own self-test (not inside that self-test: it runs this script in temporary repos).

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """The merges of scripts/sync_baseline.py: a sync does not replace these project files, it adds the kit's part to them.
-Kept apart so sync_baseline.py stays under the 600-line cap of docs/code-standard.md C4. Kit only.
+Kept apart so sync_baseline.py stays under the line cap of docs/code-standard.md C4. Kit only.
 
 What it gives:
   merge_settings   .claude/settings.json: the kit's deny rules and hook entries first, the project's own kept

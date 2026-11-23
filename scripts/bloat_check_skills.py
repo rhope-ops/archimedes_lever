@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """The skills check of scripts/bloat_check.py (`python3 scripts/bloat_check.py --skills`; kept in its own file so the
-check stays under the 600-line cap of docs/code-standard.md C4).
+check stays under the line cap of docs/code-standard.md C4).
 
 Input: the repo root; it reads each .claude/skills/*/SKILL.md and AGENTS.md. Output: FAIL lines (no frontmatter, no
 name or description, a name that differs from its folder), indented WARN lines (description start or length, file

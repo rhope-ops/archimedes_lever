@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Self-test cases of scripts/fleet_harvest.py (run by `python3 scripts/fleet_harvest.py --test`; kept in its own file
-so that file stays under the 600-line cap of docs/code-standard.md).
+so that file stays under the line cap of docs/code-standard.md).
 
 Fixture projects in a temporary folder: the format check, --add-ids, --harvest with a state file shared by two repos,
 --save-state, the cross-check matching and the edge cases that earlier reviews found.
@@ -12,6 +12,7 @@ import contextlib
 import io
 import pathlib
 import tempfile
+import unittest
 
 M = None  # the fleet_harvest module under test (set by run)
 
@@ -64,7 +65,7 @@ def quiet(fn, *args):
     return res, buf.getvalue()
 
 
-def test_cases(base):
+def format_cases(base):
     """The self-test cases; returns a list of (name, passed).
 
     Args:
@@ -211,9 +212,18 @@ def run(module):
     global M
     M = module
     with tempfile.TemporaryDirectory() as base:
-        results = test_cases(base)
+        results = format_cases(base)
     failed = [n for n, passed in results if not passed]
     for n in failed:
         print("FAIL  " + n)
     print(("FLEET TEST PASS: %d cases" % len(results)) if not failed else "FLEET TEST FAIL: %d of %d" % (len(failed), len(results)))
     return 1 if failed else 0
+
+
+class FleetHarvestTest(unittest.TestCase):
+    """The cases of `python3 scripts/fleet_harvest.py --test`, for `python3 -m unittest` and pytest."""
+
+    def test_self_test(self):
+        """Every case passes on the fleet_harvest module."""
+        import fleet_harvest  # scripts/fleet_harvest.py: imported here, so a plain import of this file loads nothing
+        self.assertEqual(run(fleet_harvest), 0)

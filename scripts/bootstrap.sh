@@ -61,9 +61,9 @@ if [ "$BS_OWNER" != "the owner" ]; then
   # Not renamed on purpose: docs/FIRST_USE.md and scripts/first_use_check.py, whose
   # "the owner" is an option, a role or a literal the script needs.
   owner_files=("${files[@]}" .claude/skills/delegate/SKILL.md .claude/skills/audit/SKILL.md .claude/skills/project-log/SKILL.md .claude/skills/deliver/SKILL.md .claude/skills/personal-data/SKILL.md .claude/skills/rule-change/SKILL.md .claude/skills/handoff/SKILL.md .claude/skills/kit-update/SKILL.md .claude/skills/data-change/SKILL.md .claude/skills/verify/SKILL.md .claude/skills/instructions/SKILL.md
-    .claude/agents/reviewer.md .github/workflows/check.yml .claude/rule-tests.md scripts/bloat_check.py scripts/bloat_check_rules.py scripts/session_checkin.sh scripts/stop_check.py scripts/worker_guard.py scripts/check_lock.py
-    scripts/log_check.py scripts/timeline.py scripts/check_content.py scripts/check_content_scan.py scripts/check_content_hook.py scripts/check_content_test.py scripts/check_content_test_blocks.py
-    scripts/bloat_check_skills.py scripts/bloat_check_test.py scripts/check_settings.py scripts/code_standard.py scripts/code_standard_test.py scripts/code_standard_docs.py docs/code-standard.md scripts/check.sh scripts/git-hooks/pre-push)
+    .claude/agents/reviewer.md .github/workflows/check.yml .claude/rule-tests.md scripts/bloat_check.py scripts/bloat_check_rules.py scripts/bloat_check_timing.py scripts/bloat_check_test_rules.py scripts/session_checkin.sh scripts/stop_check.py scripts/worker_guard.py scripts/check_lock.py
+    scripts/log_check.py scripts/timeline.py scripts/check_content.py scripts/check_content_scan.py scripts/check_content_hook.py scripts/check_content_test.py scripts/check_content_test_blocks.py scripts/check_content_scan_settings.py scripts/check_content_test_cli.py
+    scripts/bloat_check_skills.py scripts/bloat_check_test.py scripts/check_settings.py scripts/check_settings_read.py scripts/code_standard.py scripts/code_standard_test.py scripts/code_standard_docs.py scripts/code_standard_rules.py scripts/code_standard_ratchet.py scripts/code_standard_test_gate.py scripts/code_standard_test_docs.py docs/code-standard.md scripts/check.sh scripts/git-hooks/pre-push)
   for f in "${owner_files[@]}"; do
     perl -pi -e 'my $c = ucfirst $ENV{BS_OWNER}; s/\b([Tt])he owner\b/$1 eq "T" ? $c : $ENV{BS_OWNER}/ge' "$f"
   done
@@ -105,6 +105,7 @@ find docs/reviews -maxdepth 1 -name '20*.md' -delete 2>/dev/null || true
 # The token log hook is installed from the kit by the cloud setup scripts (the owner, 2026-11-17).
 python3 scripts/sync_baseline.py --lock-here  # the kit lock (.check.lock) of the new project
 rm -f -- scripts/sync_baseline.py scripts/sync_merge.py scripts/drift.py scripts/token_log.py scripts/token_log_test.py \
+  scripts/drift_test.py scripts/sync_baseline_repo.py scripts/sync_baseline_run.py scripts/token_log_test_report.py \
   KIT_VERSION docs/CHANGELOG.md docs/KIT_HANDOFF.md
 if [ -f LICENSE ]; then mv -- LICENSE docs/archimedes_lever-LICENSE.txt; fi
 

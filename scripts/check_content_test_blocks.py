@@ -1,5 +1,5 @@
 """More cases of the self-test of scripts/check_content.py (check_content_test.py runs them; kept apart for the
-600-line cap of docs/code-standard.md C4): the terms list, the `block:` lines, the settings file under its name
+line cap of docs/code-standard.md C4): the terms list, the `block:` lines, the settings file under its name
 `.check`, its `code-` and `audit-` setting lines, the hook for the Write, Edit, NotebookEdit and Bash tools, and
 the speed parts (the gates of check_content_finders.py and the process pool of scan_files): the same findings with
 and without them.

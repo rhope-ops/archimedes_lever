@@ -23,6 +23,7 @@ Usage:
     python3 scripts/bloat_check.py --compare NAME=SECONDS ...   # compare times that a script measured with their
                                               # baselines; one TIME or WARN line; never fails (scripts/check.sh,
                                               # session_checkin.sh and the pre-push hook run it); --record stores them
+                                              # (code of --time and --compare: scripts/bloat_check_timing.py)
     python3 scripts/bloat_check.py --test     # self-test (scripts/bloat_check_test.py); prints BLOAT TEST PASS
 
 It measures:
@@ -80,16 +81,16 @@ import argparse
 import datetime
 import fnmatch
 import re
-import shlex
-import subprocess
 import sys
-import time
 from pathlib import Path
 
 import check_settings  # scripts/check_settings.py: the reader of .check and the reader and writer of .check.state.json
 # scripts/bloat_check_rules.py: the rule census (kept apart, code standard C4). The names the self-test reads are listed.
 from bloat_check_rules import (conflict_hash, git, lint, main_lint, rule_lines, rules_report,  # noqa: F401
                                start_read)
+# scripts/bloat_check_timing.py: the timed commands and the baseline comparison (kept apart, code standard C4).
+from bloat_check_timing import (SHELL_CHARS, TIMING_DIRS, compare_times, run_timings, save_timings,  # noqa: F401
+                                timing_argv)
 
 STATE = check_settings.STATE
 DEFAULTS = check_settings.AUDIT_DEFAULTS  # the settings when .check has no `audit-` line
@@ -223,90 +224,6 @@ def audit_due(root, cfg, today):
     return "; ".join(reasons)
 
 
-TIMING_DIRS = ("scripts/", "tests/")  # a timed command runs a file of the repo, from one of these folders
-SHELL_CHARS = set(";|&`$()<>\n")
-
-
-def timing_argv(cmd):
-    """The argument list of a timed command (no shell, CWE-78): [python3|bash] <scripts/ or tests/ path> [args].
-
-    ValueError for a shell character, another program, an absolute path or "..".
-    """
-    argv = shlex.split(cmd) if not SHELL_CHARS & set(cmd) else []
-    path = argv[1] if argv[:1] in (["python3"], ["bash"]) and len(argv) > 1 else (argv[0] if argv else "")
-    if not path.startswith(TIMING_DIRS) or ".." in path.split("/"):
-        raise ValueError(f"timed command not allowed (shell character, or not a scripts/ or tests/ file): {cmd!r}")
-    return argv
-
-
-def run_timings(root, cfg, record):
-    """Run each timed command that has a cmd; return (report rows, names slower or failed); record stores the new seconds.
-
-    Args:
-        root: the repo root (a Path).
-        cfg: the audit settings, with "timings".
-        record: True to store the new seconds in cfg.
-
-    Returns:
-        (report rows, names of the commands that were slower or failed).
-    """
-    rows, slow = [], []
-    for name, t in cfg.get("timings", {}).items():
-        if not t.get("cmd"):
-            continue  # measured by the script that runs it (--compare)
-        t0 = time.monotonic()
-        rc = subprocess.run(timing_argv(t["cmd"]), cwd=root, capture_output=True).returncode
-        secs = round(time.monotonic() - t0, 1)
-        base = t.get("seconds")
-        limit = t.get("max_slowdown", 0.25)
-        verdict = "FAILED" if rc else "new" if base is None else ("SLOWER" if secs > base * (1 + limit) else "ok")
-        if verdict in ("SLOWER", "FAILED"):
-            slow.append(name)
-        rows.append(f"  {name}: {secs} s (baseline {base or '-'} s, limit +{int(limit * 100)}%, exit {rc}) {verdict}")
-        if record and not rc:
-            t["seconds"] = secs
-    return rows, slow
-
-
-def compare_times(cfg, pairs, record=False):
-    """pairs: [(name, seconds)]; name is a timings key, or "key:step" for one of its "steps". Returns (line, slow).
-    Warn only: a slowdown is reported, never a failure (the owner, 2026-11-16).
-
-    Args:
-        cfg: the audit settings, with "timings"; record changes it in place.
-        pairs: the (name, seconds) pairs that a script measured.
-        record: True to store the seconds as the new baselines.
-
-    Returns:
-        (one TIME or WARN line, the texts of the slower ones).
-    """
-    timings = cfg.setdefault("timings", {})
-    slow, new, n = [], [], 0
-    for name, secs in pairs:
-        key, _, step = name.partition(":")
-        entry = timings.setdefault(key, {}) if record else timings.get(key, {})
-        base = entry.get("steps", {}).get(step) if step else entry.get("seconds")
-        limit = entry.get("max_slowdown", 0.25)
-        floor = entry.get("min_slowdown_seconds", 0.5)
-        if base is None:
-            new.append(name)
-        elif secs > base * (1 + limit) and secs - base >= floor:
-            slow.append(f"{step or key} {secs} s (baseline {base} s, +{round((secs / base - 1) * 100) if base else 999}%)")
-        n += 1
-        if record:
-            if step:
-                entry.setdefault("steps", {})[step] = secs
-            else:
-                entry["seconds"] = secs
-    if record:
-        return f"TIME  baseline recorded for {n} time(s) in {STATE}", []
-    if slow:
-        return ("WARN  slower than the baseline: " + "; ".join(slow) +
-                ". Next: .claude/skills/audit/SKILL.md, A slow run (a measured slowdown starts it)"), slow
-    tail = f"; no baseline yet for {len(new)} ({', '.join(new)}): .claude/skills/audit/SKILL.md, Record a baseline" if new else ""
-    return f"TIME  baseline: {n - len(new)} of {n} within the limit{tail}", []
-
-
 def main_compare(root, items, record):
     """--compare: print one TIME or WARN line for NAME=SECONDS items; --record stores them. Always 0.
 
@@ -329,11 +246,6 @@ def main_compare(root, items, record):
         save_timings(root, cfg["timings"])
     print(line)
     return 0
-
-
-def save_timings(root, timings):
-    """Write timings into .check.state.json and keep its other parts."""
-    check_settings.save_part(root, "timings", timings)
 
 
 def report(root, args, today=None):
