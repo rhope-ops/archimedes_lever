@@ -140,6 +140,7 @@ class BootstrapCli(unittest.TestCase):
         self.assertEqual(p.returncode, 1)
         self.assertIn("dod-security", p.stderr)
         self.assertNotIn("Done.", p.stdout)
+        self.assertEqual(run(["git", "status", "--porcelain"], self.path).stdout, "", "the tree is unchanged, so a rerun works")
 
     def test_role_word_reaches_every_synced_file(self):
         """Prove: with another role, no kit file keeps the baseline word (a sync right after bootstrap changes nothing)."""

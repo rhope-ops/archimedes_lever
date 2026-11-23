@@ -88,7 +88,7 @@ The settings are in the file `.check`. The file `docs/check-config-schema.md` li
 
 ## Change config values (after kit 11.0.0)
 
-This task is valid after kit 11.0.0. Before that version, the file `kit.config.json` does not exist.
+This task is valid after kit 11.0.0, and only in the kit clone. Before that version, the file `kit.config.json` does not exist. A project has no `kit.config.json`.
 
 From kit 11.0.0, the file `kit.config.json` holds the organization and repository URL of the kit. No script or page holds the URL in its own text. A change needs the written request of the Maintainer.
 

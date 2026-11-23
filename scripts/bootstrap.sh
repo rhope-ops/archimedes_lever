@@ -35,6 +35,12 @@ fi
 
 cd "$(git rev-parse --show-toplevel)"
 
+# The dod-security line of .check, read before the first write: a typo must stop the run while the tree is unchanged.
+if ! python3 -c 'import sys; sys.path.insert(0, "scripts"); from build_site_html import dod_security; dod_security(".")' 2>/dev/null; then
+  echo "error: the dod-security line of .check is not 'on' or 'off'; correct it and run bootstrap again" >&2
+  exit 1
+fi
+
 export BS_NAME="$1" BS_REPO="$2" BS_PURPOSE="$3" BS_OWNER="${4:-the Maintainer}" BS_TZ BS_DATE BS_TIME
 # One clock read in the project time zone, so the date and time agree (project log times use it).
 BS_STAMP="$(TZ="$BS_TZ" date '+%F %H:%M')"
