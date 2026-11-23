@@ -39,8 +39,8 @@ Each ran `python3 scripts/skill_use.py $(find ~/.claude/projects -name "*.jsonl"
 | This session (kit, tool retirement) | 19 | 5: where-to-save, deliver, delegate, rule-change, audit | 44 | worker 11, reviewer 5, general-purpose 1 | 1,298 |
 | Kit, fleet v2 coordinator 2 | 3 | 4: deliver, rule-change, instructions, deeper-version (account) | 1: rule-change | reviewer 1 | 305 |
 | 90-161.Z, fleet v2 Stage 3A | 9 | 7: delegate 2, instructions 2, verify 1, kit-update 1, round 1 (project skill) | 2: deliver, round | reviewer 5, worker 3 | 633 |
-| ICF, fleet v2 handover (logs before its compaction may be missing) | 28 | 3: instructions 2, delegate 1 | 8: kit-update 3, efficiency 1, port 1, run-verify 1, ui-verify 1, deliver 1 | reviewer 20, worker 7 | 1,883+ |
-| **Total (4 sessions, 59 logs)** | 59 | **19** | **55** | 59 | ~4,100 |
+| ICF, fleet v2 handover (logs before its compaction may be missing) | 28 | 3: instructions 2, delegate 1 | 8: kit-update 3, efficiency 1, port 1, run-verify 1, ui-verify 1, deliver 1 | reviewer 20, worker 7 | 1,769+ (top 10 only) |
+| **Total (4 sessions, 59 logs)** | 59 | **19** | **55** | 59 | ~4,000+ |
 
 Kit skills across the 4 sessions (full loads / slices): delegate 4/10, instructions 5/0, deliver 2/11, rule-change 2/7,
 audit 1/7, verify 1/0, kit-update 1/5, handoff **0/4**, personal-data 0/4, project-log 0/1 (1 load after the count),
