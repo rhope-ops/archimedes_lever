@@ -144,8 +144,10 @@ The coordinator reported other choices from its chat; the Maintainer settled eac
    and "SEC-Source" are one repo, so the inventory has 11 repos, not 12; the inventory step confirms it.
 3. ICF pre-transfer scans from 4.3 (B2-7): IN. The 30-minute drill (B2-4) stays out.
 4. T3 and T4 are not rule texts: T3 "retire plan" = step 2, T4 "reference, don't copy" = step 4. Rule texts for
-   approval stay T1, T2, T5, T6, T7, R1, R3. The fleet v2 lessons file is not written yet (coordinator, 2026-11-23); its
-   5 causes, from the coordinator's summary: (1) new tools instead of existing ones, (2) the kit is copied, not
+   approval stay T1, T2, T5, T6, T7, R1, R3. The fleet v2 lessons file now exists (created 2026-11-23 ~14:39
+   America/Chicago, after the first searches): branch claude/fleet-v2-lessons, docs/reviews/2026-11-23-fleet-v2-lessons.md
+   (not on main yet), and Drive › Rhope, 2026-11-23-fleet-v2-lessons.md. Its section 5 lists T3 and T4 as measures with
+   enforcement (T3: one PR per retirement; T4: files changed per kit change), the same mapping. Its 5 causes: (1) new tools instead of existing ones, (2) the kit is copied, not
    referenced, (3) rules and caps grow faster than enforcement, (4) unclear role words and approval paths,
    (5) throughput outran consolidation.
 5. Start time: the Maintainer chose "after fleet v2 closes". The coordinator reported fleet v2 closed on 2026-11-23
