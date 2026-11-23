@@ -1,0 +1,11 @@
+message_id,timestamp,turn,session_id,repo,model,source,agent,agent_id,input_tokens,cache_creation_input_tokens,cache_read_input_tokens,output_tokens,cache_write_1h_tokens,speed,web_search_requests,inference_geo
+msg_011ChLAKcYMCd9QPtDHy58Ba,2026-11-23T16:17:54.336Z,1,4de1481a-2113-5d44-a76b-76401d2f8369,archimedes_lever,claude-opus-5-5,main,main,,2,30225,63197,361,30225,standard,0,global
+msg_011ChLAKxeaUfys7za86rJBT,2026-11-23T16:17:58.192Z,1,4de1481a-2113-5d44-a76b-76401d2f8369,archimedes_lever,claude-opus-5-5,main,main,,2,1954,93422,156,1954,standard,0,global
+msg_011ChLALMiPxDvLQ5yXhtiBf,2026-11-23T16:18:02.793Z,1,4de1481a-2113-5d44-a76b-76401d2f8369,archimedes_lever,claude-opus-5-5,main,main,,2,476,95376,149,476,standard,0,global
+msg_011ChLALXAgKPj2McyaZM67i,2026-11-23T16:18:06.499Z,1,4de1481a-2113-5d44-a76b-76401d2f8369,archimedes_lever,claude-opus-5-5,main,main,,2,2239,95852,307,2239,standard,0,global
+msg_011ChLAM5RQFeSrmGDZ2dx69,2026-11-23T16:18:14.251Z,1,4de1481a-2113-5d44-a76b-76401d2f8369,archimedes_lever,claude-opus-5-5,main,main,,2,1659,98091,1460,1659,standard,0,global
+msg_011ChLANQMTbmNKxhWDH1qnK,2026-11-23T16:18:33.467Z,1,4de1481a-2113-5d44-a76b-76401d2f8369,archimedes_lever,claude-opus-5-5,main,main,,1,1784,99750,449,1784,standard,0,global
+msg_011ChLANn7Q9TQhWZbgjvEBi,2026-11-23T16:18:37.308Z,1,4de1481a-2113-5d44-a76b-76401d2f8369,archimedes_lever,claude-opus-5-5,main,main,,2,945,101534,271,945,standard,0,global
+msg_011ChLANzBC97Wj3igQLvgyj,2026-11-23T16:18:40.407Z,1,4de1481a-2113-5d44-a76b-76401d2f8369,archimedes_lever,claude-opus-5-5,main,main,,2,650,102479,337,650,standard,0,global
+msg_011ChLAPDEFbnmd6kE5P4Hoo,2026-11-23T16:18:41.444Z,1,4de1481a-2113-5d44-a76b-76401d2f8369,archimedes_lever,claude-opus-5-5,main,main,,2,3062,103129,319,3062,standard,0,global
+msg_011ChLAPTHMMmd4ghwtmmCak,2026-11-23T16:18:54.548Z,1,4de1481a-2113-5d44-a76b-76401d2f8369,archimedes_lever,claude-opus-5-5,main,main,,2,1125,106191,983,1125,standard,0,global
