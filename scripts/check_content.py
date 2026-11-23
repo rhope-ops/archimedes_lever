@@ -72,7 +72,7 @@ A project's own finders: a file scripts/check_content_local.py replaces or adds 
 interface: the header of check_content_scan.py). The result line and --status say when it is active; when it cannot
 be loaded, every scan fails and the hook blocks. Limit: that file is the project's own trusted code, like any script
 a hook runs; a file that ends the process itself while it loads (os._exit) ends the scan with its own exit code (0 lets a hooked call run).
-The code is split by concern into modules next to this file: check_content_scan.py (the settings and the scans),
+The code is split by concern into modules next to this file: check_content_scan.py (the scans) with check_content_scan_settings.py (the word lists and the settings file),
 check_content_finders.py (the patterns and finders), check_content_hook.py (--hook) and check_content_test.py (--test).
 Network: none (it runs local git read commands).
 Writes: none (findings go to stdout or stderr; the self-test uses temporary folders).
@@ -97,7 +97,7 @@ if "--hook" in sys.argv[1:]:   # before the scanner (and a project's own module)
 def missing_part(err):
     """Stop with exit 2 when a part of the guard is missing: a copy without its parts must block, not pass (exit 2
     also blocks the PreToolUse hook)."""
-    print('CONTENT CHECK FAIL: %s; copy check_content_scan.py, check_content_finders.py, check_content_hook.py and '
+    print('CONTENT CHECK FAIL: %s; copy check_content_scan.py, check_content_scan_settings.py, check_content_finders.py, check_content_hook.py and '
           'the check_content_test*.py files next to check_content.py (scripts/sync_baseline.py does this)' % err, file=sys.stderr)
     sys.exit(2)
 
