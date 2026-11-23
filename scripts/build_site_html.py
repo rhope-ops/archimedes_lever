@@ -32,6 +32,10 @@ def theme_meta(light, dark):
 def dod_security(root):
     """Return True when the `.check` of root has the line `dod-security: on`; False with no such line or with `off`.
 
+    Args:
+        root: the repository folder that holds `.check`.
+    Returns:
+        True only for `dod-security: on`.
     Raises:
         ValueError: for any other value or a second line (a typo must not switch a page's security off in silence).
     """
