@@ -29,7 +29,7 @@ MIGRATE = "python3 scripts/check_settings.py --migrate"
 # tool (the `code-paste:` files), where one file is one paste, so it keeps the older cap of 600 (the owner, 2026-11-23:
 # docs/reviews/2026-11-23-fleet-v2-plan.md, decision 6).
 CODE_DEFAULTS = {"caps": {"max_file_lines": 450, "max_function_lines": 60, "max_file_lines_paste": 600}, "include": ["*"],
-                 "exclude": [], "generated": [], "paste": [], "c1_safety": False, "c2": "lean"}
+                 "exclude": [], "generated": [], "paste": [], "c1_safety": False, "c2": "lean", "strict_gate": False}
 OPT_IN_CAPS = ("max_line_chars",)   # caps that are off (no key in "caps") until `.check` has their line; a gate enforces them
 STRICT = "strict"                   # the value of "c1_safety" for `code-c1-safety: strict` (False = off, True = on)
 AUDIT_DEFAULTS = {"every_days": 14, "every_commits": 300, "start_read": [], "ignore": [], "duplicate_ignore": [],
@@ -147,7 +147,8 @@ def not_migrated(root, name):
 
 def code_settings(found):
     """The code standard settings from setting pairs: {"caps": {...}, "include": [...], "exclude": [...],
-    "generated": [...], "paste": [...], "c1_safety": False|True|"strict", "c2": "lean"|"full"}. An opt-in cap
+    "generated": [...], "paste": [...], "c1_safety": False|True|"strict", "c2": "lean"|"full",
+    "strict_gate": False|True}. An opt-in cap
     (OPT_IN_CAPS) is in
     "caps" only when its line is there. Lists are sorted, so two equal settings compare equal. ValueError for a line
     that is not valid.
@@ -157,7 +158,7 @@ def code_settings(found):
         The settings dict.
     """
     caps = tuple(CODE_DEFAULTS["caps"]) + OPT_IN_CAPS
-    got = collect(found, "code-", ["code-" + dash(c) for c in caps] + ["code-c1-safety", "code-c2"],
+    got = collect(found, "code-", ["code-" + dash(c) for c in caps] + ["code-c1-safety", "code-c2", "code-strict-gate"],
                   ["code-" + n for n in CODE_LISTS])
     cfg = json.loads(json.dumps(CODE_DEFAULTS))
     for cap in caps:
@@ -169,6 +170,7 @@ def code_settings(found):
     safety = choice("code-c1-safety", got.get("code-c1-safety", "off"), ("on", "off", STRICT))
     cfg["c1_safety"] = STRICT if safety == STRICT else safety == "on"
     cfg["c2"] = choice("code-c2", got.get("code-c2", "lean"), ("full", "lean"))
+    cfg["strict_gate"] = choice("code-strict-gate", got.get("code-strict-gate", "off"), ("on", "off")) == "on"
     return cfg
 
 
