@@ -106,7 +106,7 @@ python3 scripts/sync_baseline.py --lock-here  # the kit lock (.check.lock) of th
 rm -f -- scripts/sync_baseline.py scripts/sync_merge.py scripts/drift.py scripts/token_log.py scripts/token_log_test.py \
   scripts/drift_test.py scripts/sync_baseline_repo.py scripts/sync_baseline_run.py scripts/token_log_test_report.py scripts/token_log_rows.py scripts/token_log_report.py \
   scripts/bootstrap_cli_test.py scripts/check_lock_cli_test.py scripts/drift_cli_test.py scripts/sync_baseline_cli_test.py \
-  scripts/sync_merge_cli_test.py KIT_VERSION docs/CHANGELOG.md docs/KIT_HANDOFF.md
+  scripts/sync_merge_cli_test.py scripts/kit_config.py kit.config.json KIT_VERSION docs/CHANGELOG.md docs/KIT_HANDOFF.md
 # The kit's threat model describes the kit. The DoD group (sync_baseline.DOD_FILES) stays only with `dod-security: on`
 # in .check (fleet v2 DEC 4: opt-in); a project writes its own threat model.
 rm -f -- docs/threat-model.md

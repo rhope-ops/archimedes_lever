@@ -8,7 +8,7 @@ Keys:    kit_repo (owner/name), kit_url (the git URL that sync_baseline.py and t
 Inputs:  kit.config.json in the repo root (the parent of this scripts/ folder), or in a folder the caller names.
 Outputs: the value of a key, or None when the file or the key is missing (the caller stops with its own message).
 Network: none.  Writes: none.  Credentials: none.
-Run:     imported by scripts/sync_baseline.py, scripts/drift.py and scripts/token_log.py;
+Run:     kit only (not synced; bootstrap deletes it); imported by scripts/sync_baseline.py and scripts/drift.py;
          `python3 scripts/kit_config.py --test` is the self-test (scripts/check.sh runs it).
 """
 

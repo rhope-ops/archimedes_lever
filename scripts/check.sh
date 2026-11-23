@@ -320,6 +320,7 @@ selftest drift scripts/drift.py scripts/sync_baseline.py scripts/sync_merge.py A
   scripts/drift_test.py scripts/sync_baseline_repo.py scripts/sync_baseline_run.py -- python3 scripts/drift.py --test
 selftest pre-push scripts/git-hooks/pre-push -- scripts/git-hooks/pre-push --test
 selftest session_checkin scripts/session_checkin.sh -- bash scripts/session_checkin.sh --test
+[ -f kit.config.json ] && selftest kit_config scripts/kit_config.py kit.config.json -- python3 scripts/kit_config.py --test  # kit only
 # Kit only: the command-line tests of the sync, drift, lock and bootstrap scripts (bootstrap deletes them in a project).
 [ -f scripts/sync_baseline_cli_test.py ] && selftest cli_tests scripts/*_cli_test.py scripts/sync_baseline.py scripts/sync_baseline_repo.py \
   scripts/sync_baseline_run.py scripts/sync_merge.py scripts/drift.py scripts/check_lock.py scripts/bootstrap.sh \
