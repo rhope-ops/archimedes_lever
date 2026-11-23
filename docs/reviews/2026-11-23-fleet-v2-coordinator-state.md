@@ -48,3 +48,22 @@ The first kit session (session_01PyXpdVJRLK33wotSnJgU3A) is done; branch claude/
 - check_settings.py --validate-config does not read the `fleet:` key.
 - Rule conflict MINOR 2-7 (Release Manager, "Owner" undefined, "a running owner", content approval against a request
   and against lane A): rule text, the Maintainer's call.
+
+## Coordinator 2 (from 2026-11-23 ~10:17 America/Chicago)
+
+Session "Kit · Fleet v2 coordinator 2 · 2026-11-23" (session_01PyXpdUBsuqmbKTGEWx1D5m). All 4 project sessions were told
+to report to it.
+
+- RADE engine-v36 released and verified by the coordinator (~10:30): release
+  https://github.com/rhope-ops/RADE/releases/tag/engine-v36 on 6efe5c7 (the #167 merge), run 45214671013 success.
+  Assets: rade-engine.sha256 `6f1a71ff…e005`, rade-engine.lock.json `5feb2292…25b1` (download hashes = release digests).
+  The 42 listed files match a clone of the tag; the lock holds the same 42 hashes. Attestation: SLSA v1, 42 subjects =
+  the list, cert SAN release.yml@refs/heads/main, commit 6efe5c7, DSSE signature valid, 1 Rekor entry.
+  Not verified: the chain to the Sigstore root and Rekor inclusion (tuf-repo-cdn.sigstore.dev is blocked here).
+  "engine-v36 released" was relayed to 90-161.Z.
+- RADE was attached to the coordinator with push access (the Maintainer's message), used for API reads only.
+- 90-161.Z: the PFM answered T17/T18/T25 (delete), logo_svg B314 (nosec with reason) and the rade.lock.json gitleaks
+  allow (yes). Open: 2 DECISIONS rows By "the PFM" in local commit 5205e50 need the PFM's OK of their exact text.
+- RADE: a DECISIONS row By "the Administrator" in its guard-file commit; the Administrator's OK of that text is not seen.
+- ICF: #242 (Stage 4) MAJOR fixed at 47f0041; pytest and review round 2 were running. The forced-colors failure is
+  pre-existing on main (own small PR).
