@@ -138,10 +138,10 @@ Scope: this program. Recorded here, not as a DECISIONS row By the Maintainer.
 The coordinator reported other choices from its chat; the Maintainer settled each conflict here. Scope: this program.
 
 1. Paste truncation sentinel (P2-3b): IN. Authenticode signing (P2-3a) stays out.
-2. Repo set: "12 for inventory, 5 for trials". Inventory (step 1, step 3) and the distribution design (step 4) cover the
+2. Repo set: "12 for inventory, 5 for trials" (11 unique repos, see below). Inventory (step 1, step 3) and the distribution design (step 4) cover the
    kit, RADE, 90-161.Z, 33-332.Z, ICF-Source, sec-source and the 6 repos on kit 10.0.0 (B2-5). Side-by-side trials
-   (steps 2, 6) run on the kit + RADE, 90-161.Z, 33-332.Z, ICF-Source. Assumption (medium confidence): "sec-source"
-   and "SEC-Source" are one repo, so the inventory has 11 repos, not 12; the inventory step confirms it.
+   (steps 2, 6) run on the kit + RADE, 90-161.Z, 33-332.Z, ICF-Source. "sec-source" and "SEC-Source" are one repo
+   (GitHub names are not case-sensitive; the coordinator confirmed, 2026-11-23), so the inventory has 11 repos, not 12.
 3. ICF pre-transfer scans from 4.3 (B2-7): IN. The 30-minute drill (B2-4) stays out.
 4. T3 and T4 are not rule texts: T3 "retire plan" = step 2, T4 "reference, don't copy" = step 4. Rule texts for
    approval stay T1, T2, T5, T6, T7, R1, R3. The fleet v2 lessons file now exists (created 2026-11-23 ~14:39
