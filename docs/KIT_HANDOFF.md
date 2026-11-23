@@ -10,11 +10,12 @@ Updated: 2026-11-23 ~06:20 by session "Kit · Fleet v2 remediation · 2026-11-23
 - Fleet on 10.0.0 (merged 2026-11-21, each verified on main): RADE 165, 33-332.Z 48, ICF-Source 240, SEC-Source 27, SPAR 19, 36-3003.Z 14, 65-601.Z 14, no-more-beyond 66, transcription_assistant 8. 90-161.Z on 9.0.0 (PR 215); its 10.0.0 sync is PR 216 of its own session (K2). Session load (cap 5,500): 33-332.Z ~5,352, ICF ~5,322, RADE ~5,278, TA ~5,250, SEC ~5,210, NMB ~5,178. Owner steps per repo: `audit-instructions:` lines in `.check`; 33-332.Z README does not open with its Purpose line (warning).
 
 ## Approved plan (the owner, 2026-11-23): fleet remediation v2
-
 Full text, gate baseline, corrections and 11 decisions: [reviews/2026-11-23-fleet-v2-plan.md](reviews/2026-11-23-fleet-v2-plan.md). Session "Kit · Fleet v2 remediation · 2026-11-23".
 
 - [x] 0. Plan verified against the 5 repos and saved.
-- [ ] 1. Kit 11.0.0 (this repo). [ ] 2. RADE engine-v36. [ ] 3. 90-161.Z / 33-332.Z / ICF-Source in 3 sub-sessions. [ ] 4. ICF UX/UI and handover check. [ ] 5. Rule text for recurrence (owner approval).
+- [ ] 1. Kit 11.0.0 (this repo), on branch claude/keen-cori-eiotd2: wave 1 (1.1 security, 1.2 hygiene files, 1.5 Fulcrum 2.0.0 + page shell) and wave 2 C2 (25 CLI tests, check-config-schema, MAINTAINER_RUNBOOK) pushed; wave 2 C1 (13 splits <= 450, 450/600 paste cap, unittest > 0, pytest helper renames) pushed by the first session as commit(s) "s1-split" when done; wave 3 open: role swap (DEC 2 text), kit.config.json (rhope-ops URLs + fleet_page), DoD opt-in sync group, code-strict-gate fold, check_settings --validate-config, audit-instructions lines for the 2 new docs, KIT_VERSION 11.0.0 + CHANGELOG, gates, fresh review, PR.
+  Session briefs for the parallel tracks: [reviews/2026-11-23-fleet-v2-session-briefs.md](reviews/2026-11-23-fleet-v2-session-briefs.md).
+- [ ] 2. RADE engine-v36. [ ] 3. 90-161.Z / 33-332.Z / ICF-Source in 3 sub-sessions. [ ] 4. ICF UX/UI and handover check. [ ] 5. Rule text for recurrence (owner approval).
 
 - Earlier approved plan 2026-11-19 (fleet decision hub, kit template): steps 0-5 and 7 done, step 4 dropped; open: step 6 loop proof after the owner ports a first project. Record: [reviews/2026-11-19-fleet-decision-hub-plan.md](reviews/2026-11-19-fleet-decision-hub-plan.md); live page preview https://claude.ai/artifact/RZwwoMT9fNJDARDcBzn7AR.
 
