@@ -63,19 +63,19 @@ Not verified in this session. Fleet v2 is still open (ICF #248 split, ICF kit 11
 | B2-2 | 1.3 move history to docs/archive/ (fleet v2 B.2: not done) | out | Closed by fleet v2 DEC 2 |
 | B2-3 | 3C.1 owner file rotation (fleet v2: staged only, ICF #246) | out | ICF handover, not tools |
 | B2-4 | 4.3 shadow handover drill (needs the incoming maintainer) | out | ICF handover, not tools |
-| B2-5 | 6 kit repos still on kit 10.0.0 (fleet v2 B.21) | ask | REC: later; distribution (step 4) makes their catch-up one version bump |
+| B2-5 | 6 kit repos still on kit 10.0.0 (fleet v2 B.21) | later | After the distribution pilot (step 4): catch-up by one version bump |
 | B2-6 | ICF preload tags A/B (coordinator state "Needs the Maintainer") | out | Fleet v2 open question |
 
 ## C. Master plan Part 2 (11)
 
 | ID | Item (short) | Mark | Step / reason |
 |---|---|---|---|
-| P2-1 | Installable kit CLI package (pipx) | in | Step 4. Drift: the prompt names only a pre-commit hook repo or a reusable workflow. REC: add the pip/pipx package as a third candidate in the step 4 trial |
-| P2-2 | Standard linters and secret scanners | in | Step 2. Drift: the master plan names shellcheck, PSScriptAnalyzer and trufflehog; the prompt's pairs do not. REC: add 3 pairs (bash checks vs shellcheck, PowerShell checks vs PSScriptAnalyzer, check_content* vs trufflehog next to gitleaks) |
+| P2-1 | Installable kit CLI package (pipx) | in | Step 4: the pip/pipx package is a third candidate next to the pre-commit hook repo and the reusable workflow |
+| P2-2 | Standard linters and secret scanners | in | Step 2, with 3 added pairs: bash checks vs shellcheck, PowerShell checks vs PSScriptAnalyzer, check_content* vs trufflehog next to gitleaks |
 | P2-3a | Authenticode signing of paste bundles | out (proposed) | Needs the Maintainer's certificate; prompt "pending, not in scope yet" |
-| P2-3b | Paste truncation sentinel (start/end checksum) | ask | Not a certificate item. REC: later (a new guard, not a tool retirement) |
+| P2-3b | Paste truncation sentinel (start/end checksum) | later | A new guard, not a tool retirement |
 | P2-4a | Build-time static HTML with a standard Markdown library (90-161.Z, RADE) | in | Step 6 |
-| P2-4b | Remove the runtime fetch, offline with connect-src 'none' | ask | Drift: the prompt names only the Markdown part. REC: in, same trial (the static build makes the fetch obsolete) |
+| P2-4b | Remove the runtime fetch, offline with connect-src 'none' | in | Step 6, same trial as P2-4a |
 | P2-5a | CodeQL | in | Step 6 (kit, RADE, 90-161.Z, 33-332.Z) |
 | P2-5b | CycloneDX SBOM | in | Step 6 |
 | P2-5c | Hash-pinned Python (pip-compile --generate-hashes) | in | Step 6 |
@@ -84,7 +84,7 @@ Not verified in this session. Fleet v2 is still open (ICF #248 split, ICF kit 11
 | P2-7a | pac solution instead of the flow ZIP/XML builders (90-161.Z) | in | Step 6 |
 | P2-7b | One versioned module instead of -r1..-r14 file names | in | Step 6 |
 | P2-8a | Build-time ==term== markup instead of character offsets (ICF) | in (trial only) | Step 6. Read-only trial until fleet v2 closes; the result is shown to the Maintainer, the incoming maintainer may own the change |
-| P2-8b | Split questions and glossary JSON by Block (ICF) | ask | Prompt names "block-split JSON". REC: in (trial only), same terms as P2-8a |
+| P2-8b | Split questions and glossary JSON by Block (ICF) | in (trial only) | Step 6, same terms as P2-8a |
 | P2-9 | FSRS spaced repetition (ICF) | out (proposed) | Prompt "pending, not in scope yet"; feature, not a tool |
 | P2-10a | Installable PWA manifest (ICF) | out (proposed) | Same |
 | P2-10b | IndexedDB and JSON backup (ICF) | out (proposed) | Same |
@@ -123,18 +123,21 @@ Not verified in this session. Fleet v2 is still open (ICF #248 split, ICF kit 11
 | PF | Plan format (phases, lanes, models, agents, hours, order, rollback, GAPS) | in | |
 | NL | No new AGENTS.md lines | in | |
 
-## E. Open points for the Maintainer (block the plan until answered)
+## E. The Maintainer's answers (question dialog in this session, 2026-11-23 ~14:50 America/Chicago)
 
-1. Approve this list (all marks), in this chat.
-2. Rows marked "ask": B2-5, P2-3b, P2-4b, P2-8b.
-3. Drift P2-1 and P2-2: add the pipx package and the 3 extra linter pairs (REC: yes).
-4. Repo set: the prompt names RADE, 90-161.Z, 33-332.Z, ICF-Source and sec-source, and says "all 5 repos"; the master plan's
-   5 are the kit and 4 projects (no sec-source). REC: trial on the kit + the 4 master-plan projects; sec-source later.
-5. Rule IDs T3 and T4 are not in the prompt; the prompt cites a fleet v2 lessons file that is not in this repo or in
-   Drive › Rhope (searched 2026-11-23). REC: T3/T4 were dropped on purpose; confirm.
-6. Start time: the prompt file says the program starts after fleet v2 closes; the coordinator relayed "start now, in parallel,
-   read-only on ICF-Source". REC: start now, read-only inventory and trials only; no write to a project repo before fleet v2 closes.
-7. Features out (P2-3a, P2-9, P2-10, P2-11): the prompt file says "pending"; the coordinator relayed "out for now". Confirm.
+Scope: this program. Recorded here, not as a DECISIONS row By the Maintainer.
+
+1. The 4 "ask" rows and the 2 drift items (P2-1, P2-2): "Accept all RECs". Marks above are updated.
+2. Repo set: "Kit + 4, sec-source later": trials on archimedes_lever, RADE, 90-161.Z, 33-332.Z and ICF-Source; sec-source later.
+3. Start time: "After fleet v2 closes". This session stops after this list until the coordinator says fleet v2 is closed.
+   No inventory or trial runs before then.
+
+## Still open (block the plan)
+
+1. Rule IDs T3 and T4 (not in the prompt; the cited fleet v2 lessons file is not in this repo or in Drive › Rhope).
+   The Maintainer's answer: ask the coordinator session "Kit · Fleet v2 coordinator 2". Asked 2026-11-23.
+2. Features out (P2-3a, P2-9, P2-10, P2-11): the prompt file says "pending"; the coordinator relayed "out for now".
+3. The Maintainer's approval of the whole list, in this session's chat, after item 1 is answered.
 
 ## F. Counts (the T7 check compares these)
 
@@ -142,10 +145,9 @@ Not verified in this session. Fleet v2 is still open (ICF #248 split, ICF kit 11
 |---|---|---|---|---|---|
 | A. DEC (6 items) | 6 | 4 | 2 | 0 | 0 |
 | B. Part 1 (19 items) | 19 | 0 | 19 | 0 | 0 |
-| B2. Part 1 open sub-parts (extra rows, not source items) | 6 | 0 | 5 | 0 | 1 |
-| C. Part 2 (11 items, split into sub-rows) | 22 | 11 | 8 | 0 | 3 |
+| B2. Part 1 open sub-parts (extra rows, not source items) | 6 | 0 | 5 | 1 | 0 |
+| C. Part 2 (11 items, split into sub-rows) | 22 | 13 | 8 | 1 | 0 |
 | D. Prompt (25 items) | 25 | 25 | 0 | 0 | 0 |
-| **Total** | **78** | **40** | **34** | **0** | **4** |
+| **Total** | **78** | **42** | **34** | **2** | **0** |
 
-Source items: 36 master plan items (6 + 19 + 11) + 25 prompt items = 61. Unmarked: 0. Rows still "ask": 4 (B2-5, P2-3b,
-P2-4b, P2-8b); each blocks the plan until the Maintainer marks it.
+Source items: 36 master plan items (6 + 19 + 11) + 25 prompt items = 61. Unmarked: 0. Rows "ask": 0.
