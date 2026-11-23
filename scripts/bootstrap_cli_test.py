@@ -61,21 +61,25 @@ def kit_copy(path):
 
 class BootstrapCli(unittest.TestCase):
     def setUp(self):
+        """Make a temporary git repo that holds a copy of the kit."""
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
         self.path = Path(self._tmp.name)
         kit_copy(self.path)
 
     def boot(self, *args):
+        """Run scripts/bootstrap.sh in the project with these arguments."""
         return run(["bash", "scripts/bootstrap.sh", *args], self.path)
 
     def test_wrong_argument_count_is_refused(self):
+        """Prove: wrong argument count is refused."""
         p = self.boot("Only One")
         self.assertEqual(p.returncode, 1)
         self.assertIn("usage:", p.stderr)
         self.assertTrue((self.path / "scripts/bootstrap.sh").exists())
 
     def test_bad_tier_and_bad_owner_are_refused(self):
+        """Prove: bad tier and bad owner are refused."""
         p = self.boot("Demo App", "org/demo", "A demo.", "the maintainer", "UTC", "middle")
         self.assertEqual(p.returncode, 1)
         self.assertIn("use starter or full", p.stderr)
@@ -85,25 +89,38 @@ class BootstrapCli(unittest.TestCase):
         self.assertTrue((self.path / "scripts/bootstrap.sh").exists())
 
     def test_bad_time_zone_is_refused(self):
+        """Prove: bad time zone is refused."""
         p = self.boot("Demo App", "org/demo", "A demo.", "the maintainer", "Mars/Base")
         self.assertEqual(p.returncode, 1)
         self.assertIn("not a known IANA name", p.stderr)
 
-    def test_starter_run_fills_template_and_removes_kit_files(self):
-        p = self.boot("Demo App", "org/demo", "A demo.", "the maintainer", "UTC", "starter")
+    def starter(self):
+        """Run a starter bootstrap with the role owner and return the finished process."""
+        return self.boot("Demo App", "org/demo", "A demo.", "the maintainer", "UTC", "starter")
+
+    def test_starter_run_fills_template(self):
+        """Prove: a starter run fills the placeholders, renames the owner word and writes README.md."""
+        p = self.starter()
         self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
         self.assertIn("Done.", p.stdout)
         agents = (self.path / "AGENTS.md").read_text()
-        self.assertIn("# Demo App: agent instructions", agents)
-        self.assertIn("- Repo: org/demo", agents)
-        self.assertIn("- Owner: the maintainer", agents)
+        for want in ("# Demo App: agent instructions", "- Repo: org/demo", "- Owner: the maintainer"):
+            self.assertIn(want, agents)
         self.assertNotIn("{{", agents)
         self.assertIn("the maintainer", (self.path / ".claude/skills/deliver/SKILL.md").read_text())
         self.assertTrue((self.path / "README.md").read_text().startswith("# Demo App\n\nA demo."))
+
+    def test_starter_run_removes_kit_files(self):
+        """Prove: a starter run deletes the kit-only files and the script itself."""
+        self.assertEqual(self.starter().returncode, 0)
         for gone in ("scripts/bootstrap.sh", "scripts/sync_baseline.py", "scripts/drift.py", "KIT_VERSION", "docs/FILES.md"):
             self.assertFalse((self.path / gone).exists(), gone)
-        self.assertEqual(json.loads((self.path / ".check.state.json").read_text())["code_standard"], {"debt": {}})
-        self.assertTrue((self.path / ".check.lock").is_file())
+
+    def test_starter_run_writes_state_and_valid_lock(self):
+        """Prove: a starter run writes .check.state.json and a .check.lock that verifies."""
+        self.assertEqual(self.starter().returncode, 0)
+        state = json.loads((self.path / ".check.state.json").read_text())
+        self.assertEqual(state["code_standard"], {"debt": {}})
         v = py("check_lock.py", "--verify", "--project", str(self.path), cwd=self.path)
         self.assertEqual(v.returncode, 0, v.stdout)
 

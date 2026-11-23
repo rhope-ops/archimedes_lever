@@ -44,18 +44,21 @@ def sync(path, *extra):
 
 class SyncBaselineCli(unittest.TestCase):
     def setUp(self):
+        """Make an empty temporary git repo."""
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
         self.path = Path(self._tmp.name)
         new_repo(self.path)
 
     def test_dry_run_writes_nothing(self):
+        """Prove: dry run writes nothing."""
         p = py("sync_baseline.py", "--baseline", str(KIT), "--name", "Demo", "--repo", "org/demo", "--purpose", "A demo.",
                "--timezone", "UTC", "--owner", "the maintainer", "--tier", "starter", cwd=self.path)
         self.assertEqual(p.returncode, 0, p.stderr)
         self.assertEqual(run(["git", "status", "--short"], self.path).stdout, "")
 
     def test_apply_brings_kit_files_and_lock(self):
+        """Prove: apply brings kit files and lock."""
         p = sync(self.path)
         self.assertEqual(p.returncode, 0, p.stderr)
         for rel in ("AGENTS.md", "CLAUDE.md", "scripts/check.sh", "scripts/check_lock.py", ".claude/settings.json",
@@ -67,6 +70,7 @@ class SyncBaselineCli(unittest.TestCase):
         self.assertIn("- Owner: the maintainer", (self.path / "AGENTS.md").read_text())
 
     def test_second_run_changes_nothing(self):
+        """Prove: second run changes nothing."""
         self.assertEqual(sync(self.path).returncode, 0)
         run(["git", "add", "-A"], self.path)
         before = (self.path / ".check.lock").read_text()
@@ -76,12 +80,14 @@ class SyncBaselineCli(unittest.TestCase):
         self.assertEqual((self.path / ".check.lock").read_text(), before)
 
     def test_owner_role_replaces_the_owner_word(self):
+        """Prove: owner role replaces the owner word."""
         self.assertEqual(sync(self.path).returncode, 0)
         text = (self.path / ".claude/skills/deliver/SKILL.md").read_text()
         self.assertIn("the maintainer", text)
         self.assertNotIn("the owner", text)
 
     def test_bad_owner_name_is_refused(self):
+        """Prove: bad owner name is refused."""
         p = sync(self.path, "--owner", "bad;name")
         self.assertNotEqual(p.returncode, 0)
         self.assertFalse((self.path / ".check.lock").exists())
