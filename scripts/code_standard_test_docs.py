@@ -3,16 +3,16 @@
 full docs fails and --report names the gaps, the doc forms of each language are read, and --adopt lists the debt of
 the rule once, with the comparison with main.
 
-Part of scripts/code_standard_test.py (split out to keep each file under the line cap of docs/code-standard.md C4);
-its run_cases() calls self_test_docs. The sample repo helpers come from scripts/code_standard_test_gate.py.
-Input: the check module and the sample repo. Output: none; an AssertionError names the rule. Needs git.
-Usage:   imported by scripts/code_standard_test.py (run by `python3 scripts/code_standard.py --test`); no command line.
+Kept apart from scripts/code_standard_test.py for the line cap (docs/code-standard.md C4); its run_cases() calls
+self_test_docs. The sample repo helpers come from scripts/code_standard_test_gate.py.
+Input: the check module and its sample repo. Output: none (an AssertionError names the failed case). Needs git.
+Usage:   no command line; `python3 scripts/code_standard.py --test` runs it through scripts/code_standard_test.py.
 Network: none.
 Writes: temporary folders only.
 Credentials: none.
 """
 
-import check_settings as settings   # scripts/check_settings.py: the reader of .check and .check.state.json
+import check_settings as settings   # scripts/check_settings.py: the settings files
 from code_standard_test_gate import FULL, PS, commit, config_of, main, write
 
 

@@ -14,7 +14,7 @@ Credentials: none.
 """
 import os
 
-import check_settings as settings   # scripts/check_settings.py: the reader of .check and of .check.state.json
+import check_settings as settings   # scripts/check_settings.py: code_base, NAMES_CHECK, CHECK
 
 
 def decided_at(cs, ref):

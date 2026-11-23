@@ -14,7 +14,7 @@ Credentials: none.
 """
 import shutil
 
-import check_settings as settings   # scripts/check_settings.py: the reader of .check and .check.state.json
+import check_settings as settings   # scripts/check_settings.py: CHECK, save_part, code_config
 
 
 PS = bool(shutil.which('pwsh'))   # the PowerShell cases need the real parser

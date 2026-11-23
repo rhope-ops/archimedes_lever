@@ -16,7 +16,7 @@ import shlex
 import subprocess
 import time
 
-import check_settings  # scripts/check_settings.py: the reader of .check and the reader and writer of .check.state.json
+import check_settings  # scripts/check_settings.py: STATE and save_part (the state file)
 
 STATE = check_settings.STATE
 

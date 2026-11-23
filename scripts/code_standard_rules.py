@@ -16,9 +16,9 @@ Credentials: none.
 import fnmatch
 import hashlib
 
-import check_settings as settings   # scripts/check_settings.py: the reader of .check and of .check.state.json
-import code_standard_docs as docs   # scripts/code_standard_docs.py: the opt-in C2 full rule
-import code_standard_parse as parse   # scripts/code_standard_parse.py: headers, generated blocks, function finders
+import check_settings as settings   # scripts/check_settings.py: STRICT, dash, OPT_IN_CAPS
+import code_standard_docs as docs   # scripts/code_standard_docs.py: rule C2 full
+import code_standard_parse as parse   # scripts/code_standard_parse.py: the function finders
 
 
 LANGS = {'.py': 'python', '.ps1': 'powershell', '.psm1': 'powershell', '.js': 'js', '.mjs': 'js', '.cjs': 'js', '.sh': 'shell'}

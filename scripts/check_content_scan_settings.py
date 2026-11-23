@@ -9,7 +9,7 @@ Outputs: lists, sets and flags for the scans; nothing is printed here.
 Run: not run alone; check_content_scan.py imports it.
 Network: none (it runs local git read commands).
 Writes: none.
-Credentials: none; it reads the name denylist and the terms list from an environment variable or a file.
+Credentials: none; it reads the name denylist and the terms list (each from an environment variable or a file).
 """
 import fnmatch
 import hashlib
