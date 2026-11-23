@@ -55,8 +55,11 @@ def sample_repo(bloat, root):
     (root / "docs").mkdir()
     (root / "docs/NEXT_PROMPT.md").write_text(f"{LONG.upper()}\n" + "x\n" * 45)
     (root / "big.txt").write_text("y" * 3000)
+    (root / "scripts").mkdir()
+    (root / "scripts/ok.sh").write_text("exit 0\n")  # the timed commands must start with "bash scripts/"
+    (root / "scripts/fail.sh").write_text("exit 1\n")
     settings(root, "audit-budget-file_kb: 2\naudit-budget-session_load_tokens: 10\n",
-             audit={"last_audit": {"date": "2026-01-01"}}, timings={"t": {"cmd": "true", "seconds": 5}})
+             audit={"last_audit": {"date": "2026-01-01"}}, timings={"t": {"cmd": "bash scripts/ok.sh", "seconds": 5}})
     subprocess.run(["git", "-C", str(root), "add", "-A"], check=True)
     return bloat.load_config(root)
 
@@ -397,7 +400,7 @@ def report_cases(bloat, root, cfg, strict):
         (root / check_settings.OLD_AUDIT).write_text("{}")
         assert bloat.main_rules(root) == 1, "the old settings file fails --rules until it is migrated"
         (root / check_settings.OLD_AUDIT).unlink()
-        settings(root, audit={"last_audit": {"date": "2026-01-01"}}, timings={"f": {"cmd": "false"}, "t": {"cmd": "true"}})
+        settings(root, audit={"last_audit": {"date": "2026-01-01"}}, timings={"f": {"cmd": "bash scripts/fail.sh"}, "t": {"cmd": "bash scripts/ok.sh"}})
         bloat.report(root, argparse.Namespace(brief=True, time=True, record=True, strict=False))
     saved = check_settings.load_state(root)
     assert "seconds" not in saved["timings"]["f"] and saved["timings"]["t"]["seconds"] is not None, "record skips failed commands"
@@ -430,6 +433,14 @@ def compare_cases(bloat, root):
     assert (root / bloat.STATE).read_text() == check_settings.state_text(saved), "the state file has sorted keys and indent 1"
     rows, _ = bloat.run_timings(root, {"timings": {"nocmd": {"seconds": 1}}}, record=False)
     assert rows == [], "--time skips a timing with no cmd"
+    for good in ("python3 scripts/bloat_check.py --brief", "bash scripts/check.sh", "bash scripts/session_checkin.sh"):
+        assert bloat.timing_argv(good)[0] in ("python3", "bash"), f"allowed timed command: {good}"
+    for bad in ("echo pwned; true", "rm -rf /", "bash scripts/x.sh && id", "python3 scripts/a.py $(id)", "python3 scripts/a.py\nid"):
+        try:
+            bloat.timing_argv(bad)
+        except ValueError:
+            continue
+        raise AssertionError(f"timed command not refused: {bad!r}")
 
 
 def write_skill(rs, folder, body):

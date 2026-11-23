@@ -80,6 +80,7 @@ import argparse
 import datetime
 import fnmatch
 import re
+import shlex
 import subprocess
 import sys
 import time
@@ -222,6 +223,17 @@ def audit_due(root, cfg, today):
     return "; ".join(reasons)
 
 
+TIMING_PREFIXES = ("python3 scripts/", "bash scripts/")
+SHELL_CHARS = set(";|&`$()<>\n")
+
+
+def timing_argv(cmd):
+    """The argument list of a timed command (no shell, CWE-78); ValueError for a shell character or a command outside scripts/."""
+    if SHELL_CHARS & set(cmd) or not cmd.startswith(TIMING_PREFIXES):
+        raise ValueError(f"timed command not allowed (shell character, or not 'python3 scripts/' or 'bash scripts/'): {cmd!r}")
+    return shlex.split(cmd)
+
+
 def run_timings(root, cfg, record):
     """Run each timed command that has a cmd; return (report rows, names slower or failed); record stores the new seconds.
 
@@ -238,7 +250,7 @@ def run_timings(root, cfg, record):
         if not t.get("cmd"):
             continue  # measured by the script that runs it (--compare)
         t0 = time.monotonic()
-        rc = subprocess.run(t["cmd"], shell=True, cwd=root, capture_output=True).returncode
+        rc = subprocess.run(timing_argv(t["cmd"]), cwd=root, capture_output=True).returncode
         secs = round(time.monotonic() - t0, 1)
         base = t.get("seconds")
         limit = t.get("max_slowdown", 0.25)

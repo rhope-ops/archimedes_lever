@@ -102,7 +102,7 @@ class Fixture:
         """Install a pre-push hook script in the shared hooks folder."""
         with open(os.path.join(self.hooks, "pre-push"), "w") as f:
             f.write(body)
-        os.chmod(os.path.join(self.hooks, "pre-push"), 0o755)
+        os.chmod(os.path.join(self.hooks, "pre-push"), 0o700)
 
 
 def case_first_turn(fx):
