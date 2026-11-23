@@ -87,7 +87,7 @@ COPY_FILES = ["scripts/session_checkin.sh", "scripts/stop_check.py", "scripts/ch
               "scripts/check_content_scan.py", "scripts/check_content_hook.py", "scripts/check_content_test.py",
               "scripts/check_content_finders.py", "scripts/check_content_test_local.py", "scripts/check_settings_test.py",
               "scripts/check.sh", "scripts/check_settings.py", "scripts/bloat_check.py", "scripts/bloat_check_skills.py", "scripts/bloat_check_test.py",
-              "scripts/bloat_check_rules.py", "scripts/skill_use.py",
+              "scripts/bloat_check_rules.py", "scripts/skill_use.py", "scripts/bloat_check_timing.py", "scripts/bloat_check_test_rules.py",
               "scripts/code_standard.py", "scripts/code_standard_test.py", "scripts/code_standard_docs.py", "scripts/code_standard_parse.py",
               "docs/code-standard.md", "scripts/git-hooks/pre-push",
               "scripts/fulcrum_tokens.py", "docs/brand/fulcrum.json", "docs/brand/fulcrum.css", "scripts/build_site.py", "scripts/build_site_html.py",
@@ -117,7 +117,8 @@ def log_template(base):
 ADVANCED_FILES = [".claude/skills/delegate/SKILL.md", ".claude/agents/scout.md", ".claude/agents/worker.md",
                   ".claude/skills/project-log/SKILL.md", "docs/LOG.md", "scripts/log_check.py", "scripts/timeline.py",
                   ".claude/skills/audit/SKILL.md", "scripts/bloat_check.py", "scripts/bloat_check_skills.py", "scripts/bloat_check_rules.py",
-                  "scripts/bloat_check_test.py", ".claude/rule-tests.md", "scripts/skill_use.py"]
+                  "scripts/bloat_check_test.py", ".claude/rule-tests.md", "scripts/skill_use.py",
+                  "scripts/bloat_check_timing.py", "scripts/bloat_check_test_rules.py"]
 # Moved or renamed in the kit (to .claude/skills/ on 2026-11-16; the guard to check_content on 2026-11-18; run-verify
 # and ui-verify merged into verify, and port renamed kit-update, on 2026-11-18; efficiency merged into audit in
 # kit 6.0.0): a project synced before then still

@@ -276,6 +276,7 @@ done
 # A script whose cases or parts live in sibling modules lists them, so the fast lane reruns its self-test when they change.
 selftest check_settings scripts/check_settings.py scripts/check_settings_test.py -- python3 scripts/check_settings.py --test
 selftest bloat_check scripts/bloat_check.py scripts/bloat_check_test.py scripts/bloat_check_skills.py scripts/bloat_check_rules.py \
+  scripts/bloat_check_timing.py scripts/bloat_check_test_rules.py \
   scripts/check_settings.py -- python3 scripts/bloat_check.py --test
 selftest token_log scripts/token_log.py scripts/token_log_test.py -- python3 scripts/token_log.py --test
 selftest code_standard scripts/code_standard.py scripts/code_standard_test.py scripts/code_standard_docs.py \
