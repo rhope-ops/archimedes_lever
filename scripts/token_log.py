@@ -35,8 +35,9 @@ self-update off; TOKEN_LOG_KIT_URL (default KIT_URL) is the repo the self-update
 Manual push:  python3 scripts/token_log.py --push REPO_DIR SESSION_ID TRANSCRIPT_PATH
 Report:  python3 scripts/token_log.py --report [REF]  (in a repo: fetches the log branch, or reads REF; prints the
   estimated cost by week in America/Chicago, by source, agent and model, and per subagent task, from PRICES)
-Self-update: after each background push, the installed copy (only a token_log.py in ~/.claude/hooks) checks the
-  kit's main branch at most once a day and replaces itself with a newer copy whose self-test passes (TOKEN_LOG_UPDATE=off
+Self-update: after each background push, the installed copy (token_log.py in ~/.claude/hooks) checks the kit's main
+  branch at most once a day and replaces its files (UPDATE_FILES) with newer copies whose self-test passes; an old
+  one-file install fetches token_log_report.py the same way (the Stop path never needs it) (TOKEN_LOG_UPDATE=off
   turns it off). The setup script installs it only when a container is built, so a resumed container kept an old copy.
 Self-test (temporary repos, no network):  python3 scripts/token_log.py --test.  Standard library only.
 Network: the git remote "origin" of the repo (fetch and push of the branch claude/token-usage); the self-update: a
@@ -45,10 +46,8 @@ Writes: the branch claude/token-usage (one CSV file for each session), through a
 files and update.stamp in TOKEN_LOG_HOME; the installed hook file (self-update); never the work tree.
 Credentials: none itself; the push uses the credentials git already has for origin.
 """
-import bisect
 import csv
 import fcntl
-import glob
 import io
 import json
 import os
@@ -58,7 +57,7 @@ import subprocess
 import sys
 import tempfile
 import time
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 
 FIELDS = ["message_id", "timestamp", "turn", "session_id", "repo", "model", "source", "agent", "agent_id",
           "input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens", "output_tokens", "cache_write_1h_tokens",
@@ -122,148 +121,6 @@ def git_net(cwd, *args):
         return p.returncode, out.read().strip(), err.read().strip()
 
 
-def prompt_text(d):
-    """The text of a user prompt, or None (tool results, meta lines, compact summaries, interrupt markers).
-
-    Args:
-        d: one parsed line (a dict) of a session log.
-    Returns:
-        The prompt text, or None when the line is not a user prompt.
-    """
-    if d.get("type") != "user" or d.get("isMeta") or d.get("isCompactSummary") or not isinstance(d.get("message"), dict):
-        return None
-    c = d["message"].get("content")
-    if isinstance(c, list):
-        if any(isinstance(x, dict) and x.get("type") == "tool_result" for x in c):
-            return None
-        c = " ".join(x.get("text", "") for x in c if isinstance(x, dict) and x.get("type") == "text")
-    if not isinstance(c, str) or not c.strip() or c.lstrip().startswith(NOT_PROMPTS):
-        return None
-    return c
-
-
-def read_log(path, source):
-    """Return ({message id: (timestamp, model, usage, source)}, [prompt timestamps]) for one log file.
-
-    Args:
-        path: the log file.
-        source: "main" or "subagent": where the rows come from (only "main" counts prompts).
-    Returns:
-        (msgs, prompts): a dict of message id to (timestamp, model, usage, source), and the list of prompt timestamps.
-    """
-    msgs, prompts = {}, []
-    try:
-        f = open(path, encoding="utf-8")
-    except OSError:
-        return msgs, prompts
-    with f:
-        for line in f:
-            try:
-                d = json.loads(line)
-            except ValueError:
-                continue
-            if not isinstance(d, dict):
-                continue
-            if source == "main" and prompt_text(d) is not None:
-                prompts.append(d.get("timestamp") or "")
-            m = d.get("message")
-            if d.get("type") != "assistant" or not isinstance(m, dict):
-                continue
-            mid, u = m.get("id"), m.get("usage")
-            if isinstance(mid, str) and mid and isinstance(u, dict):
-                src = "subagent" if d.get("isSidechain") else source
-                ts = msgs[mid][0] if mid in msgs else d.get("timestamp") or ""  # the first block's time
-                msgs[mid] = (ts, m.get("model") or "unknown", u, src)  # the last block's usage (final counts)
-    return msgs, prompts
-
-
-def agent_types(tpath):
-    """The subagent type of each Agent call in the session log, by agent id. A call whose type or id is not found
-    is left out (the row then says "unknown").
-
-    Args:
-        tpath: the path of the session's log file.
-    Returns:
-        A dict of agent id to subagent type (for example "scout").
-    """
-    calls, types = {}, {}
-    try:
-        f = open(tpath, encoding="utf-8")
-    except OSError:
-        return types
-    with f:
-        for line in f:
-            try:
-                d = json.loads(line)
-            except ValueError:
-                continue
-            c = d.get("message", {}).get("content") if isinstance(d, dict) and isinstance(d.get("message"), dict) else None
-            for b in c if isinstance(c, list) else []:
-                if not isinstance(b, dict):
-                    continue
-                if b.get("type") == "tool_use" and b.get("name") in ("Agent", "Task") and isinstance(b.get("input"), dict):
-                    t = b["input"].get("subagent_type")
-                    if isinstance(b.get("id"), str):
-                        calls[b["id"]] = t if isinstance(t, str) and t else "unknown"
-                if b.get("type") == "tool_result" and isinstance(d.get("toolUseResult"), dict):
-                    aid, tid = d["toolUseResult"].get("agentId"), b.get("tool_use_id")
-                    if isinstance(aid, str) and aid and isinstance(tid, str) and tid in calls:
-                        types[aid] = calls[tid]
-    return types
-
-
-def tokens(v):
-    """A token count as int(v), or 0 when int() rejects v (non-numeric text, NaN or an infinite number); the row is kept.
-
-    Args:
-        v: the usage value from the log.
-    Returns:
-        int(v), or 0 when int() raises TypeError, ValueError or OverflowError.
-    """
-    try:
-        return int(v or 0)
-    except (TypeError, ValueError, OverflowError):
-        return 0
-
-
-def price_facts(u):
-    """The price columns (cache_write_1h_tokens, speed, web_search_requests, inference_geo) of one usage dict."""
-    cc, st = [u.get(k) if isinstance(u.get(k), dict) else {} for k in ("cache_creation", "server_tool_use")]
-    return {"cache_write_1h_tokens": tokens(cc.get("ephemeral_1h_input_tokens")), "speed": str(u.get("speed") or ""),
-            "web_search_requests": tokens(st.get("web_search_requests")), "inference_geo": str(u.get("inference_geo") or "")}
-
-
-def log_rows(sid, tpath, repo):
-    """One row per API call in the session log and its subagent logs.
-
-    Args:
-        sid: the session id.
-        tpath: the path of the session's log file.
-        repo: the repo name.
-    Returns:
-        A dict of message id to the row (a dict with the FIELDS).
-    """
-    msgs, prompts = read_log(tpath, "main")
-    types = agent_types(tpath)
-    agent = {mid: "main" if src == "main" else "unknown" for mid, (_, _, _, src) in msgs.items()}
-    agent_id = {}
-    for p in sorted(glob.glob(os.path.join(os.path.splitext(tpath)[0], "**", "*.jsonl"), recursive=True)):
-        name = os.path.basename(p)
-        aid = name[len("agent-"):-len(".jsonl")] if name.startswith("agent-") else ""
-        for k, v in read_log(p, "subagent")[0].items():
-            if k not in msgs:
-                msgs[k] = v
-                agent[k], agent_id[k] = types.get(aid, "unknown"), aid
-    prompts.sort()
-    rows = {}
-    for mid, (ts, model, u, src) in msgs.items():
-        rows[mid] = {"message_id": mid, "timestamp": ts, "turn": bisect.bisect_right(prompts, ts) if ts else len(prompts),
-                     "session_id": sid, "repo": repo, "model": model, "source": src, "agent": agent[mid],
-                     "agent_id": agent_id.get(mid, ""),
-                     **{k: tokens(u.get(k)) for k in USAGE_KEYS}, **price_facts(u)}
-    return rows
-
-
 def to_csv(rows):
     """The CSV text of the rows, header first, sorted by timestamp and message id."""
     out = io.StringIO()
@@ -300,7 +157,7 @@ def push(root, sid, tpath):
             parent = [git(root, "rev-parse", PRIVATE_REF)]
             old = git(root, "show", f"{parent[0]}:{path}", check=False)
             rows = {r["message_id"]: r for r in csv.DictReader(io.StringIO(old)) if r.get("message_id")}
-        rows.update(log_rows(sid, tpath, os.path.basename(root)))
+        rows.update(_part("token_log_rows").log_rows(sid, tpath, os.path.basename(root)))
         if not rows:
             return "nothing to log"
         with tempfile.TemporaryDirectory() as tmp:
@@ -392,23 +249,15 @@ def hook_main():
 
 KIT_URL = "https://github.com/rhope-ops/archimedes_lever"
 UPDATE_EVERY = 24 * 3600  # seconds between self-update checks
-# Prices in USD per million tokens: (input, output, cache read, inference_geo "us" applies). A cache write costs 1.25 x
-# input (5-minute) or 2 x input (1-hour). Source: https://platform.claude.com/docs/en/about-claude/pricing (fetched
-# 2026-11-23). Longest matching model id prefix wins. The weekly usage limit is assumed to weigh tokens like these prices.
-# Assumptions (no price listed): a fast-mode cache read costs read x fast input / base input; US 1.1x not on web search.
-PRICES_AS_OF = "2026-11-23"
-PRICES = {
-    "claude-fable-5-2": (8, 40, 0.20, 1), "claude-fable-5-1": (10, 50, 0.25, 1), "claude-fable-5": (10, 50, 1, 1),
-    "claude-opus-5-5": (4, 20, 0.20, 1), "claude-opus-5": (5, 25, 0.50, 1), "claude-opus-4-8": (5, 25, 0.50, 1),
-    "claude-opus-4-7": (5, 25, 0.50, 1), "claude-opus-4-6": (5, 25, 0.50, 1), "claude-opus-4-5": (5, 25, 0.50, 0),
-    "claude-opus-4-1": (15, 75, 1.50, 0), "claude-opus-4": (15, 75, 1.50, 0),  # Opus 4 and 4.1 (retired)
-    "claude-sonnet-5-5": (2, 10, 0.10, 1), "claude-sonnet-5": (2, 10, 0.20, 1), "claude-sonnet-4-6": (3, 15, 0.30, 1),
-    "claude-sonnet-4-5": (3, 15, 0.30, 0), "claude-sonnet-4": (3, 15, 0.30, 0), "claude-haiku-4-5": (1, 5, 0.10, 0),
-    "claude-haiku-5-5": (0.10, 0.50, 0.01, 1),
-}
-FAST_PRICES = {"claude-fable-5-2": (16, 80), "claude-opus-5-5": (8, 40), "claude-opus-5": (10, 50), "claude-opus-4-8": (10, 50)}  # speed fast
-LONG_PROMPT, LONG_PRICES = 100_000, {"claude-haiku-5-5": (0.50, 2.50, 0.05)}  # prompt over 100,000: (input, output, read)
-WEB_SEARCH_USD, GEO_US_FACTOR = 10.0 / 1000, 1.1  # per search; US factor: token categories only
+UPDATE_FILES = ("token_log_rows.py", "token_log_report.py", "token_log.py")  # the installed files: the parts first, the entry file last
+
+
+def same_file(a, b):
+    """True when file b exists and has the same bytes as file a."""
+    if not os.path.isfile(b):
+        return False
+    with open(a, "rb") as f, open(b, "rb") as g:
+        return f.read() == g.read()
 
 
 def self_update(path, url=None, now=None):
@@ -432,20 +281,23 @@ def self_update(path, url=None, now=None):
     with tempfile.TemporaryDirectory() as tmp:
         r = subprocess.run(["git", "clone", "-q", "--depth", "1", "--branch", "main", url or os.environ.get("TOKEN_LOG_KIT_URL") or KIT_URL,
                             os.path.join(tmp, "k")], capture_output=True, text=True, timeout=net_timeout())
-        new = os.path.join(tmp, "k", "scripts", "token_log.py")
-        if r.returncode != 0 or not os.path.isfile(new):
+        src = os.path.join(tmp, "k", "scripts")
+        names = [n for n in UPDATE_FILES if os.path.isfile(os.path.join(src, n))]
+        if r.returncode != 0 or "token_log.py" not in names:
             return "not updated: " + (r.stderr.strip()[-200:] or "no scripts/token_log.py")
-        with open(new, "rb") as f, open(path, "rb") as g:
-            if f.read() == g.read():
-                return "up to date"
+        if all(same_file(os.path.join(src, n), os.path.join(os.path.dirname(path), n)) for n in names):
+            return "up to date"
         # The new copy must pass its own self-test (temporary repos, no network): a copy that fails when run would
         # break every later Stop, and then no later update could repair it.
-        t = subprocess.run([sys.executable, "-E", "-s", new, "--test"], cwd=os.path.dirname(new), capture_output=True,
+        new = os.path.join(src, "token_log.py")
+        t = subprocess.run([sys.executable, "-E", "-s", new, "--test"], cwd=src, capture_output=True,
                            text=True, timeout=600, env={k: v for k, v in os.environ.items() if not k.startswith("GIT_")})
         if t.returncode != 0:
             return "not updated: self-test failed " + (t.stdout + t.stderr).strip()[-200:]
-        shutil.copyfile(new, path + ".new")
-        os.replace(path + ".new", path)
+        for n in names:  # the parts first, token_log.py last: a hook that starts in between finds its parts
+            dest = os.path.join(os.path.dirname(path), n)
+            shutil.copyfile(os.path.join(src, n), dest + ".new")
+            os.replace(dest + ".new", dest)
     return "updated"
 
 
@@ -461,120 +313,24 @@ def update_main():
         print("self-update error:", e, flush=True)
 
 
-def row_cost(r):
-    """The estimated cost of one row in USD, or None for a model with no price and no web search.
-
-    Args:
-        r: a row (a dict with the FIELDS; token counts as text or int).
-    Returns:
-        The cost as a float (only the web search fee for a model with no token price), or None.
-    """
-    key = max((k for k in PRICES if (r.get("model") or "").startswith(k)), key=len, default=None)
-    search = tokens(r.get("web_search_requests")) * WEB_SEARCH_USD
-    if key is None:
-        return search or None
-    inp, out, read, geo = PRICES[key]
-    n, write = [tokens(r.get(k)) for k in USAGE_KEYS], tokens(r.get("cache_creation_input_tokens"))
-    if key in LONG_PRICES and sum(n[:3]) > LONG_PROMPT:
-        inp, out, read = LONG_PRICES[key]
-    if r.get("speed") == "fast" and key in FAST_PRICES:
-        read, (inp, out) = read * FAST_PRICES[key][0] / inp, FAST_PRICES[key]
-    w1h = min(max(tokens(r.get("cache_write_1h_tokens")), 0), write)  # an old row has none: all writes are 5-minute
-    cost = (n[0] * inp + (write - w1h) * inp * 1.25 + w1h * inp * 2 + n[2] * read + n[3] * out) / 1e6
-    return cost * (GEO_US_FACTOR if geo and r.get("inference_geo") == "us" else 1) + search
+PARTS = ("token_log_rows", "token_log_report")  # the sibling part files; UPDATE_FILES installs them
 
 
-def week_of(ts, tz="America/Chicago"):
-    """The Monday (YYYY-MM-DD) of the week of a UTC timestamp in the time zone, or "unknown"."""
-    from zoneinfo import ZoneInfo
-    try:
-        d = datetime.fromisoformat(str(ts).replace("Z", "+00:00")).astimezone(ZoneInfo(tz))
-    except (ValueError, TypeError):
-        return "unknown"
-    return date.fromordinal(d.toordinal() - d.weekday()).isoformat()
+def _part(name):
+    """A part file (token_log_rows or token_log_report), loaded on first use and bound to this module."""
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    mod = __import__(name)
+    mod.core = sys.modules[__name__]
+    return mod
 
 
-def report(rows):
-    """The report text: estimated cost by week, by source, agent and model, and per subagent task.
-
-    Args:
-        rows: a list of rows (dicts with the FIELDS).
-    Returns:
-        The report as text, one table per part.
-    """
-    week, group, task, unpriced, old = {}, {}, {}, set(), 0
-    for r in rows:
-        if row_cost({**r, "web_search_requests": 0}) is None:  # no token price; its web searches still count
-            unpriced.add(r.get("model") or "unknown")
-        old += r.get("cache_write_1h_tokens") in (None, "")  # a row from before the column
-        c = row_cost(r) or 0.0
-        w = week.setdefault(week_of(r.get("timestamp")), [0, 0.0, 0.0])
-        w[0] += 1
-        w[1 if r.get("source") == "main" else 2] += c
-        g = group.setdefault((r.get("source") or "", r.get("agent") or "", r.get("model") or ""), [0, 0, 0, 0, 0, 0.0])
-        for i, x in enumerate([1, *(tokens(r.get(k)) for k in USAGE_KEYS), c]):  # calls, the 4 token counts, cost
-            g[i] += x
-        if r.get("agent_id"):
-            t = task.setdefault(r.get("agent") or "unknown", {}).setdefault(r["agent_id"], [0, 0.0])
-            t[0], t[1] = t[0] + 1, t[1] + c
-    out = [f"Estimated cost in USD (prices as of {PRICES_AS_OF}; a proxy for the weekly usage limit)", "",
-           "week (America/Chicago, Monday)  calls  main $  subagent $  total $"]
-    out += [f"{k:<31} {v[0]:>5} {v[1]:>7.2f} {v[2]:>11.2f} {v[1] + v[2]:>8.2f}" for k, v in sorted(week.items())]
-    out += ["", "source    agent              model                  calls       input  cache write   cache read"
-                "      output   cost $"]
-    out += [f"{s:<9} {a:<18} {m:<22} {v[0]:>5} {v[1]:>11} {v[2]:>12} {v[3]:>12} {v[4]:>11} {v[5]:>8.2f}"
-            for (s, a, m), v in sorted(group.items(), key=lambda kv: -kv[1][5])]
-    out += ["", "subagent tasks: agent  tasks  calls/task  $/task  total $"]
-    for a, ts in sorted(task.items()):
-        n, calls, cost = len(ts), sum(t[0] for t in ts.values()), sum(t[1] for t in ts.values())
-        out.append(f"{a:<22} {n:>6} {calls / n:>11.1f} {cost / n:>7.3f} {cost:>8.2f}")
-    if unpriced:
-        out += ["", "no token price (tokens counted as 0, web searches counted): " + ", ".join(sorted(unpriced))]
-    out += ["", f"Rows from before the cache_write_1h_tokens column ({old}): cache writes priced as 5-minute."] if old else []
-    return "\n".join(out)
-
-
-def report_rows(root, ref):
-    """Every row in sessions/*.csv at a git ref.
-
-    Args:
-        root: the repo folder.
-        ref: the git ref that holds the log branch's files.
-    Returns:
-        A list of rows (dicts).
-    """
-    rows = []
-    for f in git(root, "ls-tree", "-r", "--name-only", ref, "sessions/").splitlines():
-        if f.endswith(".csv"):
-            rows += list(csv.DictReader(io.StringIO(git(root, "show", f"{ref}:{f}"))))
-    return rows
-
-
-def report_main(args):
-    """Print the report for the repo in the current folder: fetch the log branch, or read the ref in args.
-
-    Args:
-        args: the arguments after --report: [] or [REF].
-    Returns:
-        The exit code: 0, or 1 when the repo or the branch cannot be read.
-    """
-    root = git(os.getcwd(), "rev-parse", "--show-toplevel", check=False)
-    if not root:
-        print("token_log --report: not in a git repo", file=sys.stderr)
-        return 1
-    ref = args[0] if args else "refs/token-log/report"
-    if not args:
-        rc, _, err = git_net(root, "fetch", "-q", "--no-write-fetch-head", "origin",
-                             f"+refs/heads/{branch_name()}:{ref}")
-        if rc != 0:
-            print("token_log --report: fetch: " + err, file=sys.stderr)
-            return 1
-    try:
-        print(report(report_rows(root, ref)))
-    except RuntimeError as e:
-        print(f"token_log --report: {e}", file=sys.stderr)
-        return 1
-    return 0
+def __getattr__(name):
+    """Names of the part files (log_rows, row_cost, report, PRICES, ...), so callers use token_log.<name> as before."""
+    if not name.startswith("__"):
+        for part in PARTS:
+            if hasattr(_part(part), name):
+                return getattr(_part(part), name)
+    raise AttributeError(name)
 
 
 def self_test():
@@ -587,9 +343,15 @@ if __name__ == "__main__":
     if sys.argv[1:2] == ["--test"]:
         sys.exit(self_test())
     if sys.argv[1:2] == ["--report"] and len(sys.argv) <= 3:
-        sys.exit(report_main(sys.argv[2:]))
+        sys.exit(_part("token_log_report").report_main(sys.argv[2:]))
     if sys.argv[1:2] == ["--push"] and len(sys.argv) == 5:
-        push_main(sys.argv[2:])
+        try:
+            push_main(sys.argv[2:])
+        except ImportError as e:  # an old one-file install: a part is missing; the update installs it now
+            print("token_log: part missing:", e, flush=True)
+            stamp = os.path.join(home(), "update.stamp")
+            if os.path.exists(stamp):
+                os.utime(stamp, (0, 0))  # so the self-update below runs now, not after a day
         update_main()
         sys.exit(0)
     try:

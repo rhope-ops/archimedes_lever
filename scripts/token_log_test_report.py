@@ -253,3 +253,14 @@ def case_self_update(fx):
     fx.expect("self-update: a copy whose self-test fails is not used",
               tl.self_update(target, kit, now=1e9 + 200000).startswith("not updated: self-test failed"), True)
     fx.expect("self-update: file kept", open(target).read(), "import sys\nsys.exit(0)  # new\n")
+    part = os.path.join(kit, "scripts", "token_log_rows.py")  # the split (kit 11.0.0): parts install with the file
+    with open(os.path.join(kit, "scripts", "token_log.py"), "w") as f:
+        f.write("import sys\nsys.exit(0)  # new 2\n")
+    append(part, "rows = 1")
+    fx.sh(kit, "git", "add", ".")
+    fx.sh(kit, "git", "commit", "-q", "-m", "parts")
+    fx.expect("self-update: the parts and the file install", tl.self_update(target, kit, now=1e9 + 300000), "updated")
+    fx.expect("self-update: the part is next to the file",
+              open(os.path.join(os.path.dirname(target), "token_log_rows.py")).read(), "rows = 1\n")
+    os.remove(os.path.join(os.path.dirname(target), "token_log_rows.py"))
+    fx.expect("self-update: a missing part is not up to date", tl.self_update(target, kit, now=1e9 + 400000), "updated")
