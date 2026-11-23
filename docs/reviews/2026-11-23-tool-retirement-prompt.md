@@ -4,6 +4,10 @@ The Maintainer approved this prompt on 2026-11-23 in "Kit · Fleet v2 coordinato
 "left out" parts included). Decisions with it: the program starts after fleet v2 closes, in a new session titled
 "Kit · Tool retirement · <date>"; the rule texts are approved through the program plan. Evidence: the Step 3 draft
 (2026-11-23-fleet-v2-step3-rules.md) and the 5 causes in the fleet v2 lessons file.
+Origin: this program is Part 2 of FLEET-MASTER-PLAN-v2.md (the Maintainer's Drive, folder Rhope), backlog items
+"Installable archimedes-kit CLI package" (est. 30-60 % smaller downstream repos) and "Standard linters and secret
+scanners" (ruff, shellcheck, PSScriptAnalyzer, gitleaks, trufflehog). Fleet v2 ran Part 1 only, which split the custom
+scripts to the 450-line cap instead of retiring them.
 
 Paste into the new session:
 
