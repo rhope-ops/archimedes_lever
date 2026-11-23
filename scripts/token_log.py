@@ -220,6 +220,8 @@ def push_main(args, delays=RETRY_DELAYS):
         try:
             print(stamp, args[1], locked_push(*args), flush=True)
             return True
+        except ImportError:  # a missing part: the caller repairs the install (no retries, no lost wait)
+            raise
         except Exception as e:
             print(stamp, args[1], f"try {i + 1} of {len(delays)} error:", e, flush=True)
     return False
@@ -252,7 +254,8 @@ KIT_CONFIG = "kit.config.json"  # the one home of the kit address (scripts/kit_c
 
 def kit_url(path):
     """The kit repo the self-update clones: TOKEN_LOG_KIT_URL, else "kit_url" of the kit.config.json next to the
-    installed file (self-update installs it), else of the one in the session's repo (a synced project has it).
+    installed file (the setup script and each self-update install it). Never a repo's own kit.config.json: any repo
+    opened in a session could then point the update at its own code (security review, 2026-11-23).
 
     Args:
         path: the installed token_log.py.
@@ -261,15 +264,12 @@ def kit_url(path):
     """
     if os.environ.get("TOKEN_LOG_KIT_URL"):
         return os.environ["TOKEN_LOG_KIT_URL"]
-    for folder in (os.path.dirname(path), os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()):
-        try:
-            with open(os.path.join(folder, KIT_CONFIG), encoding="utf-8") as f:
-                got = json.load(f).get("kit_url")
-        except (OSError, ValueError, AttributeError):
-            continue
-        if isinstance(got, str) and got.strip():
-            return got
-    return None
+    try:
+        with open(os.path.join(os.path.dirname(path), KIT_CONFIG), encoding="utf-8") as f:
+            got = json.load(f).get("kit_url")
+    except (OSError, ValueError, AttributeError):
+        return None
+    return got if isinstance(got, str) and got.strip() else None
 UPDATE_EVERY = 24 * 3600  # seconds between self-update checks
 UPDATE_FILES = ("token_log_rows.py", "token_log_report.py", "token_log.py")  # the installed files: the parts first, the entry file last
 
@@ -310,10 +310,10 @@ def self_update(path, url=None, now=None):
         names = [n for n in UPDATE_FILES if os.path.isfile(os.path.join(src, n))]
         if r.returncode != 0 or "token_log.py" not in names:
             return "not updated: " + (r.stderr.strip()[-200:] or "no scripts/token_log.py")
-        config = os.path.join(tmp, "k", KIT_CONFIG)  # data, not code: installed next to the file with no self-test
-        if os.path.isfile(config) and not same_file(config, os.path.join(os.path.dirname(path), KIT_CONFIG)):
-            shutil.copyfile(config, os.path.join(os.path.dirname(path), KIT_CONFIG))
-        if all(same_file(os.path.join(src, n), os.path.join(os.path.dirname(path), n)) for n in names):
+        config = os.path.join(tmp, "k", KIT_CONFIG)  # installed with the code, only after the code's self-test passed
+        here = os.path.join(os.path.dirname(path), KIT_CONFIG)
+        if all(same_file(os.path.join(src, n), os.path.join(os.path.dirname(path), n)) for n in names) and \
+                (not os.path.isfile(config) or same_file(config, here)):
             return "up to date"
         # The new copy must pass its own self-test (temporary repos, no network): a copy that fails when run would
         # break every later Stop, and then no later update could repair it.
@@ -326,6 +326,9 @@ def self_update(path, url=None, now=None):
             dest = os.path.join(os.path.dirname(path), n)
             shutil.copyfile(os.path.join(src, n), dest + ".new")
             os.replace(dest + ".new", dest)
+        if os.path.isfile(config):
+            shutil.copyfile(config, here + ".new")
+            os.replace(here + ".new", here)
     return "updated"
 
 

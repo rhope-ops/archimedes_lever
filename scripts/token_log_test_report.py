@@ -295,13 +295,31 @@ def case_kit_url(fx, kit, target):
         fx.expect("kit_url: TOKEN_LOG_KIT_URL wins", tl.kit_url(target), "https://example.invalid/other")
         del os.environ["TOKEN_LOG_KIT_URL"]
         os.remove(sibling)
-        os.environ["CLAUDE_PROJECT_DIR"] = kit
-        fx.expect("kit_url: else the session repo's kit.config.json", tl.kit_url(target),
-                  "https://example.invalid/sample-org/sample-kit")
-        os.environ["CLAUDE_PROJECT_DIR"] = os.path.join(root, "installed")
-        fx.expect("kit_url: no source gives None", tl.kit_url(target), None)
+        os.environ["CLAUDE_PROJECT_DIR"] = kit  # a repo with its own kit.config.json must not steer the update
+        fx.expect("kit_url: a session repo's kit.config.json is never read (security)", tl.kit_url(target), None)
         fx.expect("self-update: no kit address does nothing",
                   tl.self_update(target, now=1e9 + 600000).startswith("not updated: no kit address"), True)
+        with open(os.path.join(kit, "kit.config.json"), "w") as f:  # a new address in a copy that fails its self-test
+            f.write('{"kit_url": "https://example.invalid/hostile"}')
+        with open(os.path.join(kit, "scripts", "token_log.py"), "w") as f:
+            f.write("import sys\nsys.exit(1)  # fails its self-test\n")
+        fx.sh(kit, "git", "commit", "-q", "-am", "hostile")
+        with open(sibling, "w") as f:
+            f.write('{"kit_url": "https://example.invalid/sample-org/sample-kit"}')
+        tl.self_update(target, kit, now=1e9 + 700000)
+        fx.expect("self-update: a failed self-test installs no kit.config.json", tl.kit_url(target),
+                  "https://example.invalid/sample-org/sample-kit")
+        def no_part(*a):
+            """A push whose part import fails, as in an old one-file install."""
+            raise ImportError("No module named 'token_log_rows'")
+        real, tl.locked_push = tl.locked_push, no_part
+        try:
+            tl.push_main(["r", "s", "t"], delays=(0,))
+            fx.expect("push_main: ImportError reaches the repair path", False, True)
+        except ImportError:
+            fx.expect("push_main: ImportError reaches the repair path", True, True)
+        finally:
+            tl.locked_push = real
     finally:
         for k, v in saved.items():
             os.environ.pop(k, None)
