@@ -1,7 +1,7 @@
 # Custom tool retirement program: plan (for the Maintainer's approval)
 
 DRAFT, not approved. Written 2026-11-23 from ~16:45 America/Chicago by session "Kit · Tool retirement · 2026-11-23 · #125".
-Nothing is built. Approving this plan approves the exact rule texts in section 3 (AGENTS.md "Rule text"), the
+Nothing is built. Approving this plan approves the exact rule texts in section 3 (AGENTS.md "Rule text"), the skill, instruction-file and account texts in section 3b, the
 phase lanes, models, agents and hours, and each "REC" marked "(choice)" that you answer.
 
 Inputs (all in this pull request; the research files are copied from their worker branches, not merged):
@@ -236,6 +236,46 @@ New:
 ```text
 <!-- This project's own rules: one line each, at most 15 (full tier: scripts/bloat_check.py checks the cap). Add, change or remove a line only with the Maintainer's approval of its exact text; date it, for example "(the Maintainer, 2026-11-09)". Mark a rule that nothing may relax "(cannot be changed)". -->
 ```
+
+## 3b. Changes to skills, other instruction files and your account preferences
+
+Exact texts for approval with this plan. They land in P1 (kit, lane C), then reach the projects by their kit sync.
+Skill texts are procedures, not rules: they add no AGENTS.md line and no session-load token (only skill names and
+descriptions load at start; no description changes).
+
+### Skills (kit `.claude/skills/`)
+
+| ID | File, place | Change (exact text) | Why (evidence) |
+|---|---|---|---|
+| S1 | `handoff/SKILL.md`, "Write a handoff", the "Approved plan" item (line 16), appended | "A plan made from a source plan first lists every source item as in, out or later, with a count table; the Maintainer approves that list before the plan; `python3 scripts/log_check.py --coverage <file>` fails on an unmarked or \"ask\" row or a count mismatch (T7)." | T7: fleet v2 left out the master plan's Part 2 with no question (lessons file, section 3) |
+| S2 | `rule-change/SKILL.md`, "Where it belongs", new last paragraph | "Before a new rule, check or stricter cap: list what it would fail today in every fleet repo, with a fix plan, in `docs/reviews/YYYY-MM-DD-<topic>-debt.md`, with the line `debt-check: <hash>` for the hash that `python3 scripts/bloat_check.py --rules` prints (T5)." | T5: the 450 cap met 21 ICF files (the plan said 3) |
+| S3 | `audit/SKILL.md`, new section "## Fleet audit" before "## Rules for the auditor" | "At each kit release, or 14 days after the last fleet audit (AUDIT DUE (fleet) at the kit check-in), run the full audit for every fleet repo in a fresh session. Report per repo: kit version and lock state, caps, open branches, kit lag; and the outcome metrics: defects found per check in the last 30 days, mutant kill rate where measured, files changed per kit change, and fix-of-a-fix rate (commits that fix a commit of the last 7 days). File size and file counts are warnings only. Write the date to `fleet.last_audit` in kit.config.json. Each check, and this skill, gets a retire / shrink / keep line in docs/tools.md." | R3, AUD-3, AUD-5; split audit: 11 of 22 splits mixed or arbitrary |
+| S4 | `delegate/SKILL.md`, "Brief", two new bullets after "No design decisions" | "- \"A blocked command or a blocked check stops the task: report it; do not run it another way and do not change the text to pass.\"" and "- For a change made to pass a check: the design goal, not the metric (AGENTS.md \"Fresh review\")." | 2 guard workarounds on 2026-11-23 (R4e rebuilt e-mail strings with `chr(64)`; W-B wrapped commands in script files); AUD-2 |
+| S5 | `deliver/SKILL.md`, "Merge lanes", new bullet under the table | "- A script that `scripts/check.sh`, `scripts/check.local.sh` or a hook runs, and a workflow file, is a guard file: lane C." | the plan's first and second reviews found 3 lane errors of this kind |
+| S6 | `personal-data/SKILL.md`, "When it blocks", new bullet | "- A block on invented test data: describe the pattern in words (for example \"a 9-digit SSN with dashes\"); never rebuild the string to pass the check." | R4e incident, 2026-11-23 |
+| S7 | `kit-update/SKILL.md`, "Sync steps" | the pilot's steps (package pin plus the sync of the 17 instruction files): exact text in the P3 pull request, approved by your lane C merge | P3 (decision 3) |
+
+### Other instruction files (kit)
+
+| ID | File | Change (exact text) |
+|---|---|---|
+| F1 | `.claude/rule-tests.md` | line 26, Section column: "Host limit" -> "Delivery"; lines 46 and 48: "The Maintainer's decisions" -> "Decisions" (C1, C2 remove those labels) |
+| F2 | `scripts/bloat_check.py:50`, `scripts/bloat_check_rules.py:11,296,331`, `scripts/bloat_check_test_rules.py:128` | the label "README" -> "One home" (C3 removes it) |
+| F3 | Kit-synced text with the old role word | "the owner" / "Owner's" -> "the Maintainer" / "Maintainer's" (13 lines in 3 files of the sync copy set; 50 lines in 10 tracked files outside docs/), except `scripts/sync_baseline.py:116-117`, the test values in `scripts/sync_baseline_cli_test.py` and dated attributions such as "(the owner, 2026-11-13)" |
+| F4 | `CLAUDE.md`, `.claude/agents/*.md`, `docs/host-prompts.md` | no change (checked: no removed label, no old role word) |
+| F5 | Projects | each project's AGENTS.md gets section 3 by its sync; 33-332.Z first trims ~50 tokens of its own `docs/NEXT_PROMPT.md` (it would be at ~5,540 of 5,500) |
+
+### Your account preferences (source: kit `PREFERENCES.md`; you paste them into your account)
+
+Each extends an existing line; each also gets a row in `PREFERENCES.md` "Why each rule exists". `PREFERENCES.md` keeps
+its dated "the owner" attributions (history; F3 excludes them).
+
+| ID | Line it extends ("How to work" / "Reporting") | Text added at the end of that line | Why (evidence) |
+|---|---|---|---|
+| A1 | "Plan mode only for: ... continue it without a new review." | "A plan made from a source plan first marks every source item in, out or later, for my approval." | T7 outside a repo too (fleet v2 Part 2 miss) |
+| A2 | "In a repo, its AGENTS.md sets delivery, git, review and delegation. ..." | "A brief tells each agent that a blocked command or check stops its task: it reports the block and never runs the step another way." | 2 guard workarounds by workers on 2026-11-23 |
+| A3 | "For each number from data, give the query or command and its as-of time. ..." | "Take each date and time from a clock or a commit, never from memory." | 2026-11-23: 6 times in review files were estimates, up to 75 minutes off, one in the future |
+
 
 ## 4. Phases
 
