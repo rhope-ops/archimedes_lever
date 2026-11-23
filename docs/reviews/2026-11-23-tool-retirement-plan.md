@@ -4,12 +4,12 @@ DRAFT, not approved. Written 2026-11-23 from ~16:45 America/Chicago by session "
 Nothing is built. Approving this plan approves the exact rule texts in section 3 (AGENTS.md "Rule text"), the
 phase lanes, models, agents and hours, and each "REC" marked "(choice)" that you answer.
 
-Inputs (all on branch `claude/tr-research`, to merge with this plan):
+Inputs (all in this pull request; the research files are copied from their worker branches, not merged):
 [coverage list](2026-11-23-tool-retirement-coverage.md) (85 rows: 51 in, 34 out, approved; ION-1 and AUD-1..5 added),
 [research plan](2026-11-23-tool-retirement-research-plan.md),
 R1 [kit tools](2026-11-23-tr-r1-kit-tools.md), R2 [project tools](2026-11-23-tr-r2a-project-tools.md) and
 [kit 10.0.0 repos](2026-11-23-tr-r2b-kit10-repos.md), R3 [ICF scans](2026-11-23-tr-r3-icf-scans.md),
-R4 [linters](2026-11-23-tr-wa-linters.md), [scanners](2026-11-23-tr-wb-scanners.md) (W-B: pending),
+R4 [linters](2026-11-23-tr-wa-linters.md), [scanners](2026-11-23-tr-wb-scanners.md) (W-B: draft with measured results; its worker still runs),
 [sync and distribution](2026-11-23-tr-wc-sync-distribution.md), [standard replacements](2026-11-23-tr-wd-standard-replacements.md),
 R4e [Ion benchmark](2026-11-23-tr-r4e-ion-benchmark.md), R4f [split audit](2026-11-23-tr-r4f-split-audit.md),
 the fleet v2 [lessons](2026-11-23-fleet-v2-lessons.md) (5 causes).
@@ -25,7 +25,7 @@ the fleet v2 [lessons](2026-11-23-fleet-v2-lessons.md) (5 causes).
 | copier / cruft vs the sync scripts | Same files per change (1-3); they keep a project's edits where sync overwrites them silently; they lack the role-word rename, the settings.json merge and the lock gate. ~1,915 sync and drift lines could go; check_lock and check_settings stay | W-C |
 | OpenTelemetry vs token_log | Covers tokens and cost; not web searches, the weekly report or a log with no collector; needs a collector | W-C |
 | Distribution (pre-commit / reusable workflow / pipx) | Each gives 1 file per kit change only after `check.sh` reads the kit scripts from the distributed copy (today it runs the project's own copies); 17 instruction files still need a sync | W-C |
-| CodeQL | 7 Python findings (4 = one ReDoS in `scripts/build_site_html.py:121`, copied to 4 repos), 1 JS (90-161.Z); no PowerShell support | W-D |
+| CodeQL | 7 findings: 6 Python (4 = one ReDoS in `scripts/build_site_html.py:121`, copied to 4 repos; 2 in test files) and 1 JS (90-161.Z); no PowerShell support | W-D |
 | Paste truncation | Ion: 0 of 700 cuts parse (try wrapper). RADE-built bundles (90-161.Z R41): 49 of 650 cuts parse; the cut at line 13,579 parses (re-checked) and starts the engine | W-D |
 | Ion detectors vs Presidio | Ion precision 0.94, recall 0.83; Presidio 0.61 / 0.83. 5 Ion defects (case-sensitive street types, passports as SSN Low, "_" in e-mail, name span over line breaks, middle initial without a dot) | R4e |
 | Ion e-signature DoD IDs | 3 layouts give SSN, 7 give no hit (25 layouts tested) | main session, 2026-11-23 |
@@ -33,39 +33,56 @@ the fleet v2 [lessons](2026-11-23-fleet-v2-lessons.md) (5 causes).
 | Project tools | RADE 18 / 2,391 lines; 90-161.Z 31 / 4,826; 33-332.Z 4 / 789; ICF 209 / 36,183 (73 old review scripts); sec-source 14 / 2,062; kit 10.0.0 repos 84 / 14,499 | R2 |
 | Kit 10.0.0 repos | 43 of 54 kit files differ from 11.0.1; transcription_assistant runs 2 Stop hooks (kit and an old copy) | R2b |
 | ICF handover | 2 non-noreply addresses in history; ICF-Source cannot have rulesets or secret scanning on its plan; icf settings not checked (attach denied) | R3 |
-| Session load after the rule texts | +32 tokens: RADE ~5,445, 90-161.Z ~5,413, 33-332.Z ~5,500, ICF ~5,175 (cap 5,500) | measured on a copy |
+| Content check vs gitleaks / trufflehog / detect-secrets | With custom rules gitleaks covers 10 of 11 checks, the others 9 of 11; none covers `unscanned`, the commit author and message scan (809 findings in ICF history), the `.check` semantics or the hook mode; default rules add 51 false positives in history | W-B |
+| Instruction check vs Vale | 4 of 7 finding kinds match with 0 false positives on 225 real steps; next, cue and long need the step reader (54 false positives without it) | W-B |
+| Session load after the rule texts | +294 bytes, ~+73 tokens: RADE ~5,486, 90-161.Z ~5,454, ICF ~5,216, **33-332.Z ~5,541 (over the 5,500 cap: it trims ~50 tokens of its own handoff first)** | measured on a copy |
 
 ## 2. Decisions for the Maintainer (answer each; REC first)
 
 1. **File size cap (AUD-3 against R1).** **DEC: A** (the Maintainer, this session's chat, 2026-11-23 16:47 America/Chicago: "1a"; scope: this program). The split audit shows that half of the cap-driven splits are mixed or arbitrary.
    - **REC: A.** File size only warns (C4 of `code_standard.py` becomes WARN); a split is reviewed against its goal (rule C7 below). R1 is not added.
    - B. Keep the 450 fail and add R1: "A hand-written file that passes 80 % of its line cap (360 of 450) is split in the pull request that grows it."
-2. **T2 ratchet.** **REC:** keep it as a FAIL (it measures the program's goal, total custom lines, and a split cannot game it). Baseline 17,096 lines (65 files).
+2. **T2 ratchet.** A. **REC:** FAIL on the total of custom script lines, baseline 17,096 (65 files); only you approve a higher number. B. WARN only, as AUD-3 asks for line counts. A total cannot be gamed by a split, so A keeps AUD-3's intent.
 3. **Distribution.** **REC:** pip/pipx package (local and offline runs, one pin, works with the existing pre-push hook; pre-commit refuses `core.hooksPath`; a reusable workflow runs only in CI). Pilot: **33-332.Z** (68 kit files, 4 project tools, small). Alternative pilot: SPAR (no project tools: lowest risk, least learning).
-4. **Sync scripts.** **REC:** keep `sync_baseline.py` for the 17 instruction files after the pilot, and fix its defect first: it overwrites a project's edits to kit files without a conflict (copier keeps them). Retire copier/cruft as candidates.
+4. **Sync scripts.** A. **REC:** keep `sync_baseline.py` for the 17 instruction files after the pilot, and fix its defect first: it overwrites a project's edits to kit files without a conflict (copier keeps them). B. Move to copier (keeps project edits; ~1,915 lines go; the role-word rename, settings merge and lock gate stay custom).
 5. **token_log.** **REC:** keep (your decision of 2026-11-23 to keep the token log branch; OTel needs a collector and lacks web searches).
 6. **shellcheck.** **REC:** add it as a WARN step in the code standard first, with the measured fleet list (rule T5), then fix per repo.
-7. **90-161.Z revision files** (75 `-rN` files, 67,606 lines) and **pac solution**. **REC:** not a tool retirement: move superseded revisions to an archive folder in a 90-161.Z session; `pac solution` for the packaging part only (~150 lines), when `pac` can run on a dev machine.
+7. **90-161.Z revision files** (75 `-rN` files, 67,606 lines; 0 base names with two revisions on disk, so nothing is superseded) and **pac solution**. A. **REC:** keep the `-rN` names (each is the current revision a person pastes; a versioned module changes the paste path: a later 90-161.Z decision); `pac solution` for the packaging part only (~130-180 lines), when `pac` can run on a dev machine. B. Versioned module now (one module, version in the file header).
 8. **ICF trial items** (`==term==`, Block split, 2 history addresses, no branch protection). **REC:** write them into the ICF handover runbook for the incoming maintainer; no ICF code change in this program.
+9. **Content check (W-B).** A. **REC:** keep `check_content*`; gitleaks stays the CI second net (it already runs in `security.yml`); add 2 secret shapes gitleaks finds and the kit misses only if W-B's final report lists any. B. Shrink to the parts no tool covers and run gitleaks with generated custom rules (two scanners, two outputs).
+10. **Instruction check (W-B).** A. **REC:** keep `check_instructions.py` (0 false positives, the step reader is the value). B. Shrink: keep the step reader, send steps to Vale for actions, pointer, vague and wait.
 
 ## 3. Rule texts (exact text for approval)
 
-Result on a copy of AGENTS.md: 76 -> 73 lines, kit rule bullets 31 -> 28 (+1 project rule), session load +128 bytes
-(~+32 tokens). No new AGENTS.md line. Three bullets are merged (cuts 1-3); five are extended. Rules a check enforces
+Result on a copy of AGENTS.md: 76 -> 73 lines, kit rule bullets 31 -> 28 (+1 project rule), session load +294 bytes
+(~+73 tokens). No new AGENTS.md line. Three bullets are merged (cuts 1-3); five are extended; three role-word texts change (C10-C12). C6 is not used (T7 moved to the handoff skill). Rules a check enforces
 get a pointer only; the check's FAIL line states the full rule. Where each prompt rule lives:
 
 | Prompt rule | Home | Enforcing check (trigger) | Defect it prevents |
 |---|---|---|---|
 | T1 search first | C5 "One home" + check message | `bloat_check.py`: every `scripts/*` file has a docs/tools.md row with 3 named candidates (every push) | new tools instead of existing ones (cause 1) |
-| T2 ratchet | C9 "Caps and audit" | `bloat_check.py`: total custom script lines <= baseline in `.check.state.json` (every push) | custom code grows back (causes 1, 3) |
-| T5 debt list first | C8 "Lean instructions" (short) + `.claude/skills/rule-change/SKILL.md` (full) | rule-change skill step; audit output before merge | caps stricter than the fleet can meet (cause 3; ICF 21 files) |
-| T6 one role word, approval in own chat | C4 hard rule "The Maintainer's approval" | `log_check.py`: a DECISIONS row By the Maintainer quotes the OK of its exact text (push that changes docs/DECISIONS.md) | 3 rows written from dialog answers on 2026-11-23 (cause 4) |
+| T2 ratchet | C9 "Caps and audit" ("their approved baseline") | `bloat_check.py`: total custom script lines <= the baseline; a higher baseline needs a DECISIONS row By the Maintainer with the number (every push) | custom code grows back (causes 1, 3) |
+| T5 debt list first | C8 "Lean instructions" | `bloat_check.py --rules`: a pull request that adds a rule line, a check entry point in `check.sh` or a stricter cap in `KIT_CAPS` fails without a `docs/reviews/*-debt.md` record that names its hash (like the conflict-check record) | caps stricter than the fleet can meet (cause 3; ICF 21 files) |
+| T6 one role word, approval channels | C4 hard rule "The Maintainer's approval" (the channels of "Maintainer changes"), C10, C11, C12 ("Owner"/"the owner" -> "the Maintainer") | `log_check.py`: a new DECISIONS row (dated after the rule) By the Maintainer quotes the approval of its exact text; `bloat_check.py`: no other role word in kit-synced text (every push) | 3 rows written from dialog answers on 2026-11-23 (cause 4) |
 | T7 plan coverage | `.claude/skills/handoff/SKILL.md` (moved out of AGENTS.md for the token cap) | `log_check.py --coverage <file>`: rows marked = rows, no "ask" (before a plan PR) | the Part 2 miss of fleet v2 |
 | R1 80 % split | option B of decision 1 only | `code_standard.py` C4 | cap met at sync time |
 | R3 fleet audit | C9 "Caps and audit" + audit skill "Fleet" section | `bloat_check.py`: AUDIT DUE (fleet) at a kit tag or 14 days (kit check-in) | drift found only at sync (cause 5) |
 | AUD-1 goal per check | C8 + `code_standard.py` C1: a check script's header has a `Prevents:` line | C1 (every push) | checks with no testable goal |
 | AUD-2 goal-based review | C7 "Fresh review" | reviewer brief (delegate skill) | splits that only move a number (R4f) |
 | AUD-3 outcome metrics | C9 (file size warns) + audit skill (defects per check, mutant kill rate, files per kit change, fix-of-a-fix rate) | audit report | proxies gamed by splits |
+
+**T5 fleet debt of the new checks** (measured 2026-11-23; P1 makes each one FAIL in the kit and WARN in projects until its debt is 0):
+
+| Check | Kit debt | Project debt |
+|---|---|---|
+| T1 tools.md rows | 65 scripts | RADE 18, 90-161.Z 31, 33-332.Z 4, ICF 209 (73 of them old review scripts), sec-source 14, kit 10.0.0 repos 84 |
+| T2 ratchet | 0 (baseline = today) | 0 |
+| T6 DECISIONS quote | 0 (new rows only) | 0 |
+| T7 coverage | 0 (this list: 85 rows, 0 ask) | 0 |
+| AUD-1 `Prevents:` header | 43 of 47 check entry points | counted in P1 per repo |
+| R3 fleet AUDIT DUE | 1 (no fleet audit yet: P5) | n/a |
+
+Also changed in P1 so no reference breaks: `.claude/rule-tests.md` (lines 26, 29, 46, 48 name "Host limit" and "Agents"; a new scenario for C4, a hard-rule change) and `.claude/skills/delegate/SKILL.md:8` ('AGENTS.md "Agents" points here').
 
 Full texts of the skill additions (not rules; shown for review):
 - handoff skill, "Plans" step: "A plan made from a source plan first lists every source item as in, out or later, with a count table; the Maintainer approves that list before the plan; `python3 scripts/log_check.py --coverage <file>` fails on an unmarked or 'ask' row or a count mismatch."
@@ -88,7 +105,7 @@ Old:
 New:
 
 ```text
-- **Decisions.** Make routine decisions yourself. Ask the Content Approver about content approval, and the Maintainer about source authority and what "The Maintainer's approval" names, with all open questions in one round and in the format of the Maintainer's preferences (else a question dialog, 2–4 options, the recommendation first). Record each decision of the Maintainer in docs/DECISIONS.md or its canonical document, with its date and scope: it binds the task or thing it names, and every session only as a line in "Project rules". Before you change an approved design, source or value, search docs/DECISIONS.md for it and ask.
+- **Decisions.** Make routine decisions yourself. Ask the Content Approver about content approval, and the Maintainer about source authority and what "The Maintainer's approval" names, with all open questions in one round and in the format of the Maintainer's preferences (else a question dialog where one exists, 2–4 options each, the recommendation first). Record each decision of the Maintainer in docs/DECISIONS.md or its canonical document, with its date and scope: it binds the task or thing it names, and every session only as a line in "Project rules". Before you change an approved design, source or value, search docs/DECISIONS.md for it and ask.
 ```
 
 ### C2. Delivery (absorbs "Host limit" (bullet cut 2))
@@ -142,7 +159,7 @@ Old:
 New:
 
 ```text
-- **The Maintainer's approval.** Ask the Maintainer before: a data write, a live or irreversible effect, a cost, a security or privacy risk, and a lane C merge ("Delivery"; a project rule may add a lane C case, never remove one). The Maintainer's own request for that action is the approval; a recommendation is not a decision until the Maintainer approves it. Only the Maintainer's message in the acting session's chat approves (`scripts/log_check.py`).
+- **The Maintainer's approval.** Ask the Maintainer before: a data write, a live or irreversible effect, a cost, a security or privacy risk, and a lane C merge ("Delivery"; a project rule may add a lane C case, never remove one). The Maintainer's own request for that action is the approval; a recommendation is not a decision until the Maintainer approves it. Approval comes only in the ways "Maintainer changes" names (`scripts/log_check.py` checks DECISIONS rows).
 ```
 
 ### C5. One home (T1)
@@ -156,7 +173,7 @@ Old:
 New:
 
 ```text
-- **One home.** One fact, rule or value lives in one place; other places link to it. Before you add a file, rule, script, check or doc section, extend or replace an existing one (a script: docs/tools.md).. A change removes what it makes obsolete (code, docs, files, rules) in the same commit.
+- **One home.** One fact, rule or value lives in one place; other places link to it. Before you add a file, rule, script, check or doc section, extend or replace an existing one (a script: docs/tools.md). A change removes what it makes obsolete (code, docs, files, rules) in the same commit.
 ```
 
 ### C7. Fresh review (AUD-2)
@@ -184,7 +201,35 @@ Old:
 New:
 
 ```text
-- **Lean instructions.** Instruction files and host prompts hold rules only, one line per rule (every line costs tokens on every task and can lower adherence); a rule that needs more lines is a procedure. A rule a hook or test enforces becomes a pointer to it; a procedure that only some tasks need becomes a skill. A new rule or check names the defect it prevents.
+- **Lean instructions.** Instruction files and host prompts hold rules only, one line per rule (every line costs tokens on every task and can lower adherence); a rule that needs more lines is a procedure. A rule a hook or test enforces becomes a pointer to it; a procedure that only some tasks need becomes a skill. A new rule, check or stricter cap names its defect and first lists its fleet debt (`scripts/bloat_check.py`).
+```
+
+### C10. Instructions people follow (T6 one role word (hard rule))
+
+Old:
+
+```text
+- **Instructions people follow.** Write every instruction a person reads and acts on (pages, READMEs, go.md, window cards, hand steps, messages) in ASD-STE100 Simplified Technical English, unless the Owner's own message says otherwise for that text. Each step holds one action, or the numbered actions that are all on one screen; it names the exact thing on the screen and the exact text to type, says what the person sees next, and says whether to wait, go on or note a value (show the value again where it is needed; never make the person remember it). Show each step on the screen where the action happens, at the time it is needed (in chat: the step names the screen where the action happens). Enforced: `.claude/skills/instructions/SKILL.md` before any such text is written or changed, `scripts/check_instructions.py` on every push, and a fresh-reader test before release.
+```
+
+New:
+
+```text
+- **Instructions people follow.** Write every instruction a person reads and acts on (pages, READMEs, go.md, window cards, hand steps, messages) in ASD-STE100 Simplified Technical English, unless the Maintainer's own message says otherwise for that text. Each step holds one action, or the numbered actions that are all on one screen; it names the exact thing on the screen and the exact text to type, says what the person sees next, and says whether to wait, go on or note a value (show the value again where it is needed; never make the person remember it). Show each step on the screen where the action happens, at the time it is needed (in chat: the step names the screen where the action happens). Enforced: `.claude/skills/instructions/SKILL.md` before any such text is written or changed, `scripts/check_instructions.py` on every push, and a fresh-reader test before release.
+```
+
+### C11. Fleet choices (T6 one role word (project rule))
+
+Old:
+
+```text
+- **Fleet choices.** A choice the owner saved on the fleet page counts as the owner's approval only after the applying session shows it in full and the owner confirms it in their own message (the owner, 2026-11-19).
+```
+
+New:
+
+```text
+- **Fleet choices.** A choice the Maintainer saved on the fleet page counts as the Maintainer's approval only after the applying session shows it in full and the Maintainer confirms it in their own message (the Maintainer, 2026-11-19).
 ```
 
 ### C9. Caps and audit (T2, R3, AUD-3 (option A; R1 as option B))
@@ -198,7 +243,21 @@ Old:
 New:
 
 ```text
-- **Caps and audit.** `scripts/bloat_check.py` (run by the check-in and by check.sh) fails when this file passes 200 lines, when the session load passes 5,500 tokens (third-party skills and agents in `.check`: own cap 1,500), when a skill or agent file states a rule whose home is this file, or when custom script lines rise; file size only warns. The full audit runs when the Maintainer asks for it and for all fleet repos at each kit release or after 14 days, and a run slower than its baseline uses the same skill: `.claude/skills/audit/SKILL.md`.
+- **Caps and audit.** `scripts/bloat_check.py` (run by the check-in and by check.sh) fails when this file passes 200 lines, when the session load passes 5,500 tokens (third-party skills and agents in `.check`: own cap 1,500), when a skill or agent file states a rule whose home is this file, or when custom script lines pass their approved baseline; file size only warns. The full audit runs when the Maintainer asks for it and for all fleet repos at each kit release or 14 days after the last one, and a run slower than its baseline uses the same skill: `.claude/skills/audit/SKILL.md`.
+```
+
+### C12. Project rules comment (T6 one role word (kit comment, not a rule))
+
+Old:
+
+```text
+<!-- This project's own rules: one line each, at most 15 (full tier: scripts/bloat_check.py checks the cap). Add, change or remove a line only with the owner's approval of its exact text; date it, for example "(the owner, 2026-11-09)". Mark a rule that nothing may relax "(cannot be changed)". -->
+```
+
+New:
+
+```text
+<!-- This project's own rules: one line each, at most 15 (full tier: scripts/bloat_check.py checks the cap). Add, change or remove a line only with the Maintainer's approval of its exact text; date it, for example "(the Maintainer, 2026-11-09)". Mark a rule that nothing may relax "(cannot be changed)". -->
 ```
 
 
@@ -212,16 +271,16 @@ the strong tier. One PR per retirement (T3). Every phase ends with a fresh revie
 | Phase | Work | Repos | Lane | Agents (model) | Hours | Rollback |
 |---|---|---|---|---|---|---|
 | P1 Rules and checks | Section 3 texts in AGENTS.md (kit); checks: T1 tools.md rows, T2 ratchet, R3 AUDIT DUE (fleet), AUD-1 `Prevents:` header, C4 to WARN (decision 1A), T6 and T7 in `log_check.py`; docs/tools.md moves from the R1 review file (kit-only; bootstrap removes it as it removes docs/FILES.md; each project gets its own list); skill texts; the rule conflict check | kit | C | 2 workers (Sonnet, disjoint files: `bloat_check*`+`code_standard*` / `log_check.py`+skills+docs), 2 reviewers (Opus), 1 conflict reviewer (Opus) | ~10 agent-h, ~4 h wall | revert the PR; caps as before |
-| P2 Kit shrink and repair | (a) `code_standard.py` Python parse, line and file-size checks move to ruff + pylint config; header, comment, safety, generated, shell and PowerShell checks stay; (b) content check: per W-B (pending); (c) `check_instructions.py`: per W-B (pending); (d) sync: stop on a project's local edit of a kit file (check_lock --verify first); (e) redesign 5 kit splits along the seams in R4f (`sync_baseline_run`, `code_standard_ratchet`, `token_log_test_report`, `code_standard_test_gate`, `check_content_scan_settings`); (f) fix the ReDoS at `build_site_html.py:121`; (g) shellcheck as WARN with the fleet list (decision 6); (h) AUD-5 records for `bloat_check*` and the audit skill | kit | C (checks), B (e, f) | 3 workers (Sonnet), 3 reviewers (Opus; split review on a model other than the author's) | ~16 agent-h, ~6 h wall | revert each PR alone |
+| P2 Kit shrink and repair | (a) `code_standard.py` Python parse, line and file-size checks move to ruff + pylint config; header, comment, safety, generated, shell and PowerShell checks stay; (b) content check: decision 9; (c) `check_instructions.py`: decision 10; (d) sync: stop on a project's local edit of a kit file (check_lock --verify first); (e) redesign 5 kit splits along the seams in R4f (`sync_baseline_run`, `code_standard_ratchet`, `token_log_test_report`, `code_standard_test_gate`, `check_content_scan_settings`); (f) fix the ReDoS at `build_site_html.py:121`; (g) shellcheck as WARN with the fleet list (decision 6); (h) AUD-5 records for `bloat_check*` and the audit skill | kit | C | 3 workers (Sonnet), 3 reviewers (Opus; split review on a model other than the author's) | ~16 agent-h, ~6 h wall | revert each PR alone |
 | P3 Distribution pilot | pip/pipx package of the kit checks (decision 3); `check.sh` reads the kit scripts from the package; the 17 instruction files stay on sync; pilot in 33-332.Z (first trim ~15 tokens from its own handoff: it sits at the cap) | kit, 33-332.Z | C | 1 worker (Sonnet), 1 reviewer (Opus) | ~7 agent-h | pin back to the vendored copy: one revert commit restores `scripts/` from the last sync |
-| P4a RADE | Sentinel in `engine/rade_build.py` `build()` (~line 352: guard 28 lines, covers every engine-built bundle, also 90-161.Z R41); engine release (your step, live); 175 % DPI run (2 lines); CodeQL Python (public repo: free); hash-pinned requirements (6 pins); window layout: keep (already TableLayoutPanel; 42 lines of ink alignment have no standard equivalent) | RADE | C (release), B | 2 workers, 2 reviewers | ~8 agent-h | previous engine tag stays the lock |
-| P4b 90-161.Z | Lock bump to the sentinel engine; build-time `go.md` HTML with markdown-it-py (99.3 % word match; card layer ~130 lines; UI change: preview first); CodeQL Python and JS; the hash-pinned manifest exists (9 packages); `-rN` archive and `pac`: decision 7 | 90-161.Z | C (UI), B | 2 workers, 2 reviewers | ~8 agent-h | lock back; page from the previous commit |
-| P4c 33-332.Z | Sentinel hash check on top of the try wrapper in `build_paste.py` (your choice: keep the sentinel); CodeQL: not useful (no PowerShell; 0 Python findings) -> keep PSScriptAnalyzer; the 5 Ion defects and the e-signature fix run in a separate Ion session (prompt given 2026-11-23) | 33-332.Z | B | 1 worker, 1 reviewer | ~3 agent-h | revert |
-| P4d ICF | Handover runbook entries only (decision 8); `publish_pages.py` keep (it pushes to a second repo with an allowlist, which deploy-pages does not do) | ICF-Source | A | main session | ~1 h | n/a |
+| P4a RADE | Sentinel in `engine/rade_build.py` `build()` (~line 352: guard 28 lines, covers every engine-built bundle, also 90-161.Z R41); engine release (your step, live); 175 % DPI run (2 lines; 125, 150 and 200 % runs exist); CodeQL Python workflow (a workflow file: guard; public repo: free; needs `security-events: write`); hash-pinned requirements (6 pins) and its CycloneDX SBOM; window layout: keep (already TableLayoutPanel; 42 lines of ink alignment have no standard equivalent); build-time Markdown: none needed (RADE's intro is already static) | RADE | C | 2 workers, 2 reviewers | ~8 agent-h | previous engine tag stays the lock |
+| P4b 90-161.Z | Lock bump to the sentinel engine; build-time `go.md` HTML with markdown-it-py (99.3 % word match; card layer ~130 lines; UI change: preview first); CSP `connect-src 'none'` for the task text, with one allowed source for the Copy button's 1.4 MB script fetch (W-D); CodeQL Python and JS workflow (guard); CycloneDX SBOM from the hash-pinned manifest (9 packages); `-rN` and `pac`: decision 7 | 90-161.Z | C | 2 workers, 2 reviewers | ~8 agent-h | lock back; page from the previous commit |
+| P4c 33-332.Z | Sentinel hash check on top of the try wrapper in `build_paste.py` (your choice: keep the sentinel); CodeQL: low value (no PowerShell; 1 Python finding, the shared ReDoS, fixed in the kit by P2 f) -> keep PSScriptAnalyzer; the 5 Ion defects and the e-signature fix run in a separate Ion session (prompt given 2026-11-23) | 33-332.Z | B | 1 worker, 1 reviewer | ~3 agent-h | revert |
+| P4d ICF | Handover runbook entries only (decision 8); `publish_pages.py` keep (it pushes to a second repo with an allowlist, which deploy-pages does not do); `content_pipeline.py` keep (handover tool, has a test) | ICF-Source | A | main session | ~1 h | n/a |
 | P5 Fleet catch-up and audit | The 6 kit 10.0.0 repos take the kit by the package (after P3); transcription_assistant: remove the 7 old pre-kit copies and the second Stop hook; the first fleet audit (R3) with the outcome metrics (AUD-3); sec-source inventory; 33-332.Z, RADE, 90-161.Z split redesigns found by the audit | 11 repos | C (hooks), B | 3 workers, 2 reviewers, 1 auditor (Opus) | ~14 agent-h | per repo revert |
-| P6 Close | Fresh full-history `.7z` export of each changed repo (relayed by the coordinator: your choice in its chat), sent to you in chat (the Drive connector takes ~3.1 MB per call); delete merged and personal-data branches (`claude/tr-r2a-project-tools` holds a third-party name in b765169); session archive list | all | A | main session | ~1 h | n/a |
+| P6 Close | Fresh full-history `.7z` export of each changed repo (relayed by the coordinator: your choice in its chat; the ICF export holds the 2 history addresses, so it stays private), sent to you in chat (the Drive connector takes ~3.1 MB per call); a list of branches to delete (merged ones, and `claude/tr-r2a-project-tools`, which holds a third-party name in b765169): deleted only with your approval (irreversible); session archive list | all | A (C for deletes) | main session | ~1 h | n/a |
 
-Totals: ~24 agent runs, ~68 agent-hours, about 4-5 working days with your merges (lane C) as the pacing step.
+Totals: ~29 agent runs (5 + 6 + 2 + 4 + 4 + 2 + 0 + 6), ~68 agent-hours, about 4-5 working days with your merges (lane C) as the pacing step.
 Order: kit P1 -> P2 -> P3 (pilot) -> RADE P4a (release) -> 90-161.Z P4b and 33-332.Z P4c -> ICF P4d -> P5 -> P6.
 Unattended work: the usage limit can stop workers; the main session reports what stopped and resumes it.
 
@@ -237,13 +296,29 @@ Unattended work: the usage limit can stop workers; the main session reports what
 
 ## 6. GAPS
 
-- **Mutation testing (risk).** No mutation tool in the kit; the prompt's "mutant kill count" cannot be measured. Cost: add `mutmut` (PyPI) as a dev tool, ~3 h for the 3 checkers that are shrunk. Benefit: real kill counts in place of seeded defects. REC: do it in P2 for `code_standard.py` only.
+- **Mutation testing (risk).** No mutation tool in the kit; the prompt's "mutant kill count" cannot be measured. Cost: add `mutmut` (PyPI) as a dev tool, ~3 h for the 3 checkers that are shrunk. Benefit: real kill counts in place of seeded defects. REC: do it in P2 for `code_standard.py` only, with the mutmut version pinned at P2 start and listed in the PR.
 - **Windows-only verification.** ISE paste, WPF, a 175 % window and `pac` cannot run here. Cost: 1 paste step per change for you on a gov device. Benefit: proof on the real host. Risk if skipped: a sentinel that blocks a good paste.
 - **JavaScript lint.** 135 JS/MJS files in ICF and 90-161.Z have no linter in the fleet (eslint not trialed). Cost ~2 h trial. Benefit: a defect class nobody checks.
 - **Release attestation chain.** The Sigstore root and Rekor inclusion were never verified (host blocked). Cost: allow `tuf-repo-cdn.sigstore.dev` for the RADE release step. Benefit: full release trust.
 - **icf deploy repo settings.** Unchecked (attach denied). Cost: one look at Settings by you. Benefit: handover facts complete.
 
-## 7. Not in this plan (from the approved list)
+## 7. Project tool records (prompt step 3: retire / shrink / keep)
+
+| Tool | Record | Evidence |
+|---|---|---|
+| RADE `engine_files.py` + `release.yml` (engine lock and release) | keep | the release already uses `actions/attest-build-provenance`; no standard tool writes the 42-file lock (R2a) |
+| RADE `engine/rade_*.py` build | keep; gains the sentinel (P4a) | no standard tool builds a paste bundle (R2a, W-D) |
+| 90-161.Z `build_task_scripts.py` (task-script generator) | keep | ModuleBuilder / PS2EXE do not give paste text (R2a) |
+| 90-161.Z `rebuild_all.py` | keep (shrink to a Make target later if the builders shrink) | R2a |
+| 90-161.Z `bump_lock.py` | keep | Renovate and Dependabot cannot update a hash set (R2a) |
+| 90-161.Z flow builders (866 lines) | shrink the packaging part with `pac solution` (decision 7) | W-D |
+| 33-332.Z `build_paste.py` | keep; gains the sentinel hash check (P4c) | R2a, W-D |
+| ICF `publish_pages.py`, `content_pipeline.py` | keep (P4d) | R2a |
+| ICF 73 old review scripts (6,725 lines) | retire: move out of the tracked tree or delete in an ICF session (incoming maintainer's choice) | R2a |
+| transcription_assistant 7 pre-kit copies | retire (P5) | R2b |
+| sec-source 14 tools (2,062 lines) | inventory only; records in P5 | R2a |
+
+## 8. Not in this plan (from the approved list)
 
 FSRS, the installable PWA, OKLCH and Authenticode signing (your "2yes", 2026-11-23); fleet v2 Part 1 (done by fleet v2);
 the ICF 30-minute drill (needs the incoming maintainer).
