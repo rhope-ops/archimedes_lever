@@ -293,7 +293,7 @@ def run():
     """
     base = pathlib.Path(__file__).resolve().parent.parent
     if "{{PROJECT_NAME}}" not in (base / "AGENTS.md").read_text():
-        print("DRIFT TEST SKIP: the self-test needs the baseline repo (rhope-ops/archimedes_lever); run it there")
+        print("DRIFT TEST SKIP: the self-test needs the baseline repo (the kit, kit.config.json kit_repo); run it there")
         return 0
     results = []
     with tempfile.TemporaryDirectory() as d:

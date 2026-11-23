@@ -30,7 +30,7 @@ cache_write_1h_tokens (the 1-hour part of the cache writes), speed, web_search_r
 Settings (environment): TOKEN_LOG=off turns it off; TOKEN_LOG_BRANCH (default claude/token-usage); TOKEN_LOG_SYNC=1
 pushes in the foreground; TOKEN_LOG_HOME (default ~/.claude/token-log) holds push.log and the lock files;
 TOKEN_LOG_NET_TIMEOUT (seconds, default 600) limits each ls-remote, fetch and push; TOKEN_LOG_UPDATE=off turns the
-self-update off; TOKEN_LOG_KIT_URL (default KIT_URL) is the repo the self-update clones.
+self-update off; TOKEN_LOG_KIT_URL is the repo the self-update clones (default: "kit_url" of kit.config.json, see kit_url()).
 
 Manual push:  python3 scripts/token_log.py --push REPO_DIR SESSION_ID TRANSCRIPT_PATH
 Report:  python3 scripts/token_log.py --report [REF]  (in a repo: fetches the log branch, or reads REF; prints the
@@ -41,7 +41,7 @@ Self-update: after each background push, the installed copy (token_log.py in ~/.
   turns it off). The setup script installs it only when a container is built, so a resumed container kept an old copy.
 Self-test (temporary repos, no network):  python3 scripts/token_log.py --test.  Standard library only.
 Network: the git remote "origin" of the repo (fetch and push of the branch claude/token-usage); the self-update: a
-shallow clone of KIT_URL at most once a day; none in the self-test.
+shallow clone of the kit (kit_url()) at most once a day; none in the self-test.
 Writes: the branch claude/token-usage (one CSV file for each session), through a temporary index; push.log, lock
 files and update.stamp in TOKEN_LOG_HOME; the installed hook file (self-update); never the work tree.
 Credentials: none itself; the push uses the credentials git already has for origin.
@@ -247,7 +247,29 @@ def hook_main():
                      stdout=logf, stderr=logf, start_new_session=True)
 
 
-KIT_URL = "https://github.com/rhope-ops/archimedes_lever"
+KIT_CONFIG = "kit.config.json"  # the one home of the kit address (scripts/kit_config.py reads it in the kit)
+
+
+def kit_url(path):
+    """The kit repo the self-update clones: TOKEN_LOG_KIT_URL, else "kit_url" of the kit.config.json next to the
+    installed file (self-update installs it), else of the one in the session's repo (a synced project has it).
+
+    Args:
+        path: the installed token_log.py.
+    Returns:
+        The URL, or None when no source names one (the self-update then does nothing).
+    """
+    if os.environ.get("TOKEN_LOG_KIT_URL"):
+        return os.environ["TOKEN_LOG_KIT_URL"]
+    for folder in (os.path.dirname(path), os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()):
+        try:
+            with open(os.path.join(folder, KIT_CONFIG), encoding="utf-8") as f:
+                got = json.load(f).get("kit_url")
+        except (OSError, ValueError, AttributeError):
+            continue
+        if isinstance(got, str) and got.strip():
+            return got
+    return None
 UPDATE_EVERY = 24 * 3600  # seconds between self-update checks
 UPDATE_FILES = ("token_log_rows.py", "token_log_report.py", "token_log.py")  # the installed files: the parts first, the entry file last
 
@@ -266,7 +288,7 @@ def self_update(path, url=None, now=None):
 
     Args:
         path: the installed token_log.py to replace.
-        url: the kit repo to clone (default TOKEN_LOG_KIT_URL, else KIT_URL).
+        url: the kit repo to clone (default kit_url(path)).
         now: the current time in seconds (default time.time()), for the self-test.
     Returns:
         A short result text: "skipped", "up to date", "updated" or "not updated: <reason>".
@@ -278,13 +300,19 @@ def self_update(path, url=None, now=None):
     with open(stamp, "w"):
         pass
     os.utime(stamp, (now, now))  # a failed check also waits a day
+    url = url or kit_url(path)
+    if not url:
+        return "not updated: no kit address (TOKEN_LOG_KIT_URL or kit.config.json)"
     with tempfile.TemporaryDirectory() as tmp:
-        r = subprocess.run(["git", "clone", "-q", "--depth", "1", "--branch", "main", url or os.environ.get("TOKEN_LOG_KIT_URL") or KIT_URL,
+        r = subprocess.run(["git", "clone", "-q", "--depth", "1", "--branch", "main", url,
                             os.path.join(tmp, "k")], capture_output=True, text=True, timeout=net_timeout())
         src = os.path.join(tmp, "k", "scripts")
         names = [n for n in UPDATE_FILES if os.path.isfile(os.path.join(src, n))]
         if r.returncode != 0 or "token_log.py" not in names:
             return "not updated: " + (r.stderr.strip()[-200:] or "no scripts/token_log.py")
+        config = os.path.join(tmp, "k", KIT_CONFIG)  # data, not code: installed next to the file with no self-test
+        if os.path.isfile(config) and not same_file(config, os.path.join(os.path.dirname(path), KIT_CONFIG)):
+            shutil.copyfile(config, os.path.join(os.path.dirname(path), KIT_CONFIG))
         if all(same_file(os.path.join(src, n), os.path.join(os.path.dirname(path), n)) for n in names):
             return "up to date"
         # The new copy must pass its own self-test (temporary repos, no network): a copy that fails when run would

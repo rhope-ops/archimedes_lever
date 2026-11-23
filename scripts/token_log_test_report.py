@@ -264,3 +264,42 @@ def case_self_update(fx):
               open(os.path.join(os.path.dirname(target), "token_log_rows.py")).read(), "rows = 1\n")
     os.remove(os.path.join(os.path.dirname(target), "token_log_rows.py"))
     fx.expect("self-update: a missing part is not up to date", tl.self_update(target, kit, now=1e9 + 400000), "updated")
+    case_kit_url(fx, kit, target)
+
+
+def case_kit_url(fx, kit, target):
+    """Self-update installs kit.config.json; kit_url() reads TOKEN_LOG_KIT_URL, the installed file, the session repo.
+
+    Args:
+        fx: the shared test fixture (Fixture).
+        kit: the test kit repo of case_self_update.
+        target: the installed token_log.py of case_self_update.
+    """
+    tl, root = fx.tl, fx.root
+    with open(os.path.join(kit, "kit.config.json"), "w") as f:  # kit 11.0.0: the kit address lives in kit.config.json
+        f.write('{"kit_url": "https://example.invalid/sample-org/sample-kit"}')
+    fx.sh(kit, "git", "add", ".")
+    fx.sh(kit, "git", "commit", "-q", "-m", "config")
+    tl.self_update(target, kit, now=1e9 + 500000)
+    sibling = os.path.join(os.path.dirname(target), "kit.config.json")
+    fx.expect("self-update: kit.config.json installs next to the file", os.path.isfile(sibling), True)
+    saved = {k: os.environ.pop(k, None) for k in ("TOKEN_LOG_KIT_URL", "CLAUDE_PROJECT_DIR")}
+    try:
+        fx.expect("kit_url: read from the installed kit.config.json", tl.kit_url(target),
+                  "https://example.invalid/sample-org/sample-kit")
+        os.environ["TOKEN_LOG_KIT_URL"] = "https://example.invalid/other"
+        fx.expect("kit_url: TOKEN_LOG_KIT_URL wins", tl.kit_url(target), "https://example.invalid/other")
+        del os.environ["TOKEN_LOG_KIT_URL"]
+        os.remove(sibling)
+        os.environ["CLAUDE_PROJECT_DIR"] = kit
+        fx.expect("kit_url: else the session repo's kit.config.json", tl.kit_url(target),
+                  "https://example.invalid/sample-org/sample-kit")
+        os.environ["CLAUDE_PROJECT_DIR"] = os.path.join(root, "installed")
+        fx.expect("kit_url: no source gives None", tl.kit_url(target), None)
+        fx.expect("self-update: no kit address does nothing",
+                  tl.self_update(target, now=1e9 + 600000).startswith("not updated: no kit address"), True)
+    finally:
+        for k, v in saved.items():
+            os.environ.pop(k, None)
+            if v is not None:
+                os.environ[k] = v

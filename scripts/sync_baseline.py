@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Sync a project repo to the current rhope-ops/archimedes_lever baseline.
+"""Sync a project repo to the current kit baseline (the repo that kit.config.json "kit_url" names).
 
 Run it from inside the project repo:
     python3 scripts/sync_baseline.py            # dry run: show the diff, write nothing
     python3 scripts/sync_baseline.py --apply    # write the files (commit them yourself)
 
 Options:
-    --baseline PATH_OR_URL   Baseline repo (default: https://github.com/rhope-ops/archimedes_lever)
+    --baseline PATH_OR_URL   Baseline repo (default: "kit_url" in kit.config.json, read by scripts/kit_config.py)
     --name, --repo, --purpose   Header values, needed only when the project AGENTS.md has none.
     --timezone ZONE          IANA time zone for project log times, needed only when the project AGENTS.md has no
                              "- Time zone:" line (projects synced before 2026-11-11 have none).
@@ -80,10 +80,11 @@ from sync_baseline_repo import (baseline_sha, get_baseline, git, header_owner, k
 import sync_baseline_run  # noqa: E402 - scripts/sync_baseline_run.py: the steps of one run (main)
 from sync_baseline_run import check_placeholders  # noqa: E402,F401 - re-exported
 
-DEFAULT_BASELINE = "https://github.com/rhope-ops/archimedes_lever"
+import kit_config  # noqa: E402 - scripts/kit_config.py: the one home of the kit addresses (kit.config.json)
+DEFAULT_BASELINE = kit_config.value("kit_url")  # None when kit.config.json is missing: parse_args stops
 RULES_HEADING = "## Project rules"
 COMMANDS_HEADING = "## Commands"
-COPY_FILES = ["scripts/session_checkin.sh", "scripts/stop_check.py", "scripts/check_blocks.py", "scripts/check_lock.py", "scripts/check_content_test_blocks.py",
+COPY_FILES = ["kit.config.json", "scripts/kit_config.py", "scripts/session_checkin.sh", "scripts/stop_check.py", "scripts/check_blocks.py", "scripts/check_lock.py", "scripts/check_content_test_blocks.py",
               "scripts/worker_guard.py", "scripts/log_check.py", "scripts/timeline.py", "scripts/fleet_harvest.py", "scripts/fleet_harvest_test.py", "scripts/check_content.py", "scripts/first_use_check.py",
               "scripts/fleet_harvest_parse.py",
               "scripts/check_content_scan.py", "scripts/check_content_hook.py", "scripts/check_content_test.py",
@@ -297,6 +298,8 @@ def parse_args():
     ap.add_argument("--set-tier", choices=TIERS, help="bootstrap only: apply the tier to this repo in place")
     ap.add_argument("--lock-here", action="store_true", help="bootstrap only: write the kit lock for this repo as it is")
     args = ap.parse_args()
+    if not args.baseline:
+        ap.error("no --baseline given and no \"kit_url\" in kit.config.json (scripts/kit_config.py)")
     if args.timezone and not valid_timezone(args.timezone):
         die(f"time zone {args.timezone!r} is not a known IANA name (for example UTC, Europe/Berlin)")
     return args

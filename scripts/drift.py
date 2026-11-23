@@ -303,6 +303,8 @@ def main():
     a = ap.parse_args()
     if a.test:
         return self_test()
+    if not a.baseline:
+        ap.error("no --baseline given and no \"kit_url\" in kit.config.json (scripts/kit_config.py)")
     project = pathlib.Path(a.project).resolve()
     with tempfile.TemporaryDirectory() as tmp:
         base = sb.get_baseline(a.baseline, tmp)
