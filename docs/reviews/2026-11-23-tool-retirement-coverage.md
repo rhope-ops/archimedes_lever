@@ -93,6 +93,7 @@ Not verified in this session. Fleet v2 is still open (ICF #248 split, ICF kit 11
 | AUD-3 | Outcome metrics over proxies: defects found per check, mutant kill rate, files per typical change, fix-of-a-fix rate; line and file counts become warnings only | in (added) | Plan; conflicts with R1 (80 % split) and T2 (line ratchet): the plan shows the conflict for the Maintainer's choice; same source |
 | AUD-4 | Sample audit of today's check-driven splits (ICF #248, the kit's _parse/_rules/_steps/_test splits, 90-161.Z's 6) by a reviewer on a different model: cohesive or arbitrary; bad ones redesigned in the program | in (added) | Research R4f; same source |
 | AUD-5 | The audit skill and scripts/bloat_check*.py get the same retire / shrink / keep record | in (added) | R1 inventory has bloat_check*.py ("Rule caps and audit"); the skill joins it; same source |
+| AUD-6 | Guard workarounds: a check scans each worker's diff and scratch output for workarounds of a guard, and a review finding of one is MAJOR, scratch included | in (added) | P2: `scripts/worker_guard.py --scan` (AUD-6a) and skill text S8 (AUD-6b). Relayed by the coordinator (the Maintainer's "2a" in its chat, ~17:20 by its clock); approved here 2026-11-23 ~17:15 America/Chicago (question dialog: "Approve as shown") |
 | P2-9 | FSRS spaced repetition (ICF) | out (proposed) | Prompt "pending, not in scope yet"; feature, not a tool |
 | P2-10a | Installable PWA manifest (ICF) | out (proposed) | Same |
 | P2-10b | IndexedDB and JSON backup (ICF) | out (proposed) | Same |
@@ -173,8 +174,8 @@ Scope: this program. Nothing blocks the plan.
 | A. DEC (6 items) | 6 | 4 | 2 | 0 | 0 |
 | B. Part 1 (19 items) | 19 | 0 | 19 | 0 | 0 |
 | B2. Part 1 sub-parts (extra rows, not source items) | 7 | 2 | 5 | 0 | 0 |
-| C. Part 2 (11 items, split into sub-rows) + ION-1 and AUD-1..5 (added) | 28 | 20 | 8 | 0 | 0 |
+| C. Part 2 (11 items, split into sub-rows) + ION-1 and AUD-1..6 (added) | 29 | 21 | 8 | 0 | 0 |
 | D. Prompt (25 items) | 25 | 25 | 0 | 0 | 0 |
-| **Total** | **85** | **51** | **34** | **0** | **0** |
+| **Total** | **86** | **52** | **34** | **0** | **0** |
 
-Source items: 36 master plan items (6 + 19 + 11) + 25 prompt items = 61, plus 6 items the Maintainer added after the approval (ION-1, AUD-1..AUD-5). Unmarked: 0. Rows "ask": 0.
+Source items: 36 master plan items (6 + 19 + 11) + 25 prompt items = 61, plus 7 items the Maintainer added after the approval (ION-1, AUD-1..AUD-6). Unmarked: 0. Rows "ask": 0.
