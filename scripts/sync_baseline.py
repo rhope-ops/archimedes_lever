@@ -86,6 +86,7 @@ COPY_FILES = ["scripts/session_checkin.sh", "scripts/stop_check.py", "scripts/ch
               "scripts/fleet_harvest_parse.py",
               "scripts/check_content_scan.py", "scripts/check_content_hook.py", "scripts/check_content_test.py",
               "scripts/check_content_finders.py", "scripts/check_content_test_local.py", "scripts/check_settings_test.py",
+              "scripts/check_content_scan_settings.py", "scripts/check_content_test_cli.py",
               "scripts/check.sh", "scripts/check_settings.py", "scripts/check_settings_read.py", "scripts/bloat_check.py", "scripts/bloat_check_skills.py", "scripts/bloat_check_test.py",
               "scripts/bloat_check_rules.py", "scripts/skill_use.py", "scripts/bloat_check_timing.py", "scripts/bloat_check_test_rules.py",
               "scripts/code_standard.py", "scripts/code_standard_test.py", "scripts/code_standard_docs.py", "scripts/code_standard_parse.py",

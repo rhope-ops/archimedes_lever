@@ -284,7 +284,7 @@ selftest code_standard scripts/code_standard.py scripts/code_standard_test.py sc
 selftest timeline scripts/timeline.py scripts/log_check.py -- python3 scripts/timeline.py --test  # it imports log_check
 selftest check_content scripts/check_content.py scripts/check_content_scan.py scripts/check_content_finders.py \
   scripts/check_content_hook.py scripts/check_content_test.py scripts/check_content_test_blocks.py \
-  scripts/check_content_test_local.py -- python3 scripts/check_content.py --test
+  scripts/check_content_test_local.py scripts/check_content_scan_settings.py scripts/check_content_test_cli.py -- python3 scripts/check_content.py --test
 # A project's own extension files (the kit has none): each proves itself when it has a self-test. The deps are the
 # file, its sibling files (for example its test cases: scripts/check_content_local_test.py) and the kit files it extends.
 # extension NAME FILE [KIT FILES IT EXTENDS...]: run "python3 FILE --test" when its code names "--test" (not only a comment); else a SKIP line
@@ -307,7 +307,8 @@ selftest check_lock scripts/check_lock.py -- python3 scripts/check_lock.py --tes
 selftest fulcrum_tokens scripts/fulcrum_tokens.py docs/brand/fulcrum.json docs/brand/fulcrum.css -- python3 scripts/fulcrum_tokens.py --test
 selftest build_site scripts/build_site.py scripts/build_site_html.py -- python3 scripts/build_site.py --test
 extension build_site_local scripts/build_site_local.py scripts/build_site.py
-selftest first_use_check scripts/first_use_check.py scripts/check_blocks.py scripts/check_content.py scripts/check_content_scan.py -- python3 scripts/first_use_check.py --test
+selftest first_use_check scripts/first_use_check.py scripts/check_blocks.py scripts/check_content.py scripts/check_content_scan.py \
+  scripts/check_content_scan_settings.py -- python3 scripts/first_use_check.py --test
 # Kit only: projects have no sync tools. The drift self-test reads the kit's AGENTS.md and stop_check.py.
 selftest drift scripts/drift.py scripts/sync_baseline.py scripts/sync_merge.py AGENTS.md scripts/stop_check.py -- python3 scripts/drift.py --test
 selftest pre-push scripts/git-hooks/pre-push -- scripts/git-hooks/pre-push --test
