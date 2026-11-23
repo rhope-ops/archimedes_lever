@@ -300,7 +300,7 @@ selftest check_instructions scripts/check_instructions.py scripts/check_instruct
   -- python3 scripts/check_instructions.py --test
 extension check_instructions_local scripts/check_instructions_local.py scripts/check_instructions.py
 selftest skill_use scripts/skill_use.py -- python3 scripts/skill_use.py --test
-selftest fleet_harvest scripts/fleet_harvest.py scripts/fleet_harvest_test.py -- python3 scripts/fleet_harvest.py --test
+selftest fleet_harvest scripts/fleet_harvest.py scripts/fleet_harvest_test.py scripts/fleet_harvest_parse.py -- python3 scripts/fleet_harvest.py --test
 selftest check_blocks scripts/check_blocks.py .claude/settings.json -- python3 scripts/check_blocks.py --test
 selftest check_lock scripts/check_lock.py -- python3 scripts/check_lock.py --test
 selftest fulcrum_tokens scripts/fulcrum_tokens.py docs/brand/fulcrum.json docs/brand/fulcrum.css -- python3 scripts/fulcrum_tokens.py --test

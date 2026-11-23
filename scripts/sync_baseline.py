@@ -83,6 +83,7 @@ RULES_HEADING = "## Project rules"
 COMMANDS_HEADING = "## Commands"
 COPY_FILES = ["scripts/session_checkin.sh", "scripts/stop_check.py", "scripts/check_blocks.py", "scripts/check_lock.py", "scripts/check_content_test_blocks.py",
               "scripts/worker_guard.py", "scripts/log_check.py", "scripts/timeline.py", "scripts/fleet_harvest.py", "scripts/fleet_harvest_test.py", "scripts/check_content.py", "scripts/first_use_check.py",
+              "scripts/fleet_harvest_parse.py",
               "scripts/check_content_scan.py", "scripts/check_content_hook.py", "scripts/check_content_test.py",
               "scripts/check_content_finders.py", "scripts/check_content_test_local.py", "scripts/check_settings_test.py",
               "scripts/check.sh", "scripts/check_settings.py", "scripts/bloat_check.py", "scripts/bloat_check_skills.py", "scripts/bloat_check_test.py",
