@@ -85,7 +85,7 @@ DEFAULT_BASELINE = kit_config.value("kit_url")  # None when kit.config.json is m
 RULES_HEADING = "## Project rules"
 COMMANDS_HEADING = "## Commands"
 COPY_FILES = ["scripts/session_checkin.sh", "scripts/stop_check.py", "scripts/check_blocks.py", "scripts/check_lock.py", "scripts/check_content_test_blocks.py",
-              "scripts/worker_guard.py", "scripts/log_check.py", "scripts/timeline.py", "scripts/fleet_harvest.py", "scripts/fleet_harvest_test.py", "scripts/check_content.py", "scripts/first_use_check.py",
+              "scripts/worker_guard.py", "scripts/log_check.py", "scripts/log_check_plan.py", "scripts/timeline.py", "scripts/fleet_harvest.py", "scripts/fleet_harvest_test.py", "scripts/check_content.py", "scripts/first_use_check.py",
               "scripts/fleet_harvest_parse.py",
               "scripts/check_content_scan.py", "scripts/check_content_hook.py", "scripts/check_content_test.py",
               "scripts/check_content_finders.py", "scripts/check_content_test_local.py", "scripts/check_settings_test.py",
@@ -120,7 +120,7 @@ BASELINE_OWNER = "the Maintainer"  # role word in baseline text; no real name li
 
 # Advanced parts: a starter project has none of these (one list for bootstrap, sync and drift).
 ADVANCED_FILES = [".claude/skills/delegate/SKILL.md", ".claude/agents/scout.md", ".claude/agents/worker.md",
-                  ".claude/skills/project-log/SKILL.md", "docs/LOG.md", "scripts/log_check.py", "scripts/timeline.py",
+                  ".claude/skills/project-log/SKILL.md", "docs/LOG.md", "scripts/log_check.py", "scripts/log_check_plan.py", "scripts/timeline.py",
                   ".claude/skills/audit/SKILL.md", "scripts/bloat_check.py", "scripts/bloat_check_skills.py", "scripts/bloat_check_rules.py",
                   "scripts/bloat_check_test.py", ".claude/rule-tests.md", "scripts/skill_use.py",
                   "scripts/bloat_check_timing.py", "scripts/bloat_check_test_rules.py"]
