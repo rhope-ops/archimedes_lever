@@ -220,7 +220,7 @@ The sync command takes these options:
 |---|---|
 | `--tier full` | You move a starter project to the full kit. It adds the advanced files and docs/LOG.md. To make the name guard block, delete the line `denylist: warn` in `.check`. |
 | `--name`, `--repo`, `--purpose` | The project's AGENTS.md has no title line (`--name`), no `- Repo:` line or no `- Purpose:` line. |
-| `--owner NAME` | AGENTS.md has no `- Owner:` line. |
+| `--owner NAME` | AGENTS.md has no `- Owner:` line, or you change the role word. For kit 11.0.0, type `--owner "the Maintainer"`. The sync then writes that word in the `- Owner:` line and in the kit text. |
 | `--timezone ZONE` | AGENTS.md has no `- Time zone:` line (ZONE is an IANA name). |
 
 1. In an editor, open the file `AGENTS.md` of the project. You see its header lines at the top. Go on.
