@@ -20,3 +20,19 @@ Checked and OK: the swap is mechanical (the old lines with the swap applied equa
 is still covered by :26.
 
 rule-conflict-check: 3008d5e5983d
+
+## Second check: after the owner's fix of finding 1 (DEC 15, commit f2f9e1f)
+
+Changed lines: `python3 scripts/bloat_check.py --rules` at f2f9e1f (21 lines: the role swap, the DEC 2 header :3 and the new
+"Decisions" line :39). Reviewer: the `reviewer` subagent, fresh context, strong tier (Opus 5.5), same inputs and brief.
+
+Result: no MAJOR. Finding 1 above is fixed: :39 names the Content Approver for content approval and matches the
+DECISIONS row of DEC 15 exactly.
+
+| # | Severity | Texts | Case | Fix (proposed) | Status |
+|---|---|---|---|---|---|
+| 5 | MINOR | :3 "the Content Approver approves content changes" against :14 "The Maintainer's current request ... can set aside a default" | Two people; the Maintainer asks for a content change the Content Approver has not approved | Say at :3 that a request does not set aside content approval, or add that case to lane C | Recorded |
+| 6 | MINOR | :3 "approves content changes" against :43 lane A (docs merge on green checks) | A docs pull request that changes content | Define "content" at :3 | Recorded |
+| 7 | MINOR | Findings 2, 3 and 4 above, carried over | As above | As above | Recorded |
+
+rule-conflict-check: b7b4c4b3df86
