@@ -30,6 +30,27 @@ Kit skills by use in this session: loaded in full: audit, delegate, deliver, rul
 handoff, personal-data, kit-update; not used: data-change, instructions, verify. Account skills: where-to-save 1;
 turn-summary 0, ship 0, pages-and-tools 0 (none of the work was a page).
 
+## Result: 3 more running sessions (their own counts, sent as messages, 2026-11-23 ~17:22-17:25)
+
+Each ran `python3 scripts/skill_use.py $(find ~/.claude/projects -name "*.jsonl")` on its own container (counts only).
+
+| Session | Logs | Skill tool (full load) | Shell slices | Agents | Tools |
+|---|---|---|---|---|---|
+| This session (kit, tool retirement) | 19 | 5: where-to-save, deliver, delegate, rule-change, audit | 44 | worker 11, reviewer 5, general-purpose 1 | 1,298 |
+| Kit, fleet v2 coordinator 2 | 3 | 4: deliver, rule-change, instructions, deeper-version (account) | 1: rule-change | reviewer 1 | 305 |
+| 90-161.Z, fleet v2 Stage 3A | 9 | 7: delegate 2, instructions 2, verify 1, kit-update 1, round 1 (project skill) | 2: deliver, round | reviewer 5, worker 3 | 633 |
+| ICF, fleet v2 handover (logs before its compaction may be missing) | 28 | 3: instructions 2, delegate 1 | 8: kit-update 3, efficiency 1, port 1, run-verify 1, ui-verify 1, deliver 1 | reviewer 20, worker 7 | 1,883+ |
+| **Total (4 sessions, 59 logs)** | 59 | **19** | **55** | 59 | ~4,100 |
+
+Kit skills across the 4 sessions (full loads / slices): delegate 4/10, instructions 5/0, deliver 2/11, rule-change 2/7,
+audit 1/7, verify 1/0, kit-update 1/5, handoff **0/4**, personal-data 0/4, project-log 0/1 (1 load after the count),
+data-change **0/0**. Account skills: where-to-save 1, deeper-version 1, turn-summary **0**, ship **0**.
+
+Self-reports from the sessions (their own notes, not measured): 3 of 4 changed a handoff file without the handoff
+skill (this session, coordinator 2, 90-161.Z); coordinator 2 also named verify (before a "verified" Site deploy) and
+personal-data (before Drive exports). ICF read a skill named `efficiency`, which kit 6.0.0 merged into `audit`
+(2026-11-20): a stale reference (F5).
+
 ## Findings
 
 | # | Finding | Evidence | Cost |
@@ -38,6 +59,8 @@ turn-summary 0, ship 0, pages-and-tools 0 (none of the work was a page).
 | F2 | Workers cannot load a skill: the `worker` agent has no Skill tool (Read, Edit, Write, Bash, Grep, Glob), and they read skills by `grep`/`sed` slices, not a full Read | `.claude/agents/worker.md`; 44 slices, 0 Reads | AGENTS.md "Skills": "a slice read through the shell misses steps" |
 | F3 | The main session skipped skills its rules name: handoff (KIT_HANDOFF.md edited without it), project-log (log rows written only after this audit), turn-summary (every work turn), instructions (paste steps), verify | this session's Skill calls vs its actions | the same pattern as 2026-11-20 (account skills 0 calls) |
 | F4 | `skill_use.py` counts a false skill "f" from a shell command | the shell group above | inflates the shell count by 1 |
+| F5 | ICF still reads a removed skill (`efficiency`, merged into `audit` in kit 6.0.0) | ICF counts above | an agent may follow an old procedure |
+| F6 | `handoff` was loaded 0 times in 4 sessions, but 3 of them changed a handoff file; `data-change` 0/0; account `turn-summary` and `ship` 0 (as on 2026-11-20) | the table above | handoff steps (40-line cap, plan saving) followed from memory |
 
 ## Proposals (the Maintainer added all 4 to plan P2: "Add all 4 to P2", question dialog, 2026-11-23 17:23 America/Chicago)
 
@@ -48,4 +71,4 @@ turn-summary 0, ship 0, pages-and-tools 0 (none of the work was a page).
 | P3 | Fix the "f" false hit in `skill_use.py` (match a skill folder name only after `skills/`) | `scripts/skill_use.py`, plan P2 | ~15 min | correct shell counts |
 | P4 | Re-run this audit fleet-wide after P1 has run for 14 days, and propose a merge, a better description or a removal for each skill with 0 loads | audit skill "Fleet audit" (S3) | ~1 h | data-based skill changes |
 
-Status: partial. The coordinator's counts, when they arrive, are added here.
+Status: partial (4 running sessions; the RADE, 33-332.Z and Ion sessions may still send counts). The full measure comes from P1 (token log) after 14 days.
