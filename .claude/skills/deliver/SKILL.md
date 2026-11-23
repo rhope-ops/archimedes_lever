@@ -1,6 +1,6 @@
 ---
 name: deliver
-description: Use when a change is ready to commit, push, merge or publish, before a turn ends with work not on origin, when a push, merge or stop check is blocked, when you republish a page, clean up branches or change a workflow, and before you report repo work as done.
+description: Use to commit, push, merge, publish or republish; when a push, merge or stop check is blocked; before a turn ends with work not on origin; and before you report repo work as done.
 ---
 
 # Deliver a change
