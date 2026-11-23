@@ -72,11 +72,19 @@ def run_cases(cs, ROOT):
         (ROOT / 'a.py').write_text(good_py)
         PS and (ROOT / 'b.ps1').write_text(good_ps)
         config = config_of(ROOT, SMALL)
-        assert config['caps'] == {'max_function_lines': 5, 'max_file_lines': 50}, 'the caps come from .check: %s' % config
+        assert config['caps'] == {'max_function_lines': 5, 'max_file_lines': 50, 'max_file_lines_paste': 600}, \
+            'the caps come from .check: %s' % config
         g('add', '.')
         m = cs.measure(config)
         assert not any(m['violations'].values()), 'clean files pass: %s' % m['violations']
         assert not PS or [f['name'] for f in m['files']['b.ps1']['functions']] == ['Get-Upper'], 'generated block skipped'
+        (ROOT / 'p.py').write_text(good_py + '#\n' * 50)   # 57 lines: over the file cap 50 of SMALL
+        g('add', 'p.py')
+        sizes = [cs.measure(config_of(ROOT, SMALL + extra))['violations']['file_size'] for extra in
+                 ('', 'code-paste: p.py\n', 'code-paste: p.py\ncode-max-file-lines-paste: 52\n')]
+        assert sizes == [{'p.py': 57}, {}, {'p.py': 57}], 'a `code-paste:` file has its own cap: %s' % sizes
+        g('rm', '-qf', 'p.py')
+        config = config_of(ROOT, SMALL)
         (ROOT / 'a.py').write_text(good_py + '\n\ndef bare(x):\n    return x\n')
         new, fixed = cs.compare(cs.measure(config)['violations'], {}, config['caps'])
         assert len(new) == 1 and 'C2' in new[0] and 'a.py::bare' in new[0], 'a function without a comment fails: %s' % new

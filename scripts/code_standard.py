@@ -14,7 +14,8 @@ What it measures (the rule numbers are those of docs/code-standard.md):
   C2 full        opt-in (`code-c2: full`): a function longer than 10 lines also documents each
                  parameter and its return value in its language's help form (scripts/code_standard_docs.py)
   C3 length      each function is at most `max_function_lines` lines long
-  C4 file size   each source file is at most `max_file_lines` lines long
+  C4 file size   each source file is at most `max_file_lines` lines long; a `code-paste:` file (a script a person
+                 pastes into another tool) at most `max_file_lines_paste`
   C5 duplicate   no two functions in hand-written files have the same body (a copy must be generated, with a banner)
   C6 generated   each generated file says GENERATED near its top and names its source
   C10 parse      each Python and PowerShell file parses
@@ -184,8 +185,8 @@ def lang_of(rel):
 
 
 def file_rules(v, p, lines, head, config, skip):
-    """Write the per-file violations of one source file into `v`: C1 header, C1 safety and C4 file size; then a
-    project's own gate adds its per-file rules.
+    """Write the per-file violations of one source file into `v`: C1 header, C1 safety and C4 file size (a `code-paste:`
+    file against `max_file_lines_paste`); then a project's own gate adds its per-file rules.
 
     Args:
         v: the violations dict {kind: {key: value}}, changed in place.
@@ -199,7 +200,8 @@ def file_rules(v, p, lines, head, config, skip):
         v['header'][p] = 1
     if config.get('c1_safety') and not all(x in head for x in SAFETY_LABELS):
         v['safety'][p] = 1
-    if len(lines) > config['caps']['max_file_lines']:
+    paste = matches(p, config.get('paste', []))   # a script a person pastes into another tool: its own cap
+    if len(lines) > config['caps']['max_file_lines_paste' if paste else 'max_file_lines']:
         v['file_size'][p] = len(lines)
     if GATE:
         GATE.file_rules(v, p, lines, head, config, skip)

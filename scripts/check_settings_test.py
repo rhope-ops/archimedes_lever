@@ -48,7 +48,7 @@ def case_settings(root, git):
                               "audit-every-days: 7\naudit-ignore: ref/**\naudit-start-read: docs/A.md\n"
                               "audit-budget-file_kb: 100\naudit-budget-rules_file_lines: 150\n")
     cfg = code_config(root)
-    assert cfg["caps"] == {"max_file_lines": 300, "max_function_lines": 60} and cfg["exclude"] == ["a.py", "vendor/*"] \
+    assert cfg["caps"] == dict(CODE_DEFAULTS["caps"], max_file_lines=300) and cfg["exclude"] == ["a.py", "vendor/*"] \
         and cfg["include"] == ["*"] and cfg["c1_safety"] and cfg["c2"] == "full", "the code- lines are read: %s" % cfg
     aud = audit_config(root)
     assert aud["every_days"] == 7 and aud["every_commits"] == 300 and aud["ignore"] == ["ref/**"] \
@@ -95,6 +95,23 @@ def case_settings(root, git):
         assert fails(load_state, root), "a state file that is not valid fails: " + bad
     assert NAMES_CHECK.search("| x | `.check` |") and NAMES_CHECK.search("see .check.") \
         and not NAMES_CHECK.search(".check.lock and .check.state.json and x.check"), "a row names .check itself"
+
+
+def case_paste(root, git):
+    """The `code-paste:` list and the `code-max-file-lines-paste` cap are read; their misspelled forms fail.
+    Args:
+        root: a temporary git repo.
+        git: runs one git command in it (not used: every case takes it).
+    """
+    (root / CHECK).write_text("code-paste: tools/*.ps1\ncode-paste: a.js\ncode-max-file-lines-paste: 500\n")
+    cfg = code_config(root)
+    assert cfg["paste"] == ["a.js", "tools/*.ps1"] and cfg["caps"]["max_file_lines_paste"] == 500 \
+        and code_lines(cfg) == ["code-max-file-lines-paste: 500", "code-paste: a.js", "code-paste: tools/*.ps1"], cfg
+    for line in ("code_max_file_lines_paste: 5", "code-paste tools/x", "code_paste: x"):
+        (root / CHECK).write_text(line + "\n")
+        assert "looks like a setting" in fails(code_config, root), "a misspelled paste line fails: " + line
+    (root / CHECK).write_text("code-pasted in\n")
+    assert code_config(root) == CODE_DEFAULTS, "an allowed string is not a paste line"
 
 
 def case_instructions(root):
@@ -318,7 +335,7 @@ def run():
     Returns:
         The exit code 0.
     """
-    for case in (case_settings, case_migrate, case_migrate_dropped, case_migrate_header):
+    for case in (case_settings, case_paste, case_migrate, case_migrate_dropped, case_migrate_header):
         in_repo(case)
     print("SETTINGS TEST PASS")
     return 0
@@ -344,6 +361,10 @@ class CheckSettingsTest(unittest.TestCase):
     def test_settings(self):
         """The `code-` and `audit-` lines, the state file, the gate keys, third-party and instructions globs."""
         in_repo(case_settings)
+
+    def test_paste(self):
+        """The `code-paste:` lines and their cap."""
+        in_repo(case_paste)
 
     def test_migrate(self):
         """--migrate moves the old files into `.check` and `.check.state.json`."""

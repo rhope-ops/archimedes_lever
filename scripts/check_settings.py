@@ -13,6 +13,8 @@ The three files at the top of a repo:
 The setting lines (a missing key means the default; a key marked * may appear on several lines):
     code-max-file-lines: 600        code-max-function-lines: 60
     code-include: <glob> *          code-exclude: <glob> *          code-generated: <glob> *
+    code-paste: <glob> *            a script a person pastes into another tool (one file is one paste): its C4 cap is
+    code-max-file-lines-paste: 600  this one, not code-max-file-lines (docs/code-standard.md C4)
     code-c1-safety: on|off|strict   code-c2: full|lean
     code-max-line-chars: <number>   no line = off. This line and `code-c1-safety: strict` are for a project's own
                                     gate (scripts/code_standard_gate.py; docs/code-standard.md "A project's own gate"):

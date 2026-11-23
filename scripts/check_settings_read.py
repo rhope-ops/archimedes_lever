@@ -25,8 +25,10 @@ OLD_CODE = ".code-standard.json"   # before 2026-11-18: the code standard's caps
 OLD_AUDIT = ".bloat-audit.json"    # before 2026-11-18: the audit's settings, last audit and time baselines
 OLD_CHECK = ".pii-guard"           # before 2026-11-18: the name of .check
 MIGRATE = "python3 scripts/check_settings.py --migrate"
-CODE_DEFAULTS = {"caps": {"max_file_lines": 600, "max_function_lines": 60}, "include": ["*"], "exclude": [],
-                 "generated": [], "c1_safety": False, "c2": "lean"}
+# max_file_lines_paste: the C4 cap of a script a person pastes into another tool (the `code-paste:` files); one file is
+# one paste, so it keeps the older cap (the owner, 2026-11-23: docs/reviews/2026-11-23-fleet-v2-plan.md, decision 6).
+CODE_DEFAULTS = {"caps": {"max_file_lines": 600, "max_function_lines": 60, "max_file_lines_paste": 600}, "include": ["*"],
+                 "exclude": [], "generated": [], "paste": [], "c1_safety": False, "c2": "lean"}
 OPT_IN_CAPS = ("max_line_chars",)   # caps that are off (no key in "caps") until `.check` has their line; a gate enforces them
 STRICT = "strict"                   # the value of "c1_safety" for `code-c1-safety: strict` (False = off, True = on)
 AUDIT_DEFAULTS = {"every_days": 14, "every_commits": 300, "start_read": [], "ignore": [], "duplicate_ignore": [],
@@ -37,12 +39,13 @@ AUDIT_DEFAULTS = {"every_days": 14, "every_commits": 300, "start_read": [], "ign
                               "project_rules": 15}}
 # The owner's caps for every repo (2026-11-18; third_party_tokens 2026-11-20; session load 5,500, warning 5,000: 2026-11-21): a project can lower one, never raise it.
 KIT_CAPS = ("session_load_tokens", "session_load_warn_tokens", "rules_file_lines", "third_party_tokens")
-CODE_LISTS = ("include", "exclude", "generated")
+CODE_LISTS = ("include", "exclude", "generated", "paste")
 AUDIT_LISTS = ("ignore", "start_read", "duplicate_ignore", "third_party", "instructions")
 SETTING_LINE = re.compile(r"(?i)^((?:code|audit)-[A-Za-z0-9_-]+)\s*:\s*(.*)$")
 # A line that was meant as a setting: a known key written with `_`, with `=` in place of `:`, or with no colon.
 # An allowed string that only starts with those letters ("code-name Bluebird", "code-included in price") is not one.
-_KEY = (r"(?:code[-_](?:max[-_]file[-_]lines|max[-_]function[-_]lines|max[-_]line[-_]chars|include|exclude|generated|c1[-_]safety|c2)"
+_KEY = (r"(?:code[-_](?:max[-_]file[-_]lines(?:[-_]paste)?|max[-_]function[-_]lines|max[-_]line[-_]chars|include|exclude|generated"
+        r"|paste|c1[-_]safety|c2)"
         r"|audit[-_](?:every[-_]days|every[-_]commits|ignore|duplicate[-_]ignore|start[-_]read|budget[-_][a-z_]+))")
 LOOKS_LIKE_SETTING = re.compile(r"(?i)^" + _KEY + r"(?:\s*[:=]|\s+\S)")
 # A docs/DECISIONS.md row "names .check" with the file name itself, not .check.lock or .check.state.json.
@@ -143,7 +146,8 @@ def not_migrated(root, name):
 
 def code_settings(found):
     """The code standard settings from setting pairs: {"caps": {...}, "include": [...], "exclude": [...],
-    "generated": [...], "c1_safety": False|True|"strict", "c2": "lean"|"full"}. An opt-in cap (OPT_IN_CAPS) is in
+    "generated": [...], "paste": [...], "c1_safety": False|True|"strict", "c2": "lean"|"full"}. An opt-in cap
+    (OPT_IN_CAPS) is in
     "caps" only when its line is there. Lists are sorted, so two equal settings compare equal. ValueError for a line
     that is not valid.
     Args:
