@@ -1,6 +1,6 @@
 # Tool retirement, step R4, group W-A: custom kit checkers vs standard linters
 
-Date: 2026-11-23. Branch `claude/tr-wa-linters`, from kit commit `641023e`. Evidence only: this file decides nothing (retire, shrink or keep is the Maintainer's call). The research plan file named in the brief is not in the kit commit this branch starts from, so its text was not read; the brief was the only source.
+Date: 2026-11-23. Branch `claude/tr-wa-linters`, from kit commit `641023e`. Evidence only: this file decides nothing (retire, shrink or keep is the Maintainer's call). The plan (`docs/reviews/2026-11-23-tool-retirement-research-plan.md`, row R4, group W-A) and the prompt (`...-tool-retirement-prompt.md`, step 2 and its proof line: the standard tool finds at least the same defects on the same commits, mutant kills equal or higher) are on origin/main, not in the commit this branch starts from; they were read there for those items only. The kit has no mutant counter, so seeded defects stand in for kills (section 4).
 
 ## 1. What was measured
 
@@ -8,7 +8,7 @@ Date: 2026-11-23. Branch `claude/tr-wa-linters`, from kit commit `641023e`. Evid
 |---|---|---|
 | 1 | `scripts/code_standard.py` (+ parts, + the kit's strict gate `code_standard_strict.py` where a repo turns it on), Python files | ruff, pylint (incl. too-many-lines), radon (cc, mi, raw) |
 | 2 | Shell files: the same `code_standard.py` shell rules (C1, C2, C3, C4, C5, C6, line). No other bash check exists: no `bash -n` or shellcheck call in any `scripts/*.sh`, `check.sh`, `check.local.sh` or hook of the 5 repos (the two `# shellcheck disable=` comments in `pre-push` and `tests/net_rules_test.sh` are the only mentions) | shellcheck on all shell files |
-| 3 | PowerShell files: the same `code_standard.py` PowerShell rules (C1..C6, C10 via pwsh `Parser`, C2 full, line). Also found: RADE `scripts/lint.sh`, 90-161.Z `scripts/lint.sh` and 33-332.Z `tests/Lint.ps1` already run PSScriptAnalyzer (with a `ParseFile` pass in 90-161.Z and 33-332.Z) with a repo `PSScriptAnalyzerSettings.psd1`; so in those repos the standard tool is already a check, next to the custom one | PSScriptAnalyzer (PSSA) |
+| 3 | PowerShell files: the same `code_standard.py` PowerShell rules (C1..C6, C10 via pwsh `Parser`, C2 full, line). Also found: RADE `scripts/lint.sh`, 90-161.Z `scripts/lint.sh` and 33-332.Z `tests/Lint.ps1` already run PSScriptAnalyzer (with a `ParseFile` pass in 90-161.Z and 33-332.Z) with a repo `PSScriptAnalyzerSettings.psd1`; so in those repos the standard tool is already a check, next to the custom one. The three settings files differ: RADE's `Severity` includes `ParseError`, the other two list only Error and Warning, and 33-332.Z excludes three more rules (singular nouns, ShouldProcess, unused parameter). The other home-made checks that touch `.sh` or `.ps1` are tests, not linters (RADE `tests/*.sh`, `tests/*.ps1`; 90-161.Z `tests/run.sh`, `tests/ps/`; 33-332.Z `tests/Run-Tests.ps1`); 90-161.Z `tests/check_names.py` checks SharePoint names, not code; icf `scripts/check_project.sh` lints question content, not code. `check.local.sh` of RADE, 90-161.Z, 33-332.Z, icf was read for this; the kit has none | PSScriptAnalyzer (PSSA) |
 
 Repos and commits (same commit for both tools; read-only clones, nothing written in them):
 
@@ -62,7 +62,46 @@ no-docstring-rgx=^$
 docstring-min-length=-1
 ```
 
-Extra runs for C2 full: ruff `--preview` with `select = ["DOC"]`; pylint with `load-plugins=pylint.extensions.docparams`, `accept-no-param-doc=no`, `accept-no-return-doc=no`, `default-docstring-type=google`, enabling missing-param-doc, missing-return-doc, missing-yield-doc. Shellcheck: `-f json1`, no `-s` (the shebang decides), default severity. PSSA: `Invoke-ScriptAnalyzer -Path` per file: (a) default rules, no settings; (b) the repo's own `PSScriptAnalyzerSettings.psd1` (Severity Error and Warning, `PSUseCompatibleSyntax` 5.1, Write-Host allowed); (c) `IncludeRules PSProvideCommentHelp` with `ExportedOnly = $false`; (d) `IncludeRules PSAvoidLongLines` with `MaximumLineLength = 200`.
+Extra runs for C2 full:
+
+```toml
+# ruff_doc.toml  (ruff --preview --no-cache --config ruff_doc.toml)
+line-length = 200
+[lint]
+select = ["DOC"]
+[lint.pydocstyle]
+convention = "google"
+```
+
+```ini
+# pylint_docparams.rc
+[MAIN]
+persistent=no
+load-plugins=pylint.extensions.docparams
+[MESSAGES CONTROL]
+disable=all
+enable=missing-param-doc,missing-return-doc,missing-yield-doc
+[DOCPARAMS]
+accept-no-param-doc=no
+accept-no-return-doc=no
+accept-no-yields-doc=no
+default-docstring-type=google
+```
+
+(The seed run repeated the docparams run with `--accept-no-param-doc=n --accept-no-return-doc=n` on the command line; same result, so the `[DOCPARAMS]` section name was not the cause of what is described under row 7a.) Pylint's `W9013` is `missing-yield-doc`; it is not counted as a parameter message anywhere in this file.
+
+PSSA trial settings (each passed with `Invoke-ScriptAnalyzer -Settings`):
+
+```powershell
+# pssa_mapped.psd1
+@{ IncludeRules = @('PSProvideCommentHelp')
+   Rules = @{ PSProvideCommentHelp = @{ Enable = $true; ExportedOnly = $false; BlockComment = $true; VSCodeSnippetCorrection = $false; Placement = 'before' } } }
+# pssa_long.psd1
+@{ IncludeRules = @('PSAvoidLongLines')
+   Rules = @{ PSAvoidLongLines = @{ Enable = $true; MaximumLineLength = 200 } } }
+```
+
+Shellcheck: `-f json1`, no `-s` (the shebang decides), default severity. PSSA: `Invoke-ScriptAnalyzer -Path` per file: (a) default rules, no settings; (b) each repo's own `PSScriptAnalyzerSettings.psd1` (`PSUseCompatibleSyntax` 5.1, Write-Host allowed; Severity as above; the seed run used the 90-161.Z file, and was repeated with the RADE and 33-332.Z files); (c) `IncludeRules PSProvideCommentHelp` with `ExportedOnly = $false`; (d) `IncludeRules PSAvoidLongLines` with `MaximumLineLength = 200`.
 
 How overlap was decided: a custom finding is "also found" when the standard tool reports at the same file and the same function line (up to 3 lines later, for decorators), or, for file-level checks, the same file. Counts of rules are counts of findings (not files), message text is left out. Python overlap uses `path::function` keys from the custom tool mapped to function start lines from its `--report` data.
 
@@ -100,7 +139,8 @@ All counts are one run in this container, same commit for both tools. "Custom" c
 | C2 comment | 0 | D10x 0 / C0116 1 | ruff 0 / pylint 0 | ruff 0 / pylint 0 | ruff 0 / pylint 1 |
 | C3 length (>60 lines) | 0 | PLR0915 1 / R0915 1 / radon-derived 0 | ruff 0 / pylint 0 / radon 0 | ruff 0 / pylint 0 / radon 0 | ruff 1 / pylint 1 / radon 0 |
 | C4 file size (>450) | 0 | C0302 0 / radon loc 0 | pylint 0 / radon 0 | pylint 0 / radon 0 | pylint 0 / radon 0 |
-| C5 duplicate | 0 functions in 0 py files | R0801 3 findings in 1 files | files in both 0 | n/a | n/a |
+| C5 duplicate | 0 functions in 0 py files | R0801 3 findings naming 6 files (module names read from the message text) | files in both 0 | n/a | n/a |
+| C2 full (functions > 10 lines) | 0 | pylint W9015 48 / W9011 195; ruff DOC201 171 | W9015 0 / W9011 0 / DOC201 0 | W9015 0 / W9011 0 / DOC201 0 | W9015 48 / W9011 195 / DOC201 171 |
 | line > 200 chars (strict gate) | gate off | E501 1 files / C0301 1 files | ruff 0 / pylint 0 | n/a | n/a |
 | C1 safety / C6 generated / C10 parse | safety 0 / generated 0 / parse 0 | no rule / no rule / syntax error | - | - | - |
 
@@ -112,7 +152,8 @@ All counts are one run in this container, same commit for both tools. "Custom" c
 | C2 comment | 10 | D10x 10 / C0116 11 | ruff 9 / pylint 9 | ruff 1 / pylint 1 | ruff 1 / pylint 2 |
 | C3 length (>60 lines) | 1 | PLR0915 2 / R0915 2 / radon-derived 1 | ruff 1 / pylint 1 / radon 1 | ruff 0 / pylint 0 / radon 0 | ruff 1 / pylint 1 / radon 0 |
 | C4 file size (>450) | 0 | C0302 0 / radon loc 0 | pylint 0 / radon 0 | pylint 0 / radon 0 | pylint 0 / radon 0 |
-| C5 duplicate | 0 functions in 0 py files | R0801 2 findings in 1 files | files in both 0 | n/a | n/a |
+| C5 duplicate | 0 functions in 0 py files | R0801 2 findings naming 4 files (module names read from the message text) | files in both 0 | n/a | n/a |
+| C2 full (functions > 10 lines) | 26 | pylint W9015 18 / W9011 205; ruff DOC201 142 | W9015 0 / W9011 24 / DOC201 10 | W9015 26 / W9011 2 / DOC201 16 | W9015 18 / W9011 181 / DOC201 132 |
 | line > 200 chars (strict gate) | 3 | E501 3 files / C0301 3 files | ruff 3 / pylint 3 | n/a | n/a |
 | C1 safety / C6 generated / C10 parse | safety 8 / generated 0 / parse 0 | no rule / no rule / syntax error | - | - | - |
 
@@ -124,7 +165,8 @@ All counts are one run in this container, same commit for both tools. "Custom" c
 | C2 comment | 0 | D10x 2 / C0116 3 | ruff 0 / pylint 0 | ruff 0 / pylint 0 | ruff 2 / pylint 3 |
 | C3 length (>60 lines) | 0 | PLR0915 2 / R0915 2 / radon-derived 0 | ruff 0 / pylint 0 / radon 0 | ruff 0 / pylint 0 / radon 0 | ruff 2 / pylint 2 / radon 0 |
 | C4 file size (>450) | 0 | C0302 0 / radon loc 0 | pylint 0 / radon 0 | pylint 0 / radon 0 | pylint 0 / radon 0 |
-| C5 duplicate | 0 functions in 0 py files | R0801 1 findings in 1 files | files in both 0 | n/a | n/a |
+| C5 duplicate | 0 functions in 0 py files | R0801 1 findings naming 2 files (module names read from the message text) | files in both 0 | n/a | n/a |
+| C2 full (functions > 10 lines) | 45 | pylint W9015 24 / W9011 256; ruff DOC201 203 | W9015 2 / W9011 41 / DOC201 33 | W9015 43 / W9011 4 / DOC201 12 | W9015 22 / W9011 215 / DOC201 170 |
 | line > 200 chars (strict gate) | 6 | E501 6 files / C0301 6 files | ruff 6 / pylint 6 | n/a | n/a |
 | C1 safety / C6 generated / C10 parse | safety 21 / generated 0 / parse 0 | no rule / no rule / syntax error | - | - | - |
 
@@ -136,7 +178,8 @@ All counts are one run in this container, same commit for both tools. "Custom" c
 | C2 comment | 0 | D10x 0 / C0116 1 | ruff 0 / pylint 0 | ruff 0 / pylint 0 | ruff 0 / pylint 1 |
 | C3 length (>60 lines) | 0 | PLR0915 1 / R0915 1 / radon-derived 0 | ruff 0 / pylint 0 / radon 0 | ruff 0 / pylint 0 / radon 0 | ruff 1 / pylint 1 / radon 0 |
 | C4 file size (>450) | 0 | C0302 0 / radon loc 0 | pylint 0 / radon 0 | pylint 0 / radon 0 | pylint 0 / radon 0 |
-| C5 duplicate | 0 functions in 0 py files | R0801 2 findings in 1 files | files in both 0 | n/a | n/a |
+| C5 duplicate | 0 functions in 0 py files | R0801 2 findings naming 4 files (module names read from the message text) | files in both 0 | n/a | n/a |
+| C2 full (functions > 10 lines) | 0 | pylint W9015 19 / W9011 140; ruff DOC201 107 | W9015 0 / W9011 0 / DOC201 0 | W9015 0 / W9011 0 / DOC201 0 | W9015 19 / W9011 140 / DOC201 107 |
 | line > 200 chars (strict gate) | 0 | E501 0 files / C0301 0 files | ruff 0 / pylint 0 | n/a | n/a |
 | C1 safety / C6 generated / C10 parse | safety 0 / generated 0 / parse 0 | no rule / no rule / syntax error | - | - | - |
 
@@ -148,7 +191,8 @@ All counts are one run in this container, same commit for both tools. "Custom" c
 | C2 comment | 141 | D10x 189 / C0116 194 | ruff 138 / pylint 139 | ruff 3 / pylint 2 | ruff 51 / pylint 55 |
 | C3 length (>60 lines) | 3 | PLR0915 4 / R0915 4 / radon-derived 3 | ruff 2 / pylint 2 / radon 3 | ruff 1 / pylint 1 / radon 0 | ruff 2 / pylint 2 / radon 0 |
 | C4 file size (>450) | 3 | C0302 3 / radon loc 3 | pylint 3 / radon 3 | pylint 0 / radon 0 | pylint 0 / radon 0 |
-| C5 duplicate | 2 functions in 2 py files | R0801 8 findings in 1 files | files in both 0 | n/a | n/a |
+| C5 duplicate | 2 functions in 2 py files | R0801 8 findings naming 14 files (module names read from the message text) | files in both 0 | n/a | n/a |
+| C2 full (functions > 10 lines) | 43 | pylint W9015 50 / W9011 653; ruff DOC201 414 | W9015 0 / W9011 30 / DOC201 4 | W9015 43 / W9011 13 / DOC201 39 | W9015 50 / W9011 623 / DOC201 410 |
 | line > 200 chars (strict gate) | gate off | E501 80 files / C0301 83 files | ruff 0 / pylint 0 | n/a | n/a |
 | C1 safety / C6 generated / C10 parse | safety 60 / generated 0 / parse 0 | no rule / no rule / syntax error | - | - | - |
 
@@ -188,7 +232,7 @@ Reading the tables:
 - 33-332.Z and kit: custom raw debt is 0 in Python; pylint mapped still reports 4 and 11 (R0915, R0801, C0116/C0115 for classes, 1 C0301), none of them a custom check. See "standard only" in the overlap table.
 - Radon does not gate anything by itself: its cc ranks (C or worse: 107 to 378 functions per repo) and mi ranks (A for 62 of 62 kit files; the worst file is rank C in 90-161.Z 1 of 84 and icf 2 of 261) measure complexity and maintainability, which no C-check measures. Function length and file size can be derived from its JSON (`lineno`/`endline`, `loc`) with a short script; that is data, not a check.
 - Pair 2: shellcheck's findings are a different class from every shell check of the custom tool. By defect class the overlap is zero; no shellcheck code reports a missing header, a missing function comment, a function or file length, a duplicate or a line length. Per-file overlap was not computed because the defect classes do not meet.
-- Pair 3: with the repo's own settings file, PSSA reports 164 (RADE), 368 (90-161.Z) and 0 (33-332.Z) warnings per file. RADE's own `lint.sh` lints the built bundle, not each file, to avoid the "unused variable" findings that a per-file run gives; that is why 164 here and 0 there. PSSA default adds Information-level rules (positional parameters, Write-Host) that the repo setting file switches off.
+- Pair 3: with each repo's own settings file, PSSA reports 164 (RADE), 368 (90-161.Z) and 0 (33-332.Z) warnings, run per file. RADE's `lint.sh` was not run; it lints the built sample bundle with the same settings (a different scope: not these 39 files), so its result is not comparable with the 164. 119 of the 164 and 320 of the 368 are `PSAvoidGlobalVars`. PSSA default adds Information-level rules (positional parameters) and Write-Host, which the repo setting files switch off or exclude.
 
 ## 4. Seeded defects (stand-in for mutant kills)
 
@@ -206,13 +250,14 @@ The brief's examples "bare except" and "unquoted variable" are not checks of the
 | 4 | C4 file of 751 lines | Y (file_size) | N | N | N (its default cap is 1000) | Y (C0302 with `max-module-lines=450`) | Y as data (raw `loc`; no gate) |
 | 5 | C5 same function body in 2 files | Y (duplicate) | N | N | N | N at `min-similarity-lines=4`; Y at 3 (separate run, R0801) | n/a |
 | 6 | C10 file that does not parse | Y (parse) | Y (invalid-syntax) | Y | Y (E0001) | Y (E0001) | error entry only |
-| 7 | C2 full: function over 10 lines, no parameter docs | Y (docs) | N | N for parameters (D417 N); preview DOC201 reports the missing return doc only | N | N for parameters; docparams W9011 reports the missing return doc only | n/a |
+| 7a | C2 full: function over 10 lines, docstring with no Args section | Y (docs) | N | N for parameters (D417 N); preview DOC201 reports the missing return doc only | N | N for parameters; docparams (separate run) W9011 reports the missing return doc only; parameters are not checked when the docstring has no parameter section | n/a |
+| 7b | C2 full: same, Args section names only one of two parameters | Y (docs) | N | Y (D417) | N | N (not in the set); docparams run: Y (W9015) | n/a |
 | 8 | C6 generated file without GENERATED | Y (generated) | N | N | N | N | n/a |
 | 9 | Line of 230 characters | Y (line) | N | Y (E501) | Y (C0301, also at default 100) | Y (C0301) | n/a |
 | 10 | C1 safety: header lacks the 3 labels | Y (safety) | N | N | N | N | n/a |
 | x | not a custom check: bare `except`, mutable default argument, unused import | N | Y (E722, B006, F401) | F401 only (E722, B006 not in the mapped set) | Y (W0702, W0102, W0611) | N | n/a |
 
-Python result: the custom tool catches 10 of 10 seeded custom checks. Ruff mapped catches 4 of 10 fully (1, 2, 6, 9) and 1 as a proxy (3); pylint mapped catches 5 of 10 fully (1, 2, 4, 6, 9) and 1 as a proxy (3); 5 and 7 only partly or by a tuned setting. Neither catches 8 or 10. Both catch a defect class the custom tool does not have (row x).
+Python result: the custom tool catches 11 of 11 seeded custom-check defects (rows 1 to 10 with 7a and 7b). Ruff mapped catches 5 (1, 2, 6, 7b, 9) and 1 as a proxy (3); pylint mapped catches 5 (1, 2, 4, 6, 9) and 1 as a proxy (3), 6 with the docparams run (7b); row 5 only with `min-similarity-lines=3`; neither catches 7a, 8 or 10. Both catch a defect class the custom tool does not have (row x). Side effect: the two C2-full seeds share one function body, so the custom tool (and pylint R0801) also reported them as duplicates of each other.
 
 ### Shell
 
@@ -225,7 +270,7 @@ Python result: the custom tool catches 10 of 10 seeded custom checks. Ruff mappe
 | 5 | C5 same function body in 2 files | Y (duplicate) | N |
 | 6 | Line of 230 characters | Y (line) | N (SC2034 fired, on the unused variable of the seed; not the length) |
 | 7 | C1 safety labels missing | Y (safety) | N |
-| x | not a custom check: unquoted variable, `cd` without `||`, `[ $f == ... ]` | N | Y (SC2086 x3, SC2164 x1) |
+| x | not a custom check: unquoted variable, `cd` without a failure branch, `[ $f == ... ]` | N | Y (SC2086 x3, SC2164 x1) |
 
 Shell result: the custom tool catches 7 of 7; shellcheck 0 of 7, and catches the class the custom tool lacks. (Shell seeds 3 to 5 also fired `comment` on the custom side: the seed's header comment block touches the function, an artifact of the seed layout.)
 
@@ -234,17 +279,17 @@ Shell result: the custom tool catches 7 of 7; shellcheck 0 of 7, and catches the
 | # | Seeded defect (file) | custom | PSSA default | PSSA repo settings | PSSA mapped rule |
 |---|---|---|---|---|---|
 | 1 | C1 no header comment | Y (header) | N | N | N |
-| 2 | C2 function without comment | Y (comment) | N | N | PSProvideCommentHelp (`ExportedOnly = $false`): N for this seed (its file header help block counted as the function's help); Y for seed 1's function (same class) |
+| 2 | C2 function without comment | Y (comment) | N | N | Y (PSProvideCommentHelp, `ExportedOnly = $false`; the default is exported functions only) |
 | 3 | C3 function of 70+ lines | Y (length) | N | N | N |
 | 4 | C4 file of 654 lines | Y (file_size) | N | N | N |
 | 5 | C5 same function body in 2 files | Y (duplicate) | N | N | N |
-| 6 | C10 file that does not parse | Y (parse) | Y (ExpectedValueExpression, MissingEndParenthesisInExpression) | Y (same) | n/a |
+| 6 | C10 file that does not parse | Y (parse) | Y (ExpectedValueExpression, MissingEndParenthesisInExpression) | RADE file (Severity includes ParseError): Y; 90-161.Z file and 33-332.Z file (Error, Warning only): N | Y (the trial rules report parse errors too) |
 | 7 | C2 full: function over 10 lines, no `.PARAMETER` | Y (docs) | N | N | N |
 | 8 | Line of 230 characters | Y (line) | N | N | PSAvoidLongLines (`MaximumLineLength = 200`): Y |
 | 9 | C1 safety labels missing | Y (safety) | N | N | N |
-| x | not a custom check: `Invoke-Expression`, `Write-Host`, unused variable, unapproved verb, plural noun | N | Y (PSAvoidUsingInvokeExpression, PSAvoidUsingWriteHost, PSUseDeclaredVarsMoreThanAssignments, PSUseApprovedVerbs, PSUseSingularNouns) | Y (all but Write-Host, which the setting file allows) | n/a |
+| x | not a custom check: `Invoke-Expression`, `Write-Host`, unused variable, unapproved verb, plural noun | N | Y (PSAvoidUsingInvokeExpression, PSAvoidUsingWriteHost, PSUseDeclaredVarsMoreThanAssignments, PSUseApprovedVerbs, PSUseSingularNouns) | Y (all but Write-Host, which the 90-161.Z setting file allows) | n/a |
 
-PowerShell result: the custom tool catches 9 of 9; PSSA default or repo settings 1 of 9 (parse); with the two trial rules added, 2 of 9 (parse, line) plus 1 of the 2 comment seeds.
+PowerShell result: the custom tool catches 9 of 9; PSSA default 1 of 9 (parse); PSSA with a repo settings file 0 of 9 (90-161.Z, 33-332.Z files) or 1 of 9 (RADE file, parse); with the two trial rules added, 3 of 9 (parse, comment help, line). Seed note: the two C2 seeds have a statement between the header help block and the function, so the header does not count as the function's help.
 
 ## 5. Per-pair summary
 
@@ -257,11 +302,11 @@ Standard covers 4 of 10 fully, 4 more partly, 2 not at all.
 | Check | Grade | Standard rule and config | What the data shows |
 |---|---|---|---|
 | C1 header | Full | ruff D100; pylint C0114 | icf 17 of 17 custom findings found by both; 0 extra. Meaning is weaker: only "a docstring exists", not 60 characters or content |
-| C2 comment | Partial | ruff D102/D103/D105 (public names only); pylint C0116 with `no-docstring-rgx=^$` | custom 141 (icf) / 10 (RADE): ruff finds 138 / 9, pylint 139 / 9. Missed: nested functions (2), a method of a private class (1), a private function (ruff only, 1). Extra standard findings where the custom check passes: 51 (ruff), 55 (pylint) in icf: a function with a `#` comment instead of a docstring, which the kit allows and these rules do not |
-| C2 full | Partial | pylint docparams (needs the plugin), ruff preview DOC201/DOC501 | custom 26 / 45 / 43 (RADE, 90-161.Z, icf). docparams missing-return-doc (W9011) overlaps 24 / 41 / 30, missing-param-doc 0 / 3 / 0; ruff D417 0 of all; DOC201 overlaps 10 / 33 / 4. No 10-line threshold in either: on the clean kit, docparams reports 195 functions and DOC201 171 that the custom check accepts. The seed with no parameter docs was not caught for parameters |
+| C2 comment | Partial | ruff D102/D103/D105 (public names only); pylint C0116 with `no-docstring-rgx=^$` | custom 141 (icf) / 10 (RADE): ruff finds 138 / 9, pylint 139 / 9. Missed: nested functions (2), a method of a private class (1), a private function (ruff only, 1). Extra standard findings where the custom check passes (icf): 51 ruff, 55 pylint. Of the 55 pylint ones, 47 have a `#` comment directly above the def or as the first body line and 5 a trailing comment on the def line (read by hand); 3 were not classified. The kit accepts these forms, these rules do not |
+| C2 full | Partial | pylint docparams (needs the plugin), ruff preview DOC201/DOC501 | custom 26 / 45 / 43 (RADE, 90-161.Z, icf). docparams missing-return-doc (W9011) overlaps 24 / 41 / 30, missing-param-doc (W9015) 0 / 2 / 0; ruff D417 0 of all; DOC201 overlaps 10 / 33 / 4. Both tools check parameters only when the docstring already has a parameter section: the seed with no Args section is not caught for parameters, the seed with a partial Args section is caught (D417, W9015). Most custom findings in the repos are docstrings with no Args section, hence the near-zero parameter overlap. No 10-line threshold in either: on the clean kit, docparams reports 195 (W9011) + 48 (W9015) functions and DOC201 171 that the custom check accepts |
 | C3 length | Partial | proxy only: ruff PLR0915 / pylint R0915 (statements, default max 50); no line-count rule exists | icf custom 3: R0915 finds 2; RADE 1 of 1. Each tool reports 1 to 2 functions the custom check does not (many statements in under 60 lines). Radon JSON gives `endline - lineno + 1`, which finds 3 of 3 and 1 of 1 and 0 extra, but needs a small script to gate |
 | C4 file size | Full (pylint) | pylint C0302 with `max-module-lines=450`; ruff has no rule | icf 3 of 3, 0 extra; radon `loc` > 450 also 3 of 3 (data, no gate) |
-| C5 duplicate | Partial | pylint R0801 (similar lines across files, not same-body functions) | icf custom: 2 functions in 2 files; R0801 8 findings in 1 file; no shared file. Seed: missed at default `min-similarity-lines=4`, caught at 3. Different definition, so more and other findings |
+| C5 duplicate | Partial | pylint R0801 (similar lines across files, not same-body functions) | pylint reports each R0801 on one module, so the files are read from the message text (`==module:[a:b]`): icf custom 2 functions in 2 files; R0801 8 findings naming 14 modules; 0 files shared. Same join: 0 shared in the other four repos. Seed: the identical pair dup_a/dup_b is missed at the default `min-similarity-lines=4`, caught at 3; the two C2-full seeds, which duplicate each other by accident, were reported by both tools. R0801 reports similar lines (also across different functions), the custom check same-body functions, so findings differ in kind |
 | C6 generated | None | no rule | seed: not caught |
 | C10 parse | Full | ruff invalid-syntax; pylint E0001 | 0 parse failures in all 5 repos in both tools; seed caught by both |
 | C1 safety | None | no rule | custom 8 (RADE), 21 (90-161.Z), 60 (icf) |
@@ -303,7 +348,7 @@ Standard covers 2 of 10 fully (C10 parse, line), 2 partly (C2 comment, C2 full),
 
 | Check | Grade | Standard rule and config | What the data shows |
 |---|---|---|---|
-| C10 parse | Full | the parser errors that PSSA returns (RuleName from the parser, e.g. ExpectedValueExpression); `ParseFile` in the repo `lint.sh` | 0 parse errors in the 143 files; seed caught by both. The project check scripts already do this |
+| C10 parse | Full, with a condition | the parser errors that PSSA returns (e.g. ExpectedValueExpression) in a default run or with `ParseError` in `Severity` (RADE's file does; the 90-161.Z and 33-332.Z files do not, so those repos add a separate `ParseFile` pass) | 0 parse errors in the 143 files for both tools; seed caught by default PSSA and RADE's file, not by the other two files |
 | line | Full | PSAvoidLongLines, `MaximumLineLength = 200` (off by default) | RADE 25 of 25 files, 90-161.Z 13 of 13 (PSSA 15 files, 2 more), 33-332.Z 0 of 0; PSSA adds 351 / 182 line findings (per line, not per file) |
 | C2 comment | Partial | PSProvideCommentHelp with `ExportedOnly = $false` (default is exported functions only: 0 of 45 custom RADE findings, 0 of 14 in 90-161.Z) | custom 45 / 14 / 0; with the rule on every function, overlap is 13 of 45 (RADE) and 7 of 14 (90-161.Z); the rule asks for a full help block, so it reports 181 / 324 / 84 findings, 33-332.Z included where the custom check reports 0 |
 | C2 full | Partial | the same rule (it checks that help exists, not that each `.PARAMETER` exists) | custom 75 / 19 / 0; overlap 51 of 75 (RADE), 16 of 19 (90-161.Z) with the rule on everywhere. Seed with no `.PARAMETER`: not caught |
@@ -311,7 +356,7 @@ Standard covers 2 of 10 fully (C10 parse, line), 2 partly (C2 comment, C2 full),
 
 Only the custom tool finds the 6 uncovered checks and the ratchet. Only PSSA finds: global variables (PSAvoidGlobalVars 119 / 320 / 0), Write-Host (138 / 221 / 3 at default), positional parameters, unused variables and parameters, ShouldProcess, singular nouns, `Invoke-Expression` (1 / 1 / 0), and its compatibility rules (5.1 syntax) via the repo settings.
 
-Run time: PSSA default 8.8 to 16.1 s per repo (a cold per-file call), with the repo settings 0.4 to 1.1 s; the custom tool 2.6 to 5.6 s for the whole repo.
+Run time: PSSA default 8.8 to 16.1 s per repo; the settings pass took 0.4 to 1.1 s but ran second in the same pwsh process (module already loaded, rules fewer), so it is not a fair figure for a cold run; the custom tool takes 2.6 to 5.6 s for the whole repo.
 
 Config the standard side would need: the repo `PSScriptAnalyzerSettings.psd1` as it stands (already in RADE, 90-161.Z, 33-332.Z), plus `PSAvoidLongLines` with `MaximumLineLength = 200` and `PSProvideCommentHelp` with `ExportedOnly = $false` (with a different meaning: a help block, not just a comment); nothing exists for header, safety, length, size, duplicate or generated.
 
@@ -320,7 +365,7 @@ Candidate verdicts:
 | Option | Trade-offs |
 |---|---|
 | Retire the PowerShell side | removes the 6 uncovered checks outright and weakens the 2 partly covered ones; the three projects already run PSSA, so the standard tool is not new there, which means it adds nothing for them |
-| Shrink | the custom side could drop C10 parse (the three project lint scripts already parse) and `line` (PSAvoidLongLines), keeping the 6 uncovered checks and C2 as defined; saves the pwsh parse step at the custom side (run time includes it) at the cost of a new rule in each PSSA settings file |
+| Shrink | the custom side could drop C10 parse (RADE's settings already report it; 90-161.Z and 33-332.Z run a `ParseFile` pass beside PSSA) and `line` (PSAvoidLongLines), keeping the 6 uncovered checks and C2 as defined; saves the pwsh parse step at the custom side (its run time includes it) at the cost of a new rule and, in two repos, a `ParseError` severity in the PSSA settings file |
 | Keep | no change; PSSA and the custom check stay side by side (they already are); no rule overlaps except parse and line |
 
 ## 6. Open points and limits
@@ -330,5 +375,5 @@ Candidate verdicts:
 - Seeds: one defect per file, one run each; PowerShell comment-help seed 2 is blurred by the seed's own header help block (noted in the table).
 - Functions with the same name in nested scopes get a `#2` suffix in the custom key; they were matched by name, so a rare mismatch is possible (3 custom C2 findings had no standard match for nested or private reasons, listed in the C2 row).
 - No JS or MJS files were measured with a standard tool (eslint was not in the brief); the custom tool measures 135 of them across the 5 repos.
-- `icf-source` has an ignored `scripts/__pycache__/` folder (file times 20:55 UTC, 2026-11-23, during this session). Every run of this study set `PYTHONDONTWRITEBYTECODE=1`; the origin of that folder is not known, so it may come from another process. Nothing else changed in any clone: `git status --porcelain` is empty for RADE, 90-161.Z, 33-332.Z and the kit worktree, and the HEADs above were read again at the end.
+- `icf-source` has an ignored `scripts/__pycache__/` folder with three files (`check_content_finders`, `check_content_scan`, `check_content_scan_settings`, `.cpython-313.pyc`), all stamped 20:55:01 UTC, 2026-11-23. `code_standard.py` does import `check_content_scan_settings` (through `check_settings`), but every run of this study set `PYTHONDONTWRITEBYTECODE=1`, and 20:55 is earlier than the first run of this study on that repo; the origin is not known, most likely another process. It was left as it is (no writes in clones). Nothing else changed in any clone: `git status --porcelain` is empty for RADE, 90-161.Z, 33-332.Z and the kit worktree, and the HEADs above were read again at the end.
 - Work files (configs, drivers, JSON outputs, the seeded repo) are in the session scratchpad, not in the repo; nothing but this file was added to the branch.
