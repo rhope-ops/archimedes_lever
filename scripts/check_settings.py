@@ -29,7 +29,8 @@ The setting lines (a missing key means the default; a key marked * may appear on
                                     scripts/check_instructions.py checks its steps, and its hook asks for the skill first
     audit-budget-<name>: <number>   names: the keys of AUDIT_DEFAULTS["budgets"]; the KIT_CAPS may only be lowered
     dod-security: on|off            a page the kit builds (scripts/build_site_html.py) gets a Content-Security-Policy and a
-                                    no-referrer meta tag only when `on` (default off); read there
+                                    no-referrer meta tag only when `on` (default off); read there; the sync adds
+                                    the DoD group (sync_baseline.DOD_FILES) only when `on`
 An unknown `code-` or `audit-` key, a key in capitals, a single key on two lines, or a value that is not valid raises
 ValueError: the check that reads it fails with that message (a typo must not relax a limit in silence).
 

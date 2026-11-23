@@ -62,7 +62,11 @@ def value(key, folders=None):
 
 
 def self_test():
-    """Check find() and value() on temporary folders; returns the number of failed cases."""
+    """Check find() and value() on temporary folders and the kit's own kit.config.json; print one line per failure.
+
+    Returns:
+        The number of failed cases (0: all passed).
+    """
     fails = 0
     with tempfile.TemporaryDirectory() as tmp:
         a, b = os.path.join(tmp, "a"), os.path.join(tmp, "b")

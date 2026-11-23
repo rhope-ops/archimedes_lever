@@ -93,5 +93,31 @@ class SyncBaselineCli(unittest.TestCase):
         self.assertFalse((self.path / ".check.lock").exists())
 
 
+    def commit_file(self, rel, text):
+        """Write one file into the temporary repo and commit it (the sync needs a clean tree)."""
+        (self.path / rel).parent.mkdir(parents=True, exist_ok=True)
+        (self.path / rel).write_text(text)
+        run(["git", "add", "-A"], self.path)
+        run(GIT + ["commit", "-q", "-m", "setup"], self.path)
+
+    def test_dod_group_off_by_default(self):
+        """Prove: with no `dod-security: on` line, the sync adds no DoD file (fleet v2 DEC 4: ICF-Source)."""
+        self.assertEqual(sync(self.path).returncode, 0)
+        for rel in ("SECURITY.md", ".github/dependabot.yml", ".github/workflows/security.yml"):
+            self.assertFalse((self.path / rel).exists(), rel)
+
+    def test_dod_group_on_adds_missing_files_only(self):
+        """Prove: `dod-security: on` adds the missing DoD files, keeps a project's own copy, and locks none."""
+        self.commit_file(".check", "dod-security: on\n")
+        self.commit_file(".github/workflows/security.yml", "name: own scan\n")
+        p = sync(self.path)
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertTrue((self.path / "SECURITY.md").is_file())
+        self.assertTrue((self.path / ".github/dependabot.yml").is_file())
+        self.assertEqual((self.path / ".github/workflows/security.yml").read_text(), "name: own scan\n")
+        lock = json.loads((self.path / ".check.lock").read_text())
+        for rel in ("SECURITY.md", ".github/dependabot.yml", ".github/workflows/security.yml"):
+            self.assertNotIn(rel, lock["files"])
+
 if __name__ == "__main__":
     unittest.main()

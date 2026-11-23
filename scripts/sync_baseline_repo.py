@@ -18,6 +18,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from build_site_html import dod_security  # scripts/build_site_html.py: the one reader of `dod-security:`
 from sync_merge import die  # scripts/sync_merge.py: stop with a message
 
 
@@ -131,3 +132,19 @@ def show_diff(root, new):
         if not text.endswith("\n"):
             print()
     return changed
+
+
+def dod_files(base, root, rels):
+    """The DoD group a sync adds (fleet v2 DEC 4): each file of rels the project lacks, when its .check has
+    `dod-security: on` (read by scripts/build_site_html.py dod_security, the one reader of that key).
+
+    Args:
+        base: the baseline folder.
+        root: the project folder.
+        rels: the DoD file paths (sync_baseline.DOD_FILES).
+    Returns:
+        A dict of project path to the kit's text: empty when the key is off or missing, or the project has every file.
+    """
+    if not dod_security(root):
+        return {}
+    return {rel: (base / rel).read_text() for rel in rels if (base / rel).exists() and not (root / rel).exists()}

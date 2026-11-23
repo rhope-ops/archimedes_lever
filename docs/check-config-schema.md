@@ -42,9 +42,11 @@ Notes:
 | `fleet: on` | `on` | off | `scripts/check.sh:369`; `scripts/fleet_harvest.py:56` | `fleet: on` |
 | `dod-security: on\|off` | `on` or `off` | `off` | `scripts/build_site_html.py`, function `dod_security` (see the note below) | `dod-security: on` |
 
-Note on `dod-security`: the key is new in the plan `docs/reviews/2026-11-23-fleet-v2-plan.md`. The file
-`scripts/build_site_html.py` does not exist at commit `fe62213`. The `file:line` mark for the reader must be added
-after the split of `scripts/build_site.py` lands.
+Note on `dod-security`: the key is new in the plan `docs/reviews/2026-11-23-fleet-v2-plan.md` (DEC 4). Its one
+reader is `scripts/build_site_html.py:32` (`dod_security`). Two tools use it: a page the kit builds gets a
+Content-Security-Policy and a no-referrer meta tag, and `scripts/sync_baseline.py` adds the DoD group
+(`DOD_FILES`: `SECURITY.md`, `.github/dependabot.yml`, `.github/workflows/security.yml`) when the project has no
+copy. The group is never replaced and never in the kit lock. ICF-Source keeps the key off.
 
 ## Keys of the code standard
 

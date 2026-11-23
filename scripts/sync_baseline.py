@@ -75,7 +75,7 @@ from sync_merge import REPLACED_HOOKS, changed_matchers, die, merge_lines, merge
 from sync_merge import (apply_tier, find_heading, header_short_name, header_timezone, header_tier, header_values,  # noqa: E402,F401
                         headings, section, valid_timezone)  # the AGENTS.md header helpers (drift.py reads them here)
 # scripts/sync_baseline_repo.py: the reads of the baseline repo and the diff (kept apart, docs/code-standard.md C4).
-from sync_baseline_repo import (baseline_sha, get_baseline, git, header_owner, kit_history, log_stamp,  # noqa: E402,F401
+from sync_baseline_repo import (baseline_sha, dod_files, get_baseline, git, header_owner, kit_history, log_stamp,  # noqa: E402,F401
                                 log_template, show_diff)
 import sync_baseline_run  # noqa: E402 - scripts/sync_baseline_run.py: the steps of one run (main)
 from sync_baseline_run import check_placeholders  # noqa: E402,F401 - re-exported
@@ -107,6 +107,9 @@ COPY_FILES = ["kit.config.json", "scripts/kit_config.py", "scripts/session_check
 # (copy_state). (The kit's agent files are kit files since 2026-11-18: an old copy can restate a rule; a project adds
 # an agent of its own under its own name.)
 COPY_IF_MISSING = ["docs/FIRST_USE.md"]
+# The DoD group (fleet v2 DEC 4): added only when the project's .check has `dod-security: on`, and only when the project
+# has no copy (never replaced, never in the kit lock: a project tunes its own scan paths). ICF-Source has it off.
+DOD_FILES = ["SECURITY.md", ".github/dependabot.yml", ".github/workflows/security.yml"]
 COPY_NOTES = []  # one line for each COPY_IF_MISSING file that a sync replaces or keeps (main() prints them)
 BASELINE_OWNER = "the owner"  # role word in baseline text; no real name lives in the baseline
 # Never rename the owner inside this script: it holds BASELINE_OWNER as a literal.
@@ -365,6 +368,7 @@ def planned_files(base, root, args):
         if (base / rel).exists():
             text = (base / rel).read_text()
             new[rel] = text if rel in NO_OWNER_RENAME else apply_owner(text, owner)
+    new.update(dod_files(base, root, DOD_FILES))
     tuned, notes = plan_if_missing(base, root, copy_if_missing, owner, args.baseline)
     new.update(tuned)
     COPY_NOTES[:] = notes
