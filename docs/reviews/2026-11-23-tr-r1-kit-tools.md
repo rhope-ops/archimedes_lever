@@ -1,7 +1,8 @@
-# Tool inventory (kit)
+# Tool retirement R1: kit tool inventory
 
-The one tool inventory of the kit (prompt step 1 of the tool retirement program; rule T1 will require an entry here,
-with at least 3 candidates, before a new script). Measured 2026-11-23 ~15:30 America/Chicago on kit main 641023e.
+Input for docs/tools.md (prompt step 1). Not yet at docs/tools.md: `scripts/bootstrap.sh` copies `docs/` into a new
+project, and this kit-only list failed `bootstrap_cli_test` (role word in a copied file). Where docs/tools.md lives in a
+project (own list, or a kit-only file that bootstrap removes like docs/FILES.md) is a decision in the plan (rule T1). Measured 2026-11-23 ~15:30 America/Chicago on kit main 641023e.
 Research input, not a decision: each family's verdict (retire / shrink / keep) comes from the trials
 (docs/reviews/2026-11-23-tr-*.md) and the plan.
 
