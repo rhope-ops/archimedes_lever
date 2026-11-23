@@ -270,9 +270,10 @@ selftest() {
   if touched "${deps[@]}"; then run "$name self-test" "$@"; else untested=$((untested + 1)); fi
 }
 
-for s in stop_check worker_guard log_check; do
+for s in stop_check worker_guard; do
   selftest "$s" "scripts/$s.py" -- python3 "scripts/$s.py" --test
 done
+selftest log_check scripts/log_check.py scripts/log_check_plan.py -- python3 scripts/log_check.py --test
 # A script whose cases or parts live in sibling modules lists them, so the fast lane reruns its self-test when they change.
 selftest check_settings scripts/check_settings.py scripts/check_settings_test.py scripts/check_settings_read.py \
   scripts/build_site_html.py scripts/check_content_scan_settings.py -- python3 scripts/check_settings.py --test
@@ -370,6 +371,14 @@ elif [ -f docs/LOG.md ]; then
   run "project log" python3 scripts/log_check.py docs/LOG.md
 else
   skip "project log" "no docs/LOG.md: the log lives in the place AGENTS.md Project rules names"
+fi
+# T6 (plan 2026-11-23): a DECISIONS row By the Maintainer quotes the approval; it runs where docs/DECISIONS.md has the
+# approval-quote-exempt-from marker (a project gets it at its sync). T7: each plan coverage list is complete.
+if [ -f scripts/log_check_plan.py ]; then
+  grep -qs 'approval-quote-exempt-from' docs/DECISIONS.md && run "decisions approval quote" python3 scripts/log_check.py --decisions
+  for f in docs/reviews/*-coverage.md; do
+    [ -f "$f" ] && run "plan coverage ${f##*/}" python3 scripts/log_check.py --coverage "$f"
+  done
 fi
 
 if [ ! -f .check ] && [ ! -f .pii-guard ]; then

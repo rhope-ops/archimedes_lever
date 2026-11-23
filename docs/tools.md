@@ -123,6 +123,7 @@ Without `scripts/git-hooks/pre-push`: 65 files, 17,096 lines (the prompt's basel
 | `scripts/stop_check.py` | Claude Code Stop hook: block the end of a turn while work is not on GitHub. | 317 | check.sh,settings +5 scripts | yes | 8 | 567 | 23 | pre-commit framework, Claude Code permission rules, GitHub rulesets |
 | `scripts/worker_guard.py` | PreToolUse hook for the worker and reviewer subagents (.claude/agents/): blocks git commands they must never r | 288 | check.sh +3 scripts | yes | 10 | 366 | 18 | pre-commit framework, Claude Code permission rules, GitHub rulesets |
 | `scripts/git-hooks/pre-push` | Git pre-push hook for Claude, any git client, and people. | 265 | check.sh,CI +13 scripts | yes | 23 | 404 | 30 | pre-commit framework, Claude Code permission rules, GitHub rulesets |
+| `.claude/skills/verify/measure.mjs` | UI measurement for the verify skill: screenshots at 375 and 1440 px in light and dark, page scroll, WCAG AA text contrast, target size | 0 (outside scripts/) | verify skill | no | - | - | - | Lighthouse CI, axe-core (@axe-core/playwright), pa11y |
 
 ## Site and brand
 
