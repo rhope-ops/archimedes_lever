@@ -4,7 +4,7 @@
 #   scripts/check.sh          full lane: everything. Before a merge, on a push to main (pre-push), in the pull-request Action (public repos).
 #   scripts/check.sh --fast   fast lane: each push to another branch (pre-push). Self-tests only of the kit scripts that
 #                             changed against origin/main, and scripts/check.local.sh gets --fast.
-# The content check alone (scripts/check_content.py: personal data, secrets, the owner's terms, blocked files):
+# The content check alone (scripts/check_content.py: personal data, secrets, the Maintainer's terms, blocked files):
 #   scripts/check.sh --content ARGS...   for example --all, --stdin, --range A..B or file names
 #   scripts/check.sh --status            the word lists (counts and fingerprints, never the words) and the tier
 #   scripts/check.sh --hook              the Claude Code PreToolUse hook (.claude/settings.json); any error blocks

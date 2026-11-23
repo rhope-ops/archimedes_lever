@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The content check of scripts/check.sh: blocks personal data, secrets and the owner's own blocked content before
+"""The content check of scripts/check.sh: blocks personal data, secrets and the Maintainer's own blocked content before
 they reach the remote or leave in a tool call. One scanner for emails, phone numbers, ID-number shapes, API tokens and
 private keys, names and terms from word lists kept outside the repo, and files the settings file blocks.
 
@@ -24,10 +24,10 @@ One entry per line, `#` comments:
     block: <path or glob>   must not be committed or sent (a glob with no "/" matches the file name in any folder)
     denylist: warn          with no name denylist, --require-denylist warns instead of failing (starter projects)
     profile: dod            the DoD tier (below)
-Only the owner adds an allowed string or a skip line; agents never add one to get past a block (AGENTS.md
+Only the Maintainer adds an allowed string or a skip line; agents never add one to get past a block (AGENTS.md
 "Secrets and personal data").
 
-Two tiers (the owner, 2026-11-15):
+Two tiers (the Maintainer, 2026-11-15):
     minimum    no profile line: the checks under "Checks".
     DoD        `profile: dod`: the minimum checks plus the checks under "DoD checks"; a missing denylist always
                blocks (`denylist: warn` is ignored). In the Action the settings are read from the pull-request base
@@ -36,7 +36,7 @@ Two tiers (the owner, 2026-11-15):
 Word lists (never committed): one name or word per line, `#` comments, matched whole-word, any case.
     names (personal data)   env PII_GUARD_DENYLIST (newline or comma separated; the Action reads the Actions secret
                             of the same name), else env PII_GUARD_DENYLIST_FILE, else ~/.config/pii-guard/denylist.txt
-    terms (the owner's own blocked words: a client, a code name; optional)
+    terms (the Maintainer's own blocked words: a client, a code name; optional)
                             env CHECK_TERMS (Actions secret CHECK_TERMS), else env CHECK_TERMS_FILE, else
                             ~/.config/check/terms.txt
 With no name denylist, names are not checked and the result line says so (exit code unchanged).
@@ -121,7 +121,7 @@ def report(found, what, deny, dod=False, terms=()):
         what: what was scanned, for the result line.
         deny: the names of the denylist.
         dod: True in the DoD tier.
-        terms: the owner's own blocked words.
+        terms: the Maintainer's own blocked words.
 
     Returns:
         The exit code: 0 pass, 1 fail.
@@ -201,7 +201,7 @@ def scan_targets(a, root, deny, allow, dod, revsets, terms=()):
         allow: the lines of the settings file (load_allow).
         dod: True in the DoD tier: also run the DoD checks.
         revsets: the git rev-list argument lists of the commits to scan.
-        terms: the owner's own blocked words.
+        terms: the Maintainer's own blocked words.
 
     Returns:
         (findings, the list of what was scanned).

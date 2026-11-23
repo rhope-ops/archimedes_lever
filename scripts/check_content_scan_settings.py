@@ -58,7 +58,7 @@ def denylist_source():
 
 
 def terms_source():
-    """Return (raw text, where it came from) for the owner's own blocked terms (words that are not personal data:
+    """Return (raw text, where it came from) for the Maintainer's own blocked terms (words that are not personal data:
     a client, a code name), or ("", None). Same format and places as the name denylist, under other names; optional.
 
     Returns:
@@ -78,7 +78,7 @@ def terms_source():
 
 
 def load_terms():
-    """The owner's blocked terms from the first source that has any, or []."""
+    """The Maintainer's blocked terms from the first source that has any, or []."""
     return parse_denylist(terms_source()[0])
 
 

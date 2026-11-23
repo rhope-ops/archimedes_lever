@@ -115,7 +115,7 @@ def case_paste(root, git):
 
 
 def case_instructions(root):
-    """Self-test of `audit-instructions:` (the owner, 2026-11-21): a list key of globs, written back as the same lines.
+    """Self-test of `audit-instructions:` (the Maintainer, 2026-11-21): a list key of globs, written back as the same lines.
     Args:
         root: a temporary git repo; its `.check` is left empty at the end.
     """
@@ -152,7 +152,7 @@ def case_validate(root, git):
 
 
 def case_third_party(root):
-    """Self-test of `audit-third-party:` (the owner, 2026-11-20): a list key, written back as the same lines; a typo
+    """Self-test of `audit-third-party:` (the Maintainer, 2026-11-20): a list key, written back as the same lines; a typo
     and a raised cap fail.
     Args:
         root: a temporary git repo; its `.check` is left empty at the end.
@@ -266,7 +266,7 @@ def case_migrate_header(root, git):
     block = "\n".join(HEADER_BLOCK) + "\n"
     old4 = [OLD_HEADERS[0], "# Below: exact strings that are allowed although they look like personal data, one per line.",
             "# `skip: <path or glob>` excludes a path.",
-            '# Only the owner adds entries. Agents never add one to get past a block (AGENTS.md "Personal data").']
+            '# Only the Maintainer adds entries. Agents never add one to get past a block (AGENTS.md "Personal data").']
     body = "profile: dod\n# A project comment after a setting.\n" + OLD_HEADERS[0] + "\nskip: a/*\n"
     for old in OLD_HEADERS:
         (root / OLD_CHECK).write_text("\n".join([old] + old4[1:3] + ["# Below: our own note."] + old4[3:]) + "\n" + body)
@@ -280,7 +280,7 @@ def case_migrate_header(root, git):
         assert migrated(root)[0] == 0 and files_of(root) == before, "a second run changes nothing"
         (root / CHECK).unlink()
         (root / STATE).unlink()
-    pfm = [l.replace("the owner", "the PFM").replace("The owner", "The PFM") for l in HEADER_BLOCK]  # kit fix 0(a)
+    pfm = [l.replace("the Maintainer", "the PFM").replace("The Maintainer", "The PFM") for l in HEADER_BLOCK]  # kit fix 0(a)
     (root / CHECK).write_text("\n".join(pfm) + "\nprofile: dod\n")
     assert migrated(root)[0] == 0 and (root / CHECK).read_text() == block + "profile: dod\n", \
         "a header synced with another role word is renewed, not kept as a project comment: " + (root / CHECK).read_text()

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """The one reader of the code standard and audit settings in `.check`, and the one reader and writer of
-`.check.state.json` (the owner, 2026-11-18: one config layout in every repo).
+`.check.state.json` (the Maintainer, 2026-11-18: one config layout in every repo).
 
 The three files at the top of a repo:
     .check             every setting a person edits: one entry per line, `#` comments. The content check reads its
@@ -88,7 +88,7 @@ HEADER_BLOCK = (
     "#   audit-<key>: <value>    a setting of the audit, for example `audit-ignore: ref/**`",
     "#                           (the keys and their defaults: the header of scripts/check_settings.py; a `code-` change",
     "#                           needs a docs/DECISIONS.md row that names this file)",
-    "# An allowed string or a skip line is added only on the owner's request, never by an agent to get past a block"
+    "# An allowed string or a skip line is added only on the Maintainer's request, never by an agent to get past a block"
     ' (AGENTS.md "Guards and checks").',
 )
 HEADER = HEADER_BLOCK[0]
@@ -99,10 +99,10 @@ OLD_HEADERS = (
 OLD_HEADER_LINES = frozenset(HEADER_BLOCK + OLD_HEADERS + (   # the other lines of older kit header blocks
     "# Below: exact strings that are allowed although they look like personal data, one per line.",
     "# `skip: <path or glob>` excludes a path.",
-    '# Only the owner adds entries. Agents never add one to get past a block (AGENTS.md "Personal data").',
-    '# Only the owner adds an allowed string or a skip line. Agents never add one to get past a block (AGENTS.md'
+    '# Only the Maintainer adds entries. Agents never add one to get past a block (AGENTS.md "Personal data").',
+    '# Only the Maintainer adds an allowed string or a skip line. Agents never add one to get past a block (AGENTS.md'
     ' "Personal data").',
-    "# An allowed string or a skip line is added only on the owner's request, never by an agent to get past a block"
+    "# An allowed string or a skip line is added only on the Maintainer's request, never by an agent to get past a block"
     ' (AGENTS.md "Personal data").',
 ))
 
@@ -139,7 +139,7 @@ def old_json(root, name):
     return obj
 
 
-ROLE_IN_LINE = re.compile(r"\b([Tt])he [A-Za-z][A-Za-z ._-]*?(?='s request\b| adds )")  # "the owner's request", "the PFM adds"
+ROLE_IN_LINE = re.compile(r"\b([Tt])he [A-Za-z][A-Za-z ._-]*?(?='s request\b| adds )")  # "the Maintainer's request", "the PFM adds"
 
 
 def role_free(line):
@@ -149,7 +149,7 @@ def role_free(line):
     Args:
         line: one line of a `.check` header block.
     Returns:
-        The line with "the <role>" before "'s request" or " adds " written as "the owner".
+        The line with "the <role>" before "'s request" or " adds " written as "the Maintainer".
     """
     return ROLE_IN_LINE.sub(lambda m: m.group(1) + "he owner", line)
 

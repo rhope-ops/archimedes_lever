@@ -10,7 +10,7 @@ Options:
     --name, --repo, --purpose   Header values, needed only when the project AGENTS.md has none.
     --timezone ZONE          IANA time zone for project log times, needed only when the project AGENTS.md has no
                              "- Time zone:" line (projects synced before 2026-11-11 have none).
-    --owner NAME             Name agents use for the decider (default: the project's "- Owner:" line, else "the owner").
+    --owner NAME             Name agents use for the decider (default: the project's "- Owner:" line, else "the Maintainer").
                              A public repo sets a role, for example --owner "the maintainer", so no real name is synced in.
     --tier starter|full      Kit tier (default: the project's "- Tier:" line, else "full", the only tier before 2026-11-13).
                              --tier full on a starter project adds the advanced parts (ADVANCED_FILES below, and a new
@@ -50,7 +50,7 @@ What it changes:
                            Problem, Turning point and Lesson, each "-" (.claude/skills/project-log/SKILL.md). Rows are kept.
     docs/archimedes_lever-LICENSE.txt   The kit's license (MIT), which covers the copied files.
     Owner name             In baseline text only (AGENTS.md above "## Project rules" and the copied files, not this
-                           script), "the owner" becomes the project owner ("The owner" becomes the owner with a capital
+                           script), "the Maintainer" becomes the project owner ("The Maintainer" becomes the owner with a capital
                            first letter). Project text is never renamed. A private repo may keep a real name
                            (--owner NAME); a public repo uses a role. Owner: letters, digits, space . _ , ( ) -
 What it never changes: README.md, docs/ (except docs/FIRST_USE.md as said above, docs/code-standard.md and the kit
@@ -112,7 +112,7 @@ COPY_IF_MISSING = ["docs/FIRST_USE.md"]
 # has no copy (never replaced, never in the kit lock: a project tunes its own scan paths). ICF-Source has it off.
 DOD_FILES = ["SECURITY.md", ".github/dependabot.yml", ".github/workflows/security.yml"]
 COPY_NOTES = []  # one line for each COPY_IF_MISSING file that a sync replaces or keeps (main() prints them)
-BASELINE_OWNER = "the owner"  # role word in baseline text; no real name lives in the baseline
+BASELINE_OWNER = "the Maintainer"  # role word in baseline text; no real name lives in the baseline
 # Never rename the owner inside this script: it holds BASELINE_OWNER as a literal.
 # first_use_check.py and docs/FIRST_USE.md use "the owner" as an answer option and a role: keep them as written
 # (bootstrap.sh skips them too).

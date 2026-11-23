@@ -32,7 +32,7 @@ It measures:
                   Caps for every repo (KIT_CAPS; a project can lower one, never raise it): 5,500 tokens (warning at
                   5,000) and 200 lines of AGENTS.md; over a cap fails --rules
     third-party   the names and descriptions of the skills and agents that `.check` names in `audit-third-party:`
-                  lines: counted apart from the session load, against their own kit cap of 1,500 tokens (the owner,
+                  lines: counted apart from the session load, against their own kit cap of 1,500 tokens (the Maintainer,
                   2026-11-20); over it fails --rules
     rules         list items in AGENTS.md (any marker, any indent; a wrapped line is part of its item): the kit
                   sections (the header, "## Commands" and the numbered ranking in "## Order of authority" are not
@@ -289,7 +289,7 @@ def report(root, args, today=None):
     if args.record and args.time:
         save_timings(root, cfg.get("timings", {}))
 
-    tail = (f"AUDIT DUE ({due}): tell the owner and ask whether to run the audit skill (.claude/skills/audit/SKILL.md, "
+    tail = (f"AUDIT DUE ({due}): tell the Maintainer and ask whether to run the audit skill (.claude/skills/audit/SKILL.md, "
             "about 1 hour of agent time); never start it unasked") if due else "audit not due"
     if args.brief:
         print(f"bloat:       {r_rows[0][13:]} · duplicate lines "

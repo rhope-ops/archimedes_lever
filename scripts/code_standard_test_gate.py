@@ -147,7 +147,7 @@ def self_test_gate_ratchet(cs, root, config, now):
         assert len(gone) == 1 and 'main holds line debt, but no rule here knows that kind' in gone[0], \
             'a debt kind of main that no rule knows fails (the gate is gone): %s' % gone
         decisions.write_text('# Decisions\n| the gate is retired | `.check` |\n')
-        assert cs.against_main({}, {})[0] == [], "with the owner's row, removing the gate's rule passes"
+        assert cs.against_main({}, {})[0] == [], "with the Maintainer's row, removing the gate's rule passes"
     finally:
         cs.settings.code_base, cs.GATE = real_base, gate
         decisions.write_text(kept)

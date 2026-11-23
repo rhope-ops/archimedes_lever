@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Read a project's handoff and decisions files in the fleet format, for the fleet page and its format check.
 
-Format: docs/reviews/2026-11-19-fleet-contract.md, section 2 (the owner, 2026-11-19); steps: the handoff skill.
+Format: docs/reviews/2026-11-19-fleet-contract.md, section 2 (the Maintainer, 2026-11-19); steps: the handoff skill.
 A project turns the format on with the line `fleet: on` in `.check`. Without it, --check prints a SKIP line.
 
 Usage:
@@ -59,7 +59,7 @@ def check(root):
     ids = [r["id"] for r in rows] + [d["id"] for d in h["needs"]]
     dup = sorted({i for i in ids if ids.count(i) > 1})
     if dup:
-        print("FLEET an ID is used more than once (in DECISIONS.md rows and \"Needs the owner\" together): " + ", ".join(dup))
+        print("FLEET an ID is used more than once (in DECISIONS.md rows and \"Needs the Maintainer\" together): " + ", ".join(dup))
     unset = [f for f, v in (("Updated:", h["updated"]), ("Next update:", h["next_update"])) if not v]
     print("fleet: %d open, %d resolved, %d lines not read%s" % (len(h["needs"]), len(rows), len(unread),
           "; not set: " + ", ".join(unset) if unset else ""))

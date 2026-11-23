@@ -11,7 +11,7 @@ owner, 2026-11-23: docs/reviews/2026-11-23-fleet-v2-plan.md, items B.4 and 1.4).
                     `code-max-line-chars` in .check; its debt value is a length that may only go down)
   OPT_IN            'line': on when .check sets `code-max-line-chars` (the kit holds the safety levels: off, on, strict)
   file_rules        the strict C1 safety form (safety_ok; at `on` and at `strict`) and the longest line of a file
-  decided           the owner row: a NEW docs/DECISIONS.md table row that names the settings file `.check`, with
+  decided           the Maintainer row: a NEW docs/DECISIONS.md table row that names the settings file `.check`, with
                     main's owner alone in its By cell (the "- Owner:" line of AGENTS.md on the merge base), in a change
                     that leaves every older row as it was (owner_row)
   new_debt_refusal  debt for a file that is new in this change is refused, with or without a decision (new files
@@ -36,7 +36,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))   # the check loads thi
 import check_settings as settings   # noqa: E402 - scripts/check_settings.py: the settings file name and its name test
 
 SAFETY_LABELS = ('Network:', 'Writes:', 'Credentials:')   # C1 safety: what a reviewer must find before a run
-# A By cell with one of these marks a script or an agent, not the owner (the owner, 2026-11-17: only the owner decides).
+# A By cell with one of these marks a script or an agent, not the Maintainer (the Maintainer, 2026-11-17: only the Maintainer decides).
 NOT_OWNER = ('scripts/', '.py', 'agent', 'delegation')
 ROW_CELLS = 4              # a DECISIONS row: date, decision, by, last (exactly: a spare cell would move the By cell)
 # The two texts in which the three project gates differ (docs/code-standard.md "The strict gate": the open choice).
@@ -88,14 +88,14 @@ def file_rules(v, p, lines, head, config, skip):
 
 
 def owner_role_in(text):
-    """Return the owner role from the "- Owner:" line of an AGENTS.md text, lower case, without a leading "the "
+    """Return the Maintainer role from the "- Owner:" line of an AGENTS.md text, lower case, without a leading "the "
     ('' if the text has no such line)."""
     m = re.search(r'^- Owner:\s*(.+?)\s*$', text, re.M)
     return re.sub(r'^the\s+', '', m.group(1).rstrip('.').lower()) if m else ''
 
 
 def owner_role(root):
-    """Return the owner role from the AGENTS.md file under `root` (owner_role_in; '' when there is no file)."""
+    """Return the Maintainer role from the AGENTS.md file under `root` (owner_role_in; '' when there is no file)."""
     try:
         return owner_role_in((Path(root) / 'AGENTS.md').read_text(encoding='utf-8'))
     except OSError:
@@ -113,7 +113,7 @@ def row_refusal(text, name, owner, names=None):
     Args:
         text: a line of docs/DECISIONS.md that main does not have.
         name: the settings file name the decision cell must name.
-        owner: the owner role (owner_role), lower case.
+        owner: the Maintainer role (owner_role), lower case.
         names: a test that says whether a text names the file (None: the text holds `name`).
 
     Returns:
@@ -132,14 +132,14 @@ def row_refusal(text, name, owner, names=None):
     if bad:
         return 'rule 3: the By cell names a script or an agent (%s)' % bad[0]
     if not owner:
-        return 'rule 4: AGENTS.md has no "- Owner:" line to name the owner'
+        return 'rule 4: AGENTS.md has no "- Owner:" line to name the Maintainer'
     if not re.fullmatch(r'(the\s+)?' + re.escape(owner) + r'(\s*\([^()]*\))?', by):
-        return 'rule 4: the By cell is not the owner alone (%s; one note in brackets may follow)' % owner
+        return 'rule 4: the By cell is not the Maintainer alone (%s; one note in brackets may follow)' % owner
     return None
 
 
 def owner_row(new_text, name, owner, old_text='', names=None):
-    """Compare docs/DECISIONS.md with its text on the merge base and look for the owner's new row that opens the
+    """Compare docs/DECISIONS.md with its text on the merge base and look for the Maintainer's new row that opens the
     ratchet gate. The gate opens only in a change that adds rows and leaves every older row as it was: an older row
     that is edited or removed closes it, so no old decision can be turned into a new one. The two texts are compared
     line by line (lines end at a line feed only); no diff output is read, no date, and no text for likeness.
@@ -147,13 +147,13 @@ def owner_row(new_text, name, owner, old_text='', names=None):
     Args:
         new_text: docs/DECISIONS.md as it is in this change.
         name: the settings file name.
-        owner: the owner role (owner_role_in).
+        owner: the Maintainer role (owner_role_in).
         old_text: docs/DECISIONS.md at the merge base ('' when there is none).
         names: a test that says whether a text names the file (None: the text holds `name`); the check gives the
             one that takes `.check` but not `.check.lock` or `.check.state.json`.
 
     Returns:
-        (True, []) when a new table row names `name` and has the owner alone in its By cell, and no older row was
+        (True, []) when a new table row names `name` and has the Maintainer alone in its By cell, and no older row was
         edited or removed; else (False, the refusal lines, each with the rule that refused).
     """
     table = lambda text: {squeeze(x) for x in text.split('\n') if x.strip().startswith('|')}
@@ -187,14 +187,14 @@ def at_ref(root, ref, path):
 
 
 def decided(root, ref):
-    """Return whether this change records the owner's decision on the settings file `.check` (owner_row).
+    """Return whether this change records the Maintainer's decision on the settings file `.check` (owner_row).
 
     Args:
         root: the repo root.
         ref: the merge base with origin/main.
 
     Returns:
-        (True, []) for an owner row; else (False, the refusal lines). The owner is read from main's AGENTS.md, so an
+        (True, []) for an owner row; else (False, the refusal lines). The Maintainer is read from main's AGENTS.md, so an
         owner line changed in this change does not count.
     """
     here = Path(root) / 'docs' / 'DECISIONS.md'

@@ -2,9 +2,9 @@
 """Self-test of the kit's strict code-standard rules, scripts/code_standard_strict.py (run by
 `python3 scripts/code_standard_strict.py --test` and by `python3 -m unittest`; scripts/check.sh runs it). It runs the
 kit check scripts/code_standard.py with the strict rules loaded, on sample repos in a temporary folder, and proves:
-the safety labels at a line start with a value, the owner-row gate (and the tricks that must not open it), debt for a
+the safety labels at a line start with a value, the Maintainer-row gate (and the tricks that must not open it), debt for a
 new file, the line cap, --adopt of a raised safety level, and that `code-strict-gate: on` loads the rules (and a
-project's own gate file wins). The owner is read from the sample AGENTS.md; the sample owner is an invented role.
+project's own gate file wins). The Maintainer is read from the sample AGENTS.md; the sample owner is an invented role.
 
 Input: none. Output: unittest results; exit code 0 or 1.
 Network: none.
@@ -61,9 +61,9 @@ def check_safety(cs, gate):
 
 
 def check_rows(gate):
-    """Self-test of the owner-row gate on diff text: a plain line, a row by a script, a row by an agent, a row by
+    """Self-test of the Maintainer-row gate on diff text: a plain line, a row by a script, a row by an agent, a row by
     another person and a row with too few cells are refused (the refusal names the rule); a row that does not name the
-    file is no decision for it; an owner's row passes; the owner role is read from AGENTS.md.
+    file is no decision for it; an owner's row passes; the Maintainer role is read from AGENTS.md.
 
     Args:
         gate: the gate module.
@@ -82,7 +82,7 @@ def check_rows(gate):
         'a row that does not name the file is not a decision for it'
     assert not gate.owner_row('| 2026-11-17 | names %s | the Maintainer |' % name, name, 'maintainer')[0], \
         'a row with fewer than four cells is refused'
-    assert gate.owner_row(plus('the Maintainer'), name, 'maintainer') == (True, []), 'the owner row passes'
+    assert gate.owner_row(plus('the Maintainer'), name, 'maintainer') == (True, []), 'the Maintainer row passes'
     exact = settings.NAMES_CHECK.search   # the test the check uses: `.check` itself, not .check.lock or .check.state.json
     assert gate.owner_row(plus('the Maintainer'), name, 'maintainer', '', exact) == (True, []), 'it passes the exact test'
     assert gate.owner_row(plus('the Maintainer').replace(name, settings.STATE), name, 'maintainer', '', exact) == (False, []), \
@@ -90,7 +90,7 @@ def check_rows(gate):
     check_row_tricks(gate, name)
     with tempfile.TemporaryDirectory() as d:
         (Path(d) / 'AGENTS.md').write_text('# Rules\n- Owner: the Maintainer\n')
-        assert gate.owner_role(d) == 'maintainer', 'the owner role is read from AGENTS.md, without "the "'
+        assert gate.owner_role(d) == 'maintainer', 'the Maintainer role is read from AGENTS.md, without "the "'
         assert gate.owner_role(Path(d) / 'none') == '', 'no AGENTS.md: no owner'
 
 
@@ -98,8 +98,8 @@ def check_row_tricks(gate, name):
     """Self-test of the ways a row could open the gate with no new decision (reviews of 17 Nov 26): an old row that is
     moved, re-spaced or edited (a word, a full stop, its date, its letter case, only the file name added, an unseen
     character, cut short); a new owner row beside an old row that the change removes; a spare cell before or after the By
-    cell; the owner's name beside another writer, also inside or after a bracket note. Honest forms pass: a new row,
-    an indented row, an escaped | in the text, one note in brackets after the owner, a new
+    cell; the Maintainer's name beside another writer, also inside or after a bracket note. Honest forms pass: a new row,
+    an indented row, an escaped | in the text, one note in brackets after the Maintainer, a new
     row in the words of an old one that stays. The gate reads no date and compares no text for likeness.
 
     Args:
@@ -107,7 +107,7 @@ def check_row_tricks(gate, name):
         name: the settings file name.
     """
     row = row_text('the cap of the function length goes from sixty to seventy lines, see').rstrip('\n')
-    short = '| 2026-11-10 | The owner is not a tenant admin. | the Maintainer | archive |'
+    short = '| 2026-11-10 | The Maintainer is not a tenant admin. | the Maintainer | archive |'
     head = '# Decisions\n| Date | Decision | By | Replaces |\n|---|---|---|---|\n'
     old = head + short + '\n' + row + '\n'
 
@@ -133,7 +133,7 @@ def check_row_tricks(gate, name):
     ok, why = gate.owner_row(head + forged + '\n', name, 'maintainer', old)
     assert not ok and 'rule 5' in why[0], 'an old row edited in place with a carriage-return trick is refused: %s' % why
     assert gate.owner_role_in('- Owner: Claude\n') == 'claude', 'odd input'
-    for line in ('| 2026-11-17 | raise the cap in %s (`a | b`) | agent, for the owner | - |' % name,
+    for line in ('| 2026-11-17 | raise the cap in %s (`a | b`) | agent, for the Maintainer | - |' % name,
                  '| 2026-11-17 | raise the cap in %s | Agent | the Maintainer | - |' % name,
                  '| 2026-11-17 | raise the cap in %s | the Maintainer | - | x |' % name):
         ok, why = check(line)
@@ -141,7 +141,7 @@ def check_row_tricks(gate, name):
     for by in ('Claude, for the Maintainer', 'not the Maintainer', 'the Maintainer (2A); Claude (drafted it)',
                'the Maintainer (not asked; written by Claude) and others'):
         ok, why = check(row_text('cap', by).rstrip('\n'))
-        assert not ok and 'rule 4' in why[0], 'the owner beside another writer is refused (%s): %s' % (by, why)
+        assert not ok and 'rule 4' in why[0], 'the Maintainer beside another writer is refused (%s): %s' % (by, why)
     assert check('  ' + row)[0], 'an indented owner row passes'
     assert check('| 2026-11-17 | a \\| b in %s | the Maintainer (answer 2A) | - |' % name)[0], 'an escaped | and a note pass'
 
@@ -193,7 +193,7 @@ def check_strict_main(cs, root, g):
     import io
     (root / 'AGENTS.md').write_text('- Owner: the Maintainer\n')
     (root / 'docs').mkdir()
-    old_row = '| 2026-11-01 | The owner is not a tenant admin. | the Maintainer | - |\n'
+    old_row = '| 2026-11-01 | The Maintainer is not a tenant admin. | the Maintainer | - |\n'
     (root / 'docs' / 'DECISIONS.md').write_text('# Decisions\n' + old_row)
     for f in ('a.py', 'b.py'):
         (root / f).write_text('x = 1\n')
@@ -218,7 +218,7 @@ def check_strict_main(cs, root, g):
                      ('someone else', 'rule 4')):
         assert rule in problems(strict, both, row_text(strict_text, by)), 'a row by %r is refused by %s' % (by, rule)
     assert 'rule 1' in problems(strict, both, 'Level changes %s.\n' % settings.CHECK), 'a plain line is refused'
-    (root / 'AGENTS.md').write_text('- Owner: Claude\n')   # the owner line changed in the same change: main's owner still counts
+    (root / 'AGENTS.md').write_text('- Owner: Claude\n')   # the Maintainer line changed in the same change: main's owner still counts
     assert 'rule 4' in problems(strict, both, row_text(strict_text, 'Claude')), 'a new owner named in this change cannot decide'
     (root / 'AGENTS.md').write_text('- Owner: the Maintainer\n')
     assert 'setting' in problems(strict, both, '| 2026-11-17 | other | the Maintainer | - |\n'), 'a row for another thing'
@@ -268,7 +268,7 @@ class StrictGateTest(unittest.TestCase):
         check_safety(cs, self.gate)
 
     def test_owner_rows(self):
-        """Only a new row with the owner alone in its By cell passes; the refusals name their rule."""
+        """Only a new row with the Maintainer alone in its By cell passes; the refusals name their rule."""
         check_rows(self.gate)
 
     def test_line_cap(self):

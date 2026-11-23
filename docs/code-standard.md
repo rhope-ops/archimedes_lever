@@ -1,6 +1,6 @@
 # Code standard
 
-Decided by the owner, 2026-11-17 (docs/DECISIONS.md): all code is lean, modular, commented and human-editable, and stays so as work continues. Why: a person must be able to read any script and know what it does before they run it. [scripts/code_standard.py](../scripts/code_standard.py) enforces the rules marked **(check)**; the fresh reviewer of each pull request checks the rules marked **(review)**.
+Decided by the Maintainer, 2026-11-17 (docs/DECISIONS.md): all code is lean, modular, commented and human-editable, and stays so as work continues. Why: a person must be able to read any script and know what it does before they run it. [scripts/code_standard.py](../scripts/code_standard.py) enforces the rules marked **(check)**; the fresh reviewer of each pull request checks the rules marked **(review)**.
 
 The kit owns this file and the check. A project gets both by sync. It sets its own caps, scope and opt-in rules (for example full docs per function) with `code-` lines in its own `.check` (the keys: the header of [scripts/check_settings.py](../scripts/check_settings.py)), keeps stricter rules of its own in its own gate file ("A project's own gate" below) and their text in a doc of its own that links here, never in a copy of the check or of this file.
 
@@ -37,7 +37,7 @@ The kit owns this file and the check. A project gets both by sync. It sets its o
 
 ## A project's own gate
 
-- The extension point for a project that wants more than the rules above: a file `scripts/code_standard_gate.py` of its own, next to the check. The kit has no such file. When it exists, the check loads it and calls its five entry points (their exact form: the header of [scripts/code_standard.py](../scripts/code_standard.py)): more debt kinds (`RULES`), more opt-in kinds (`OPT_IN`), per-file rules (`file_rules`), its own test for "the owner decided this change" (`decided`), and a refusal that no decision lifts (`new_debt_refusal`, for example debt for a file that is new).
+- The extension point for a project that wants more than the rules above: a file `scripts/code_standard_gate.py` of its own, next to the check. The kit has no such file. When it exists, the check loads it and calls its five entry points (their exact form: the header of [scripts/code_standard.py](../scripts/code_standard.py)): more debt kinds (`RULES`), more opt-in kinds (`OPT_IN`), per-file rules (`file_rules`), its own test for "the Maintainer decided this change" (`decided`), and a refusal that no decision lifts (`new_debt_refusal`, for example debt for a file that is new).
 - Two settings are a gate's to enforce: `code-max-line-chars: <number>` (the longest line of a hand-written file) and `code-c1-safety: strict`. The kit reads them; with one of them set and no gate file, the check fails.
 - A gate that cannot be imported, or lacks an entry point, fails the check: it is never skipped. The result line says when a gate is active.
 - The gate proves itself: when the file names `--test`, `scripts/check.sh` runs `python3 scripts/code_standard_gate.py --test` (the full lane always; the fast lane when the gate or the check changed). The self-test of the kit's check runs without the gate.
@@ -45,7 +45,7 @@ The kit owns this file and the check. A project gets both by sync. It sets its o
 
 ## The strict gate
 
-- A project turns on the kit's strict rules with the line `code-strict-gate: on` (default `off`) in its `.check`; the rules are in [scripts/code_standard_strict.py](../scripts/code_standard_strict.py), and no copy of them is kept in a project. They are: the strict C1 safety form (each label starts a header line and has a value; at `code-c1-safety: on` and at `strict`), the C4 line cap `code-max-line-chars`, the owner row (a new docs/DECISIONS.md row that names `.check`, with the owner of the "- Owner:" line of AGENTS.md on the merge base alone in its By cell, in a change that leaves every older row as it was), and the refusal of debt for a file that is new in the change.
+- A project turns on the kit's strict rules with the line `code-strict-gate: on` (default `off`) in its `.check`; the rules are in [scripts/code_standard_strict.py](../scripts/code_standard_strict.py), and no copy of them is kept in a project. They are: the strict C1 safety form (each label starts a header line and has a value; at `code-c1-safety: on` and at `strict`), the C4 line cap `code-max-line-chars`, the Maintainer row (a new docs/DECISIONS.md row that names `.check`, with the Maintainer of the "- Owner:" line of AGENTS.md on the merge base alone in its By cell, in a change that leaves every older row as it was), and the refusal of debt for a file that is new in the change.
 - A project's own `scripts/code_standard_gate.py`, when it exists, is loaded instead and the key has no effect. Open choice: the two texts in which three projects differ are the constants `SAFETY_LABEL` and `NEW_DEBT_FORMAT` of the strict file.
 
 ## Commands

@@ -142,11 +142,11 @@ def listing_bytes(root, third_party=()):
     return own, third
 
 
-# One home per rule (the owner, 2026-11-18): a rule that AGENTS.md states must not be stated again, or the other
+# One home per rule (the Maintainer, 2026-11-18): a rule that AGENTS.md states must not be stated again, or the other
 # way round, in a skill or an agent file; those files link to it. Each row: (the rule, a pattern that shows a
 # second statement, the files that may hold it). A match in any other skill or agent file fails scripts/check.sh.
 SINGLE_HOME = [
-    ("who merges a pull request", r"only the owner merges|the owner merges\b|never merges this pull request|the owner's merge is the approval", ["AGENTS.md"]),
+    ("who merges a pull request", r"only the Maintainer merges|the Maintainer merges\b|never merges this pull request|the Maintainer's merge is the approval", ["AGENTS.md"]),
     ("no direct push to main", r"merge to main by merge|\bPush main:|git checkout main && git merge|push to main and republish", ["AGENTS.md"]),
     ("the end-of-turn summary format", r"end-of-turn summary line:", ["AGENTS.md"]),
     # The hard rules (AGENTS.md "Hard rules", 2026-11-18). A pointer such as (AGENTS.md "Hard rules") or a description

@@ -26,7 +26,7 @@ OLD_AUDIT = ".bloat-audit.json"    # before 2026-11-18: the audit's settings, la
 OLD_CHECK = ".pii-guard"           # before 2026-11-18: the name of .check
 MIGRATE = "python3 scripts/check_settings.py --migrate"
 # max_file_lines: 450 for hand-written code; max_file_lines_paste: the C4 cap of a script a person pastes into another
-# tool (the `code-paste:` files), where one file is one paste, so it keeps the older cap of 600 (the owner, 2026-11-23:
+# tool (the `code-paste:` files), where one file is one paste, so it keeps the older cap of 600 (the Maintainer, 2026-11-23:
 # docs/reviews/2026-11-23-fleet-v2-plan.md, decision 6).
 CODE_DEFAULTS = {"caps": {"max_file_lines": 450, "max_function_lines": 60, "max_file_lines_paste": 600}, "include": ["*"],
                  "exclude": [], "generated": [], "paste": [], "c1_safety": False, "c2": "lean", "strict_gate": False}
@@ -38,7 +38,7 @@ AUDIT_DEFAULTS = {"every_days": 14, "every_commits": 300, "start_read": [], "ign
                               "third_party_tokens": 1500,
                               "handoff_lines": 40, "file_kb": 500, "duplicate_lines": 20, "rules": 28,
                               "project_rules": 15}}
-# The owner's caps for every repo (2026-11-18; third_party_tokens 2026-11-20; session load 5,500, warning 5,000: 2026-11-21): a project can lower one, never raise it.
+# The Maintainer's caps for every repo (2026-11-18; third_party_tokens 2026-11-20; session load 5,500, warning 5,000: 2026-11-21): a project can lower one, never raise it.
 KIT_CAPS = ("session_load_tokens", "session_load_warn_tokens", "rules_file_lines", "third_party_tokens")
 CODE_LISTS = ("include", "exclude", "generated", "paste")
 AUDIT_LISTS = ("ignore", "start_read", "duplicate_ignore", "third_party", "instructions")

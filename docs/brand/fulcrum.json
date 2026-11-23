@@ -2,7 +2,7 @@
   "name": "Fulcrum Minimal",
   "version": "2.0.0",
   "date": "2026-11-23",
-  "source": "Logo Studies canvas, rho-family-standard.json v2.9, palettes.fulcrum (the five primitives); UI roles: the owner's decisions of 2026-11-20 (docs/DECISIONS.md)",
+  "source": "Logo Studies canvas, rho-family-standard.json v2.9, palettes.fulcrum (the five primitives); UI roles: the Maintainer's decisions of 2026-11-20 (docs/DECISIONS.md)",
   "primitives": {"ink": "#15171D", "cream": "#F3EEE4", "ember": "#E4572E", "slate": "#5A5E6A", "gold": "#D4AF37"},
   "derived": {
     "disc-dark": "#1C1F27",

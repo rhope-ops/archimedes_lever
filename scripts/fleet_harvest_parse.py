@@ -3,7 +3,7 @@
 
 Part of scripts/fleet_harvest.py (split out to keep each file under the line cap of docs/code-standard.md C4);
 fleet_harvest.py imports every name here and re-exports it, so `fleet_harvest.<name>` keeps working.
-Format: docs/reviews/2026-11-19-fleet-contract.md, section 2 (the owner, 2026-11-19).
+Format: docs/reviews/2026-11-19-fleet-contract.md, section 2 (the Maintainer, 2026-11-19).
 Inputs:  the text of docs/NEXT_PROMPT.md (or the handoff file) and docs/DECISIONS.md of a project folder.
 Outputs: parsed dicts and rows, and the lines that cannot be read; no output of its own.
 Usage:   imported by scripts/fleet_harvest.py; it has no command line.
@@ -26,7 +26,7 @@ ROW = re.compile(r"^\|\s*(D\d+)\s*\|\s*(" + DATE + r")\s*\|(.*)\|\s*$")
 ROW_START = re.compile(r"(?i)^\|\s*(D\d+\s*\||" + DATE + r"\s*\|)")  # any decision row, also one that ROW does not read
 CELL_SPLIT = re.compile(r"(?<!\\)\|")  # a cell border; an escaped pipe (\|) stays inside the cell
 DECISIONS_HEAD = re.compile(r"^\|\s*(ID\s*\|\s*Date|Date\s*\|\s*Decision)\s*\|")  # the decisions table header
-NEEDED = ("Timeline", "Needs the owner")  # handoff sections the format check requires
+NEEDED = ("Timeline", "Needs the Maintainer")  # handoff sections the format check requires
 NONE_LINE = re.compile(r"^-?\s*(none|nothing)\.?\s*$", re.I)
 
 
@@ -53,7 +53,7 @@ def sections(lines):
     out, cur = {}, None
     for n, ln in enumerate(lines, 1):
         if ln.startswith("## "):
-            cur = re.sub(r"\s*\(.*\)\s*$", "", ln[3:].strip())  # "Needs the owner (2)" -> "Needs the owner"
+            cur = re.sub(r"\s*\(.*\)\s*$", "", ln[3:].strip())  # "Needs the Maintainer (2)" -> "Needs the Maintainer"
             cur = NEEDED[1] if cur.startswith("Needs the ") else cur  # any role word: "Needs the PFM" too
             out.setdefault(cur, [])
         elif cur is not None:

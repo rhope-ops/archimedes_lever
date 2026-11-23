@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Code standard check: measures every source file of this repo against docs/code-standard.md and fails on new debt.
 
-Why: the owner, 2026-11-17: all code is lean, modular, commented and human-editable, and stays so as work continues.
+Why: the Maintainer, 2026-11-17: all code is lean, modular, commented and human-editable, and stays so as work continues.
 A written rule alone is not always obeyed, so this check fails a push or a pull request instead. The kit owns this
 file; a project gets it by sync, keeps its own settings in its `.check` file and its own stricter rules in its own
 gate file (below), never in a copy of this file.
@@ -28,7 +28,7 @@ started. A violation that is not in that list fails. A listed function that grew
 fails too, until the baseline is lowered in the same change (`--update`), so the list can only shrink and always
 matches the code. The baseline and the settings are compared with those on the merge base with origin/main: an added
 item, a raised value or a changed `code-` setting fails, unless the same change adds a row to docs/DECISIONS.md that
-names `.check` (the owner's decision). A merge base that still has the old .code-standard.json is compared from it.
+names `.check` (the Maintainer's decision). A merge base that still has the old .code-standard.json is compared from it.
 
 A project's own gate (the extension point): when the file scripts/code_standard_gate.py stands next to this one, the
 check loads it and calls it. The kit has no gate file. A gate that cannot be imported, or lacks one of the five names

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Fill the template placeholders in a new project made from the kit (kit.config.json "kit_repo").
 # Usage: scripts/bootstrap.sh "Project Name" Owner/repo "One-line purpose" ["Owner name"] ["Time zone"] [starter|full]
-# Owner name: what agents call the decider (default "the owner"). A private repo may use your name; a public repo uses a role,
+# Owner name: what agents call the decider (default "the Maintainer"). A private repo may use your name; a public repo uses a role,
 # for example "the maintainer".
 # Time zone: an IANA name for project log times, for example Europe/Berlin or America/New_York (default UTC).
 # Tier (default starter): starter keeps the core rules, hooks and checks, and the name denylist only warns when missing;
@@ -35,7 +35,7 @@ fi
 
 cd "$(git rev-parse --show-toplevel)"
 
-export BS_NAME="$1" BS_REPO="$2" BS_PURPOSE="$3" BS_OWNER="${4:-the owner}" BS_TZ BS_DATE BS_TIME
+export BS_NAME="$1" BS_REPO="$2" BS_PURPOSE="$3" BS_OWNER="${4:-the Maintainer}" BS_TZ BS_DATE BS_TIME
 # One clock read in the project time zone, so the date and time agree (project log times use it).
 BS_STAMP="$(TZ="$BS_TZ" date '+%F %H:%M')"
 BS_DATE="${BS_STAMP% *}"
@@ -51,12 +51,12 @@ rm -rf -- docs/templates
 files=(AGENTS.md docs/NEXT_PROMPT.md docs/DECISIONS.md docs/host-prompts.md docs/LOG.md)
 for f in "${files[@]}"; do
   perl -pi -e 's/\{\{PROJECT_NAME\}\}/$ENV{BS_NAME}/g; s/\{\{REPO\}\}/$ENV{BS_REPO}/g; s/\{\{PURPOSE\}\}/$ENV{BS_PURPOSE}/g;
-    s/\{\{SHORT_NAME\}\}/(split " ", $ENV{BS_NAME})[0]/ge; s/\{\{DATE\}\}/$ENV{BS_DATE}/g; s/\{\{TIME\}\}/$ENV{BS_TIME}/g; s/\{\{TIMEZONE\}\}/$ENV{BS_TZ}/g; s/\{\{OWNER\}\}/the owner/g;
+    s/\{\{SHORT_NAME\}\}/(split " ", $ENV{BS_NAME})[0]/ge; s/\{\{DATE\}\}/$ENV{BS_DATE}/g; s/\{\{TIME\}\}/$ENV{BS_TIME}/g; s/\{\{TIMEZONE\}\}/$ENV{BS_TZ}/g; s/\{\{OWNER\}\}/the Maintainer/g;
     $_ = "" if /^> Template: first use fills in/' "$f"
 done
 
-# Replace the role word "the owner" / "The owner".
-if [ "$BS_OWNER" != "the owner" ]; then
+# Replace the role word "the Maintainer" / "The Maintainer".
+if [ "$BS_OWNER" != "the Maintainer" ]; then
   # The same files sync_baseline.py renames (those of its COPY_FILES that hold the owner word), so a sync right after bootstrap changes nothing.
   # Not renamed on purpose: docs/FIRST_USE.md and scripts/first_use_check.py, whose
   # "the owner" is an option, a role or a literal the script needs.
@@ -65,7 +65,7 @@ if [ "$BS_OWNER" != "the owner" ]; then
     scripts/log_check.py scripts/timeline.py scripts/check_content.py scripts/check_content_scan.py scripts/check_content_hook.py scripts/check_content_test.py scripts/check_content_test_blocks.py scripts/check_content_scan_settings.py scripts/check_content_test_cli.py
     scripts/bloat_check_skills.py scripts/bloat_check_test.py scripts/check_settings.py scripts/check_settings_read.py scripts/code_standard.py scripts/code_standard_test.py scripts/code_standard_docs.py scripts/code_standard_rules.py scripts/code_standard_ratchet.py scripts/code_standard_test_gate.py scripts/code_standard_test_docs.py docs/code-standard.md scripts/check.sh scripts/git-hooks/pre-push)
   for f in "${owner_files[@]}"; do
-    perl -pi -e 'my $c = ucfirst $ENV{BS_OWNER}; s/\b([Tt])he owner\b/$1 eq "T" ? $c : $ENV{BS_OWNER}/ge' "$f"
+    perl -pi -e 'my $c = ucfirst $ENV{BS_OWNER}; s/\b([Tt])he Maintainer\b/$1 eq "T" ? $c : $ENV{BS_OWNER}/ge' "$f"
   done
 fi
 
@@ -110,7 +110,7 @@ rm -f -- scripts/sync_baseline.py scripts/sync_merge.py scripts/drift.py scripts
 if [ -f LICENSE ]; then mv -- LICENSE docs/archimedes_lever-LICENSE.txt; fi
 
 rm -- "$0"
-if [ "$BS_OWNER" != "the owner" ] && [ -f .check ]; then
+if [ "$BS_OWNER" != "the Maintainer" ] && [ -f .check ]; then
   echo "Note: the content check is on (.check). If \"$BS_OWNER\" is a real name in your denylist, the check blocks it: remove .check in a private repo."
 fi
 echo "Done. Next: review with 'git diff', then commit and push."

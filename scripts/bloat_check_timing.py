@@ -4,7 +4,7 @@ baselines (the "timings" part of scripts/bloat_check.py).
 
 Part of scripts/bloat_check.py (split out to keep each file under the line cap of docs/code-standard.md C4);
 bloat_check.py imports every name here and re-exports it, so `bloat_check.<name>` keeps working.
-A slowdown is reported, never a failure (the owner, 2026-11-16).
+A slowdown is reported, never a failure (the Maintainer, 2026-11-16).
 Inputs:  the audit settings with "timings" (scripts/check_settings.py), the timed commands, and measured seconds.
 Outputs: report rows and one TIME or WARN line; save_timings writes the "timings" part of .check.state.json.
 Usage:   imported by scripts/bloat_check.py (--time, --compare); it has no command line.
@@ -68,7 +68,7 @@ def run_timings(root, cfg, record):
 
 def compare_times(cfg, pairs, record=False):
     """pairs: [(name, seconds)]; name is a timings key, or "key:step" for one of its "steps". Returns (line, slow).
-    Warn only: a slowdown is reported, never a failure (the owner, 2026-11-16).
+    Warn only: a slowdown is reported, never a failure (the Maintainer, 2026-11-16).
 
     Args:
         cfg: the audit settings, with "timings"; record changes it in place.

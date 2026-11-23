@@ -9,7 +9,7 @@ Usage:
 
 Inputs: docs/brand/fulcrum.json (primitives, derived colours, roles per theme, contrast pairs).
 Outputs: "FULCRUM PASS" and exit 0, or one line per finding and exit 1; with --write, docs/brand/fulcrum.css.
-The five primitives are pinned below to the Logo Studies standard; a change there is copied here by hand, on the owner's request.
+The five primitives are pinned below to the Logo Studies standard; a change there is copied here by hand, on the Maintainer's request.
 Standard library only.
 Network: none.
 Writes: docs/brand/fulcrum.css with --write only (the self-test: temporary files).
@@ -42,7 +42,7 @@ TEXT_ROLES = ("page-fg", "page-muted", "page-link", "page-error", "success", "wa
 UI_ROLES = ("control-line", "focus")
 TEXT_MINIMUM, UI_MINIMUM = 4.5, 3.0
 COMPONENTS = """
-/* Components: each one is a shape from the marks (the owner, 2026-11-20). */
+/* Components: each one is a shape from the marks (the Maintainer, 2026-11-20). */
 body{background:var(--fm-page);color:var(--fm-page-fg)}
 a{color:var(--fm-page-link)}
 :focus-visible{outline:3px solid var(--fm-focus);outline-offset:2px}

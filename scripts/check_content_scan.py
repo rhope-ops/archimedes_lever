@@ -94,7 +94,7 @@ def _inside(spans):
 
 
 def scan_text(text, where, deny, allow, dod=False, terms=()):
-    """Return findings (where, line_no, kind, masked) for one text. dod: also run the DoD checks. terms: the owner's
+    """Return findings (where, line_no, kind, masked) for one text. dod: also run the DoD checks. terms: the Maintainer's
     own blocked words, found like the names (whole word, any case) and reported as kind term.
 
     Args:
@@ -103,7 +103,7 @@ def scan_text(text, where, deny, allow, dod=False, terms=()):
         deny: the names of the denylist.
         allow: the lines of the settings file (load_allow).
         dod: True in the DoD tier: also run the DoD checks.
-        terms: the owner's own blocked words.
+        terms: the Maintainer's own blocked words.
 
     Returns:
         The findings, each (where, line number, kind, masked value).
@@ -160,7 +160,7 @@ def scan_files(paths, root, deny, allow, dod=False, named=False, terms=()):
         allow: the lines of the settings file (load_allow).
         dod: True in the DoD tier: also run the DoD checks.
         named: True when the caller named these files.
-        terms: the owner's own blocked words.
+        terms: the Maintainer's own blocked words.
 
     Returns:
         The findings, each (where, line number, kind, masked value).
@@ -308,7 +308,7 @@ def scan_commits(revs, root, deny, allow, dod=False, terms=()):
         deny: the names of the denylist.
         allow: the lines of the settings file (load_allow).
         dod: True in the DoD tier: also run the DoD checks.
-        terms: the owner's own blocked words.
+        terms: the Maintainer's own blocked words.
 
     Returns:
         (findings, the number of commits scanned).

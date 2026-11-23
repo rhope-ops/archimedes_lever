@@ -230,7 +230,7 @@ def hard_rule_cases(rs):
             "Never repin an approval.", "A review finding is not approval.", "Review on a model tier no lower than the author's.",
             "Never review with a lower tier."]
     passes = ['Rules: see (AGENTS.md "Hard rules").', "| pre-push | blocks every force-push form and a push to main |",
-              "Run git clean up on a scratch folder.", "The owner's approval is in the pull request.",
+              "Run git clean up on a scratch folder.", "The Maintainer's approval is in the pull request.",
               "Check that the hook refuses --no-verify."]
     for i, line in enumerate(hits + passes):
         write_skill(rs, f"s{i}", f"---\nname: s{i}\ndescription: Use when testing.\n---\n{line}\n")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The comparison of the code standard baseline with main: the owner's decision test, the check of the settings and
+"""The comparison of the code standard baseline with main: the Maintainer's decision test, the check of the settings and
 the debt against the merge base with origin/main, and --adopt (docs/code-standard.md "The ratchet").
 
 Part of scripts/code_standard.py (split out to keep each file under the line cap of docs/code-standard.md C4).
@@ -18,7 +18,7 @@ import check_settings as settings   # scripts/check_settings.py: code_base, NAME
 
 
 def decided_at(cs, ref):
-    """Return (True when this change records the owner's decision on `.check`, refusal lines). The kit's test: a line
+    """Return (True when this change records the Maintainer's decision on `.check`, refusal lines). The kit's test: a line
     that docs/DECISIONS.md gained against `ref` names `.check`. A project's own gate replaces the test."""
     if cs.GATE:
         return cs.GATE.decided(cs.ROOT, ref)
@@ -28,7 +28,7 @@ def decided_at(cs, ref):
 
 def against_main(cs, config, debt):
     """Compare the settings and the debt with those on the merge base with origin/main. An item added to the debt, a
-    value raised, or a changed `code-` setting is a problem, unless the same change records the owner's decision
+    value raised, or a changed `code-` setting is a problem, unless the same change records the Maintainer's decision
     (decided_at). An opt-in rule turned on or raised above main's level (--adopt) may list its debt with that
     decision. A debt key that a project's gate refuses (new_debt_refusal) is a problem that no decision lifts.
 
@@ -67,14 +67,14 @@ def against_main(cs, config, debt):
             if refused:
                 problems.append(refused)
             elif adopting and decided:
-                continue   # an opt-in rule turned on or raised now (--adopt): its list is the owner's decision
+                continue   # an opt-in rule turned on or raised now (--adopt): its list is the Maintainer's decision
             elif key not in was:
                 problems.append('FAIL  baseline: %s item added by hand: %s' % (kind, key))
             elif value > was[key]:
                 problems.append('FAIL  baseline: %s value raised: %s (%d to %d)' % (kind, key, was[key], value))
     if config != old_config and not decided:
         problems.append('FAIL  baseline: a `code-` setting of %s (caps, scope or an opt-in rule) changed with no '
-                        'docs/DECISIONS.md row that names %s (a cap or scope change is the owner\'s decision)'
+                        'docs/DECISIONS.md row that names %s (a cap or scope change is the Maintainer\'s decision)'
                         % (settings.CHECK, settings.CHECK))
     return problems + (list(refusals) if problems and not decided else []), ''
 

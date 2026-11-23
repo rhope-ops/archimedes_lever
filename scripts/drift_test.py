@@ -2,7 +2,7 @@
 """Self-test cases of scripts/drift.py (run by `python3 scripts/drift.py --test`; kept in its own file so drift.py
 stays under the line cap of docs/code-standard.md C4). Kit only: projects do not get a copy.
 
-It compares sample projects with this baseline repo: a legacy AGENTS.md, a synced one with the owner renamed, a
+It compares sample projects with this baseline repo: a legacy AGENTS.md, a synced one with the Maintainer renamed, a
 copied file, the tiers, the settings merge, the place of the project log, the short name, a sync that keeps the
 project's own files, and the files a project may tune.
 Input: this baseline repo (its AGENTS.md must still hold its placeholders; elsewhere the test is skipped).
@@ -53,7 +53,7 @@ def last_section(base):
 
 
 def legacy_and_synced_cases(proj, base, results):
-    """A legacy AGENTS.md drifts; a synced one with the owner renamed is the same, also a copied file.
+    """A legacy AGENTS.md drifts; a synced one with the Maintainer renamed is the same, also a copied file.
 
     Args:
         proj: an empty temporary project folder.
@@ -176,7 +176,7 @@ def tier_cases(proj, base, results):
     """
     get = lambda item: status(proj, base, item)  # noqa: E731
     text = filled((base / "AGENTS.md").read_text(), (("PROJECT_NAME", "Demo"), ("REPO", "D/d"), ("PURPOSE", "P"),
-                  ("OWNER", "the owner"), ("TIMEZONE", "UTC"), ("TIER", "starter")))
+                  ("OWNER", "the Maintainer"), ("TIMEZONE", "UTC"), ("TIER", "starter")))
     (proj / "AGENTS.md").write_text(sb.apply_tier(text, "starter"))
     expect(results, "starter: no Project log section expected", get(("AGENTS.md", "Project log")), "absent")
     same(results, "starter: no Project log bullet", "**Project log.**" in (proj / "AGENTS.md").read_text(), False)
@@ -207,7 +207,7 @@ def tier_cases(proj, base, results):
 
 def tunable_cases(tmp, results):
     """The files a project may tune, against a small baseline repo with two commits: a sync adds a missing file,
-    replaces an earlier kit version (with or without the owner word applied), keeps a tuned file and says how to
+    replaces an earlier kit version (with or without the Maintainer word applied), keeps a tuned file and says how to
     compare; the drift report gives the same states.
 
     Args:
@@ -223,12 +223,12 @@ def tunable_cases(tmp, results):
         for version in ("one", "two"):
             for rel in rels:
                 (base / rel).parent.mkdir(parents=True, exist_ok=True)
-                (base / rel).write_text(f"Version {version} of {rel}. Ask the owner.\n")
+                (base / rel).write_text(f"Version {version} of {rel}. Ask the Maintainer.\n")
             if version == "one":
                 run("init", "-q")
             run("add", "-A")
             run("commit", "-q", "-m", version)
-        v1 = lambda rel: f"Version one of {rel}. Ask the owner.\n"  # noqa: E731
+        v1 = lambda rel: f"Version one of {rel}. Ask the Maintainer.\n"  # noqa: E731
         put = lambda rel, text: ((proj / rel).parent.mkdir(parents=True, exist_ok=True), (proj / rel).write_text(text))  # noqa: E731
         put(rels[0], sb.apply_owner(v1(rels[0]), "the maintainer"))   # an earlier kit version, as a sync wrote it
         put(rels[2], v1(rels[2]) + "Our own place for the list.\n")    # tuned
@@ -280,7 +280,7 @@ def short_name_cases(base, results):
     for label, flag, want in (("--short-name wins over the name", "NMB", "- Short name: NMB\n"),
                               ("a sync fills the first word", None, "- Short name: No\n")):
         args = argparse.Namespace(name=None, repo=None, purpose=None, timezone=None, short_name=flag)
-        good = want in sb.build_agents(base_text, proj, args, "the owner")
+        good = want in sb.build_agents(base_text, proj, args, "the Maintainer")
         results.append(good)
         print(("ok   " if good else "FAIL ") + f"short name: {label}")
 
