@@ -10,11 +10,12 @@ Updated: 2026-11-23 ~06:20 by session "Kit · Fleet v2 remediation · 2026-11-23
 - Fleet on 10.0.0 (merged 2026-11-21, each verified on main): RADE 165, 33-332.Z 48, ICF-Source 240, SEC-Source 27, SPAR 19, 36-3003.Z 14, 65-601.Z 14, no-more-beyond 66, transcription_assistant 8. 90-161.Z on 9.0.0 (PR 215); its 10.0.0 sync is PR 216 of its own session (K2). Session load (cap 5,500): 33-332.Z ~5,352, ICF ~5,322, RADE ~5,278, TA ~5,250, SEC ~5,210, NMB ~5,178. Owner steps per repo: `audit-instructions:` lines in `.check`; 33-332.Z README does not open with its Purpose line (warning).
 
 ## Approved plan (the owner, 2026-11-23): fleet remediation v2
-
 Full text, gate baseline, corrections and 11 decisions: [reviews/2026-11-23-fleet-v2-plan.md](reviews/2026-11-23-fleet-v2-plan.md). Session "Kit · Fleet v2 remediation · 2026-11-23".
 
 - [x] 0. Plan verified against the 5 repos and saved.
-- [ ] 1. Kit 11.0.0 (this repo). [ ] 2. RADE engine-v36. [ ] 3. 90-161.Z / 33-332.Z / ICF-Source in 3 sub-sessions. [ ] 4. ICF UX/UI and handover check. [ ] 5. Rule text for recurrence (owner approval).
+- [ ] 1. Kit 11.0.0 on branch claude/fleet-v2-coordinator-n7f6ob (host limit; keen-cori-eiotd2 merged in, its last commit 260ee26): waves 1-3 built (2026-11-23 ~08:35): kit.config.json, DoD opt-in group, strict gate fold, --validate-config, role swap (DEC 2), 11.0.0; gates CHECK PASS 30/1 of 31, unittest 49 OK. Reviews: rule conflict (1 MAJOR: content approval :3 vs :39, to the owner; record reviews/2026-11-23-rule-conflict.md), security (2 MAJOR, fixed 099fe95), sync (2 MAJOR, fixed d4f221d), splits (0 MAJOR); fix review running; fulcrum_tokens -> fulcrum_palette (gitleaks false positive, 513b00b). Merge waits for the owner: the MAJOR rule fix, the 33-332.Z session-load cap (5,520 > 5,500 after the swap). Owner step: setup scripts install token_log.py, its 2 parts and kit.config.json.
+  Session briefs for the parallel tracks: [reviews/2026-11-23-fleet-v2-session-briefs.md](reviews/2026-11-23-fleet-v2-session-briefs.md).
+- [ ] 2. RADE engine-v36. [ ] 3. 90-161.Z / 33-332.Z / ICF-Source in 3 sub-sessions. [ ] 4. ICF UX/UI and handover check. [ ] 5. Rule text for recurrence (owner approval). Started 2026-11-23 ~07:13 by coordinator "Kit · Fleet v2 coordinator · 2026-11-23" (session_01PyXpdUat26YdmzaenEFPpj; wave 3 + 11.0.0 PR on its branch claude/fleet-v2-coordinator-n7f6ob, host limit): RADE session_01PyXpdW7BwVyr1toNxZv4RB, 33-332.Z session_01PyXpdT48J9ZNT5qxN2AiiC, ICF session_01PyXpdRk3bXkb6Hy4huH4Ux, 90-161.Z (local items; waits for "engine-v36 released") session_01PyXpdTU4iiPacMfazGVkEi.
 
 - Earlier approved plan 2026-11-19 (fleet decision hub, kit template): steps 0-5 and 7 done, step 4 dropped; open: step 6 loop proof after the owner ports a first project. Record: [reviews/2026-11-19-fleet-decision-hub-plan.md](reviews/2026-11-19-fleet-decision-hub-plan.md); live page preview https://claude.ai/artifact/RZwwoMT9fNJDARDcBzn7AR.
 

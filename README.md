@@ -104,7 +104,7 @@ Open the project with Claude Code and say what you want to do next. The agent fi
 
 Two tiers. **Starter** (recommended for a first project): AGENTS.md, the safety hooks, the personal-data guard, one check command, the `reviewer` agent, the skills and memory in files. **Full** adds the parts marked "Full only" in [docs/FILES.md](docs/FILES.md): multi-agent orchestration, the project log and timeline, the bloat audit and rule tests. The list of advanced files lives in `scripts/sync_baseline.py` (`ADVANCED_FILES`). Every file and what it does: [docs/FILES.md](docs/FILES.md).
 
-Both tiers also get **Fulcrum Minimal**, the shared design tokens for project pages: [docs/brand/fulcrum.css](docs/brand/fulcrum.css), built from [docs/brand/fulcrum.json](docs/brand/fulcrum.json) by `python3 scripts/fulcrum_tokens.py --write`, which also checks that its five colours still match the Logo Studies marks and that every text colour meets WCAG contrast.
+Both tiers also get **Fulcrum Minimal**, the shared design tokens for project pages: [docs/brand/fulcrum.css](docs/brand/fulcrum.css), built from [docs/brand/fulcrum.json](docs/brand/fulcrum.json) by `python3 scripts/fulcrum_palette.py --write`, which also checks that its five colours still match the Logo Studies marks and that every text colour meets WCAG contrast.
 
 ## Set up a project by hand
 
@@ -220,7 +220,7 @@ The sync command takes these options:
 |---|---|
 | `--tier full` | You move a starter project to the full kit. It adds the advanced files and docs/LOG.md. To make the name guard block, delete the line `denylist: warn` in `.check`. |
 | `--name`, `--repo`, `--purpose` | The project's AGENTS.md has no title line (`--name`), no `- Repo:` line or no `- Purpose:` line. |
-| `--owner NAME` | AGENTS.md has no `- Owner:` line. |
+| `--owner NAME` | AGENTS.md has no `- Owner:` line, or you change the role word. For kit 11.0.0, type `--owner "the Maintainer"`. The sync then writes that word in the `- Owner:` line and in the kit text. |
 | `--timezone ZONE` | AGENTS.md has no `- Time zone:` line (ZONE is an IANA name). |
 
 1. In an editor, open the file `AGENTS.md` of the project. You see its header lines at the top. Go on.

@@ -64,7 +64,7 @@ The git fixtures (a small demo repo with a bare `origin`, a `live` and a `previe
 # Build one test fixture. Usage: mkfix.sh <case> <dest-dir> <skill-name> <skill-dir-to-install>
 set -eu
 CASE=$1; DEST=$2; SKILL=$3; SKILLDIR=$4
-K=/home/user/archimedes_lever
+K="$(git rev-parse --show-toplevel)"
 rm -rf "$DEST"; mkdir -p "$DEST"; cd "$DEST"
 g() { git -c user.name="demo-bot" -c user.email="demo-bot@users.noreply.github.com" "$@"; }
 base_repo() {

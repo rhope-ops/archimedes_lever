@@ -9,13 +9,13 @@ Updated: {{DATE}} by bootstrap. Keep this file at 40 lines or fewer. The current
 
 ## Approved plan
 
-- None. (When the owner approves a plan: its steps, the approval date, and which steps are done. A restart continues from here.)
+- None. (When the Maintainer approves a plan: its steps, the approval date, and which steps are done. A restart continues from here.)
 
 ## Open (in order)
 
 1. Add the first project rules to AGENTS.md "Project rules".
 
-## Needs the owner
+## Needs the Maintainer
 
 - None.
 

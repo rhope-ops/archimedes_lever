@@ -9,8 +9,10 @@
 #   audit-<key>: <value>    a setting of the audit, for example `audit-ignore: ref/**`
 #                           (the keys and their defaults: the header of scripts/check_settings.py; a `code-` change
 #                           needs a docs/DECISIONS.md row that names this file)
-# An allowed string or a skip line is added only on the owner's request, never by an agent to get past a block (AGENTS.md "Guards and checks").
+# An allowed string or a skip line is added only on the Maintainer's request, never by an agent to get past a block (AGENTS.md "Guards and checks").
 code-c2: full
-# The files whose steps a person follows (scripts/check_instructions.py; the owner, 2026-11-21).
+# The files whose steps a person follows (scripts/check_instructions.py; the Maintainer, 2026-11-21).
 audit-instructions: README.md
 audit-instructions: docs/github/README.md
+audit-instructions: docs/MAINTAINER_RUNBOOK.md
+audit-instructions: docs/check-config-schema.md

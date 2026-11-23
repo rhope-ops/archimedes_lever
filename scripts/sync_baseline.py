@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""Sync a project repo to the current rhope-ops/archimedes_lever baseline.
+"""Sync a project repo to the current kit baseline (the repo that kit.config.json "kit_url" names).
 
 Run it from inside the project repo:
     python3 scripts/sync_baseline.py            # dry run: show the diff, write nothing
     python3 scripts/sync_baseline.py --apply    # write the files (commit them yourself)
 
 Options:
-    --baseline PATH_OR_URL   Baseline repo (default: https://github.com/rhope-ops/archimedes_lever)
+    --baseline PATH_OR_URL   Baseline repo (default: "kit_url" in kit.config.json, read by scripts/kit_config.py)
     --name, --repo, --purpose   Header values, needed only when the project AGENTS.md has none.
     --timezone ZONE          IANA time zone for project log times, needed only when the project AGENTS.md has no
                              "- Time zone:" line (projects synced before 2026-11-11 have none).
-    --owner NAME             Name agents use for the decider (default: the project's "- Owner:" line, else "the owner").
+    --owner NAME             Name agents use for the decider (default: the project's "- Owner:" line, else "the Maintainer").
                              A public repo sets a role, for example --owner "the maintainer", so no real name is synced in.
     --tier starter|full      Kit tier (default: the project's "- Tier:" line, else "full", the only tier before 2026-11-13).
                              --tier full on a starter project adds the advanced parts (ADVANCED_FILES below, and a new
@@ -50,73 +50,80 @@ What it changes:
                            Problem, Turning point and Lesson, each "-" (.claude/skills/project-log/SKILL.md). Rows are kept.
     docs/archimedes_lever-LICENSE.txt   The kit's license (MIT), which covers the copied files.
     Owner name             In baseline text only (AGENTS.md above "## Project rules" and the copied files, not this
-                           script), "the owner" becomes the project owner ("The owner" becomes the owner with a capital
+                           script), "the Maintainer" becomes the project owner ("The Maintainer" becomes the owner with a capital
                            first letter). Project text is never renamed. A private repo may keep a real name
                            (--owner NAME); a public repo uses a role. Owner: letters, digits, space . _ , ( ) -
 What it never changes: README.md, docs/ (except docs/FIRST_USE.md as said above, docs/code-standard.md and the kit
 license), .check and all other files. A project's own code lives in its own files (scripts/check.local.sh,
 scripts/check_content_local.py, scripts/check_instructions_local.py, scripts/code_standard_gate.py), which a sync
 never touches.
-Standard library only. Needs git.
+Parts: scripts/sync_baseline_repo.py (the reads of the baseline repo, the diff) and scripts/sync_baseline_run.py (main). Standard library only. Needs git.
 Network: the baseline repo, only when --baseline is a URL (one git clone); none for a local folder.
 Writes: with --apply, the kit files of the project and its kit lock .check.lock (the list: "What it changes" above); without it, nothing.
 Credentials: none itself; a clone uses the credentials git already has.
 """
 import argparse
-import difflib
 import re
 import shutil
-import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import check_blocks  # noqa: E402 - the deny rules and the placeholder pattern
+import check_blocks  # noqa: E402,F401 - the deny rules and the placeholder pattern
 import check_lock  # noqa: E402 - the kit lock that a sync writes into the project
 from sync_merge import REPLACED_HOOKS, changed_matchers, die, merge_lines, merge_settings, migrate_arcs  # noqa: E402,F401 - scripts/sync_merge.py
 from sync_merge import (apply_tier, find_heading, header_short_name, header_timezone, header_tier, header_values,  # noqa: E402,F401
                         headings, section, valid_timezone)  # the AGENTS.md header helpers (drift.py reads them here)
+# scripts/sync_baseline_repo.py: the reads of the baseline repo and the diff (kept apart, docs/code-standard.md C4).
+from sync_baseline_repo import (baseline_sha, dod_files, get_baseline, git, header_owner, kit_history, log_stamp,  # noqa: E402,F401
+                                log_template, show_diff)
+import sync_baseline_run  # noqa: E402 - scripts/sync_baseline_run.py: the steps of one run (main)
+from sync_baseline_run import check_placeholders  # noqa: E402,F401 - re-exported
 
-DEFAULT_BASELINE = "https://github.com/rhope-ops/archimedes_lever"
+import kit_config  # noqa: E402 - scripts/kit_config.py: the one home of the kit addresses (kit.config.json)
+DEFAULT_BASELINE = kit_config.value("kit_url")  # None when kit.config.json is missing: parse_args stops
 RULES_HEADING = "## Project rules"
 COMMANDS_HEADING = "## Commands"
 COPY_FILES = ["scripts/session_checkin.sh", "scripts/stop_check.py", "scripts/check_blocks.py", "scripts/check_lock.py", "scripts/check_content_test_blocks.py",
               "scripts/worker_guard.py", "scripts/log_check.py", "scripts/timeline.py", "scripts/fleet_harvest.py", "scripts/fleet_harvest_test.py", "scripts/check_content.py", "scripts/first_use_check.py",
+              "scripts/fleet_harvest_parse.py",
               "scripts/check_content_scan.py", "scripts/check_content_hook.py", "scripts/check_content_test.py",
               "scripts/check_content_finders.py", "scripts/check_content_test_local.py", "scripts/check_settings_test.py",
-              "scripts/check.sh", "scripts/check_settings.py", "scripts/bloat_check.py", "scripts/bloat_check_skills.py", "scripts/bloat_check_test.py",
-              "scripts/bloat_check_rules.py", "scripts/skill_use.py",
+              "scripts/check_content_scan_settings.py", "scripts/check_content_test_cli.py",
+              "scripts/check.sh", "scripts/check_settings.py", "scripts/check_settings_read.py", "scripts/bloat_check.py", "scripts/bloat_check_skills.py", "scripts/bloat_check_test.py",
+              "scripts/bloat_check_rules.py", "scripts/skill_use.py", "scripts/bloat_check_timing.py", "scripts/bloat_check_test_rules.py",
               "scripts/code_standard.py", "scripts/code_standard_test.py", "scripts/code_standard_docs.py", "scripts/code_standard_parse.py",
+              "scripts/code_standard_rules.py", "scripts/code_standard_ratchet.py", "scripts/code_standard_test_gate.py", "scripts/code_standard_test_docs.py",
+              "scripts/code_standard_strict.py", "scripts/code_standard_strict_test.py",
               "docs/code-standard.md", "scripts/git-hooks/pre-push",
-              "scripts/fulcrum_tokens.py", "docs/brand/fulcrum.json", "docs/brand/fulcrum.css", "scripts/build_site.py",
+              "scripts/fulcrum_palette.py", "docs/brand/fulcrum.json", "docs/brand/fulcrum.css", "scripts/build_site.py", "scripts/build_site_html.py",
               ".claude/skills/delegate/SKILL.md", ".claude/skills/audit/SKILL.md", ".claude/skills/project-log/SKILL.md", ".claude/rule-tests.md", ".github/workflows/check.yml",
               ".claude/skills/deliver/SKILL.md", ".claude/skills/personal-data/SKILL.md", ".claude/skills/rule-change/SKILL.md",
               ".claude/skills/data-change/SKILL.md", ".claude/skills/verify/SKILL.md", ".claude/skills/verify/measure.mjs",
               ".claude/skills/handoff/SKILL.md",
               ".claude/skills/kit-update/SKILL.md", ".claude/skills/instructions/SKILL.md",
-              "scripts/check_instructions.py", "scripts/check_instructions_test.py",
+              "scripts/check_instructions.py", "scripts/check_instructions_test.py", "scripts/check_instructions_steps.py",
               ".claude/agents/worker.md", ".claude/agents/scout.md", ".claude/agents/reviewer.md"]
 # A file a project may tune: added when missing, replaced when the project's copy is an earlier kit version, else kept
 # (copy_state). (The kit's agent files are kit files since 2026-11-18: an old copy can restate a rule; a project adds
 # an agent of its own under its own name.)
 COPY_IF_MISSING = ["docs/FIRST_USE.md"]
+# The DoD group (fleet v2 DEC 4): added only when the project's .check has `dod-security: on`, and only when the project
+# has no copy (never replaced, never in the kit lock: a project tunes its own scan paths). ICF-Source has it off.
+DOD_FILES = ["SECURITY.md", ".github/dependabot.yml", ".github/workflows/security.yml"]
 COPY_NOTES = []  # one line for each COPY_IF_MISSING file that a sync replaces or keeps (main() prints them)
-BASELINE_OWNER = "the owner"  # role word in baseline text; no real name lives in the baseline
+BASELINE_OWNER = "the Maintainer"  # role word in baseline text; no real name lives in the baseline
 # Never rename the owner inside this script: it holds BASELINE_OWNER as a literal.
 # first_use_check.py and docs/FIRST_USE.md use "the owner" as an answer option and a role: keep them as written
 # (bootstrap.sh skips them too).
-def log_template(base):
-    """The blank project log: docs/templates/LOG.md (the kit's docs/LOG.md is its own log); older baselines: docs/LOG.md."""
-    t = base / "docs/templates/LOG.md"
-    return t if t.exists() else base / "docs/LOG.md"
 
 
 # Advanced parts: a starter project has none of these (one list for bootstrap, sync and drift).
 ADVANCED_FILES = [".claude/skills/delegate/SKILL.md", ".claude/agents/scout.md", ".claude/agents/worker.md",
                   ".claude/skills/project-log/SKILL.md", "docs/LOG.md", "scripts/log_check.py", "scripts/timeline.py",
                   ".claude/skills/audit/SKILL.md", "scripts/bloat_check.py", "scripts/bloat_check_skills.py", "scripts/bloat_check_rules.py",
-                  "scripts/bloat_check_test.py", ".claude/rule-tests.md", "scripts/skill_use.py"]
+                  "scripts/bloat_check_test.py", ".claude/rule-tests.md", "scripts/skill_use.py",
+                  "scripts/bloat_check_timing.py", "scripts/bloat_check_test_rules.py"]
 # Moved or renamed in the kit (to .claude/skills/ on 2026-11-16; the guard to check_content on 2026-11-18; run-verify
 # and ui-verify merged into verify, and port renamed kit-update, on 2026-11-18; efficiency merged into audit in
 # kit 6.0.0): a project synced before then still
@@ -126,36 +133,10 @@ MOVED_FILES = [".claude/orchestration.md", ".claude/bloat-audit.md", ".claude/pr
                "scripts/pii_guard_test.py", ".github/workflows/pii-guard.yml",
                ".claude/skills/run-verify/SKILL.md", ".claude/skills/ui-verify/SKILL.md",
                ".claude/skills/ui-verify/measure.mjs", ".claude/skills/port/SKILL.md",
-               ".claude/skills/efficiency/SKILL.md"]
+               ".claude/skills/efficiency/SKILL.md", "scripts/fulcrum_tokens.py"]  # renamed to fulcrum_palette.py in 11.0.0 (a secret scan read its name as a key)
 TIERS = ("starter", "full")
 NO_OWNER_RENAME = {"scripts/sync_baseline.py", "scripts/first_use_check.py", "docs/FIRST_USE.md"}
 OWNER_RE = r"[A-Za-z0-9 ._,()-]+"  # safe inside Python strings, JSON and Markdown
-
-
-def git(*args, cwd=None):
-    """Run git and return its stripped stdout; raise on failure."""
-    return subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True, text=True).stdout.strip()
-
-
-def get_baseline(src, tmp):
-    """The baseline folder: `src` itself when it is a folder, else a clone of it in `tmp` (with its history: an older
-    kit copy of a file is known by it, copy_state).
-
-    Args:
-        src: a baseline folder or a git URL.
-        tmp: a temporary folder to clone into.
-    Returns:
-        The path of the baseline folder.
-    """
-    path = Path(src)
-    if path.is_dir():
-        return path.resolve()
-    dest = Path(tmp) / "baseline"
-    try:
-        git("clone", "--quiet", src, str(dest))
-    except subprocess.CalledProcessError as e:
-        die(f"cannot clone baseline {src}: {e.stderr.strip()}")
-    return dest
 
 
 def tier_files(tier):
@@ -174,51 +155,14 @@ def set_tier(root, tier):
     print(f"Tier: {tier}" + (f" ({len(ADVANCED_FILES)} advanced files removed)" if tier == "starter" else ""))
 
 
-def log_stamp(zone):
-    """'YYYY-MM-DD HH:MM' now, in the project time zone (UTC when the zone database is missing)."""
-    import datetime
-    try:
-        import zoneinfo
-        tz = zoneinfo.ZoneInfo(zone)
-    except Exception:
-        tz = datetime.timezone.utc
-    return datetime.datetime.now(tz).strftime("%Y-%m-%d %H:%M")
-
-
-def header_owner(text):
-    """The project's "- Owner:" value, or None."""
-    owner = re.search(r"^- Owner: (.+?)\s*$", text or "", re.M)
-    return owner and owner.group(1)
-
-
 def apply_owner(text, owner):
-    """Replace the baseline role word ("the owner", "The owner") with the project owner."""
+    """Replace the baseline role word (BASELINE_OWNER, and its form with a capital T) with the project owner."""
     if owner == BASELINE_OWNER:
         return text
     cap = owner[:1].upper() + owner[1:]
     # One pass with word boundaries: "the ownership" stays, and an owner that contains the role word is not re-replaced.
-    return re.sub(r"\b([Tt])he owner\b", lambda m: cap if m.group(1) == "T" else owner, text)
-
-
-def kit_history(base, rel):
-    """The earlier versions of a baseline file, from the baseline's git history.
-
-    Args:
-        base: the baseline folder.
-        rel: the file's path in it.
-
-    Returns:
-        A list of the file's bytes at each commit that changed it, newest first; None when the baseline folder is
-        not the top of a git repo (no history to read).
-    """
-    try:
-        if Path(git("rev-parse", "--show-toplevel", cwd=base)).resolve() != Path(base).resolve():
-            return None
-        shas = git("log", "--format=%H", "--", rel, cwd=base).split()
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return None
-    shown = [subprocess.run(["git", "show", f"{sha}:{rel}"], cwd=base, capture_output=True) for sha in shas]
-    return [r.stdout for r in shown if r.returncode == 0]   # a commit that deleted the file has no version
+    word = re.escape(BASELINE_OWNER.split(" ", 1)[1])
+    return re.sub(r"\b([Tt])he " + word + r"\b", lambda m: cap if m.group(1) == "T" else owner, text)
 
 
 def copy_state(base, root, rel, owner):
@@ -359,36 +303,11 @@ def parse_args():
     ap.add_argument("--set-tier", choices=TIERS, help="bootstrap only: apply the tier to this repo in place")
     ap.add_argument("--lock-here", action="store_true", help="bootstrap only: write the kit lock for this repo as it is")
     args = ap.parse_args()
+    if not args.baseline:
+        ap.error("no --baseline given and no \"kit_url\" in kit.config.json (scripts/kit_config.py)")
     if args.timezone and not valid_timezone(args.timezone):
         die(f"time zone {args.timezone!r} is not a known IANA name (for example UTC, Europe/Berlin)")
     return args
-
-
-def baseline_sha(base):
-    """The baseline commit, marked when its folder has uncommitted changes or is not a git repo.
-
-    Args:
-        base: the baseline folder (a Path).
-    Returns:
-        The commit hash, with a note when the folder has uncommitted changes, or an "unknown" text.
-    """
-    try:
-        if Path(git("rev-parse", "--show-toplevel", cwd=base)).resolve() != base.resolve():
-            raise subprocess.CalledProcessError(1, "git")
-        sha = git("rev-parse", "HEAD", cwd=base)
-        if git("status", "--porcelain", cwd=base):
-            sha += " (with uncommitted baseline changes)"
-        return sha
-    except subprocess.CalledProcessError:
-        return "unknown (baseline folder is not a git repo)"
-
-
-def check_placeholders(root):
-    """Stop when AGENTS.md, README.md or docs/*.md still holds a {{PLACEHOLDER}} (bootstrap has not run)."""
-    for f in [root / "AGENTS.md", root / "README.md", *sorted(root.glob("docs/*.md"))]:
-        rel = f.relative_to(root)
-        if f.is_file() and check_blocks.placeholders([f]):
-            die(f"{rel} still has template placeholders; run scripts/bootstrap.sh first")
 
 
 def new_log(base, root, proj_text, agents_text, owner, tier):
@@ -451,6 +370,7 @@ def planned_files(base, root, args):
         if (base / rel).exists():
             text = (base / rel).read_text()
             new[rel] = text if rel in NO_OWNER_RENAME else apply_owner(text, owner)
+    new.update(dod_files(base, root, DOD_FILES))
     tuned, notes = plan_if_missing(base, root, copy_if_missing, owner, args.baseline)
     new.update(tuned)
     COPY_NOTES[:] = notes
@@ -464,29 +384,6 @@ def planned_files(base, root, args):
     if (base / "LICENSE").exists():
         new["docs/archimedes_lever-LICENSE.txt"] = (base / "LICENSE").read_text()
     return new, tier
-
-
-def show_diff(root, new):
-    """Print a unified diff for each file that would change; return their paths.
-
-    Args:
-        root: the project folder.
-        new: a dict of project path to the synced text.
-    Returns:
-        The list of paths whose text would change.
-    """
-    changed = []
-    for rel, text in new.items():
-        path = root / rel
-        old = path.read_text() if path.exists() else ""
-        if old == text:
-            continue
-        changed.append(rel)
-        sys.stdout.writelines(difflib.unified_diff(
-            old.splitlines(True), text.splitlines(True), f"a/{rel}", f"b/{rel}"))
-        if not text.endswith("\n"):
-            print()
-    return changed
 
 
 def report_leftovers(root, tier):
@@ -539,44 +436,9 @@ def write_lock(base, root, files):
 
 
 def main():
-    """Sync the project: show the diff (dry run) or write it (--apply); or apply --set-tier in place."""
-    args = parse_args()
-    try:
-        root = Path(git("rev-parse", "--show-toplevel"))
-    except subprocess.CalledProcessError:
-        die("run this inside the project git repo")
-    if args.set_tier:
-        set_tier(root, args.set_tier)
-        return
-    if args.lock_here:  # bootstrap: this clone of the kit becomes a project; lock its kit files as they are now
-        write_lock(root, root, COPY_FILES)
-        return
-
-    with tempfile.TemporaryDirectory() as tmp:
-        base = get_baseline(args.baseline, tmp)
-        if base.resolve() == root.resolve():
-            die("this is the baseline repo itself; run the script in a project repo")
-        print(f"Kit baseline: {baseline_sha(base)}. A sync writes the kit lock {check_lock.LOCK} (the kit version and a "
-              "hash of each kit file); the project does not keep the sync tools.")
-        check_placeholders(root)
-        new, tier = planned_files(base, root, args)
-        changed = show_diff(root, new)
-        report_leftovers(root, tier)
-        for note in COPY_NOTES:
-            print(note)
-        for matcher in changed_matchers(REPLACED_HOOKS, base / ".claude/settings.json"):
-            print("An older kit hook entry is replaced by the kit's. If you had added tool names to its matcher, add a "
-                  f"hook entry of your own for them. The old matcher: {matcher}")
-        if not changed:
-            print("No changes: the project already matches the baseline.")
-            if args.apply:
-                write_lock(base, root, new)
-            return
-        print(f"\n{len(changed)} file(s) to change: {', '.join(changed)}")
-        if not args.apply:
-            print("Dry run: nothing written. Run again with --apply to write.")
-            return
-        write_files(base, root, new, changed)
+    """Sync the project: show the diff (dry run) or write it (--apply); or apply --set-tier in place (the steps:
+    scripts/sync_baseline_run.py)."""
+    sync_baseline_run.run(sys.modules[__name__])
 
 
 if __name__ == "__main__":

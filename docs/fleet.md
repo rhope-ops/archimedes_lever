@@ -1,6 +1,6 @@
 # Fleet format: port a project, harvest it to the fleet page
 
-The fleet page (https://claude.ai/artifact/AWtpGxEqCWrjrPa1Afe7qW, private) shows each ported project's last and next update, timeline, open and resolved decisions, and keeps the owner's choices on them. The fleet format is a template: the owner ports it into a project when that project needs it (the owner, 2026-11-19). The kit itself is not ported. Format: the handoff skill (`.claude/skills/handoff/SKILL.md`, "Fleet format"); contract and design: [reviews/2026-11-19-fleet-contract.md](reviews/2026-11-19-fleet-contract.md).
+The fleet page (private; its address is `fleet_page` in the kit's kit.config.json) shows each ported project's last and next update, timeline, open and resolved decisions, and keeps the owner's choices on them. The fleet format is a template: the owner ports it into a project when that project needs it (the owner, 2026-11-19). The kit itself is not ported. Format: the handoff skill (`.claude/skills/handoff/SKILL.md`, "Fleet format"); contract and design: [reviews/2026-11-19-fleet-contract.md](reviews/2026-11-19-fleet-contract.md).
 
 ## Port a project (one pull request in that project)
 
@@ -32,7 +32,7 @@ A scheduled task that starts a fresh session each day (`create_trigger` with `cr
 ```text
 Fleet harvest. For each repository in this list: <owner>/<repo>, ... (only ported projects, `fleet: on` in .check):
 attach it (add_repo), check out main, and run the "Harvest a project to the page" steps of docs/fleet.md in the
-archimedes_lever kit, with the fleet page https://claude.ai/artifact/AWtpGxEqCWrjrPa1Afe7qW. Write only what the
+archimedes_lever kit, with the fleet page (`fleet_page` in kit.config.json). Write only what the
 harvest prints; never edit a choice. If `--check` reports lines not read, still harvest (the page shows the count).
 End with one line per repository: documents changed, deleted, lines not read, or the step that failed and why.
 ```
