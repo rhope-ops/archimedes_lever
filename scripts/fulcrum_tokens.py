@@ -35,6 +35,12 @@ HEX = re.compile(r"^#[0-9A-F]{6}$")
 # WCAG 2.x relative luminance: the sRGB threshold and the flare term of the contrast ratio.
 SRGB_LINEAR_LIMIT = 0.03928
 FLARE = 0.05
+# Fleet v2 plan 2026-11-23, Fulcrum Minimal 2.0.0: a text colour (a foreground on the page) needs 4.5:1; a UI colour (a
+# control border, the focus ring) needs 3:1 (WCAG 1.4.11), each against the page colour of its theme. The self-test
+# computes every pair from the JSON and prints it.
+TEXT_ROLES = ("page-fg", "page-muted", "page-link", "page-error", "success", "warning")
+UI_ROLES = ("control-line", "focus")
+TEXT_MINIMUM, UI_MINIMUM = 4.5, 3.0
 COMPONENTS = """
 /* Components: each one is a shape from the marks (the owner, 2026-11-20). */
 body{background:var(--fm-page);color:var(--fm-page-fg)}
@@ -158,6 +164,24 @@ def check_contrast(tokens):
     return found
 
 
+def page_table(tokens):
+    """Return one row per theme and role: (theme, role, hex, ratio on the page, minimum), text roles then UI roles.
+
+    Args:
+        tokens: the parsed docs/brand/fulcrum.json, with valid roles.
+    Returns:
+        The rows; the ratio is computed from the colours, never copied.
+    """
+    colours, rows = palette(tokens), []
+    for theme in THEMES:
+        roles = tokens["roles"][theme]
+        page = colours[roles["page"]]
+        for role, minimum in [(r, TEXT_MINIMUM) for r in TEXT_ROLES] + [(r, UI_MINIMUM) for r in UI_ROLES]:
+            value = colours[roles[role]]
+            rows.append((theme, role, value, contrast(value, page), minimum))
+    return rows
+
+
 def role_block(tokens, theme):
     """Return the CSS custom properties of one theme's roles."""
     colours = palette(tokens)
@@ -229,6 +253,7 @@ def self_test():
              ("a contrast pair with an unknown role fails", lambda t: t["contrast"].append(["nope", "page", 3]), "unknown role"),
              ("a missing header key fails", lambda t: t.pop("version"), "missing key version"),
              ("a malformed contrast entry fails", lambda t: t["contrast"].append(["page-fg", "page"]), "not [role, role"),
+             ("a control line under 3:1 fails", lambda t: t["derived"].update({"control-line-light": "#DED6C8"}), "control-line on page"),
              ("a band link under 4.5:1 fails", lambda t: t["roles"]["light"].update({"band-link": "ember-deep"}), "band-link on band")]
     failed = 0
     for label, change, expect in cases:
@@ -250,6 +275,13 @@ def self_test():
         ok = any("out of date" in line for line in run(root, write=False))
         failed += not ok
         print(("ok   " if ok else "FAIL ") + "a stale CSS file fails")
+    tokens = json.loads((ROOT / SOURCE).read_text(encoding="utf-8"))
+    bad = 0
+    for theme, role, value, ratio, minimum in page_table(tokens):
+        bad += ratio < minimum
+        print(f"     {theme:5} {role:13} {value} on page {ratio:5.2f}:1 (needs {minimum}:1)")
+    failed += bool(bad)
+    print(("ok   " if not bad else "FAIL ") + "every text token is 4.5:1 and every UI token 3:1 on the page, both themes")
     own = run(ROOT, write=False)
     failed += bool(own)
     print(("ok   " if not own else "FAIL ") + "this repo's tokens and CSS pass" + ("" if not own else f": {own}"))
