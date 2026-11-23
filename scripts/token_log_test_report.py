@@ -272,7 +272,7 @@ def case_self_update(fx):
 
 
 def case_kit_url(fx, kit, target):
-    """Self-update installs kit.config.json; kit_url() reads TOKEN_LOG_KIT_URL, the installed file, the session repo.
+    """Self-update installs kit.config.json; kit_url() reads TOKEN_LOG_KIT_URL and the installed file, never the session repo.
 
     Args:
         fx: the shared test fixture (Fixture).

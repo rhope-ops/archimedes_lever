@@ -39,5 +39,7 @@ This is defense in depth. The input is a committed file, so it has the same trus
 
 ## Known gaps
 
+- The token log hook (`scripts/token_log.py`, kit only) updates itself from the address in `TOKEN_LOG_KIT_URL` or in the `kit.config.json` next to the installed hook, never from a repo's own `kit.config.json`. A repo's `.claude/settings.json` can set `TOKEN_LOG_KIT_URL` for its sessions; such a repo can already run its own hooks, so the added risk is small (fix review, 2026-11-23).
+
 - `security.yml` downloads gitleaks and checks it against the checksums of the same release. This detects a damaged download, not a bad release.
 - The new files (`SECURITY.md`, this file, `.github/dependabot.yml`, `.editorconfig`, `.gitattributes`, `security.yml`) are kit-only. The sync to project repos does not copy them yet.

@@ -255,7 +255,9 @@ KIT_CONFIG = "kit.config.json"  # the one home of the kit address (scripts/kit_c
 def kit_url(path):
     """The kit repo the self-update clones: TOKEN_LOG_KIT_URL, else "kit_url" of the kit.config.json next to the
     installed file (the setup script and each self-update install it). Never a repo's own kit.config.json: any repo
-    opened in a session could then point the update at its own code (security review, 2026-11-23).
+    opened in a session could then point the update at its own code (security review, 2026-11-23). Residual risk:
+    a repo's .claude/settings.json "env" block can set TOKEN_LOG_KIT_URL for its sessions; such a repo can already
+    run its own hooks, so this adds little (threat model, kit 11.0.0).
 
     Args:
         path: the installed token_log.py.

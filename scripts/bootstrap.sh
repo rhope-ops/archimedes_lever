@@ -110,9 +110,18 @@ rm -f -- scripts/sync_baseline.py scripts/sync_merge.py scripts/drift.py scripts
 # The kit's threat model describes the kit. The DoD group (sync_baseline.DOD_FILES) stays only with `dod-security: on`
 # in .check (fleet v2 DEC 4: opt-in); a project writes its own threat model.
 rm -f -- docs/threat-model.md
-if ! python3 -c 'import sys; sys.path.insert(0, "scripts"); from build_site_html import dod_security; sys.exit(0 if dod_security(".") else 1)'; then
-  rm -f -- SECURITY.md .github/dependabot.yml .github/workflows/security.yml
-fi
+dod=0
+python3 -c 'import sys; sys.path.insert(0, "scripts"); from build_site_html import dod_security
+try:
+    sys.exit(0 if dod_security(".") else 1)
+except ValueError as e:
+    print(e, file=sys.stderr)
+    sys.exit(2)' || dod=$?
+case "$dod" in
+  0) ;;
+  1) rm -f -- SECURITY.md .github/dependabot.yml .github/workflows/security.yml ;;
+  *) echo "error: the dod-security line of .check is not 'on' or 'off'; correct it and run bootstrap again" >&2; exit 1 ;;
+esac
 if [ -f LICENSE ]; then mv -- LICENSE docs/archimedes_lever-LICENSE.txt; fi
 
 rm -- "$0"

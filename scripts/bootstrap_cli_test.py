@@ -118,6 +118,29 @@ class BootstrapCli(unittest.TestCase):
                      "SECURITY.md", ".github/dependabot.yml", ".github/workflows/security.yml"):  # DoD group: key off
             self.assertFalse((self.path / gone).exists(), gone)
 
+    def set_dod(self, value):
+        """Add a `dod-security:` line to the template's .check and commit it (bootstrap reads the committed tree)."""
+        with open(self.path / ".check", "a") as f:
+            f.write(f"dod-security: {value}\n")
+        run(["git", "add", "-A"], self.path)
+        run(GIT + ["commit", "-q", "-m", "dod"], self.path)
+
+    def test_dod_on_keeps_the_dod_group(self):
+        """Prove: with `dod-security: on` the DoD group stays; the kit's threat model still goes."""
+        self.set_dod("on")
+        self.assertEqual(self.starter().returncode, 0)
+        for kept in ("SECURITY.md", ".github/dependabot.yml", ".github/workflows/security.yml"):
+            self.assertTrue((self.path / kept).is_file(), kept)
+        self.assertFalse((self.path / "docs/threat-model.md").exists())
+
+    def test_dod_typo_stops(self):
+        """Prove: a `dod-security:` value other than on or off stops bootstrap with a message, before it says Done."""
+        self.set_dod("maybe")
+        p = self.starter()
+        self.assertEqual(p.returncode, 1)
+        self.assertIn("dod-security", p.stderr)
+        self.assertNotIn("Done.", p.stdout)
+
     def test_role_word_reaches_every_synced_file(self):
         """Prove: with another role, no kit file keeps the baseline word (a sync right after bootstrap changes nothing)."""
         self.assertEqual(self.starter().returncode, 0)

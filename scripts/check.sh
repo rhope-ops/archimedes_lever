@@ -274,7 +274,8 @@ for s in stop_check worker_guard log_check; do
   selftest "$s" "scripts/$s.py" -- python3 "scripts/$s.py" --test
 done
 # A script whose cases or parts live in sibling modules lists them, so the fast lane reruns its self-test when they change.
-selftest check_settings scripts/check_settings.py scripts/check_settings_test.py scripts/check_settings_read.py -- python3 scripts/check_settings.py --test
+selftest check_settings scripts/check_settings.py scripts/check_settings_test.py scripts/check_settings_read.py \
+  scripts/build_site_html.py scripts/check_content_scan_settings.py -- python3 scripts/check_settings.py --test
 selftest bloat_check scripts/bloat_check.py scripts/bloat_check_test.py scripts/bloat_check_skills.py scripts/bloat_check_rules.py \
   scripts/bloat_check_timing.py scripts/bloat_check_test_rules.py \
   scripts/check_settings.py scripts/check_settings_read.py scripts/build_site_html.py scripts/check_content_scan_settings.py -- python3 scripts/bloat_check.py --test
@@ -322,6 +323,7 @@ selftest session_checkin scripts/session_checkin.sh -- bash scripts/session_chec
 # Kit only: the command-line tests of the sync, drift, lock and bootstrap scripts (bootstrap deletes them in a project).
 [ -f scripts/sync_baseline_cli_test.py ] && selftest cli_tests scripts/*_cli_test.py scripts/sync_baseline.py scripts/sync_baseline_repo.py \
   scripts/sync_baseline_run.py scripts/sync_merge.py scripts/drift.py scripts/check_lock.py scripts/bootstrap.sh \
+  scripts/check_blocks.py scripts/kit_config.py scripts/build_site_html.py \
   -- python3 -m unittest discover -s scripts -p '*_cli_test.py'
 # This script's own self-test (not inside that self-test: it runs this script in temporary repos).
 [ -z "${CHECK_IN_TEST:-}" ] && selftest check.sh scripts/check.sh -- bash scripts/check.sh --test
