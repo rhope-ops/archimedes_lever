@@ -87,6 +87,7 @@ Not verified in this session. Fleet v2 is still open (ICF #248 split, ICF kit 11
 | P2-7b | One versioned module instead of -r1..-r14 file names | in | Step 6 |
 | P2-8a | Build-time ==term== markup instead of character offsets (ICF) | in (trial only) | Step 6. Read-only trial until fleet v2 closes; the result is shown to the Maintainer, the incoming maintainer may own the change |
 | P2-8b | Split questions and glossary JSON by Block (ICF) | in (trial only) | Step 6, same terms as P2-8a |
+| ION-1 | Ion (33-332.Z) PII detector accuracy benchmark: synthetic files with invented PII; Ion vs Microsoft Presidio (Purview if the Maintainer's account can run it); recall and precision per type; what Ion misses | in (added) | Research R4e. The Maintainer's answer, 2026-11-23 ~16:15 America/Chicago: "add to the program". Comparison only: Ion stays paste-only on PS 5.1 (33-332.Z DECISIONS rows 41, 61, 76) |
 | P2-9 | FSRS spaced repetition (ICF) | out (proposed) | Prompt "pending, not in scope yet"; feature, not a tool |
 | P2-10a | Installable PWA manifest (ICF) | out (proposed) | Same |
 | P2-10b | IndexedDB and JSON backup (ICF) | out (proposed) | Same |
@@ -167,8 +168,8 @@ Scope: this program. Nothing blocks the plan.
 | A. DEC (6 items) | 6 | 4 | 2 | 0 | 0 |
 | B. Part 1 (19 items) | 19 | 0 | 19 | 0 | 0 |
 | B2. Part 1 sub-parts (extra rows, not source items) | 7 | 2 | 5 | 0 | 0 |
-| C. Part 2 (11 items, split into sub-rows) | 22 | 14 | 8 | 0 | 0 |
+| C. Part 2 (11 items, split into sub-rows) + ION-1 (added) | 23 | 15 | 8 | 0 | 0 |
 | D. Prompt (25 items) | 25 | 25 | 0 | 0 | 0 |
-| **Total** | **79** | **45** | **34** | **0** | **0** |
+| **Total** | **80** | **46** | **34** | **0** | **0** |
 
-Source items: 36 master plan items (6 + 19 + 11) + 25 prompt items = 61. Unmarked: 0. Rows "ask": 0.
+Source items: 36 master plan items (6 + 19 + 11) + 25 prompt items = 61, plus 1 item the Maintainer added after the approval (ION-1). Unmarked: 0. Rows "ask": 0.
