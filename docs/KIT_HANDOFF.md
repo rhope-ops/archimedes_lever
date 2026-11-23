@@ -27,7 +27,7 @@ Full text, gate baseline, corrections and 11 decisions: [reviews/2026-11-23-flee
 1. Step 5 (rulesets, secret scanning: the owner's clicks, docs/github/README.md).
 
 ## Needs the owner
-- Fleet v2: tag v11.0.0 https://github.com/rhope-ops/archimedes_lever/releases/new?tag=v11.0.0&target=dedc3b3f5433b1fadf993a8c067b7712d6a85283&title=Kit%2011.0.0 and v11.0.1 https://github.com/rhope-ops/archimedes_lever/releases/new?tag=v11.0.1&target=9e3f6fae4089b61bfca04ce9a59e58acd763369c&title=Kit%2011.0.1; the open fleet decisions and the Default setup script: coordinator state file, "Needs the Maintainer".
+- Fleet v2: tags v11.0.0 (dedc3b3) and v11.0.1 (9e3f6fa) exist (checked 2026-11-23 15:13). The open fleet decisions and the Default setup script: coordinator state file, "Needs the Maintainer".
 - 2026-11-21 items (decide in order): (a) fix the non-text timestamp crash in a separate PR, REC yes; (b) approve or change the five MINOR Delegation wording items, REC: approve 1, 3, 5; delete the skill sentence in 2; reword 4 to "Exception to size, files and done criteria"; (c) confirm or remove the DECISIONS claim of an earlier MAJOR check (no record file); (d) docstring of tokens(): "text that is not an integer" (with a).
 
 - Delete the kit branches `claude/content-check-speed` (merged in PR 94) and `claude/kit-handoff-6-0-0` (same commit as PR 84; the cloud session's delete got HTTP 403): https://github.com/rhope-ops/archimedes_lever/branches. Account skills to save (files sent in the session of 2026-11-20): `pages-and-tools`, `ship`, `turn-summary`, `roadmap-update`, `stakeholder-update`; the 2 changed preference lines (PREFERENCES.md "Reporting" and "How to work"). Tags v5.0.0 (24c2391), v5.0.1 (59528df), v6.0.0 (43ad952).
