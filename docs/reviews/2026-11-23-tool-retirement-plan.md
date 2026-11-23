@@ -52,6 +52,8 @@ the fleet v2 [lessons](2026-11-23-fleet-v2-lessons.md) (5 causes).
 9. **Content check (W-B).** A. **REC:** keep `check_content*`; gitleaks stays the CI second net (it already runs in `security.yml`); W-B's final report: gitleaks with the ported rules matched all 1,137 content-tool findings, found 43 more (matching differences: a split address, `%40` in a URL, a phrase over two lines) and missed 0; the kit gains those 3 matching fixes. B. Shrink to the parts no tool covers and run gitleaks with generated custom rules (two scanners, two outputs).
 10. **Instruction check (W-B).** A. **REC:** keep `check_instructions.py` (0 false positives, the step reader is the value). B. Shrink: keep the step reader, send steps to Vale for actions, pointer, vague and wait.
 
+**DEC 2-10 and the pilot:** the Maintainer accepted every REC of decisions 2-10 ("Accept all RECs") and chose the pilot **33-332.Z** (question dialog in this session, 2026-11-23 17:09 America/Chicago; scope: this program). Open: the Maintainer's approval of the whole plan, with its rule texts.
+
 ## 3. Rule texts (exact text for approval)
 
 Result on a copy of AGENTS.md: 76 -> 73 lines, kit rule bullets 31 -> 28 (+1 project rule), kit AGENTS.md +321 bytes
