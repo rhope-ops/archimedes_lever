@@ -44,7 +44,7 @@ Each ran `python3 scripts/skill_use.py $(find ~/.claude/projects -name "*.jsonl"
 | RADE, fleet v2 engine-v36 (sent with the Maintainer's OK, ~17:29) | 14 | 3: instructions, kit-update, rule-change (+1 full Read: instructions) | 3: instructions, deliver, delegate | reviewer 12, worker 1 | 631 |
 | **Total (6 sessions, 83 logs)** | 83 | **25** (+1 Read) | **58** | 81 | ~5,100+ |
 
-Kit skills across the 6 sessions (full loads / slices): delegate 4/11, instructions 8/1, deliver 3/12, rule-change 3/7,
+Kit skills across the 6 sessions (full loads / slices): delegate 4/11, instructions 7 (+1 full Read)/1, deliver 3/12, rule-change 3/7,
 audit 1/7, verify 1/0, kit-update 3/5, handoff **0/4**, personal-data 0/4, project-log 0/1 (1 load after the count),
 data-change **0/0**. Account skills: where-to-save 1, deeper-version 1, turn-summary **0**, ship **0**.
 
