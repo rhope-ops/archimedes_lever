@@ -16,9 +16,10 @@ The setting lines (a missing key means the default; a key marked * may appear on
     code-paste: <glob> *            a script a person pastes into another tool (one file is one paste): its C4 cap is
     code-max-file-lines-paste: 600  this one, not code-max-file-lines (docs/code-standard.md C4)
     code-c1-safety: on|off|strict   code-c2: full|lean
-    code-max-line-chars: <number>   no line = off. This line and `code-c1-safety: strict` are for a project's own
-                                    gate (scripts/code_standard_gate.py; docs/code-standard.md "A project's own gate"):
-                                    the kit reads them, the gate enforces them, and the check fails without a gate.
+    code-max-line-chars: <number>   no line = off. This line and `code-c1-safety: strict` need a gate: the kit's
+                                    (`code-strict-gate: on`, scripts/code_standard_strict.py) or a project's own
+                                    (scripts/code_standard_gate.py, which wins); the check fails without one.
+    code-strict-gate: on|off        default off; docs/code-standard.md "The strict gate"
     audit-every-days: 14            audit-every-commits: 300
     audit-ignore: <glob> *          audit-start-read: <path> *
     audit-duplicate-ignore: <glob> *  a file it matches is not read by the duplicate count (the other audit measures
