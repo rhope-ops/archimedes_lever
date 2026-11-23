@@ -39,7 +39,7 @@ turn-summary 0, ship 0, pages-and-tools 0 (none of the work was a page).
 | F3 | The main session skipped skills its rules name: handoff (KIT_HANDOFF.md edited without it), project-log (log rows written only after this audit), turn-summary (every work turn), instructions (paste steps), verify | this session's Skill calls vs its actions | the same pattern as 2026-11-20 (account skills 0 calls) |
 | F4 | `skill_use.py` counts a false skill "f" from a shell command | the shell group above | inflates the shell count by 1 |
 
-## Proposals (none made; each needs the Maintainer's approval)
+## Proposals (the Maintainer added all 4 to plan P2: "Add all 4 to P2", question dialog, 2026-11-23 17:23 America/Chicago)
 
 | # | Proposal | Home | Cost | Benefit |
 |---|---|---|---|---|
