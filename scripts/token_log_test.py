@@ -451,15 +451,71 @@ def case_report(fx):
             {**row, "source": "main", "model": "claude-test", "timestamp": ""}]
     text = tl.report(rows)
     fx.expect("report: week line with main and subagent cost",
-              "2026-11-16                          3   29.20        1.47    30.67" in text, True)
+              "2026-11-16                          3   29.20        7.35    36.55" in text, True)
     fx.expect("report: one scout task of 2 calls", any(l.split()[:3] == ["scout", "1", "2.0"] for l in text.splitlines()),
               True)
-    fx.expect("report: unpriced model listed", text.splitlines()[-1], "no price (counted as 0): claude-test")
+    fx.expect("report: unpriced model listed", text.splitlines()[-3], "no price (counted as 0): claude-test")
+    fx.expect("report: footer says old rows are priced as 5-minute cache writes",
+              "priced as 5-minute" in text.splitlines()[-1], True)
     old = {k: v for k, v in rows[0].items() if k not in ("agent", "agent_id")}  # a row from before the columns
     merged = list(csv.DictReader(io.StringIO(tl.to_csv({"m1": {**old, "message_id": "m1"}}))))
     fx.expect("old row without agent and agent_id: merged with empty values",
               (merged[0]["agent"], merged[0]["agent_id"]), ("", ""))
     fx.expect("old row: in the report", "29.20" in tl.report(merged), True)
+
+
+def case_prices(fx):
+    """Cost cases from the price list: 1-hour writes, Haiku 5.5 long prompts, fast mode, web search, US geo, old rows.
+
+    Args:
+        fx: the shared test fixture (Fixture).
+    """
+    tl = fx.tl
+    M = 1_000_000
+
+    def cost(model, **kw):
+        """Cost of one row of this model with these fields (token counts default to 0)."""
+        r = {"model": model, "input_tokens": 0, "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0,
+             "output_tokens": 0}
+        return round(tl.row_cost({**r, **kw}), 6)
+    fx.expect("5-minute cache write: 1.25 x input", cost("claude-opus-5", cache_creation_input_tokens=M), 6.25)
+    fx.expect("1-hour cache write: 2 x input",
+              cost("claude-opus-5", cache_creation_input_tokens=M, cache_write_1h_tokens=M), 10.0)
+    fx.expect("cache write split: half 1-hour, half 5-minute",
+              cost("claude-opus-5", cache_creation_input_tokens=M, cache_write_1h_tokens=M // 2), 8.125)
+    fx.expect("Haiku 5.5 prompt of 100,000 tokens: short price", cost("claude-haiku-5-5", input_tokens=100_000), 0.01)
+    fx.expect("Haiku 5.5 prompt of 100,001 tokens: long price", cost("claude-haiku-5-5", input_tokens=100_001), 0.050001)
+    fx.expect("Haiku 5.5 prompt length counts cache reads and writes",
+              cost("claude-haiku-5-5", cache_read_input_tokens=60_000, cache_creation_input_tokens=40_001), round(60_000 * 0.05 / M + 40_001 * 0.625 / M, 6))
+    fx.expect("fast mode Opus 5.5: input 8, output 40",
+              cost("claude-opus-5-5", input_tokens=M, output_tokens=M, speed="fast"), 48.0)
+    fx.expect("fast mode Opus 5.5: 1-hour cache write is 2 x fast input",
+              cost("claude-opus-5-5", cache_creation_input_tokens=M, cache_write_1h_tokens=M, speed="fast"), 16.0)
+    fx.expect("fast mode on a model with no fast price: normal price",
+              cost("claude-sonnet-5", input_tokens=M, speed="fast"), 2.0)
+    fx.expect("3 web searches add $0.03", cost("claude-opus-5", web_search_requests=3), 0.03)
+    fx.expect("inference_geo us adds 10%", cost("claude-opus-5", output_tokens=M, inference_geo="us"), 27.5)
+    fx.expect("inference_geo us: not on Opus 4.5", cost("claude-opus-4-5", output_tokens=M, inference_geo="us"), 25.0)
+    fx.expect("old row without the new columns: cache write as 5-minute",
+              cost("claude-opus-5", cache_creation_input_tokens=M), 6.25)
+    fx.expect("Opus 4.1 and Opus 4 (retired): 15 / 75", (cost("claude-opus-4-1-20250805", input_tokens=M),
+              cost("claude-opus-4-20250514", output_tokens=M)), (15.0, 75.0))
+    fx.expect("Opus 4.7: 5 / 25", (cost("claude-opus-4-7", input_tokens=M), cost("claude-opus-4-7", output_tokens=M)),
+              (5.0, 25.0))
+    t5 = os.path.join(fx.root, "proj", "s5.jsonl")
+    u = {"input_tokens": 1, "cache_creation_input_tokens": 10, "cache_read_input_tokens": 0, "output_tokens": 1,
+         "cache_creation": {"ephemeral_5m_input_tokens": 4, "ephemeral_1h_input_tokens": 6}, "speed": "fast",
+         "server_tool_use": {"web_search_requests": 2}, "inference_geo": "us"}
+    append(t5, prompt("2026-01-03T00:00:00Z"),
+           json.dumps({"type": "assistant", "timestamp": "2026-01-03T00:00:01Z",
+                       "message": {"id": "q1", "model": "claude-opus-5-5", "usage": u}}))
+    fx.hook(fx.work, "s5", t5, fx.logs)
+    got = fx.remote_rows("s5") or [{}]
+    fx.expect("log to row: 1-hour part, speed, web searches, geo recorded",
+              [got[0].get(k) for k in ("cache_write_1h_tokens", "speed", "web_search_requests", "inference_geo")],
+              ["6", "fast", "2", "us"])
+    fx.expect("a row from before the new columns still parses and prices",
+              tl.row_cost({k: v for k, v in got[0].items() if k not in tl.FIELDS[13:]}) is not None, True)
 
 
 def case_self_update(fx):
@@ -504,7 +560,7 @@ def run(tl):
     try:
         for case in (case_first_turn, case_second_turn, case_blocked_and_shallow, case_retry, case_coalesce,
                      case_fetch_head_and_timeout, case_waiting_push, case_bad_input_and_off, case_agent_type,
-                     case_agent_type_bad_input, case_report, case_self_update):
+                     case_agent_type_bad_input, case_report, case_prices, case_self_update):
             case(fx)
     finally:
         tl.push = fx.real_push

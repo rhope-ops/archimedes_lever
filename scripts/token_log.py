@@ -20,10 +20,12 @@ does nothing: sessions with no repo are not logged, and the repo is the folder t
      a race is tried again at once. Pushes are coalesced: at most one runs and one waits per session. A fetch or
      push with no answer in time (TOKEN_LOG_NET_TIMEOUT) is killed with its pre-push hook.
 
-One row per API call. Columns: message_id, timestamp (UTC, of the reply), turn (prompts up to that time: user messages and
-system wake-ups such as task notifications, not tool results or interrupt markers; total by turn for a chart), session_id, repo, model, source (main, subagent), agent (main; the subagent type of the Agent call, else unknown; empty for an old row whose log is gone),
-agent_id (the subagent's id, one per Agent call, so its calls group into one task; empty for main), input_tokens,
-cache_creation_input_tokens, cache_read_input_tokens, output_tokens.
+One row per API call. Columns: message_id, timestamp (UTC, of the reply), turn (prompts up to that time: user messages
+and system wake-ups such as task notifications, not tool results or interrupt markers; total by turn for a chart),
+session_id, repo, model, source (main, subagent), agent (main; the subagent type of the Agent call, else unknown; empty
+for an old row whose log is gone), agent_id (the subagent's id, one per Agent call, so its calls group into one task;
+empty for main), input_tokens, cache_creation_input_tokens, cache_read_input_tokens, output_tokens, and the price columns
+cache_write_1h_tokens (the 1-hour part of the cache writes), speed, web_search_requests, inference_geo (empty in an old row).
 
 Settings (environment): TOKEN_LOG=off turns it off; TOKEN_LOG_BRANCH (default claude/token-usage); TOKEN_LOG_SYNC=1
 pushes in the foreground; TOKEN_LOG_HOME (default ~/.claude/token-log) holds push.log and the lock files;
@@ -36,8 +38,7 @@ Report:  python3 scripts/token_log.py --report [REF]  (in a repo: fetches the lo
 Self-update: after each background push, the installed copy (only a token_log.py in ~/.claude/hooks) checks the
   kit's main branch at most once a day and replaces itself with a newer copy whose self-test passes (TOKEN_LOG_UPDATE=off
   turns it off). The setup script installs it only when a container is built, so a resumed container kept an old copy.
-Self-test (temporary repos, no network):  python3 scripts/token_log.py --test
-Standard library only.
+Self-test (temporary repos, no network):  python3 scripts/token_log.py --test.  Standard library only.
 Network: the git remote "origin" of the repo (fetch and push of the branch claude/token-usage); the self-update: a
 shallow clone of KIT_URL at most once a day; none in the self-test.
 Writes: the branch claude/token-usage (one CSV file for each session), through a temporary index; push.log, lock
@@ -60,8 +61,9 @@ import time
 from datetime import date, datetime, timezone
 
 FIELDS = ["message_id", "timestamp", "turn", "session_id", "repo", "model", "source", "agent", "agent_id",
-          "input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens", "output_tokens"]
-USAGE_KEYS = FIELDS[-4:]
+          "input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens", "output_tokens", "cache_write_1h_tokens",
+          "speed", "web_search_requests", "inference_geo"]
+USAGE_KEYS = FIELDS[9:13]  # the four token counts that the report sums
 PRIVATE_REF = "refs/token-log/remote"
 NOT_PROMPTS = ("[Request interrupted",)
 RETRY_DELAYS = (0, 60, 300)  # seconds before each push try: the last turn of a session gets more than one chance
@@ -224,6 +226,13 @@ def tokens(v):
         return 0
 
 
+def price_facts(u):
+    """The price columns (cache_write_1h_tokens, speed, web_search_requests, inference_geo) of one usage dict."""
+    cc, st = [u.get(k) if isinstance(u.get(k), dict) else {} for k in ("cache_creation", "server_tool_use")]
+    return {"cache_write_1h_tokens": tokens(cc.get("ephemeral_1h_input_tokens")), "speed": str(u.get("speed") or ""),
+            "web_search_requests": tokens(st.get("web_search_requests")), "inference_geo": str(u.get("inference_geo") or "")}
+
+
 def log_rows(sid, tpath, repo):
     """One row per API call in the session log and its subagent logs.
 
@@ -251,7 +260,7 @@ def log_rows(sid, tpath, repo):
         rows[mid] = {"message_id": mid, "timestamp": ts, "turn": bisect.bisect_right(prompts, ts) if ts else len(prompts),
                      "session_id": sid, "repo": repo, "model": model, "source": src, "agent": agent[mid],
                      "agent_id": agent_id.get(mid, ""),
-                     **{k: tokens(u.get(k)) for k in USAGE_KEYS}}
+                     **{k: tokens(u.get(k)) for k in USAGE_KEYS}, **price_facts(u)}
     return rows
 
 
@@ -383,17 +392,22 @@ def hook_main():
 
 KIT_URL = "https://github.com/rhope-ops/archimedes_lever"
 UPDATE_EVERY = 24 * 3600  # seconds between self-update checks
-# Prices in USD per million tokens: (input, output, cache read); a cache write costs 1.25 x input (5-minute cache).
-# Source: the claude-api skill price table (cached 2026-11-03); a cache read not listed there is 10% of input.
-# Haiku 5.5 costs more above 100,000 prompt tokens ($0.50 / $2.50); not modelled.
-# The weekly usage limit is assumed to weigh tokens like these prices. Longest matching model id prefix wins.
-PRICES_AS_OF = "2026-11-03"
+# Prices in USD per million tokens: (input, output, cache read, inference_geo "us" applies). A cache write costs 1.25 x
+# input (5-minute) or 2 x input (1-hour). Source: https://platform.claude.com/docs/en/about-claude/pricing (fetched
+# 2026-11-23). Longest matching model id prefix wins. The weekly usage limit is assumed to weigh tokens like these prices.
+PRICES_AS_OF = "2026-11-23"
 PRICES = {
-    "claude-fable-5-2": (8.0, 40.0, 0.20), "claude-fable-5-1": (10.0, 50.0, 0.25), "claude-fable-5": (10.0, 50.0, 1.0),
-    "claude-opus-5-5": (4.0, 20.0, 0.20), "claude-opus-5": (5.0, 25.0, 0.50), "claude-opus-4": (5.0, 25.0, 0.50),
-    "claude-sonnet-5-5": (2.0, 10.0, 0.10), "claude-sonnet-5": (2.0, 10.0, 0.20), "claude-sonnet-4": (3.0, 15.0, 0.30),
-    "claude-haiku-5-5": (0.10, 0.50, 0.01), "claude-haiku-4": (1.0, 5.0, 0.10),
+    "claude-fable-5-2": (8, 40, 0.20, 1), "claude-fable-5-1": (10, 50, 0.25, 1), "claude-fable-5": (10, 50, 1, 1),
+    "claude-opus-5-5": (4, 20, 0.20, 1), "claude-opus-5": (5, 25, 0.50, 1), "claude-opus-4-8": (5, 25, 0.50, 1),
+    "claude-opus-4-7": (5, 25, 0.50, 1), "claude-opus-4-6": (5, 25, 0.50, 1), "claude-opus-4-5": (5, 25, 0.50, 0),
+    "claude-opus-4-1": (15, 75, 1.50, 0), "claude-opus-4": (15, 75, 1.50, 0),  # Opus 4 and 4.1 (retired)
+    "claude-sonnet-5-5": (2, 10, 0.10, 1), "claude-sonnet-5": (2, 10, 0.20, 1), "claude-sonnet-4-6": (3, 15, 0.30, 1),
+    "claude-sonnet-4-5": (3, 15, 0.30, 0), "claude-sonnet-4": (3, 15, 0.30, 0), "claude-haiku-4-5": (1, 5, 0.10, 0),
+    "claude-haiku-5-5": (0.10, 0.50, 0.01, 1),
 }
+FAST_PRICES = {"claude-fable-5-2": (16, 80), "claude-opus-5-5": (8, 40), "claude-opus-5": (10, 50), "claude-opus-4-8": (10, 50)}  # speed fast
+LONG_PROMPT, LONG_PRICES = 100_000, {"claude-haiku-5-5": (0.50, 2.50, 0.05)}  # prompt over 100,000: (input, output, read)
+WEB_SEARCH_USD, GEO_US_FACTOR = 10.0 / 1000, 1.1  # per search; on all token categories
 
 
 def self_update(path, url=None, now=None):
@@ -454,13 +468,18 @@ def row_cost(r):
     Returns:
         The cost as a float, or None.
     """
-    keys = [k for k in PRICES if (r.get("model") or "").startswith(k)]
-    if not keys:
+    key = max((k for k in PRICES if (r.get("model") or "").startswith(k)), key=len, default=None)
+    if key is None:
         return None
-    inp, out, read = PRICES[max(keys, key=len)]
-    n = {k: tokens(r.get(k)) for k in USAGE_KEYS}
-    return (n["input_tokens"] * inp + n["cache_creation_input_tokens"] * inp * 1.25
-            + n["cache_read_input_tokens"] * read + n["output_tokens"] * out) / 1e6
+    inp, out, read, geo = PRICES[key]
+    n, write = [tokens(r.get(k)) for k in USAGE_KEYS], tokens(r.get("cache_creation_input_tokens"))
+    if key in LONG_PRICES and sum(n[:3]) > LONG_PROMPT:
+        inp, out, read = LONG_PRICES[key]
+    if r.get("speed") == "fast" and key in FAST_PRICES:
+        read, (inp, out) = read * FAST_PRICES[key][0] / inp, FAST_PRICES[key]
+    w1h = min(max(tokens(r.get("cache_write_1h_tokens")), 0), write)  # an old row has none: all writes are 5-minute
+    cost = (n[0] * inp + (write - w1h) * inp * 1.25 + w1h * inp * 2 + n[2] * read + n[3] * out) / 1e6
+    return cost * (GEO_US_FACTOR if geo and r.get("inference_geo") == "us" else 1) + tokens(r.get("web_search_requests")) * WEB_SEARCH_USD
 
 
 def week_of(ts, tz="America/Chicago"):
@@ -512,7 +531,7 @@ def report(rows):
         out.append(f"{a:<22} {n:>6} {calls / n:>11.1f} {cost / n:>7.3f} {cost:>8.2f}")
     if unpriced:
         out += ["", "no price (counted as 0): " + ", ".join(sorted(unpriced))]
-    return "\n".join(out)
+    return "\n".join(out + ["", "Rows from before the cache_write_1h_tokens column: cache writes priced as 5-minute."])
 
 
 def report_rows(root, ref):
