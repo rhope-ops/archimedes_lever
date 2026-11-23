@@ -43,6 +43,11 @@ The kit owns this file and the check. A project gets both by sync. It sets its o
 - The gate proves itself: when the file names `--test`, `scripts/check.sh` runs `python3 scripts/code_standard_gate.py --test` (the full lane always; the fast lane when the gate or the check changed). The self-test of the kit's check runs without the gate.
 - The kit files a project gets by sync meet the strict forms that projects run today: three safety label lines, each with a value; full docs for each function longer than 10 lines; lines of at most 200 characters. So a gate finds no debt in a kit file.
 
+## The strict gate
+
+- A project turns on the kit's strict rules with the line `code-strict-gate: on` (default `off`) in its `.check`; the rules are in [scripts/code_standard_strict.py](../scripts/code_standard_strict.py), and no copy of them is kept in a project. They are: the strict C1 safety form (each label starts a header line and has a value; at `code-c1-safety: on` and at `strict`), the C4 line cap `code-max-line-chars`, the owner row (a new docs/DECISIONS.md row that names `.check`, with the owner of the "- Owner:" line of AGENTS.md on the merge base alone in its By cell, in a change that leaves every older row as it was), and the refusal of debt for a file that is new in the change.
+- A project's own `scripts/code_standard_gate.py`, when it exists, is loaded instead and the key has no effect. Open choice: the two texts in which three projects differ are the constants `SAFETY_LABEL` and `NEW_DEBT_FORMAT` of the strict file.
+
 ## Commands
 
 - Check: `python3 scripts/code_standard.py` (scripts/check.sh runs it in both lanes). Pass = last line `CODE-STANDARD pass`.

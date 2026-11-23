@@ -282,6 +282,8 @@ selftest token_log scripts/token_log.py scripts/token_log_rows.py scripts/token_
 selftest code_standard scripts/code_standard.py scripts/code_standard_test.py scripts/code_standard_docs.py \
   scripts/code_standard_parse.py scripts/check_settings.py scripts/check_settings_read.py scripts/code_standard_rules.py \
   scripts/code_standard_ratchet.py scripts/code_standard_test_gate.py scripts/code_standard_test_docs.py -- python3 scripts/code_standard.py --test
+selftest code_standard_strict scripts/code_standard_strict.py scripts/code_standard_strict_test.py scripts/code_standard.py \
+  scripts/code_standard_test_gate.py scripts/check_settings.py scripts/check_settings_read.py -- python3 scripts/code_standard_strict.py --test
 selftest timeline scripts/timeline.py scripts/log_check.py -- python3 scripts/timeline.py --test  # it imports log_check
 selftest check_content scripts/check_content.py scripts/check_content_scan.py scripts/check_content_finders.py \
   scripts/check_content_hook.py scripts/check_content_test.py scripts/check_content_test_blocks.py \

@@ -33,7 +33,8 @@ names `.check` (the owner's decision). A merge base that still has the old .code
 A project's own gate (the extension point): when the file scripts/code_standard_gate.py stands next to this one, the
 check loads it and calls it. The kit has no gate file. A gate that cannot be imported, or lacks one of the five names
 below, fails the check; so do the settings `code-max-line-chars` and `code-c1-safety: strict` with no gate file
-(they are a gate's to enforce). The self-test of this file runs without the gate; scripts/check.sh runs the gate's
+(they are a gate's to enforce). The kit's own gate scripts/code_standard_strict.py is that gate for a project that sets
+`code-strict-gate: on` and has no gate file of its own. The self-test of this file runs without the gate; scripts/check.sh runs the gate's
 own self-test (`python3 scripts/code_standard_gate.py --test`) when the gate file has one.
   RULES             {debt kind: (label, caps key or None)}: debt kinds the gate adds or relabels. With a caps key the
                     debt value is a size that may only go down, and the label holds one %d for the cap.
@@ -84,6 +85,7 @@ from code_standard_rules import (LANGS, MIN_DUP_LINES, MIN_HEADER_CHARS, OPT_IN,
 ROOT = Path(__file__).resolve().parent.parent
 # A project's own gate (the header lists its five names). GATE is the loaded module, or None: load() sets it.
 GATE_FILE = Path(__file__).resolve().parent / 'code_standard_gate.py'
+STRICT_FILE = Path(__file__).resolve().parent / 'code_standard_strict.py'   # the kit's strict rules: `code-strict-gate: on`
 GATE_NAMES = ('RULES', 'OPT_IN', 'file_rules', 'decided', 'new_debt_refusal')
 GATE = None
 
@@ -330,6 +332,10 @@ def load():
     global GATE
     GATE = load_gate()
     config = settings.code_config(ROOT)
+    if GATE is None and config.get('strict_gate'):   # a project's own gate file wins; the kit's strict rules are the fallback
+        GATE = load_gate(STRICT_FILE)
+        if GATE is None:
+            raise ValueError('`code-strict-gate: on` in %s needs %s, and it is missing' % (settings.CHECK, STRICT_FILE.name))
     needs = gate_settings(config)
     if needs and GATE is None:
         raise ValueError('`%s` in %s is enforced by a project\'s own gate, and there is no %s: add the gate or remove '
@@ -418,7 +424,7 @@ def check(args, config, debt, m):
         return 0
     if fixed and not new:
         print('Debt was fixed: run python3 scripts/code_standard.py --update and commit the lower baseline.')
-    gate = ', gate %s active' % GATE_FILE.name if GATE else ''
+    gate = ', gate %s active' % Path(GATE.__file__).name if GATE else ''
     print('CODE-STANDARD %s (files=%d, debt: %s%s)' % ('fail' if new or fixed else 'pass', len(m['files']),
                                                       summary(m['violations']), gate))
     return 1 if new or fixed else 0
