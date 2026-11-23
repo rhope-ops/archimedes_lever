@@ -34,7 +34,7 @@ The first kit session (session_01PyXpdVJRLK33wotSnJgU3A) is done; branch claude/
 
 ## Needs the Maintainer
 
-- Tags: v11.0.0 on dedc3b3 and v11.0.1 on 9e3f6fa (links in docs/KIT_HANDOFF.md).
+- Tags: v11.0.0 on dedc3b3 and v11.0.1 on 9e3f6fa: done (both exist; checked 2026-11-23 15:13).
 - 33-332.Z: the explicit By "the PAM" message in its chat.
 - ICF preload tags: A keep (the static graph is the boot set; record a plan correction) or B lazy features later. REC: A.
 - 90-161.Z: retire T17/T18/T25 in the v36 PR (REC yes); logo_svg.py B314: nosec with reason (REC) or defusedxml;
@@ -95,7 +95,7 @@ to report to it.
 - Lessons: 2026-11-23-fleet-v2-lessons.md (also Drive > Rhope). Exports: 6 full-mirror .7z archives (5 repos + icf) built and
   checked (fsck 0 errors, 7z t, RADE restore test, content check 0 findings); the Drive connector limit (~3.1 MB per call) blocked
   the upload, so they were sent to the Maintainer in the chat for a hand upload.
-- Open: tags v11.0.0/v11.0.1; branch deletes (host 403); ICF modulepreload A/B; R41 r2 device run; attestation chain unverified;
+- Open: branch deletes (host 403); ICF modulepreload A/B; R41 r2 device run; attestation chain unverified;
   33-332.Z AUDIT DUE and the PAM role-line suggestion; plan GAPS "Get-ExecutionPolicy -List" proof and per-stage rollback notes.
 
 ## Rollback notes per stage (the Maintainer, 2026-11-23, plan GAP)
