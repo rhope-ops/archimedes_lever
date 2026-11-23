@@ -147,7 +147,7 @@ Misses, by pattern class, largest first. "Design" means the source says the rule
 
 1. Name without a label: 0 of 27 (design: "a name without a label is not found: that would need a list of real names"). Example: a sentence that tells the reader to forward a file to a first name and last name. A military "LAST, FIRST M" with no dot after the initial loses the initial (the span stops at "FIRST"). A labelled name followed by a line break and another capitalised word swallows that word, and can swallow the next "Name" label so that the next name is lost (found on a docx and a PDF).
 2. Date of birth with the label after the value, or "birthday" as the label: 16 of 80 missed (design: the label must be in the 30 characters before). Examples: a date, then "(DOB) per the enrollment form"; "Her birthday is" then a date. Formats in themselves are fine: dashed, slashed, ISO, military 02JAN1990 and long forms were all found with a label before.
-3. Passport without "passport" in the 30 characters before: 13 of 25 missed (design). Three more classes: label after the number; no label; "PASSPORT NO" then a line break. Also, a 9-digit passport is a valid SSN shape, and the SSN detector wins the overlap, so 8 of the 25 labelled passports were reported as SSN Low (counted as passport FN and SSN FP; this explains 8 of the 12 SSN false positives).
+3. Passport: 13 of 25 missed, two causes. (a) 10 by design: no "passport" in the 30 characters before the number (label after the number: 5; no label: 5). (b) 3 with the label in the window ("passport" in prose, 1; "PASSPORT NO" then a line break, 2): the 9-digit number is also a valid SSN shape, and the SSN detector wins the overlap, so the number was reported as SSN Low and no Passport hit. In all, 8 passport numbers (3 in (b), 5 in (a)) were reported as SSN Low; they are 8 of the 12 SSN false positives.
 4. Home address: 13 of 50 missed. Pattern classes: all-caps street types ("ST", "RD", "AVE", the type list is case-sensitive: 7 spans), all-lower-case street (4), "PO Box" (2). Street-only addresses are found, as Low.
 5. DoD ID: 10 of 38 missed (design): the 10 digits need a label before them ("DoD ID", "EDIPI", "CAC", "DoD number"). A label after the value, or no label, is missed. A CAC name before the digits (digital signature) is found, as Low.
 6. Phone, 10 bare digits with no separator: 6 of 60 missed (pattern requires a separator).
@@ -172,8 +172,8 @@ Misses (88 of 528):
 2. Passport: 12 of 25. With a label before the number, 8-digit numbers and two-letter-plus-seven forms were missed (5 of 5 in that variant); labelled 9-digit passports are found at score 0.40 to 0.45 (so none survive a 0.5 threshold).
 3. E-mail on ".example" domains: 10 (test artifact, see above).
 4. Home address: 14 of 50 even with LOCATION mapped (caps, lower case, PO box, "N." prefix, street-only, unit forms). There is no street-address recognizer; matches are place-name fragments (0 of 36 exact).
-5. Date of birth: 9 missed, mostly military format (02JAN1990, 4 of 6) and "Month day, year" after a line break (4).
-6. Name: 5 missed (all-caps "LAST, FIRST M" forms).
+5. Date of birth: 9 missed: 4 in military format (02JAN1990), 4 in "Month day, year" after a line break, 1 in a form record ("6 Jul 1987").
+6. Name: 5 missed: 2 all-caps "LAST, FIRST M" forms, 1 mixed-case "Last, First", and 2 plain "First Last" names in form records.
 
 Over-flags (282 FP in all, 102 on decoys and 180 on labelled texts; the labelled-text FPs are mostly digit strings read as another type):
 
@@ -181,7 +181,7 @@ Over-flags (282 FP in all, 102 on decoys and 180 on labelled texts; the labelled
 - PHONE_NUMBER on SSNs, card numbers, DoD IDs and bare 10-digit numbers (59 FP).
 - LOCATION on place names, "Main Street", "Washington", "Jordan" (25 FP).
 - US_SSN on 9-digit numbers that are not SSNs (19 FP): 9 passport numbers, 4 order, invoice or ticket numbers, 4 numbers with area 9xx (which the SSA never issues; Ion rejects them, Presidio scores them 0.5) and 2 ZIP+4 codes.
-- PERSON on product and place names with a person-like word (21 FP).
+- PERSON (21 FP): 4 on decoys (two product names, "Jordan Marsh" and "Dr Pepper", each hit twice); on labelled texts, label words ("Traveler" 5, "Email" 4), whole e-mail strings (6) and street fragments (2: "PO Box 7713", "N. Juniper Lane").
 - Other entities on all 506 texts: ORGANIZATION 140, US_DRIVER_LICENSE 123, US_BANK_NUMBER 100, URL 54, UK_NHS 14, US_ITIN 2, MEDICAL_LICENSE 1. These are not scored as errors above.
 - Strengths: names (0.95 recall, found with no label), dates of birth with any label placement, phone numbers in every format including bare 10 digits, all e-mail on real domains.
 
@@ -189,8 +189,8 @@ Over-flags (282 FP in all, 102 on decoys and 180 on labelled texts; the labelled
 
 10 synthetic files built with python-docx 1.2.0, openpyxl 3.1.5 and reportlab 5.0.1: 4 .docx (paragraphs and a table), 3 .xlsx, 3 .pdf (plain text, one font). Each holds 10 texts from the corpus that Ion had found in the plain-text run (132 expected values). Read with `Get-TextFromBytes` from TextExtract.psm1, then `Get-PiiSpan`.
 
-- All 10 files read with Status OK; all reader modules (PiiPatterns, PiiDetectors, PiiMasking, OcrText, OleText, ContainerText, the Pdf modules, TextExtract) imported on PowerShell 7 on Linux; `Add-Type -AssemblyName System.IO.Compression` worked there. OCR was not exercised (it needs Windows OCR); scanned PDFs and images were not tested. Windows PowerShell 5.1 was not available.
-- 123 of 132 expected values were found with exactly the same value; 9 differed. All 9 texts were found by the overlap rule in the plain-text run, so no hit was lost to extraction (the text of each file contained every value). The 9 are span-boundary defects of the detectors: 5 e-mails with an underscore in the local part (value starts after the underscore); 1 name with a middle initial and no dot (the initial is cut); 2 names whose span ran over line breaks into the next word or label (for example "Kenji D. Abernathy", a line break, then "Ship"); and 1 name lost because the span before it had swallowed its "Name" label. In this one case a swallowed label hides a following name.
+- All 10 files read with Status OK; all 132 expected values were present verbatim in the extracted text (checked on the full text of each file); all reader modules (PiiPatterns, PiiDetectors, PiiMasking, OcrText, OleText, ContainerText, the Pdf modules, TextExtract) imported on PowerShell 7 on Linux; `Add-Type -AssemblyName System.IO.Compression` worked there. OCR was not exercised (it needs Windows OCR); scanned PDFs and images were not tested. Windows PowerShell 5.1 was not available.
+- 123 of 132 expected values were found with exactly the same value; 9 differed. In the plain-text run these 9 values all had an overlapping hit, and extraction lost no text, so the differences come from the detectors, not from extraction. 8 of the 9 still got a hit with a different span; 1 got no hit (below). The 9 are span-boundary defects of the detectors: 5 e-mails with an underscore in the local part (value starts after the underscore); 1 name with a middle initial and no dot (the initial is cut); 2 names whose span ran over line breaks into the next word or label (for example "Kenji D. Abernathy", a line break, then "Ship"); and 1 name with no hit at all because the span before it had swallowed its "Name" label (a swallowed label hides the next name).
 - So within this small sample, extraction did not lose text. A larger sample (merged cells, text boxes, tables across pages, headers and footers, multi-column PDFs) was not built.
 
 ## Limits
@@ -202,8 +202,8 @@ Over-flags (282 FP in all, 102 on decoys and 180 on labelled texts; the labelled
 - Phone numbers are random and may coincide with a real one; Presidio's validity check did not matter here (60 of 60 found in both the 555-01xx and random sets; Ion 17 of 20 in each).
 - Scoring maps Presidio's DATE_TIME and LOCATION to Ion types; another mapping changes the Presidio precision. The .example domain artifact lowers Presidio e-mail recall by 10 spans.
 - Ion was run on PowerShell 7.4.6 (Linux), not 5.1; the source says it targets both, and no 5.1-only behaviour (regex timeout, culture, `-match` case) was tested.
-- Ion's report applies the garbled-text filter, name raising and a Low tab; this benchmark used the module output before any report logic.
-- Presidio could not fetch the public suffix list through the proxy (HTTP 403 from publicsuffix.org); it used its bundled snapshot. This did not change any result except as above.
+- Ion's report layer (Low tab, masking, scan queue, per-file confidence handling) was not used; the scored output is `Get-PiiSpan`, which already applies overlap removal, name raising and the unreadable-text filter.
+- Presidio could not fetch the public suffix list through the proxy (HTTP 403 from publicsuffix.org); it used its bundled snapshot. Whether that changed any result was not tested; the only effect seen is the ".example" e-mail artifact above.
 
 ## Ion limits that bind any follow-up
 
@@ -215,7 +215,7 @@ Paste-only into Windows PowerShell 5.1 ISE, no binaries, no module installs, no 
 |---|---|---|---|
 | A | Keep Ion's detectors. Add this corpus (or a reduced one) as a regression test in tests/ with expected-hit counts | Locks the 83% recall and 0 High/Medium false positives; catches a rule change that loses a class; the corpus is a code block, so it stays text | A 500-text corpus adds test time; the corpus encodes today's by-design misses, so expected misses must be marked as "known gap" rather than as failures |
 | B | Add targeted patterns for the classes above: label after the value (DOB, DoD ID, passport), "birthday" and "b." as DOB labels, 10 bare digits for phone, case-insensitive street types, PO Box, the e-mail underscore span, name span stop at a line break, middle initial without a dot | Recall up on 5 of 9 types; the cheapest ones (case, underscore, line break) are pure fixes | Each loosening raises false positives (a label after a value can attach to the wrong number; bare 10 digits collides with DoD ID and tracking numbers). Every new pattern needs a decoy test. Touches the high-trust SSN and DoD ID detectors if shared |
-| C | Fix the SSN over Passport overlap (a labelled 9-digit number is reported as SSN) | Removes 8 of the 12 SSN FPs and 8 passport misses | The priority list is a design choice (DetectorOrder); a labelled passport vs a labelled SSN needs a rule for which wins |
+| C | Fix the SSN over Passport overlap (a 9-digit number with "passport" before it is reported as SSN) | Recovers 3 of the 13 passport misses; removes up to 8 of the 12 SSN FPs (the 5 passport numbers without a passport label would still be missed) | The priority list is a design choice (DetectorOrder); a labelled passport vs a labelled SSN needs a rule for which wins |
 | D | Use Presidio offline as a test oracle: run it on a sample of real scan inputs in a safe environment and compare, to find Ion misses on names and unlabelled values | Independent second opinion on free prose and names; finds classes this corpus did not think of | Presidio flags 81 per 100 decoy texts, so it only works as a "disagreement list" for a person to read, not as ground truth; real documents carry PII, so the run must stay on the owner's machine with no output of values; adds a Python and model install in the dev environment (not in Ion) |
 | E | Use Presidio on this synthetic corpus only, as a recurring cross-check (for example at release) | No real PII involved; shows whether a rule change moved Ion away from or toward Presidio | Little new signal after the first run; adds a Python dependency to the dev environment |
 | F | Do nothing now; record these numbers as the baseline for ION-1 | Zero cost; honest baseline | The defects in B and C stay |
@@ -227,8 +227,6 @@ Presidio cannot replace Ion's runtime detectors under Ion's hard limits (it need
 Files (kept outside the repo, in a temporary directory): the generator below, a PowerShell script that imports `PiiPatterns.psm1` and `PiiDetectors.psm1`, runs `Get-PiiSpan` per text and writes type, confidence, start and end; a Python script that runs `AnalyzerEngine` with `en_core_web_lg`; a scorer that applies the overlap rule above. The corpus is deterministic from the seed (checked by regenerating after a refactor: byte-identical).
 
 ## Corpus generator (Python 3, standard library only; seed 20261123)
-
-The at sign is built with `chr(64)` so that no e-mail address appears in this file.
 
 ```python
 #!/usr/bin/env python3
@@ -257,7 +255,6 @@ MONFULL = ["January","February","March","April","May","June","July","August","Se
 PROV = ["gmail.com","yahoo.com","hotmail.com","outlook.com","icloud.com","aol.com","proton.me"]
 CORP = ["acme-widgets.example","northwind-demo.example","contoso-test.example"]
 
-AT = chr(64)  # the at sign, kept out of the source text
 corpus = []
 
 
@@ -456,13 +453,13 @@ def local():
 for i in range(40):
     k = i % 8
     if k < 4:
-        v, var = local() + AT + ch(PROV), "personal-provider"
+        v, var = local() + "@" + ch(PROV), "personal-provider"
     elif k < 6:
-        v, var = local() + AT + ch(CORP), "named-person-company"
+        v, var = local() + "@" + ch(CORP), "named-person-company"
     elif k == 6:
-        v, var = (local() + AT + ch(PROV)).upper(), "uppercase"
+        v, var = (local() + "@" + ch(PROV)).upper(), "uppercase"
     else:
-        v, var = local() + AT + ch(["navy.mil", "army.mil", "agency.gov"]), "gov-mil"
+        v, var = local() + "@" + ch(["navy.mil", "army.mil", "agency.gov"]), "gov-mil"
     kk = i % 3
     if kk == 0:
         add([ch(["Email: ", "E-mail: ", "Contact me at "]), ("Personal e-mail", v)], ptype="Personal e-mail", variant="label;" + var)
@@ -521,7 +518,7 @@ for i in range(40):
     if i % 2:
         parts += ["Cell: ", ("Phone", phone("dash", True)), "\n"]
     if i % 3 == 0:
-        parts += ["Email: ", ("Personal e-mail", local() + AT + ch(PROV)), "\n"]
+        parts += ["Email: ", ("Personal e-mail", local() + "@" + ch(PROV)), "\n"]
     if i % 4 == 0:
         parts += ["Home address: ", ("Home address", addr("full")), "\n"]
     if i % 5 == 0:
@@ -556,7 +553,7 @@ for i in range(12):
 for i in range(12):
     D("ten-digit-number", ch(["Shipment %s left the dock.", "Account %s, plan B.", "Call-back ticket %s."]) % digits(10))
 for i in range(12):
-    D("role-mailbox-or-sample", ch(["Write to %s for support.", "Use %s as the placeholder.", "Questions: %s"]) % ch([a + AT + b for a, b in [("info", "acme-widgets.example"), ("support", "northwind-demo.example"), ("no-reply", "contoso-test.example"), ("user", "example.com"), ("sales", "contoso-test.example")]]))
+    D("role-mailbox-or-sample", ch(["Write to %s for support.", "Use %s as the placeholder.", "Questions: %s"]) % ch(["info@acme-widgets.example", "support@northwind-demo.example", "no-reply@contoso-test.example", "user@example.com", "sales@contoso-test.example"]))
 for i in range(10):
     D("numbers-and-words", ch(["Building %d, Main Gate, room %d." % (R.randrange(1, 40), R.randrange(100, 999)),
                                "A %d Year Plan covers %d units." % (R.randrange(2, 9), R.randrange(100, 9999)),
