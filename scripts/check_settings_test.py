@@ -17,6 +17,7 @@ import io
 import json
 import subprocess
 import tempfile
+import unittest
 from pathlib import Path
 
 from check_settings import (AUDIT_DEFAULTS, CHECK, CODE_DEFAULTS, HEADER_BLOCK, KIT_CAPS, MIGRATE, NAMES_CHECK, OLD_AUDIT,
@@ -34,7 +35,7 @@ def fails(call, *args):
     return ""
 
 
-def test_settings(root, git):
+def case_settings(root, git):
     """Self-test of the readers: defaults, each key, the lines that must fail, a git ref, and the state file.
     Args:
         root: a temporary git repo.
@@ -70,9 +71,9 @@ def test_settings(root, git):
         (root / CHECK).write_text(line + "\n")
         assert why in fails(audit_config, root), "an audit- line that is not valid fails: " + line
     assert code_config(root) == CODE_DEFAULTS, "a bad audit- line does not fail the code standard"
-    test_gate_keys(root)
-    test_third_party(root)
-    test_instructions(root)
+    case_gate_keys(root)
+    case_third_party(root)
+    case_instructions(root)
     (root / CHECK).write_bytes(b"\xff\xfec\x00o\x00")
     assert "UTF-8" in fails(code_config, root), "a .check that is not UTF-8 fails"
     (root / CHECK).write_text("code-max-function-lines: 40\n")
@@ -96,7 +97,7 @@ def test_settings(root, git):
         and not NAMES_CHECK.search(".check.lock and .check.state.json and x.check"), "a row names .check itself"
 
 
-def test_instructions(root):
+def case_instructions(root):
     """Self-test of `audit-instructions:` (the owner, 2026-11-21): a list key of globs, written back as the same lines.
     Args:
         root: a temporary git repo; its `.check` is left empty at the end.
@@ -110,7 +111,7 @@ def test_instructions(root):
     (root / CHECK).write_text("")
 
 
-def test_third_party(root):
+def case_third_party(root):
     """Self-test of `audit-third-party:` (the owner, 2026-11-20): a list key, written back as the same lines; a typo
     and a raised cap fail.
     Args:
@@ -130,7 +131,7 @@ def test_third_party(root):
     (root / CHECK).write_text("")
 
 
-def test_gate_keys(root):
+def case_gate_keys(root):
     """Self-test of the keys a project's own gate enforces: the opt-in line cap and the strict safety level.
     Args:
         root: a temporary git repo; its `.check` is left empty at the end.
@@ -173,7 +174,7 @@ def files_of(root):
     return {p.name: p.read_bytes() for p in root.iterdir() if p.is_file()}
 
 
-def test_migrate_dropped(root, git):
+def case_migrate_dropped(root, git):
     """Self-test of --migrate on old keys with no place in the layout (the three cases the first ports hit): the key
     is not moved, one NOTE line names it, the last line lists it, and the rest is moved.
     Args:
@@ -215,7 +216,7 @@ def test_migrate_dropped(root, git):
     assert code == 1 and "SETTINGS MIGRATE FAIL" in said and files_of(root) == before, "a clash changes nothing: " + said
 
 
-def test_migrate_header(root, git):
+def case_migrate_header(root, git):
     """Self-test of --migrate on the comment block at the top of `.check`: every kit header line of an old block
     becomes the current block; a project comment in it and every later line stay; any other first line stays.
     Args:
@@ -261,7 +262,7 @@ def test_migrate_header(root, git):
             "HEADER_BLOCK is the kit's .check block"
 
 
-def test_migrate(root, git):
+def case_migrate(root, git):
     """Self-test of --migrate: the old files become lines and state, existing lines stay, a second run changes
     nothing, the old base is still read, and a clash changes nothing.
     Args:
@@ -317,13 +318,41 @@ def run():
     Returns:
         The exit code 0.
     """
-    for case in (test_settings, test_migrate, test_migrate_dropped, test_migrate_header):
-        with tempfile.TemporaryDirectory() as d:
-            def git(*args):
-                """Run one git command in the test repo as a throwaway user; fail the test on an error."""
-                subprocess.run(["git", "-C", d, "-c", "user.email=t@example.invalid", "-c", "user.name=t",
-                                "-c", "commit.gpgsign=false", *args], check=True, capture_output=True)
-            git("init", "-q")
-            case(Path(d), git)
+    for case in (case_settings, case_migrate, case_migrate_dropped, case_migrate_header):
+        in_repo(case)
     print("SETTINGS TEST PASS")
     return 0
+
+
+def in_repo(case):
+    """Run one case in a new temporary git repo (an assert stops on a failure).
+    Args:
+        case: a case function that takes (root, git).
+    """
+    with tempfile.TemporaryDirectory() as d:
+        def git(*args):
+            """Run one git command in the test repo as a throwaway user; fail the test on an error."""
+            subprocess.run(["git", "-C", d, "-c", "user.email=t@example.invalid", "-c", "user.name=t",
+                            "-c", "commit.gpgsign=false", *args], check=True, capture_output=True)
+        git("init", "-q")
+        case(Path(d), git)
+
+
+class CheckSettingsTest(unittest.TestCase):
+    """The cases of `python3 scripts/check_settings.py --test`, one test each, for `python3 -m unittest` and pytest."""
+
+    def test_settings(self):
+        """The `code-` and `audit-` lines, the state file, the gate keys, third-party and instructions globs."""
+        in_repo(case_settings)
+
+    def test_migrate(self):
+        """--migrate moves the old files into `.check` and `.check.state.json`."""
+        in_repo(case_migrate)
+
+    def test_migrate_dropped(self):
+        """--migrate names each old key that has no place in the new layout."""
+        in_repo(case_migrate_dropped)
+
+    def test_migrate_header(self):
+        """--migrate renews the kit header block of `.check`."""
+        in_repo(case_migrate_header)
