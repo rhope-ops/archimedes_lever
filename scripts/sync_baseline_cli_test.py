@@ -1,8 +1,8 @@
 """The command line of scripts/sync_baseline.py, tested as a process.
 
 What it proves: a sync into an empty repo brings the kit files and the kit lock, a second sync changes nothing, and
---owner swaps the role word.
-Inputs:  none (each case builds a temporary git repo and runs the script by its command line, never by import).
+--owner swaps the role word; ApplyOwner tests the role swap function itself (by import, no repo).
+Inputs:  none (each CLI case builds a temporary git repo and runs the script by its command line).
 Outputs: unittest results.
 Run:     python3 -m unittest discover -s scripts -p 'sync_baseline_cli_test.py'
 Network: none (the baseline is this checkout, a local folder).
@@ -118,6 +118,31 @@ class SyncBaselineCli(unittest.TestCase):
         lock = json.loads((self.path / ".check.lock").read_text())
         for rel in ("SECURITY.md", ".github/dependabot.yml", ".github/workflows/security.yml"):
             self.assertNotIn(rel, lock["files"])
+
+
+class ApplyOwner(unittest.TestCase):
+    """apply_owner follows BASELINE_OWNER (fleet v2 DEC 2): the baseline word is swapped, other words stay."""
+
+    def swap(self, base, text, owner):
+        """apply_owner(text, owner) with BASELINE_OWNER set to base for this call."""
+        sys.path.insert(0, str(KIT / "scripts"))
+        import sync_baseline as sb
+        saved, sb.BASELINE_OWNER = sb.BASELINE_OWNER, base
+        try:
+            return sb.apply_owner(text, owner)
+        finally:
+            sb.BASELINE_OWNER = saved
+
+    def test_each_baseline_and_role(self):
+        """Prove: for the old and the new baseline word, each role word replaces it; near words stay."""
+        for base in ("the owner", "the Maintainer"):
+            word = base.split(" ", 1)[1]
+            text = f"The {word} decides. Ask the {word}'s OK. The {word}ship and a running {word.lower()}s stay."
+            for owner in ("the owner", "the PFM", "the Maintainer"):
+                got = self.swap(base, text, owner)
+                cap = owner[:1].upper() + owner[1:]
+                self.assertTrue(got.startswith(f"{cap} decides. Ask {owner}'s OK."), (base, owner, got))
+                self.assertIn(f"The {word}ship", got)
 
 if __name__ == "__main__":
     unittest.main()

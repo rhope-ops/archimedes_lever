@@ -156,12 +156,13 @@ def set_tier(root, tier):
 
 
 def apply_owner(text, owner):
-    """Replace the baseline role word ("the owner", "The owner") with the project owner."""
+    """Replace the baseline role word (BASELINE_OWNER, and its form with a capital T) with the project owner."""
     if owner == BASELINE_OWNER:
         return text
     cap = owner[:1].upper() + owner[1:]
     # One pass with word boundaries: "the ownership" stays, and an owner that contains the role word is not re-replaced.
-    return re.sub(r"\b([Tt])he owner\b", lambda m: cap if m.group(1) == "T" else owner, text)
+    word = re.escape(BASELINE_OWNER.split(" ", 1)[1])
+    return re.sub(r"\b([Tt])he " + word + r"\b", lambda m: cap if m.group(1) == "T" else owner, text)
 
 
 def copy_state(base, root, rel, owner):

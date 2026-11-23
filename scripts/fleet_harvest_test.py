@@ -191,6 +191,8 @@ def edge_cases(base):
     ok("an escaped pipe stays in its cell", quiet(M.check, make_project(base, HANDOFF_OK, rows.replace("| A. |", "| A \\| B. |")))[0] == 0)
     ok("a missing section fails", quiet(M.check, make_project(base, HANDOFF_OK.replace("## Timeline", "## Plan"), rows))[0] == 1)
     ok("a counted heading is read", quiet(M.check, make_project(base, HANDOFF_OK.replace("## Needs the owner", "## Needs the owner (2)"), rows))[0] == 0)
+    ok("a heading with another role word is read (a project's own handoff)",
+       quiet(M.check, make_project(base, HANDOFF_OK.replace("## Needs the owner", "## Needs the PFM"), rows))[0] == 0)
     crlf = ("| Date | Event |\r\n|---|---|\r\n| 2025-01-01 | y |\r\n\r\n" + DECISIONS_OLD.replace("\n", "\r\n")
             + "\r\n| Date | Other |\r\n|---|---|\r\n| 2026-01-01 | x |\r\n")
     p = make_project(base, HANDOFF_OK, crlf)

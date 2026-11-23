@@ -54,6 +54,7 @@ def sections(lines):
     for n, ln in enumerate(lines, 1):
         if ln.startswith("## "):
             cur = re.sub(r"\s*\(.*\)\s*$", "", ln[3:].strip())  # "Needs the owner (2)" -> "Needs the owner"
+            cur = NEEDED[1] if cur.startswith("Needs the ") else cur  # any role word: "Needs the PFM" too
             out.setdefault(cur, [])
         elif cur is not None:
             out[cur].append((n, ln))
@@ -114,7 +115,7 @@ def parse_handoff(text, name):
                 for _, m, _ in parse_body(sec.get("Timeline", []), TIMELINE, name + " Timeline", unread)]
     needs = [{"id": m.group(1), "text": m.group(2).strip(), "options": [o.strip() for o in m.group(3).split("/")],
               "rec": m.group(4).strip(), "line": n, "raw": s}
-             for n, m, s in parse_body(sec.get("Needs the owner", []), NEED, name + " Needs the owner", unread)]
+             for n, m, s in parse_body(sec.get(NEEDED[1], []), NEED, name + " " + NEEDED[1], unread)]
     steps = [summary(re.sub(r"^(\d+\.|-)\s*", "", ln.strip())) for _, ln in sec.get("Open", [])
              if re.match(r"^(\d+\.|-)\s", ln.strip())]
     return {"updated": updated, "next_update": {"date": nxt.group(1), "text": nxt.group(2).strip()} if nxt else None,

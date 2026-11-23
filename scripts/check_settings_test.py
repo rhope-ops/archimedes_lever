@@ -280,6 +280,13 @@ def case_migrate_header(root, git):
         assert migrated(root)[0] == 0 and files_of(root) == before, "a second run changes nothing"
         (root / CHECK).unlink()
         (root / STATE).unlink()
+    pfm = [l.replace("the owner", "the PFM").replace("The owner", "The PFM") for l in HEADER_BLOCK]  # kit fix 0(a)
+    (root / CHECK).write_text("\n".join(pfm) + "\nprofile: dod\n")
+    assert migrated(root)[0] == 0 and (root / CHECK).read_text() == block + "profile: dod\n", \
+        "a header synced with another role word is renewed, not kept as a project comment: " + (root / CHECK).read_text()
+    (root / CHECK).unlink()
+    if (root / STATE).exists():
+        (root / STATE).unlink()
     (root / CHECK).write_bytes("\r\n".join(old4).encode() + b"\r\nprofile: dod\r\n")   # a 4-line header migrated before this fix
     code, said = migrated(root)
     want = block.replace("\n", "\r\n").encode() + b"profile: dod\r\n"

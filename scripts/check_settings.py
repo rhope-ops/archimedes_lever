@@ -57,6 +57,7 @@ Credentials: none.
 """
 import argparse
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -138,6 +139,21 @@ def old_json(root, name):
     return obj
 
 
+ROLE_IN_LINE = re.compile(r"\b([Tt])he [A-Za-z][A-Za-z ._-]*?(?='s request\b| adds )")  # "the owner's request", "the PFM adds"
+
+
+def role_free(line):
+    """A header line with its role word made neutral, so an old kit line matches in any repo (kit fix 0(a): a sync
+    puts each repo's role word, for example "the PFM", into the lines a project's `.check` holds).
+
+    Args:
+        line: one line of a `.check` header block.
+    Returns:
+        The line with "the <role>" before "'s request" or " adds " written as "the owner".
+    """
+    return ROLE_IN_LINE.sub(lambda m: m.group(1) + "he owner", line)
+
+
 def new_header(data):
     """The bytes of a `.check` file with its kit header block renewed: when the first line is a kit header line
     (HEADER or OLD_HEADERS), each kit header line of any version (OLD_HEADER_LINES) in the leading comment block
@@ -154,7 +170,8 @@ def new_header(data):
         return data, False
     end = next((i for i, l in enumerate(lines) if not l.startswith(b"#")), len(lines))
     cr = b"\r" if lines[0].endswith(b"\r") else b""
-    own = [l for l in lines[:end] if l.rstrip(b"\r").decode("utf-8", "replace") not in OLD_HEADER_LINES]
+    old = {role_free(h) for h in OLD_HEADER_LINES}
+    own = [l for l in lines[:end] if role_free(l.rstrip(b"\r").decode("utf-8", "replace")) not in old]
     text = b"\n".join([h.encode() + cr for h in HEADER_BLOCK] + own + lines[end:])
     return (text, True) if text != data else (data, False)
 
