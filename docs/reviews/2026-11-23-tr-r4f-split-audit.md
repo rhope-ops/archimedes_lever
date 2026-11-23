@@ -1,6 +1,6 @@
 # Tool retirement R4f: sample audit of check-driven splits (AUD-4)
 
-Fresh read-only review, 2026-11-23 ~16:55 America/Chicago, by a reviewer on a model other than the split authors'
+Fresh read-only review, 2026-11-23 ~15:38 America/Chicago, by a reviewer on a model other than the split authors'
 (coverage row AUD-4). The reviewer got the code and the design goal ("is the code easier to change and understand?"),
 not the authors' conclusions. Saved by the main session; 2 claims re-checked (marked "checked").
 

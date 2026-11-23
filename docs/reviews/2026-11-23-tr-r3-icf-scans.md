@@ -1,6 +1,6 @@
 # Tool retirement R3: ICF pre-transfer scans (read-only)
 
-Run 2026-11-23 ~15:20 America/Chicago by session "Kit · Tool retirement · 2026-11-23 · #125" (coverage row B2-7; master
+Run 2026-11-23 ~14:55 America/Chicago by session "Kit · Tool retirement · 2026-11-23 · #125" (coverage row B2-7; master
 plan item 4.3, scan part only). ICF-Source clone: full history, HEAD 02a7ed2d (the #250 merge, after fleet v2 closed).
 Counts only: no names or addresses are written here or in chat.
 

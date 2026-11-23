@@ -1,7 +1,7 @@
 # Tool retirement program: plan coverage list (step 7, rule T7)
 
-APPROVED by the Maintainer, 2026-11-23 ~14:50 America/Chicago, in this session's chat (own message: "1approve 2yes";
-item 1 = approve the whole list, item 2 = the 4 features stay out). Written 2026-11-23 ~14:45 America/Chicago by session "Kit · Tool retirement · 2026-11-23"
+APPROVED by the Maintainer, 2026-11-23 ~14:44 America/Chicago, in this session's chat (own message: "1approve 2yes";
+item 1 = approve the whole list, item 2 = the 4 features stay out). Written 2026-11-23 ~14:15 America/Chicago by session "Kit · Tool retirement · 2026-11-23"
 (session_01PyXpdTtcLuv26JT5RFfzye). The plan starts from this list.
 
 Sources: FLEET-MASTER-PLAN-v2.md (the Maintainer's Drive, folder Rhope, compiled 2026-11-22; read 2026-11-23) and the
@@ -87,8 +87,8 @@ Not verified in this session. Fleet v2 is still open (ICF #248 split, ICF kit 11
 | P2-7b | One versioned module instead of -r1..-r14 file names | in | Step 6 |
 | P2-8a | Build-time ==term== markup instead of character offsets (ICF) | in (trial only) | Step 6. Read-only trial until fleet v2 closes; the result is shown to the Maintainer, the incoming maintainer may own the change |
 | P2-8b | Split questions and glossary JSON by Block (ICF) | in (trial only) | Step 6, same terms as P2-8a |
-| ION-1 | Ion (33-332.Z) PII detector accuracy benchmark: synthetic files with invented PII; Ion vs Microsoft Presidio (Purview if the Maintainer's account can run it); recall and precision per type; what Ion misses | in (added) | Research R4e. The Maintainer's answer, 2026-11-23 ~16:15 America/Chicago: "add to the program". Comparison only: Ion stays paste-only on PS 5.1 (33-332.Z DECISIONS rows 41, 61, 76) |
-| AUD-1 | Every check names the defect it prevents; a check with no testable goal is retired | in (added) | Plan; Relayed by the coordinator (the Maintainer's "1a" in its chat, 2026-11-23 ~15:35); approved here 2026-11-23 ~16:45 |
+| ION-1 | Ion (33-332.Z) PII detector accuracy benchmark: synthetic files with invented PII; Ion vs Microsoft Presidio (Purview if the Maintainer's account can run it); recall and precision per type; what Ion misses | in (added) | Research R4e. The Maintainer's answer, 2026-11-23 ~15:15 America/Chicago: "add to the program". Comparison only: Ion stays paste-only on PS 5.1 (33-332.Z DECISIONS rows 41, 61, 76) |
+| AUD-1 | Every check names the defect it prevents; a check with no testable goal is retired | in (added) | Plan; Relayed by the coordinator (the Maintainer's "1a" in its chat, 2026-11-23 ~15:35); approved here 2026-11-23 ~15:30 |
 | AUD-2 | A change made to pass a check gets a goal-based fresh review ("is the code easier to change, or did only the number move?"; "number only" = MAJOR) | in (added) | Plan (review rule text); same source |
 | AUD-3 | Outcome metrics over proxies: defects found per check, mutant kill rate, files per typical change, fix-of-a-fix rate; line and file counts become warnings only | in (added) | Plan; conflicts with R1 (80 % split) and T2 (line ratchet): the plan shows the conflict for the Maintainer's choice; same source |
 | AUD-4 | Sample audit of today's check-driven splits (ICF #248, the kit's _parse/_rules/_steps/_test splits, 90-161.Z's 6) by a reviewer on a different model: cohesive or arbitrary; bad ones redesigned in the program | in (added) | Research R4f; same source |
@@ -131,7 +131,7 @@ Not verified in this session. Fleet v2 is still open (ICF #248 split, ICF kit 11
 | PF | Plan format (phases, lanes, models, agents, hours, order, rollback, GAPS) | in | |
 | NL | No new AGENTS.md lines | in | |
 
-## E. The Maintainer's answers (question dialog in this session, 2026-11-23 ~14:50 America/Chicago)
+## E. The Maintainer's answers (question dialog in this session, 2026-11-23 ~14:39 America/Chicago)
 
 Scope: this program. Recorded here, not as a DECISIONS row By the Maintainer.
 
@@ -140,7 +140,7 @@ Scope: this program. Recorded here, not as a DECISIONS row By the Maintainer.
 3. Start time: "After fleet v2 closes". This session stops after this list until the coordinator says fleet v2 is closed.
    No inventory or trial runs before then.
 
-## E2. The Maintainer's answers, second round (question dialog in this session, 2026-11-23 ~14:55 America/Chicago)
+## E2. The Maintainer's answers, second round (question dialog in this session, 2026-11-23 ~14:42 America/Chicago)
 
 The coordinator reported other choices from its chat; the Maintainer settled each conflict here. Scope: this program.
 
