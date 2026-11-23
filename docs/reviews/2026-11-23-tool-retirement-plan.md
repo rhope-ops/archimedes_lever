@@ -37,7 +37,7 @@ the fleet v2 [lessons](2026-11-23-fleet-v2-lessons.md) (5 causes).
 
 ## 2. Decisions for the Maintainer (answer each; REC first)
 
-1. **File size cap (AUD-3 against R1).** **DEC: A** (the Maintainer, this session's chat, 2026-11-23 ~17:00 America/Chicago: "1a"; scope: this program). The split audit shows that half of the cap-driven splits are mixed or arbitrary.
+1. **File size cap (AUD-3 against R1).** **DEC: A** (the Maintainer, this session's chat, 2026-11-23 16:47 America/Chicago: "1a"; scope: this program). The split audit shows that half of the cap-driven splits are mixed or arbitrary.
    - **REC: A.** File size only warns (C4 of `code_standard.py` becomes WARN); a split is reviewed against its goal (rule C7 below). R1 is not added.
    - B. Keep the 450 fail and add R1: "A hand-written file that passes 80 % of its line cap (360 of 450) is split in the pull request that grows it."
 2. **T2 ratchet.** **REC:** keep it as a FAIL (it measures the program's goal, total custom lines, and a split cannot game it). Baseline 17,096 lines (65 files).
