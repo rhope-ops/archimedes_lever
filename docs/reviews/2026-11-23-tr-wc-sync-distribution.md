@@ -2,6 +2,8 @@
 
 Date: 2026-11-23 (America/Chicago). Plan step R4, group W-C (docs/reviews/2026-11-23-tool-retirement-research-plan.md). Evidence only: no choice is made here.
 
+Sources: the brief and docs/reviews/2026-11-23-tool-retirement-prompt.md (steps 2 and 4). The research plan named in the brief, docs/reviews/2026-11-23-tool-retirement-research-plan.md, is not in this worktree at HEAD 641023e, so step R4 and group W-C were taken from the brief. Differences from the prompt text: step 2 asks for side-by-side runs on the same commits of all 5 repos; this trial used 2 (33-332.Z, RADE) as the brief says, and mutant kill counts are not measured. Step 4's proof asks for the token cost per kit change before and after; that was not measured (no model session was run per kit change).
+
 ## Setup and versions
 
 | Item | Value |
@@ -9,7 +11,7 @@ Date: 2026-11-23 (America/Chicago). Plan step R4, group W-C (docs/reviews/2026-1
 | Kit | this worktree, HEAD 641023e, KIT_VERSION 11.0.1 |
 | Projects (read-only; copied to a temp dir before any write) | 33-332.Z and RADE, both pinned at kit 9e3f6fa (`.check.lock`, 69 locked files). The kit changed only docs between 9e3f6fa and 641023e, so both copies already matched the baseline (drift.py: 78 of 79 items "same", only the pin differs). |
 | Python / git | 3.13 / 2.43.0 |
-| Installed in a temp venv (this container only) | copier 9.19.1, cruft 2.16.0 (with cookiecutter 2.7.1), pre-commit 4.7.0, build 1.6.1, pipx 1.19.0. Also pulled in by the same venv: setuptools (isolated build), actionlint-py 1.7.12.25 (syntax check of the workflow prototype). The system-wide `pip install` failed on a Debian package (argcomplete) and was redone in a venv. |
+| Installed in a temp venv (this container only) | copier 9.19.1, cruft 2.16.0 (with cookiecutter 2.7.1), pre-commit 4.7.0, build 1.6.1, pipx 1.19.0. Also installed (outside the allowed list; deviation): `actionlint-py` 1.7.12.25, installed on purpose to syntax-check the workflow prototype; setuptools came in through the isolated wheel build. The system-wide `pip install` failed on a Debian package (argcomplete) and was redone in a venv. |
 | Published | nothing (no PyPI, GitHub or registry write). All repos below are temp dirs. |
 | Simulated kit changes | S1: one locked script changed (`scripts/log_check.py`, one appended line). S2: one AGENTS.md "Defaults" line plus one skill file (`.claude/skills/deliver/SKILL.md`). |
 
@@ -20,24 +22,24 @@ Locked files by kind (69): 47 scripts, 1 git hook, 1 workflow, 2 brand files, 1 
 ### How the trial was built
 
 - Copier template: the kit's 72 distributed files copied as they are (73 with the template AGENTS.md); AGENTS.md became `AGENTS.md.jinja` (7 header placeholders to variables, the `<!-- full -->` and `<!-- starter -->` blocks to `{% if tier %}`); a `copier.yml` (13 lines) and the answers-file template. Built by a 43-line script. Tags v1 (kit 641023e), v2 (S1), v3 (S2), v4 (a file removed and one added), v5 (a deny rule added to settings.json), v6 (kit edits the last Defaults bullet), v7 (kit edits the placeholder comment inside "## Commands").
-- Cruft: the same content as a cookiecutter template (29-line build script). Every file but AGENTS.md has to be listed in `_copy_without_render` (73 entries in cookiecutter.json), else jinja would render the 12 files that contain `{{`.
+- Cruft: the same content as a cookiecutter template (29-line build script). Every file but AGENTS.md has to be listed in `_copy_without_render` (73 entries in cookiecutter.json), else jinja would try to render the 10 other kit files that contain `{{`.
 - Adoption of an existing project: Copier with a hand-written `.copier-answers.yml` (`_commit: v1`) committed in the project; cruft with `cruft link --checkout v1`. Both then update from the old tag.
 - Quote of the key Copier settings: `_subdirectory: template`, `_templates_suffix: .jinja`, `_envops: {trim_blocks: true, lstrip_blocks: true}` (without trim/lstrip the tier markers left blank lines and AGENTS.md did not render byte for byte like the kit's).
 - Check that the template reproduces the kit: render of v1 differs from the kit AGENTS.md only in the 7 header lines (22 diff lines).
 
 ### Files changed and conflicts per kit change (clean project, project-owned edits present)
 
-Project-owned parts present in both temp projects: AGENTS.md "Commands" and "Project rules" (project text), `.claude/skills/verify/PROJECT.md` (added by me), and in 33-332.Z its own settings.json (sandbox block, no kit allow list) and extra `.gitignore` line.
+Projects: S1, S2 and S3 were run on both projects with Copier and cruft (RADE with a fresh adoption: S1 2 files, S2 3 files, S3 3 files, 0 conflicts, the same numbers as 33-332.Z) and on RADE with sync (S1 2 files, S2 3 files). S4 to S6: the project named in each cell. Project-owned parts present in both temp projects: AGENTS.md "Commands" and "Project rules" (project text), `.claude/skills/verify/PROJECT.md` (added by me), and in 33-332.Z its own settings.json (sandbox block, no kit allow list) and extra `.gitignore` line.
 
 | Kit change | sync_baseline.py --apply | copier update | cruft update |
 | - | - | - | - |
 | S0: docs-only kit change (no kit file) | drift.py shows 1 differing item (the pin); apply not run for S0 | not run | not run |
 | S1: 1 locked script | 2 files (script + `.check.lock`), 0 conflicts | 2 (script + answers file), 0 conflicts | 2 (script + `.cruft.json`), 0 conflicts |
 | S2: 1 AGENTS.md Defaults line + 1 skill | 3 (AGENTS.md, skill, lock), 0 conflicts | 3 (AGENTS.md, skill, answers), 0 conflicts | 3 (AGENTS.md, skill, `.cruft.json`), 0 conflicts |
-| S3: 1 file removed, 1 added in the kit | not run (sync handles removal only for its MOVED_FILES list) | 3 (removed file deleted, new file created, answers) | 3 (same) |
-| S4: a deny rule added at the end of settings.json "deny" (project has own settings) | not run (sync merges deny rules as JSON by design) | 2 (settings.json + answers); merged cleanly, JSON still valid | not run |
-| S5: kit edits the last bullet of "Defaults" (directly above "## Commands") | not run | 2, 0 conflicts | 2, 0 conflicts |
-| S6: kit edits the placeholder comment inside "## Commands" | not run (sync never writes "Commands" or "Project rules") | 2 files, **1 conflict** (inline markers in AGENTS.md "Commands") | 2 files plus an extra `AGENTS.md.rej`, **1 conflict** |
+| S3: 1 file removed, 1 added in the kit | not run; by its code: a new file reaches projects only after it is added to `COPY_FILES` in sync_baseline.py (a second kit file changes), a removed file only after it is added to `MOVED_FILES` | 3 (removed file deleted, new file created, answers); same on both projects | 3 (same); same on both projects |
+| S4: a deny rule added at the end of settings.json "deny" | RADE: 2 (settings.json + lock), 0 conflicts | 33-332.Z (has its own settings): 2 (settings.json + answers), merged cleanly, JSON valid | RADE: 2 (settings.json + `.cruft.json`), JSON valid |
+| S5: kit edits the last bullet of "Defaults" (directly above "## Commands") | RADE: 2 (AGENTS.md + lock), 0 conflicts | 33-332.Z: 2, 0 conflicts | 33-332.Z: 2, 0 conflicts |
+| S6: kit edits the placeholder comment inside "## Commands" | RADE: 1 (lock only); sync never writes "Commands" or "Project rules"; 0 conflicts | 33-332.Z: 2 files, **1 conflict** (inline markers in AGENTS.md "Commands") | 33-332.Z: `.cruft.json` modified plus a new `AGENTS.md.rej` (AGENTS.md itself not modified), **1 conflict** |
 
 Timing (this machine, wall): sync dry run 0.08 s, sync apply about 0.1 s, drift.py 0.07 s, check_lock --verify 0.05 s; copier update 2.6 s; copier check-update 1.5 s; cruft check 1.1 s.
 
@@ -65,7 +67,7 @@ Timing (this machine, wall): sync dry run 0.08 s, sync apply about 0.1 s, drift.
 
 | Kit feature | Copier / cruft |
 | - | - |
-| Owner name replaced in baseline text of all copied files (`the Maintainer` to the owner) | 48 of the 73 template files contain the phrase; each would need a `.jinja` suffix and, in 12 files that contain `{{`, a raw escape. Not built in the trial (both test projects use the default owner). |
+| Owner name replaced in baseline text of all copied files (`the Maintainer` to the owner) | 48 of the 73 template files (AGENTS.md included) contain the phrase; each would need a `.jinja` suffix, and the 10 other kit files that contain `{{` (scripts and check.yml) would need a raw escape when they get that suffix. Not built in the trial (both test projects use the default owner). |
 | settings.json merged by meaning (kit deny rules and hook entries first, project's own kept, sandbox block added only when missing) | Text 3-way merge. Worked in S4 on a project with its own settings; no test of two edits on the same lines. The kit's `allow` list is not synced by sync_merge; in a template it would be synced and conflict with a project that deleted it (33-332.Z has no `allow` block, and the first `copier recopy --pretend` listed settings.json as different) |
 | `.gitignore` line merge, docs/LOG.md Arcs table migration, DoD files only when `dod-security: on`, `docs/FIRST_USE.md` "tuned vs older kit copy", tier starter file deletion (ADVANCED_FILES) | Not covered. Copier's 3-way merge keeps a tuned FIRST_USE.md when unconflicted; the others need jinja conditions or tasks. Not built. |
 | The kit lock as a gate | Not covered (see above) |
@@ -112,12 +114,12 @@ Facts from the page that frame the comparison:
 | `model` | `model` attribute | none |
 | `source` main / subagent | `query_source` (main, subagent, auxiliary, plugin values) on metrics; on events values like `repl_main_thread`, `compact` or a subagent name | value names differ |
 | `agent` (subagent type) | `agent.name` | user-defined agent names (the kit's worker, scout, reviewer are project agent files) are replaced by `custom` unless `OTEL_LOG_TOOL_DETAILS=1` |
-| `agent_id` (groups one subagent task) | `agent_id` and `parent_agent_id` on events only (never on metrics) | no per-task view from metrics |
+| `agent_id` (groups one subagent task) | `agent_id` and `parent_agent_id` on events only (never on metrics). The `subagent_completed` event has `total_tokens` of the subagent's final request only (the page says it is not a sum) and `total_tool_uses`, `duration_ms`; for token or cost rollups the page points to the token and cost counters filtered to `query_source` subagent | per-task cost from metrics is not available; from events it means summing `api_request` events by `agent_id` |
 | `input_tokens`, `output_tokens`, `cache_read_input_tokens`, `cache_creation_input_tokens` | `claude_code.token.usage` by `type`; same four as event fields | none documented |
 | `cache_write_1h_tokens` | `cache_creation_1h_tokens` on `api_request` (v2.1.300 or later) | not on the token metric (it sums both lifetimes) |
 | `speed` | `speed` attribute | none |
-| `web_search_requests`, `inference_geo` | not found on the page (searched) | not covered |
-| Cost estimate | `claude_code.cost.usage` and `cost_usd` / `cost_usd_micros` computed by Claude Code | token_log prices from its own table (PRICES, dated 2026-11-23, with a 1-hour cache write and a US 1.1 factor assumption); the two numbers were not compared here (no export) |
+| `web_search_requests`, `inference_geo` | no match for `web_search`, `web search`, `inference_geo` or `geo` anywhere in the page (full-text search of the whole page, 1,888 lines) | not covered |
+| Cost estimate | `claude_code.cost.usage` and `cost_usd` / `cost_usd_micros` computed by Claude Code; the page says cost metrics are approximations and points to the billing pages for official data | token_log prices from its own table (PRICES, dated 2026-11-23, with a 1-hour cache write and a US 1.1 factor assumption); the two numbers were not compared here (no export) |
 | `--report`: cost by week (America/Chicago, Monday), by source, agent and model, per subagent task | Not an OTel output; a backend (Prometheus, Grafana and similar) would compute it from the metrics; the per-task part needs events | the report is its own code (token_log_report.py 153 lines) |
 | Storage and transport | OTLP to a collector the owner runs or pays for | token_log needs only the repo's own git remote (branch `claude/token-usage`), no collector, installed by the cloud environment's setup script, self-updating (token_log.py 394 + rows 162 + report 153 lines, tests 717) |
 | Works for a session with no repo | yes (no repo needed) | token_log does nothing outside a git repo |
@@ -126,9 +128,9 @@ Verdict options (no choice): Keep (no collector or account change; row-level his
 
 ## Trial 3: distribution candidates for the shared checks
 
-Common fact (measured): `scripts/check.sh` run from a folder other than the project's (cwd = project) works, because it finds its sibling scripts by its own location: `bash KIT/scripts/check.sh --fast` in a RADE copy gave "CHECK PASS: 10 passed, 3 skipped, of 13". But it first needs `scripts/check.sh` in the project to exist ("is not the top folder of a repo with scripts/check.sh"), and with the project's kit scripts removed (48 locked scripts deleted, stub check.sh kept) the run failed 3 checks: the project's own `scripts/check_content_local.py` imports `check_content_scan` from its own folder, `scripts/check.local.sh` calls `scripts/code_standard.py`, and the content step calls `scripts/check_content.py` there. So none of the three candidates is a drop-in: the kit scripts would need a path variable (for example a `KIT_DIR`), which they do not read today, and a project's own extension files would need it too. I changed no kit file; the prototypes below ran with the project keeping its scripts.
+Common fact (measured, and it limits every number below): `scripts/check.sh` takes only its own location from where it runs. After that it does `cd` to the project's top folder and calls `scripts/*.py` there. Evidence: (1) with the project's 48 locked scripts deleted and a stub `scripts/check.sh` kept, the run from the hook repo failed 3 checks: `scripts/check_content_local.py` imports `check_content_scan` from the project's folder, `scripts/check.local.sh` calls `scripts/code_standard.py`, and the content step calls `scripts/check_content.py` there ("can't open file projB/scripts/check_content.py"). Without the stub: "CHECK FAIL: ... is not the top folder of a repo with scripts/check.sh". (2) A marker test: I tagged a hook-repo version v11.0.3 whose `scripts/code_standard.py` prints a marker line, bumped `rev` in the project, ran the hook with `-v`: the marker appeared 0 times, so the project's own copy ran. So in prototypes (a), (b) and (c) as built, only `check.sh` itself and its `--content`, `--hook` and `--status` modes (which use the script's own folder) come from the distributed copy; every other check runs the project's copy of the script. The kit change "1 file per project" below is therefore a design figure: a kit change to any script other than check.sh and check_content*.py would not reach the checks that run, while the project keeps its copies. To make it real, check.sh and the project extension files must read a kit path (for example a `KIT_DIR` variable, which no script reads today; the `KIT_DIR` that my wrappers set is unused). I changed no kit file; the prototypes ran with the project keeping its scripts.
 
-Full lane time on a RADE copy: 227.5 s wall (baseline in `.check.state.json` 51.1 s; the machine was running other jobs; check.local.sh took 226.6 s of it). Fast lane: 15.0 s, 25.3 s and 29.8 s in three runs (also under load).
+Full lane time on a RADE copy: 227.5 s wall (baseline in `.check.state.json` 51.1 s; other check.sh processes were running at the same time, so treat 227 s as an upper bound; check.local.sh took 226.6 s of it). Fast lane: 15.0 s, 25.3 s and 29.8 s in three runs (the machine was busy: `ps` showed 11 check.sh processes during the full-lane run; load was not measured otherwise).
 
 ### Prototype (a): pre-commit hook repo at a tag
 
@@ -142,7 +144,7 @@ repos:
       - id: kit-check         # entry: scripts/check.sh --fast, language: script, always_run, stages: [pre-push]
 ```
 
-Measured: `pre-commit run --hook-stage pre-push --all-files` passed, 15 s (first run 17.6 s with the clone). `pre-commit install --hook-type pre-push` plus a real `git push` to a local bare repo ran the hook and the push went through (hook output "Passed"; git printed a harmless "push negotiation failed" line). Changing `rev` to v11.0.2 re-cloned and ran; `pre-commit autoupdate` moved `rev` itself; moving it back is the rollback.
+Measured: `pre-commit run --hook-stage pre-push --all-files` passed, 15 s (first run 17.6 s with the clone). `pre-commit install --hook-type pre-push` plus a real `git push` to a local bare repo ran the hook and the push went through (hook output "Passed"; git printed a harmless "push negotiation failed" line). Changing `rev` to v11.0.2 re-cloned and ran; `pre-commit autoupdate` moved `rev` itself; moving it back is the rollback. The v11.0.2 change (one appended line in `scripts/log_check.py`) changed nothing that ran, and the v11.0.3 marker test (see "Common fact") confirmed the project's script copies run, so the measured part is the mechanism (tag, `rev`, re-clone, run), not the delivery of kit script changes.
 
 ### Prototype (b): reusable workflow at a tag
 
@@ -163,14 +165,15 @@ Measured: both files parse and `actionlint` 1.7.12 reports no finding. It was no
 
 `archimedes-kit` 11.0.1: `pyproject.toml` (setuptools), `src/archimedes_kit/scripts/` (the kit's scripts and docs/code-standard.md as package data), and a 20-line `cli.py` that runs the bundled `scripts/check.sh` with the current repo as cwd. Wheel built with `python -m build --wheel`: 328,576 bytes, 74 entries.
 
-Measured: `pipx run --spec dist/archimedes_kit-11.0.1-py3-none-any.whl archimedes-kit check --fast` gave "CHECK PASS: 8 passed, 3 skipped, of 11" (31 s wall under load). With a dead proxy and `PIP_NO_INDEX=1` it still started (0.8 s) because the spec is a local file; after `pipx install` the command ran in 0.08 s. `pipx run --spec git+file:///...@v11.0.1 archimedes-kit` worked from a tagged git repo (3.3 s), which is the route for a private kit with no index. The example in the brief (`pipx run archimedes-kit==11.0.1 check`) needs an index and was not run (nothing published).
+Measured: `pipx run --spec dist/archimedes_kit-11.0.1-py3-none-any.whl archimedes-kit check --fast` (run in a RADE copy that kept its scripts; the same "Common fact" limit applies) gave "CHECK PASS: 8 passed, 3 skipped, of 11" (31 s wall under load). With a dead proxy and `PIP_NO_INDEX=1` it still started (0.8 s) because the spec is a local file; after `pipx install` the command ran in 0.08 s. `pipx run --spec git+file:///...@v11.0.1 archimedes-kit` worked from a tagged git repo (3.3 s), which is the route for a private kit with no index. The example in the brief (`pipx run archimedes-kit==11.0.1 check`) needs an index and was not run (nothing published).
 
 ### Comparison per candidate
 
 | Question | (a) pre-commit hook repo at a tag | (b) reusable workflow at a tag | (c) pip/pipx package |
 | - | - | - | - |
 | Files a project keeps | `.pre-commit-config.yaml` (4 lines), the project's own check.local.sh and extension files; a stub or the real scripts/check.sh until check.sh can run without it | one caller workflow (about 10 lines); local run still needs the scripts, so (b) is the CI part only | a version pin (in the hook or a requirements file), the project's own extension files; same check.sh stub need |
-| Files changed per kit change (distributed scripts only) | 1 per project (the `rev` line; `pre-commit autoupdate` writes it) | 1 per project (two lines, same file) | 1 per project with a pin; 0 with an unpinned `pipx run` (no pin means no rollback) |
+| Files changed per kit change, if check.sh and the project's extension files read a kit path (design figure; as built the project's own script copies still run, see "Common fact") | 1 per project (the `rev` line; `pre-commit autoupdate` writes it) | 1 per project (two lines, same file) | 1 per project with a pin; 0 with an unpinned `pipx run` (no pin means no rollback) |
+| Files changed per kit change as built and measured | the tag moved and the hook re-cloned (1 file, `rev`), but the checks still ran the project's script copies: delivery not shown | not run on GitHub; same limit | the wheel installs and runs; same limit |
 | Files changed per kit change that touches AGENTS.md, skills, agents (17 instruction files) | not distributable: still synced (S2: 3 files per project by the kit's sync, copier or cruft) | same | same |
 | Offline / local run | After the first clone into `~/.cache/pre-commit` (tested with a local path only): runs with no network; a first run or a new `rev` needs the clone | None: it runs on GitHub only. Local runs still use the project copy of the scripts | `pipx install` of a version: runs offline; `pipx run` needs the index or git URL on a cold cache; needs Python on the machine (the kit scripts already need python3) |
 | How the pre-push hook calls it | `pre-commit install --hook-type pre-push` writes `.git/hooks/pre-push`, but pre-commit refuses to install when `core.hooksPath` is set (message "Cowardly refusing to install hooks with `core.hooksPath` set" in its source), and the kit's hook is installed that way. It also would not do the hook's other checks (fast-forward, identity, own work tree). The kit's hook would have to call `pre-commit run --hook-stage pre-push` itself (not tested) | not a hook; the hook keeps calling the local check.sh | the kit's hook calls `archimedes-kit check --fast` (or `pipx run --spec ... check --fast`) where it calls scripts/check.sh today (not edited here) |
@@ -189,7 +192,7 @@ Measured: `pipx run --spec dist/archimedes_kit-11.0.1-py3-none-any.whl archimede
 
 ## Done criteria
 
-- Trial 1: measured (tables above). Cells marked "not run" were not run for time; the reason is in the cell.
+- Trial 1: measured (tables above). Cells marked "not run" were not run; the reason is in the cell (S0 for the three tools; sync S3, which the code answers).
 - Trial 2: from the official page only; no collector, no export, no account change. The cost comparison of PRICES against `cost_usd` was not measured.
 - Trial 3: three prototypes ran locally in temp dirs (workflow: syntax check only); nothing was pushed anywhere except this branch.
 - Open: the `git push` hook behavior with a remote kit URL, Dependabot for pre-commit, and GitHub-side reusable-workflow behavior are not verified.
