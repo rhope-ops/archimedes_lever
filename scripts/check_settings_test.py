@@ -1,5 +1,5 @@
 """The self-test of scripts/check_settings.py (`python3 scripts/check_settings.py --test`), kept apart so that file
-stays under the 600-line cap of docs/code-standard.md C4.
+stays under the line cap of docs/code-standard.md C4.
 
 What it proves: the readers of `.check` (defaults, each key, the lines that must fail, a git ref) and of
 `.check.state.json`; and --migrate: the old files become lines and state, existing lines stay, a key with no place in
@@ -300,7 +300,9 @@ def case_migrate(root, git):
         assert migrate(root) == 0, "the migration runs"
     text = (root / CHECK).read_text()
     assert text.startswith("# old\nprofile: dod\nskip: data/*\n# Code standard"), "the old lines stay first: " + text
-    assert text.splitlines()[4:] == ["code-max-function-lines: 80", "code-exclude: gen/*", "code-c2: full",
+    # The old file holds the cap of its time (600); the default is 450 now, so the cap is kept as a line.
+    assert text.splitlines()[4:] == ["code-max-file-lines: 600", "code-max-function-lines: 80", "code-exclude: gen/*",
+                                     "code-c2: full",
                                      "audit-every-days: 7", "audit-budget-file_kb: 100", "audit-ignore: ref/**",
                                      "audit-duplicate-ignore: data/*.json"], text
     assert load_state(root) == {"code_standard": {"debt": old_code["debt"]}, "audit": {"last_audit": old_audit["last_audit"]},

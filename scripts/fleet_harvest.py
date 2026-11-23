@@ -263,7 +263,7 @@ def add_ids(root):
 
 def selftest():
     """--test: run the cases in scripts/fleet_harvest_test.py on this module; return the exit code."""
-    import fleet_harvest_test  # kept apart so this file stays under the 600-line cap (docs/code-standard.md)
+    import fleet_harvest_test  # kept apart so this file stays under the line cap (docs/code-standard.md)
     return fleet_harvest_test.run(sys.modules[__name__])
 
 

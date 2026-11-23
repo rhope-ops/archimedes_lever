@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Self-test of scripts/bloat_check.py (run by `python3 scripts/bloat_check.py --test`; kept in its own file so the
-check stays under the 600-line cap of docs/code-standard.md C4).
+check stays under the line cap of docs/code-standard.md C4).
 
 It builds small sample repos in temporary folders and proves each measure: duplicates, big files, the audit due date
 (also for a repo never audited, a new repo and a shallow clone), timings, the rule count by place, the caps, the

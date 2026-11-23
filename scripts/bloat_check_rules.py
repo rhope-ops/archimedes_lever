@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The rule census of scripts/bloat_check.py (`--rules`, `--lint`): the session load, the rule lines of AGENTS.md
 against their caps, the lint of rule lines, the conflict-check gate for changed rule lines, and the paths AGENTS.md
-names. Kept apart so bloat_check.py stays under the 600-line cap of docs/code-standard.md C4 (what each measure
+names. Kept apart so bloat_check.py stays under the line cap of docs/code-standard.md C4 (what each measure
 means: the header of bloat_check.py).
 
 What it gives:

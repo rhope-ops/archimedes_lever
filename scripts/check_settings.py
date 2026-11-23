@@ -11,7 +11,7 @@ The three files at the top of a repo:
                        "timings": {...}}, with sorted keys and indent 1, so the same state gives the same bytes.
 
 The setting lines (a missing key means the default; a key marked * may appear on several lines):
-    code-max-file-lines: 600        code-max-function-lines: 60
+    code-max-file-lines: 450        code-max-function-lines: 60
     code-include: <glob> *          code-exclude: <glob> *          code-generated: <glob> *
     code-paste: <glob> *            a script a person pastes into another tool (one file is one paste): its C4 cap is
     code-max-file-lines-paste: 600  this one, not code-max-file-lines (docs/code-standard.md C4)

@@ -25,9 +25,10 @@ OLD_CODE = ".code-standard.json"   # before 2026-11-18: the code standard's caps
 OLD_AUDIT = ".bloat-audit.json"    # before 2026-11-18: the audit's settings, last audit and time baselines
 OLD_CHECK = ".pii-guard"           # before 2026-11-18: the name of .check
 MIGRATE = "python3 scripts/check_settings.py --migrate"
-# max_file_lines_paste: the C4 cap of a script a person pastes into another tool (the `code-paste:` files); one file is
-# one paste, so it keeps the older cap (the owner, 2026-11-23: docs/reviews/2026-11-23-fleet-v2-plan.md, decision 6).
-CODE_DEFAULTS = {"caps": {"max_file_lines": 600, "max_function_lines": 60, "max_file_lines_paste": 600}, "include": ["*"],
+# max_file_lines: 450 for hand-written code; max_file_lines_paste: the C4 cap of a script a person pastes into another
+# tool (the `code-paste:` files), where one file is one paste, so it keeps the older cap of 600 (the owner, 2026-11-23:
+# docs/reviews/2026-11-23-fleet-v2-plan.md, decision 6).
+CODE_DEFAULTS = {"caps": {"max_file_lines": 450, "max_function_lines": 60, "max_file_lines_paste": 600}, "include": ["*"],
                  "exclude": [], "generated": [], "paste": [], "c1_safety": False, "c2": "lean"}
 OPT_IN_CAPS = ("max_line_chars",)   # caps that are off (no key in "caps") until `.check` has their line; a gate enforces them
 STRICT = "strict"                   # the value of "c1_safety" for `code-c1-safety: strict` (False = off, True = on)

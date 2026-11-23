@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Self-test cases of scripts/fleet_harvest.py (run by `python3 scripts/fleet_harvest.py --test`; kept in its own file
-so that file stays under the 600-line cap of docs/code-standard.md).
+so that file stays under the line cap of docs/code-standard.md).
 
 Fixture projects in a temporary folder: the format check, --add-ids, --harvest with a state file shared by two repos,
 --save-state, the cross-check matching and the edge cases that earlier reviews found.

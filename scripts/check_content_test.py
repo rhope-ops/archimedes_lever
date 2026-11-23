@@ -1,5 +1,5 @@
 """Self-test of scripts/check_content.py (run by `python3 scripts/check_content.py --test`; kept in its own file so the guard
-stays under the 600-line cap of docs/code-standard.md C4).
+stays under the line cap of docs/code-standard.md C4).
 
 It proves every check on built-at-run-time samples (no real address, token, host, mark or ID is in this file): the
 patterns and their speed on long lines, the allow and skip lines, the tiers and the settings-file reader (under its old name .pii-guard), the denylist

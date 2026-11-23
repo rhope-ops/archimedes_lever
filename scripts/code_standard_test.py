@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Self-test of scripts/code_standard.py (run by `python3 scripts/code_standard.py --test`; kept in its own file so
-the check stays under the 600-line cap of docs/code-standard.md C4).
+the check stays under the line cap of docs/code-standard.md C4).
 
 It builds small sample repos in a temporary folder and proves each rule of the check: clean files pass; a function
 without a comment, a long function, a grown function, a fixed item left in the baseline, a missing header, a shell
