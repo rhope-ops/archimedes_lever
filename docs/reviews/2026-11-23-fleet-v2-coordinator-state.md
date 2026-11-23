@@ -67,3 +67,20 @@ to report to it.
 - RADE: a DECISIONS row By "the Administrator" in its guard-file commit; the Administrator's OK of that text is not seen.
 - ICF: #242 (Stage 4) MAJOR fixed at 47f0041; pytest and review round 2 were running. The forced-colors failure is
   pre-existing on main (own small PR).
+
+### Coordinator 2 update (~12:00 America/Chicago)
+
+- Done: RADE Stage 2 (#167, #169 kit 11.0.1 sync, #168 guard files, #170, #171 role word "the Maintainer"; release
+  note added by the Maintainer, checked by API); 90-161.Z Stage 3A (#217-#222; #221 engine-v36 + kit 11.0.1, gitleaks
+  allow proven green); ICF #242, #243, #244, #245, #246. Open: ICF forced-colours fix, ICF kit 11.0.1 sync (the
+  Maintainer sent the read-only kit clone message), then Step 3 rule text.
+- Decisions (the Maintainer, 2026-11-23, in the coordinator chat): (1) the owner's real name is never provided; an owner
+  value is the role "Owner", or "Manager" on a conflict (scope: fleet v2 owner-name steps); (2) ICF owner rotation: no
+  rotation and no date now, takeover only staged (ICF #246); (3) keep the token log branch, `/cost` in the plugin pane
+  for a live view (scope: token tracking); (4) RADE #168 gitleaks: look again after the kit sync (done: a lock hash).
+- Plan step added by the Maintainer (2026-11-23), after Step 3: draft a lessons-learned and preventive-measures
+  introspection as .md (Drive › Rhope and docs/reviews/2026-11-23-fleet-v2-lessons.md, lane A; rule changes only as
+  proposals), and export each repo changed today (archimedes_lever, RADE, 90-161.Z, 33-332.Z, ICF-Source) as
+  <repo>-2026-11-23.7z with full git history (all branches and tags), no password, to Drive › Rhope.
+- Token totals (2026-11-23 ~11:15): measured since tracking 7.52 B tokens, ~$2,665 at list prices (5 repos);
+  estimated before tracking ~6.0 B, ~$2,230 (low-medium confidence); sum ~13.9 B, ~$5,000.
