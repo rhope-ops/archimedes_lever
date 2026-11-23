@@ -14,3 +14,5 @@ code-c2: full
 # The files whose steps a person follows (scripts/check_instructions.py; the owner, 2026-11-21).
 audit-instructions: README.md
 audit-instructions: docs/github/README.md
+audit-instructions: docs/MAINTAINER_RUNBOOK.md
+audit-instructions: docs/check-config-schema.md

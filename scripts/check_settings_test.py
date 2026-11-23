@@ -128,6 +128,29 @@ def case_instructions(root):
     (root / CHECK).write_text("")
 
 
+def case_validate(root, git):
+    """Self-test of --validate-config (fleet v2 1.4): each key group is read; any error fails with its group name.
+    Args:
+        root: a temporary git repo; its `.check` is left empty at the end.
+        git: runs a git command in root (unused).
+    """
+    import check_settings as cs
+    import contextlib
+    import io
+    cases = (("code-max-file-lines: 450\ndod-security: on\nprofile: dod\n", 0, ""),
+             ("code-max-file-lines: many\n", 1, "code:"),
+             ("audit-every-days: -3\n", 1, "audit:"),
+             ("dod-security: maybe\n", 1, "dod-security:"),
+             ("profile: dodd\n", 1, "profile:"))
+    for text, code, mark in cases:
+        (root / CHECK).write_text(text)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            got = cs.validate_config(root)
+        assert got == code and mark in out.getvalue(), "validate %r: exit %s, output %r" % (text, got, out.getvalue())
+    (root / CHECK).write_text("")
+
+
 def case_third_party(root):
     """Self-test of `audit-third-party:` (the owner, 2026-11-20): a list key, written back as the same lines; a typo
     and a raised cap fail.
@@ -337,7 +360,7 @@ def run():
     Returns:
         The exit code 0.
     """
-    for case in (case_settings, case_paste, case_migrate, case_migrate_dropped, case_migrate_header):
+    for case in (case_settings, case_paste, case_migrate, case_migrate_dropped, case_migrate_header, case_validate):
         in_repo(case)
     print("SETTINGS TEST PASS")
     return 0
@@ -375,6 +398,10 @@ class CheckSettingsTest(unittest.TestCase):
     def test_migrate_dropped(self):
         """--migrate names each old key that has no place in the new layout."""
         in_repo(case_migrate_dropped)
+
+    def test_validate(self):
+        """--validate-config reads every key group and names the group of each error."""
+        in_repo(case_validate)
 
     def test_migrate_header(self):
         """--migrate renews the kit header block of `.check`."""

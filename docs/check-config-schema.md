@@ -1,5 +1,8 @@
 # The settings of `.check` and `.check.state.json`
 
+To check a `.check` file, run `python3 scripts/check_settings.py --validate-config [FOLDER]`. It reads every key
+group and prints `CONFIG PASS` or one `CONFIG FAIL` line for each error.
+
 This page lists every key of `.check` and every part of `.check.state.json`. It was made by reading
 `scripts/check_settings.py` and the scripts that read the keys. Each reader has a `file:line` mark. The line numbers
 are those of the kit at commit `fe62213`; a later split of a script can move them.

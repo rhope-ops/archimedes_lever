@@ -61,6 +61,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+from build_site_html import dod_security  # noqa: E402 - scripts/build_site_html.py: the reader of `dod-security:`
+from check_content_scan_settings import UNKNOWN_PROFILE, load_allow, profile_of  # noqa: E402 - the content-check tier
+
 # scripts/check_settings_read.py: the keys, the readers and the state file (kept apart, docs/code-standard.md C4).
 from check_settings_read import (  # noqa: F401 - every name is re-exported: other scripts import them from here
     _KEY, AUDIT_DEFAULTS, AUDIT_LISTS, CHECK, CODE_DEFAULTS, CODE_LISTS, KIT_CAPS, LOOKS_LIKE_SETTING, MIGRATE,
@@ -268,6 +271,29 @@ def migrate(root):
     return 0
 
 
+def validate_config(root):
+    """Read every key group of `.check` and `.check.state.json` in root; print one line per error (fleet v2 1.4).
+
+    Args:
+        root: the repository folder that holds `.check`.
+    Returns:
+        The exit code: 0 when every group reads, 1 when any group raises ValueError or the tier line is unknown.
+    """
+    errors = []
+    for name, read in (("code", code_config), ("audit", audit_config), ("state", load_state),
+                       ("dod-security", dod_security)):
+        try:
+            read(root)
+        except ValueError as e:
+            errors.append(f"{name}: {e}")
+    if profile_of(load_allow(root)) == "unknown":
+        errors.append("profile: " + UNKNOWN_PROFILE)
+    for line in errors:
+        print(f"CONFIG FAIL  {line}")
+    print(f"CONFIG {'FAIL' if errors else 'PASS'}: {root / CHECK} ({len(errors)} error(s))")
+    return 1 if errors else 0
+
+
 def main():
     """Parse the options and run the chosen mode; return its exit code.
     Returns:
@@ -276,12 +302,16 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0], allow_abbrev=False)
     ap.add_argument("--migrate", action="store_true", help="move the old settings files into .check and .check.state.json")
     ap.add_argument("--test", action="store_true", help="self-test in temporary repos")
+    ap.add_argument("--validate-config", nargs="?", const="", metavar="FOLDER",
+                    help="read every key of .check in FOLDER (default: this repo); exit 1 on any error")
     args = ap.parse_args()
     if args.test:
         import check_settings_test   # scripts/check_settings_test.py: kept apart (docs/code-standard.md C4)
         return check_settings_test.run()
     top = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True)
     root = Path(top.stdout.strip() if top.returncode == 0 else ".")
+    if args.validate_config is not None:
+        return validate_config(Path(args.validate_config) if args.validate_config else root)
     if args.migrate:
         return migrate(root)
     try:
