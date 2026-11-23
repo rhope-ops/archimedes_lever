@@ -9,7 +9,7 @@ Inputs (all in this pull request; the research files are copied from their worke
 [research plan](2026-11-23-tool-retirement-research-plan.md),
 R1 [kit tools](2026-11-23-tr-r1-kit-tools.md), R2 [project tools](2026-11-23-tr-r2a-project-tools.md) and
 [kit 10.0.0 repos](2026-11-23-tr-r2b-kit10-repos.md), R3 [ICF scans](2026-11-23-tr-r3-icf-scans.md),
-R4 [linters](2026-11-23-tr-wa-linters.md), [scanners](2026-11-23-tr-wb-scanners.md) (W-B: draft with measured results; its worker still runs),
+R4 [linters](2026-11-23-tr-wa-linters.md), [scanners](2026-11-23-tr-wb-scanners.md) (W-B: final, d071cb1),
 [sync and distribution](2026-11-23-tr-wc-sync-distribution.md), [standard replacements](2026-11-23-tr-wd-standard-replacements.md),
 R4e [Ion benchmark](2026-11-23-tr-r4e-ion-benchmark.md), R4f [split audit](2026-11-23-tr-r4f-split-audit.md),
 the fleet v2 [lessons](2026-11-23-fleet-v2-lessons.md) (5 causes).
@@ -33,7 +33,7 @@ the fleet v2 [lessons](2026-11-23-fleet-v2-lessons.md) (5 causes).
 | Project tools | RADE 18 / 2,391 lines; 90-161.Z 31 / 4,826; 33-332.Z 4 / 789; ICF 209 / 36,183 (73 old review scripts); sec-source 14 / 2,062; kit 10.0.0 repos 84 / 14,499 | R2 |
 | Kit 10.0.0 repos | 43 of 54 kit files differ from 11.0.1; transcription_assistant runs 2 Stop hooks (kit and an old copy) | R2b |
 | ICF handover | 2 non-noreply addresses in history; ICF-Source cannot have rulesets or secret scanning on its plan; icf settings not checked (attach denied) | R3 |
-| Content check vs gitleaks / trufflehog / detect-secrets | With custom rules gitleaks covers 10 of 11 checks, the others 9 of 11; none covers `unscanned`, the commit author and message scan (809 findings in ICF history), the `.check` semantics or the hook mode; default rules add 51 false positives in history | W-B |
+| Content check vs gitleaks / trufflehog / detect-secrets | With custom rules gitleaks covers 10 of 11 checks, the others 9 of 11; none covers `unscanned`, the commit author and message scan (809 findings in ICF history), the `.check` semantics or the hook mode; default rules give 0 true findings. Seeded: content tool 22 of 23 (the 23rd is exempt by design), gitleaks custom 19, trufflehog 18, detect-secrets 17 | W-B |
 | Instruction check vs Vale | 4 of 7 finding kinds match with 0 false positives on 225 real steps; next, cue and long need the step reader (54 false positives without it) | W-B |
 | Session load after the rule texts | +294 bytes, ~+73 tokens: RADE ~5,486, 90-161.Z ~5,454, ICF ~5,216, **33-332.Z ~5,541 (over the 5,500 cap: it trims ~50 tokens of its own handoff first)** | measured on a copy |
 
