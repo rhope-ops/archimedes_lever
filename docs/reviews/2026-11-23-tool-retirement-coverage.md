@@ -1,7 +1,8 @@
 # Tool retirement program: plan coverage list (step 7, rule T7)
 
-DRAFT, not approved. Written 2026-11-23 ~14:45 America/Chicago by session "Kit · Tool retirement · 2026-11-23"
-(session_01PyXpdTtcLuv26JT5RFfzye). It needs the Maintainer's approval in this session's own chat before the plan starts.
+APPROVED by the Maintainer, 2026-11-23 ~14:50 America/Chicago, in this session's chat (own message: "1approve 2yes";
+item 1 = approve the whole list, item 2 = the 4 features stay out). Written 2026-11-23 ~14:45 America/Chicago by session "Kit · Tool retirement · 2026-11-23"
+(session_01PyXpdTtcLuv26JT5RFfzye). The plan starts from this list.
 
 Sources: FLEET-MASTER-PLAN-v2.md (the Maintainer's Drive, folder Rhope, compiled 2026-11-22; read 2026-11-23) and the
 approved prompt [2026-11-23-tool-retirement-prompt.md](2026-11-23-tool-retirement-prompt.md). Rows name items by ID and a
@@ -63,8 +64,9 @@ Not verified in this session. Fleet v2 is still open (ICF #248 split, ICF kit 11
 | B2-2 | 1.3 move history to docs/archive/ (fleet v2 B.2: not done) | out | Closed by fleet v2 DEC 2 |
 | B2-3 | 3C.1 owner file rotation (fleet v2: staged only, ICF #246) | out | ICF handover, not tools |
 | B2-4 | 4.3 shadow handover drill (needs the incoming maintainer) | out | ICF handover, not tools |
-| B2-5 | 6 kit repos still on kit 10.0.0 (fleet v2 B.21) | later | After the distribution pilot (step 4): catch-up by one version bump |
+| B2-5 | 6 kit repos still on kit 10.0.0 (fleet v2 B.21) | in | Step 1 inventory and step 4 distribution design (not the trials) |
 | B2-6 | ICF preload tags A/B (coordinator state "Needs the Maintainer") | out | Fleet v2 open question |
+| B2-7 | 4.3 ICF pre-transfer scans: author counts from `git log --all` (counts only, no names), `scripts/check_content.py --all`, branch rulesets and secret scanning of icf and ICF-Source | in | Read-only; runs after the Maintainer approves this list |
 
 ## C. Master plan Part 2 (11)
 
@@ -73,7 +75,7 @@ Not verified in this session. Fleet v2 is still open (ICF #248 split, ICF kit 11
 | P2-1 | Installable kit CLI package (pipx) | in | Step 4: the pip/pipx package is a third candidate next to the pre-commit hook repo and the reusable workflow |
 | P2-2 | Standard linters and secret scanners | in | Step 2, with 3 added pairs: bash checks vs shellcheck, PowerShell checks vs PSScriptAnalyzer, check_content* vs trufflehog next to gitleaks |
 | P2-3a | Authenticode signing of paste bundles | out (proposed) | Needs the Maintainer's certificate; prompt "pending, not in scope yet" |
-| P2-3b | Paste truncation sentinel (start/end checksum) | later | A new guard, not a tool retirement |
+| P2-3b | Paste truncation sentinel (start/end checksum) | in | Step 6: RADE, 90-161.Z, 33-332.Z; no certificate needed |
 | P2-4a | Build-time static HTML with a standard Markdown library (90-161.Z, RADE) | in | Step 6 |
 | P2-4b | Remove the runtime fetch, offline with connect-src 'none' | in | Step 6, same trial as P2-4a |
 | P2-5a | CodeQL | in | Step 6 (kit, RADE, 90-161.Z, 33-332.Z) |
@@ -132,12 +134,31 @@ Scope: this program. Recorded here, not as a DECISIONS row By the Maintainer.
 3. Start time: "After fleet v2 closes". This session stops after this list until the coordinator says fleet v2 is closed.
    No inventory or trial runs before then.
 
-## Still open (block the plan)
+## E2. The Maintainer's answers, second round (question dialog in this session, 2026-11-23 ~14:55 America/Chicago)
 
-1. Rule IDs T3 and T4 (not in the prompt; the cited fleet v2 lessons file is not in this repo or in Drive › Rhope).
-   The Maintainer's answer: ask the coordinator session "Kit · Fleet v2 coordinator 2". Asked 2026-11-23.
-2. Features out (P2-3a, P2-9, P2-10, P2-11): the prompt file says "pending"; the coordinator relayed "out for now".
-3. The Maintainer's approval of the whole list, in this session's chat, after item 1 is answered.
+The coordinator reported other choices from its chat; the Maintainer settled each conflict here. Scope: this program.
+
+1. Paste truncation sentinel (P2-3b): IN. Authenticode signing (P2-3a) stays out.
+2. Repo set: "12 for inventory, 5 for trials" (11 unique repos, see below). Inventory (step 1, step 3) and the distribution design (step 4) cover the
+   kit, RADE, 90-161.Z, 33-332.Z, ICF-Source, sec-source and the 6 repos on kit 10.0.0 (B2-5). Side-by-side trials
+   (steps 2, 6) run on the kit + RADE, 90-161.Z, 33-332.Z, ICF-Source. "sec-source" and "SEC-Source" are one repo
+   (GitHub names are not case-sensitive; the coordinator confirmed, 2026-11-23), so the inventory has 11 repos, not 12.
+3. ICF pre-transfer scans from 4.3 (B2-7): IN. The 30-minute drill (B2-4) stays out.
+4. T3 and T4 are not rule texts: T3 "retire plan" = step 2, T4 "reference, don't copy" = step 4. Rule texts for
+   approval stay T1, T2, T5, T6, T7, R1, R3. The fleet v2 lessons file now exists (created 2026-11-23 ~14:39
+   America/Chicago, after the first searches): branch claude/fleet-v2-lessons, docs/reviews/2026-11-23-fleet-v2-lessons.md
+   (not on main yet), and Drive › Rhope, 2026-11-23-fleet-v2-lessons.md. Its section 5 lists T3 and T4 as measures with
+   enforcement (T3: one PR per retirement; T4: files changed per kit change), the same mapping. Its 5 causes: (1) new tools instead of existing ones, (2) the kit is copied, not
+   referenced, (3) rules and caps grow faster than enforcement, (4) unclear role words and approval paths,
+   (5) throughput outran consolidation.
+5. Start time: the Maintainer chose "after fleet v2 closes". The coordinator reported fleet v2 closed on 2026-11-23
+   (ICF #248, #249, #250 merged). Work starts when the Maintainer approves this list.
+
+## Approval
+
+The Maintainer's own message in this session's chat, 2026-11-23: "1approve 2yes". Item 1: the whole list (79 rows) is
+approved. Item 2: FSRS (P2-9), the installable PWA (P2-10), OKLCH (P2-11) and Authenticode signing (P2-3a) stay out.
+Scope: this program. Nothing blocks the plan.
 
 ## F. Counts (the T7 check compares these)
 
@@ -145,9 +166,9 @@ Scope: this program. Recorded here, not as a DECISIONS row By the Maintainer.
 |---|---|---|---|---|---|
 | A. DEC (6 items) | 6 | 4 | 2 | 0 | 0 |
 | B. Part 1 (19 items) | 19 | 0 | 19 | 0 | 0 |
-| B2. Part 1 open sub-parts (extra rows, not source items) | 6 | 0 | 5 | 1 | 0 |
-| C. Part 2 (11 items, split into sub-rows) | 22 | 13 | 8 | 1 | 0 |
+| B2. Part 1 sub-parts (extra rows, not source items) | 7 | 2 | 5 | 0 | 0 |
+| C. Part 2 (11 items, split into sub-rows) | 22 | 14 | 8 | 0 | 0 |
 | D. Prompt (25 items) | 25 | 25 | 0 | 0 | 0 |
-| **Total** | **78** | **42** | **34** | **2** | **0** |
+| **Total** | **79** | **45** | **34** | **0** | **0** |
 
 Source items: 36 master plan items (6 + 19 + 11) + 25 prompt items = 61. Unmarked: 0. Rows "ask": 0.
