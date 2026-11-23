@@ -454,9 +454,24 @@ def case_report(fx):
               "2026-11-16                          3   29.20        7.35    36.55" in text, True)
     fx.expect("report: one scout task of 2 calls", any(l.split()[:3] == ["scout", "1", "2.0"] for l in text.splitlines()),
               True)
-    fx.expect("report: unpriced model listed", text.splitlines()[-3], "no price (counted as 0): claude-test")
-    fx.expect("report: footer says old rows are priced as 5-minute cache writes",
-              "priced as 5-minute" in text.splitlines()[-1], True)
+    fx.expect("report: unpriced model listed", text.splitlines()[-3],
+              "no token price (tokens counted as 0, web searches counted): claude-test")
+    fx.expect("report: footer counts the old rows priced as 5-minute cache writes", text.splitlines()[-1],
+              "Rows from before the cache_write_1h_tokens column (4): cache writes priced as 5-minute.")
+    new = [{**r, "cache_write_1h_tokens": "0"} for r in rows]
+    fx.expect("report: no old-row footer when every row has the column",
+              "cache_write_1h_tokens" in tl.report(new), False)
+    fx.expect("report: footer for 1 old row among new rows",
+              tl.report(new + rows[:1]).splitlines()[-1].endswith("column (1): cache writes priced as 5-minute."), True)
+    searched = {**row, "model": "claude-test", "web_search_requests": "3", "source": "main",
+                "timestamp": "2026-11-17T12:00:00Z", "cache_write_1h_tokens": "0"}
+    fx.expect("row cost: unknown model with 3 web searches is the search fee only",
+              round(tl.row_cost(searched), 6), 0.03)
+    text = tl.report([searched])
+    fx.expect("report: search fee of an unknown model in the week total",
+              "2026-11-16                          1    0.03        0.00     0.03" in text, True)
+    fx.expect("report: unknown model with searches still listed as no token price",
+              text.splitlines()[-1].endswith(": claude-test"), True)
     old = {k: v for k, v in rows[0].items() if k not in ("agent", "agent_id")}  # a row from before the columns
     merged = list(csv.DictReader(io.StringIO(tl.to_csv({"m1": {**old, "message_id": "m1"}}))))
     fx.expect("old row without agent and agent_id: merged with empty values",
@@ -495,6 +510,8 @@ def case_prices(fx):
               cost("claude-sonnet-5", input_tokens=M, speed="fast"), 2.0)
     fx.expect("3 web searches add $0.03", cost("claude-opus-5", web_search_requests=3), 0.03)
     fx.expect("inference_geo us adds 10%", cost("claude-opus-5", output_tokens=M, inference_geo="us"), 27.5)
+    fx.expect("inference_geo us: web search fee not raised",
+              cost("claude-opus-5", web_search_requests=10, inference_geo="us"), 0.1)
     fx.expect("inference_geo us: not on Opus 4.5", cost("claude-opus-4-5", output_tokens=M, inference_geo="us"), 25.0)
     fx.expect("old row without the new columns: cache write as 5-minute",
               cost("claude-opus-5", cache_creation_input_tokens=M), 6.25)
