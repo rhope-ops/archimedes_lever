@@ -1,6 +1,6 @@
 # Custom tool retirement program: plan (for the Maintainer's approval)
 
-DRAFT, not approved. Written 2026-11-23 from ~16:45 America/Chicago by session "Kit · Tool retirement · 2026-11-23 · #125".
+APPROVED by the Maintainer, 2026-11-23 17:12 America/Chicago, in this session's chat (own message: "I approve the plan"): sections 3 and 3b (exact texts), the phases, lanes, models, agents and hours, and decisions 1-10. Written 2026-11-23 from ~16:45 America/Chicago by session "Kit · Tool retirement · 2026-11-23 · #125".
 Nothing is built. Approving this plan approves the exact rule texts in section 3 (AGENTS.md "Rule text"), the skill, instruction-file and account texts in section 3b, the
 phase lanes, models, agents and hours, and each "REC" marked "(choice)" that you answer.
 
