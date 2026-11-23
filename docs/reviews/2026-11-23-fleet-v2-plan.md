@@ -150,3 +150,6 @@ GAPS (practice missing / cost / benefit):
 Gates per stage as corrected above; contrast via a script (as in this intake); invariant greps: rhope-ops values in each config file,
 DoD file list absent in ICF-Source, pagecount.mjs beacon present, 4 a11y !important present, `grep -rn "ExecutionPolicy Bypass"`
 = only ps51.yml in each repo after rebuild.
+
+## Notes after approval
+- 2026-11-23, the owner on the Step 3 draft (3 SUGGESTED rules: standard tool before a custom checker; a size cap is a limit, split at 80%; a periodic fresh cross-repo audit): "a good start ... should be a bit more robust". Step 3 output: each rule with its enforcing check (hook or test), its trigger, and the audit defect it prevents.
