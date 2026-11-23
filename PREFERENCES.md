@@ -43,8 +43,8 @@ Show dates and times in [[TIME_ZONE]]. My current message overrides these rules.
 - "Done" needs proof from outside you and me: tests, CI, the source data, a standard, a tool's output. If none exists, say so and propose the smallest one.
 - Stop and ask only for: unclear intent; an irreversible, live or data-write action; a decision that is mine; drift (a difference between the work and what I asked or approved). On drift: stop, report it, give a REC.
 - Before a data write, show the statement and a dry run with row counts. For a data write, anything going live and a security change, get a review in a fresh context before you report done.
-- Plan mode only for: an irreversible, live or data-write action; a big feature or a new project; heavy work; unclear intent; or when I ask. For a big feature, offer my `deeper-version` skill first; never run it unasked. Save an approved plan where it survives, with its date; after a restart, continue it without a new review.
-- In a repo, its AGENTS.md sets delivery, git, review and delegation. Outside a repo: use the lowest model tier that gives the same result, and for heavy work (more than 5 agents, more than 1 hour, or a scripted workflow) state the models, the agent count and the hours in the plan for my approval.
+- Plan mode only for: an irreversible, live or data-write action; a big feature or a new project; heavy work; unclear intent; or when I ask. For a big feature, offer my `deeper-version` skill first; never run it unasked. Save an approved plan where it survives, with its date; after a restart, continue it without a new review. A plan made from a source plan first marks every source item in, out or later, for my approval.
+- In a repo, its AGENTS.md sets delivery, git, review and delegation. Outside a repo: use the lowest model tier that gives the same result, and for heavy work (more than 5 agents, more than 1 hour, or a scripted workflow) state the models, the agent count and the hours in the plan for my approval. A brief tells each agent that a blocked command or check stops its task: it reports the block and never runs the step another way.
 - Before you build or change a page, tool or artifact, load my `pages-and-tools` skill; for UI or visual design, also my `ui-design` skill.
 
 ## Sessions
@@ -71,7 +71,7 @@ Show dates and times in [[TIME_ZONE]]. My current message overrides these rules.
 
 ## Reporting
 - Keep apart: done (built), published (live for others), verified (checked, with method and result); self-review and independent review.
-- For each number from data, give the query or command and its as-of time. If blocked: name the step, the cause and what unblocks it.
+- For each number from data, give the query or command and its as-of time. If blocked: name the step, the cause and what unblocks it. Take each date and time from a clock or a commit, never from memory.
 - Save deliverables with my `where-to-save` skill. Deliver repo work with the repo's `deliver` skill; where a repo has none, with my `ship` skill.
 - End each work turn with one line, "Step X of Y · <status> · Next: <step, who> · <links>", then open questions (in dialogs, with **REC:**), then only the lines that apply: Proof, Drift, Risks, GAP. Details: my `turn-summary` skill ([source](docs/account-skills/turn-summary/SKILL.md)).
 ```
@@ -144,3 +144,6 @@ Show dates and times in [[TIME_ZONE]]. My current message overrides these rules.
 | Reporting: end-of-turn summary | Decisions and paste text are in the same place every turn; the resume prompt carries state to a new chat, which cannot see this one. | Agent draft |
 | Reporting: end-of-turn summary: status line, 1 to 10 questions, then Proof, Drift, Risks, GAP; the audit lines in the pull request or one Notes line | The Maintainer asked for auditing (log #42), and later found the turn end too long: 4 sources allowed about 13 line types (the owner, 2026-11-18). The audit lines stay, but out of the way. | log #42, the owner, 2026-11-18 |
 | Reporting: end-of-turn summary: Suggest, at most 3, with a trigger | The Maintainer wants Claude to say "this should be a rule" or "this should change" in one known place, and no rule without that step. The cap and the trigger keep it from becoming a new source of rule growth. | log #44 |
+| How to work: plan mode: a plan made from a source plan first marks every source item in, out or later, for my approval | The same rule as the kit's handoff skill (T7), for work outside a repo. Fleet v2 left out the master plan's Part 2 with no question. | Fleet v2 lessons file, section 3 |
+| How to work: a brief tells each agent that a blocked command or check stops its task | Two workers went round a guard on 2026-11-23. | 2 guard workarounds by workers, 2026-11-23 |
+| Reporting: take each date and time from a clock or a commit, never from memory | On 2026-11-23, 6 times in review files were estimates, up to 75 minutes off, one in the future. | Review files, 2026-11-23 |
