@@ -8,7 +8,7 @@ What it gives:
   start_read        what every session loads, in lines, bytes and ~tokens
   rule_lines        the rule lines of an AGENTS.md text: the kit sections, "## Project rules", and every line
   lint              WARN lines: near-duplicate pairs, vague words, untested rules
-  readme_report     README.md exists and opens with the "- Purpose:" line of AGENTS.md (AGENTS.md "README")
+  readme_report     README.md exists and opens with the "- Purpose:" line of AGENTS.md (AGENTS.md "One home")
   rules_report      the lines of `--rules` and the problems that fail scripts/check.sh
   main_lint         the `--lint` mode
 Inputs:  the repo root, the audit settings (scripts/check_settings.py), AGENTS.md here and on origin/main,
@@ -293,7 +293,7 @@ def changed_rules(root, text, parts, gate):
 
 
 def readme_opening(text):
-    """The first paragraph of a README text, for the AGENTS.md "README" check.
+    """The first paragraph of a README text, for the AGENTS.md "One home" check.
 
     Skipped before it: YAML front matter, headings (ATX and setext), images, badges, HTML lines and blank lines. A
     blockquote marker is taken off. The lines of the paragraph are joined by spaces.
@@ -328,7 +328,7 @@ def plain_words(s):
 
 
 def readme_report(root, text):
-    """The AGENTS.md "README" default: README.md exists and opens with the "- Purpose:" value of AGENTS.md.
+    """The AGENTS.md "One home" default: README.md exists and opens with the "- Purpose:" value of AGENTS.md.
 
     Checked only when that value is filled in (empty, or the kit template's {{PURPOSE}}, is not). A missing README.md
     (any letter case) is a problem; an opening that does not start with the purpose, as whole words, is a WARN line
@@ -346,10 +346,10 @@ def readme_report(root, text):
         return [], []
     readme = next((f for f in sorted(root.iterdir()) if f.is_file() and f.name.lower() == "readme.md"), None)
     if readme is None:
-        return [], ["no README.md: it opens with the AGENTS.md \"Purpose\" line (AGENTS.md \"README\")"]
+        return [], ["no README.md: it opens with the AGENTS.md \"Purpose\" line (AGENTS.md \"One home\")"]
     want, got = plain_words(m.group(1)), plain_words(readme_opening(readme.read_text(encoding="utf-8", errors="replace")))
     if not (got.startswith(want) and (len(got) == len(want) or not got[len(want)].isalnum())):
-        return [f"WARN  {readme.name} does not open with the AGENTS.md \"Purpose\" line; update it (AGENTS.md \"README\")"], []
+        return [f"WARN  {readme.name} does not open with the AGENTS.md \"Purpose\" line; update it (AGENTS.md \"One home\")"], []
     return [], []
 
 

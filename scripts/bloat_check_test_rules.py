@@ -125,7 +125,7 @@ def caps_and_paths_cases(bloat, ro, caps):
 
 
 def readme_cases(bloat, ro, caps):
-    """The "README" default: a filled Purpose needs README.md (fail) that opens with it (warn); a template skips it.
+    """The "One home" default (README.md part): a filled Purpose needs README.md (fail) that opens with it (warn); a template skips it.
 
     Args:
         bloat: the module under test.
