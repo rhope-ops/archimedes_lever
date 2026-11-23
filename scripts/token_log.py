@@ -40,6 +40,7 @@ Self-update: after each background push, the installed copy (token_log.py in ~/.
   one-file install fetches token_log_report.py the same way (the Stop path never needs it) (TOKEN_LOG_UPDATE=off
   turns it off). The setup script installs it only when a container is built, so a resumed container kept an old copy.
 Self-test (temporary repos, no network):  python3 scripts/token_log.py --test.  Standard library only.
+Prevents: unclear (see report)
 Network: the git remote "origin" of the repo (fetch and push of the branch claude/token-usage); the self-update: a
 shallow clone of the kit (kit_url()) at most once a day; none in the self-test.
 Writes: the branch claude/token-usage (one CSV file for each session), through a temporary index; push.log, lock

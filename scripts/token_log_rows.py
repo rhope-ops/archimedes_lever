@@ -7,6 +7,7 @@ push then fails with ImportError and runs the self-update at once, which install
 every row from the logs, so no row is lost.
 Inputs:  the session log path (JSON lines) and its <session>/**/*.jsonl subagent logs.
 Outputs: {message_id: row} for token_log.push.
+Prevents: unclear (see report)
 Network: none.
 Writes: none.
 Credentials: none.

@@ -19,6 +19,7 @@ scanner when it is loaded (its own self-test may); `python3 scripts/check_conten
 and scripts/check.sh runs it when the file has one. A module that cannot be imported, or that has neither name in this
 shape, makes every scan fail (LOCAL_ERROR; scan_text raises LocalError) and the hook block: the scanner never falls
 back to the kit's patterns, and never to no check. The result line of a scan and --status say when a module is active.
+Prevents: a secret or personal datum in a text, a file or a commit goes unseen, or a broken project finder falls back to no check
 Network: none (it runs local git read commands).
 Writes: none.
 Credentials: none; it reads the name denylist and the terms list from an environment variable or a file.

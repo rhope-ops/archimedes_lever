@@ -19,6 +19,7 @@ owner, 2026-11-23: docs/reviews/2026-11-23-fleet-v2-plan.md, items B.4 and 1.4).
 Inputs:  header text, file lines, DECISIONS.md and AGENTS.md at a git ref and in the working tree, a repo root.
 Outputs: yes/no answers, refusal lines, and violations written into the caller's dict; with --test, the self-test
          result (scripts/code_standard_strict_test.py) and exit code 0 or 1.
+Prevents: a code-standard rule is met by a stray word in a header or a settings-file name instead of real work, for example a safety header with no values
 Network: none.
 Writes: none (it runs git read-only commands; the check that loads it writes .check.state.json; --test writes
         temporary folders only).

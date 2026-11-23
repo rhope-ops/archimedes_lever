@@ -74,6 +74,7 @@ be loaded, every scan fails and the hook blocks. Limit: that file is the project
 a hook runs; a file that ends the process itself while it loads (os._exit) ends the scan with its own exit code (0 lets a hooked call run).
 The code is split by concern into modules next to this file: check_content_scan.py (the scans) with check_content_scan_settings.py (the word lists and the settings file),
 check_content_finders.py (the patterns and finders), check_content_hook.py (--hook) and check_content_test.py (--test).
+Prevents: a secret or personal datum (email, phone, ID number, token, key, listed name or term) reaches a commit, a push or an outgoing tool call
 Network: none (it runs local git read commands).
 Writes: none (findings go to stdout or stderr; the self-test uses temporary folders).
 Credentials: none; it reads the name denylist and the terms list (environment variable or file) and never prints an entry.

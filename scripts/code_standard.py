@@ -60,6 +60,7 @@ Usage:   python3 scripts/code_standard.py            check (scripts/check.sh run
          python3 scripts/code_standard.py --adopt    add the debt of a rule the baseline does not list yet (a rule just
                                                      turned on, such as `code-c2: full`); needs a DECISIONS row
          python3 scripts/code_standard.py --test     prove the check on small sample repos (scripts/code_standard_test.py)
+Prevents: code without a header, function comment, size limit or safety label is added, so the code grows hard to read and edit
 Network: none (it runs local git read commands, and pwsh to parse PowerShell files).
 Writes:  .check.state.json, only with --init, --update or --adopt (and Python's __pycache__ when it imports its modules).
 Credentials: none.

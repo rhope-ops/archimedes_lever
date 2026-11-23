@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Fill the template placeholders in a new project made from the kit (kit.config.json "kit_repo").
+# Prevents: a new project keeps template placeholders, the wrong owner word or tier files, or the kit-only files, so it runs with unset values
 # Usage: scripts/bootstrap.sh "Project Name" Owner/repo "One-line purpose" ["Owner name"] ["Time zone"] [starter|full]
 # Owner name: what agents call the decider (default "the Maintainer"). A private repo may use your name; a public repo uses a role,
 # for example "the maintainer".

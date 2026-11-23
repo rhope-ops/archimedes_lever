@@ -20,6 +20,7 @@ and `--json` prints the same counts as JSON.
 Run:        python3 scripts/skill_use.py FILE [FILE ...] [--json]
 Self-test:  python3 scripts/skill_use.py --test
 Standard library only.
+Prevents: a skill that no session loads stays in the kit and costs tokens in every session, because nothing else records skill loads
 Network: none.
 Writes: none (stdout only).
 Credentials: none.

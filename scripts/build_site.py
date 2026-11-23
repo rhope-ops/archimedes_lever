@@ -20,6 +20,7 @@ Outputs: with --write, index.html; then, or with --check alone, "SITE PASS" (or 
 Usage:   python3 scripts/build_site.py --write    rebuild the site's shared parts, then check
          python3 scripts/build_site.py --check    check only (scripts/check.sh runs it when README.md has site marks)
          python3 scripts/build_site.py --test     self-test; prints SITE TEST PASS
+Prevents: the site page and the README state the same fact in two hand-written copies that drift apart, so the page shows a stale or wrong fact
 Network: none.
 Writes: index.html with --write only (the self-test: temporary files).
 Credentials: none.
