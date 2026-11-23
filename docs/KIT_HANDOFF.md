@@ -2,21 +2,19 @@
 
 The kit's own handoff (AGENTS.md "Handoff"). Kit only: first use deletes it in a project, which uses docs/NEXT_PROMPT.md. Keep it at 40 lines or fewer; evidence goes in docs/reviews/. Times are America/Chicago.
 
-Updated: 2026-11-23 ~15:10 by "Kit · Fleet v2 coordinator 2": fleet v2 stages 1-4 done; Step 3 (rule text) moved into the Part 2 program, not approved or built yet; lessons [reviews/2026-11-23-fleet-v2-lessons.md](reviews/2026-11-23-fleet-v2-lessons.md); state [reviews/2026-11-23-fleet-v2-coordinator-state.md](reviews/2026-11-23-fleet-v2-coordinator-state.md). Program session "Kit · Tool retirement · 2026-11-23": prompt [reviews/2026-11-23-tool-retirement-prompt.md](reviews/2026-11-23-tool-retirement-prompt.md), coverage list approved.
+Updated: 2026-11-23 17:12 by "Kit · Tool retirement · 2026-11-23 · #125": tool retirement plan approved; P1 next
 
 ## State
 
 - main: kit 10.0.0 (f397b52; main 29d190c adds PR 108, no synced kit file changed). Tags (the owner makes them): v6.2.0, v7.0.0, v8.0.0, v10.0.0 exist; v8.1.0 and v9.0.0 not made yet.
 - Fleet on 10.0.0 (merged 2026-11-21, each verified on main): RADE 165, 33-332.Z 48, ICF-Source 240, SEC-Source 27, SPAR 19, 36-3003.Z 14, 65-601.Z 14, no-more-beyond 66, transcription_assistant 8. 90-161.Z on 9.0.0 (PR 215); its 10.0.0 sync is PR 216 of its own session (K2). Session load (cap 5,500): 33-332.Z ~5,352, ICF ~5,322, RADE ~5,278, TA ~5,250, SEC ~5,210, NMB ~5,178. Owner steps per repo: `audit-instructions:` lines in `.check`; 33-332.Z README does not open with its Purpose line (warning).
 
-## Approved plan (the owner, 2026-11-23): fleet remediation v2
-Full text, gate baseline, corrections and 11 decisions: [reviews/2026-11-23-fleet-v2-plan.md](reviews/2026-11-23-fleet-v2-plan.md). Session "Kit · Fleet v2 remediation · 2026-11-23".
+## Approved plan (the Maintainer, 2026-11-23 17:12): custom tool retirement
+Plan, texts and decisions 1-10: [reviews/2026-11-23-tool-retirement-plan.md](reviews/2026-11-23-tool-retirement-plan.md); coverage list (85 rows) and research files beside it. Session "Kit · Tool retirement · 2026-11-23 · #125".
 
-- [x] 0. Plan verified against the 5 repos and saved.
-- [x] 1. Kit 11.0.0 merged; 11.0.1 merged (PR 118, 9e3f6fa, the Maintainer's OK; 2 check.sh lines under 200 chars). 11.0.0 merged 2026-11-23 ~09:15 (PR 114, main dedc3b3; verified on origin/main). DEC 15 (the owner, "1a 2a"): AGENTS.md "Decisions" names the Content Approver; shorter deliver/audit/handoff descriptions. Reviews: 8 fresh reviews, every MAJOR fixed; rule conflict records reviews/2026-11-23-rule-conflict.md (open MINOR 2-7). Session load after sync: RADE ~5,232, 90-161.Z ~5,427, 33-332.Z ~5,482 (thin), ICF ~5,341. Sync trigger sent to the 4 sessions. Owner steps: tag v11.0.0; Default setup script installs the token_log parts and kit.config.json (Work done). Follow-ups: bootstrap.sh NITs (one dod-security check; errors not hidden); fix-review MINOR 2 (--validate-config has no fleet: key).
-  Session briefs for the parallel tracks: [reviews/2026-11-23-fleet-v2-session-briefs.md](reviews/2026-11-23-fleet-v2-session-briefs.md).
-- [x] 2. RADE: engine-v36 released and verified (#167, 6efe5c7), kit sync #169, guard files #168, role word #171. [x] 3. 90-161.Z #217-#222; 33-332.Z #51, #53-#56; ICF #241-#246. [x] 4. ICF Stage 4 #242, #247-#250; Site 2.12.2 live on /icf/ (4.3 drill out). [ ] 5. Rule text: moved into the Part 2 program (approved through its plan); not approved or built yet.
-
+- [x] Research R1-R4f and plan (PRs 125, 127, 131). [ ] P1 rules and checks (kit, lane C). [ ] P2 kit shrink and repair. [ ] P3 pilot 33-332.Z (pip/pipx; trim its handoff ~50 tokens first).
+- [ ] P4 RADE sentinel + release, 90-161.Z, 33-332.Z, ICF runbook. [ ] P5 kit 10.0.0 repos, fleet audit. [ ] P6 exports, branch deletes (with the Maintainer's OK).
+- Fleet v2 (approved 2026-11-23) is done and closed: [reviews/2026-11-23-fleet-v2-plan.md](reviews/2026-11-23-fleet-v2-plan.md), lessons [reviews/2026-11-23-fleet-v2-lessons.md](reviews/2026-11-23-fleet-v2-lessons.md).
 - Earlier approved plan 2026-11-19 (fleet decision hub, kit template): steps 0-5 and 7 done, step 4 dropped; open: step 6 loop proof after the owner ports a first project. Record: [reviews/2026-11-19-fleet-decision-hub-plan.md](reviews/2026-11-19-fleet-decision-hub-plan.md); live page preview https://claude.ai/artifact/RZwwoMT9fNJDARDcBzn7AR.
 
 ## Open (in order)
