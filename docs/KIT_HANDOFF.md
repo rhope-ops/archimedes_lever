@@ -2,22 +2,21 @@
 
 The kit's own handoff (AGENTS.md "Handoff"). Kit only: first use deletes it in a project, which uses docs/NEXT_PROMPT.md. Keep it at 40 lines or fewer; evidence goes in docs/reviews/. Times are America/Chicago.
 
-Updated: 2026-11-21 ~16:30 by session "Kit · Project Studies and fleet sync" (Project Studies canvas https://claude.ai/artifact/UZpzMPxQ692UZ1ZiEceqEe): PRs 103 (8.1.0, deliver skill "Project identity") and 105 (9.0.0, session-load cap 5,500) merged; PR 107 (10.0.1 role fix) closed: the owner keeps "the Owner's". Before: "Kit · Instructions hard rule": PR 104 (10.0.0, 50450b2) and PR 108 merged (29d190c: README steps in STE; `.check` names README.md and docs/github/README.md); 7 README steps name claude.ai screens that are not verified (reviews/2026-11-21-fresh-reader.md); evidence of 10.0.0: reviews/2026-11-21-instructions-rule-reviews.md.
+Updated: 2026-11-23 ~06:20 by session "Kit · Fleet v2 remediation · 2026-11-23": approved plan saved (fleet remediation v2); main e5b5831 adds token_log prices (PRs 110, 111). Before: 2026-11-21 ~16:30 by session "Kit · Project Studies and fleet sync" (Project Studies canvas https://claude.ai/artifact/UZpzMPxQ692UZ1ZiEceqEe): PRs 103 (8.1.0, deliver skill "Project identity") and 105 (9.0.0, session-load cap 5,500) merged; PR 107 (10.0.1 role fix) closed: the owner keeps "the Owner's". Before: "Kit · Instructions hard rule": PR 104 (10.0.0, 50450b2) and PR 108 merged (29d190c: README steps in STE; `.check` names README.md and docs/github/README.md); 7 README steps name claude.ai screens that are not verified (reviews/2026-11-21-fresh-reader.md); evidence of 10.0.0: reviews/2026-11-21-instructions-rule-reviews.md.
 
 ## State
 
 - main: kit 10.0.0 (f397b52; main 29d190c adds PR 108, no synced kit file changed). Tags (the owner makes them): v6.2.0, v7.0.0, v8.0.0, v10.0.0 exist; v8.1.0 and v9.0.0 not made yet.
 - Fleet on 10.0.0 (merged 2026-11-21, each verified on main): RADE 165, 33-332.Z 48, ICF-Source 240, SEC-Source 27, SPAR 19, 36-3003.Z 14, 65-601.Z 14, no-more-beyond 66, transcription_assistant 8. 90-161.Z on 9.0.0 (PR 215); its 10.0.0 sync is PR 216 of its own session (K2). Session load (cap 5,500): 33-332.Z ~5,352, ICF ~5,322, RADE ~5,278, TA ~5,250, SEC ~5,210, NMB ~5,178. Owner steps per repo: `audit-instructions:` lines in `.check`; 33-332.Z README does not open with its Purpose line (warning).
 
-## Approved plan (the owner, 2026-11-19 14:45): fleet decision hub (kit template)
+## Approved plan (the owner, 2026-11-23): fleet remediation v2
 
-Full text, decisions and approved rule text: [reviews/2026-11-19-fleet-decision-hub-plan.md](reviews/2026-11-19-fleet-decision-hub-plan.md). Scope: the kit; the owner ports it per project. Earlier plans: kit 4.0.0 session names done except step 3 (tag v4.0.0) ([record](reviews/2026-11-19-session-names-plan.md)); lean rules done except step 5 (Open 1).
+Full text, gate baseline, corrections and 11 decisions: [reviews/2026-11-23-fleet-v2-plan.md](reviews/2026-11-23-fleet-v2-plan.md). Session "Kit · Fleet v2 remediation · 2026-11-23".
 
-- [x] 0. Plan saved.
-- [x] 1. Survey ([reviews/2026-11-19-fleet-survey.md](reviews/2026-11-19-fleet-survey.md)).
-- [x] 2. Contract approved 2026-11-19 15:10 ([reviews/2026-11-19-fleet-contract.md](reviews/2026-11-19-fleet-contract.md)).
-- [x] 3. Kit PR 72 (kit 4.1.0). [-] 4. Pilot on the kit: dropped by the owner (template only; PR 73 closed); its 2 template fixes merged in PR 74.
-- [x] 5. Page: approved by the owner (preview https://claude.ai/artifact/RZwwoMT9fNJDARDcBzn7AR); live page version 3 (2026-11-19): db (only the owner writes) and the Start session button (connector create_session). [x] 7. Port guide and harvest-task template: docs/fleet.md. [ ] 6. Loop proof: after the owner ports a first project.
+- [x] 0. Plan verified against the 5 repos and saved.
+- [ ] 1. Kit 11.0.0 (this repo). [ ] 2. RADE engine-v36. [ ] 3. 90-161.Z / 33-332.Z / ICF-Source in 3 sub-sessions. [ ] 4. ICF UX/UI and handover check. [ ] 5. Rule text for recurrence (owner approval).
+
+- Earlier approved plan 2026-11-19 (fleet decision hub, kit template): steps 0-5 and 7 done, step 4 dropped; open: step 6 loop proof after the owner ports a first project. Record: [reviews/2026-11-19-fleet-decision-hub-plan.md](reviews/2026-11-19-fleet-decision-hub-plan.md); live page preview https://claude.ai/artifact/RZwwoMT9fNJDARDcBzn7AR.
 
 ## Open (in order)
 
