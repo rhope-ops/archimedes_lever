@@ -113,3 +113,36 @@ def self_test_adopt_ratchet(cs, root, g, full):
     assert not cs.against_main(full, on)[0], 'an opt-in rule turned on now: its first list passes with a DECISIONS row'
     (root / 'docs' / 'DECISIONS.md').unlink()
     assert cs.against_main(full, on)[0], 'the same list fails with no DECISIONS row'
+
+
+def self_test_warns(cs, root, g, config):
+    """Self-test of the WARN kinds: a file over the size cap and a check entry point without a `Prevents:` header line
+    warn (with their numbers) and are not debt: compare() gives no FAIL, the baseline never holds them, and a
+    *_test file is never an entry point.
+
+    Args:
+        cs: the check module.
+        root: the sample repo folder.
+        g: runs git in the sample repo.
+        config: the settings of the sample repo.
+    """
+    head = '"""Sample check script for the WARN self-test: it names no defect."""\n\n\n'
+    (root / 'scripts').mkdir(exist_ok=True)
+    (root / 'scripts/check.sh').write_text('# Sample runner: it runs the sample check scripts of the WARN self-test.\npython3 scripts/chk.py\npython3 scripts/chk_test.py\n')
+    (root / 'scripts/chk.py').write_text(head + '#\n' * 50)   # a check entry point, 54 lines: over the file cap 50 of SMALL
+    (root / 'scripts/chk_test.py').write_text(head)
+    (root / 'scripts/other.py').write_text(head)
+    g('add', '-A')
+    assert cs.entry_points(root) == {'scripts/chk.py'}, 'named by check.sh, no test file: %s' % cs.entry_points(root)
+    now = cs.measure(config)['violations']
+    assert now['prevents'] == {'scripts/chk.py': 1} and now['file_size'] == {'scripts/chk.py': 54}, 'both measured: %s' % now
+    assert cs.compare(now, {}, config['caps']) == ([], []), 'a warning is no new debt and is never "fixed"'
+    warns = cs.warn_lines(now, config['caps'])
+    assert [w for w in warns if 'C4' in w and 'scripts/chk.py (54)' in w and 'longer than 50' in w], 'size shows: %s' % warns
+    assert [w for w in warns if 'Prevents' in w and 'scripts/chk.py' in w], 'the missing line shows: %s' % warns
+    (root / 'scripts/chk.py').write_text('"""Sample check script.\n\nPrevents: a check that runs with no stated defect to stop.\n"""\n')
+    g('add', '-A')
+    assert not cs.measure(config)['violations']['prevents'], 'the Prevents: line clears it'
+    cs.save(now)
+    assert not {'file_size', 'prevents'} & set(settings.load_state(root)['code_standard']['debt']), 'never in the baseline'
+    g('rm', '-rqf', 'scripts')

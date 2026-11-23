@@ -26,7 +26,8 @@ import check_settings as settings   # scripts/check_settings.py: the reader of .
 # scripts/code_standard_test_gate.py and scripts/code_standard_test_docs.py: more case groups (kept apart, rule C4).
 from code_standard_test_gate import (FULL, PS, SAMPLE_GATE, SMALL, commit, config_of, fails, main,  # noqa: F401
                                      self_test_gate, self_test_gate_ratchet, write)
-from code_standard_test_docs import self_test_adopt_ratchet, self_test_docs, self_test_docs_forms  # noqa: F401
+from code_standard_test_docs import (self_test_adopt_ratchet, self_test_docs, self_test_docs_forms,  # noqa: F401
+                                     self_test_warns)
 
 
 def run(cs):
@@ -108,6 +109,7 @@ def run_cases(cs, ROOT):
         self_test_init(cs, ROOT)
         self_test_docs(cs, ROOT, g, config)
         self_test_gate(cs, ROOT, g)
+        self_test_warns(cs, ROOT, g, config)
 
 
 def self_test_kinds(cs, root, g, config):
