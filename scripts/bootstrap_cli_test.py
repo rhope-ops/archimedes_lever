@@ -113,8 +113,18 @@ class BootstrapCli(unittest.TestCase):
     def test_starter_run_removes_kit_files(self):
         """Prove: a starter run deletes the kit-only files and the script itself."""
         self.assertEqual(self.starter().returncode, 0)
-        for gone in ("scripts/bootstrap.sh", "scripts/sync_baseline.py", "scripts/drift.py", "KIT_VERSION", "docs/FILES.md"):
+        for gone in ("scripts/bootstrap.sh", "scripts/sync_baseline.py", "scripts/drift.py", "KIT_VERSION", "docs/FILES.md",
+                     "scripts/sync_baseline_cli_test.py", "scripts/bootstrap_cli_test.py", "docs/threat-model.md",
+                     "SECURITY.md", ".github/dependabot.yml", ".github/workflows/security.yml"):  # DoD group: key off
             self.assertFalse((self.path / gone).exists(), gone)
+
+    def test_role_word_reaches_every_synced_file(self):
+        """Prove: with another role, no kit file keeps the baseline word (a sync right after bootstrap changes nothing)."""
+        self.assertEqual(self.starter().returncode, 0)
+        left = [str(f.relative_to(self.path)) for f in self.path.rglob("*") if f.is_file() and ".git" not in f.parts and f.suffix != ".pyc"
+                and f.name not in ("FIRST_USE.md", "first_use_check.py", "DECISIONS.md")
+                and "the Maintainer" in f.read_text(errors="replace")]
+        self.assertEqual(left, [])
 
     def test_starter_run_writes_state_and_valid_lock(self):
         """Prove: a starter run writes .check.state.json and a .check.lock that verifies."""

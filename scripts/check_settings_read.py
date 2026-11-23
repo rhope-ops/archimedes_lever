@@ -46,7 +46,7 @@ SETTING_LINE = re.compile(r"(?i)^((?:code|audit)-[A-Za-z0-9_-]+)\s*:\s*(.*)$")
 # A line that was meant as a setting: a known key written with `_`, with `=` in place of `:`, or with no colon.
 # An allowed string that only starts with those letters ("code-name Bluebird", "code-included in price") is not one.
 _KEY = (r"(?:code[-_](?:max[-_]file[-_]lines(?:[-_]paste)?|max[-_]function[-_]lines|max[-_]line[-_]chars|include|exclude|generated"
-        r"|paste|c1[-_]safety|c2)"
+        r"|paste|c1[-_]safety|c2|strict[-_]gate)"
         r"|audit[-_](?:every[-_]days|every[-_]commits|ignore|duplicate[-_]ignore|start[-_]read|budget[-_][a-z_]+))")
 LOOKS_LIKE_SETTING = re.compile(r"(?i)^" + _KEY + r"(?:\s*[:=]|\s+\S)")
 # A docs/DECISIONS.md row "names .check" with the file name itself, not .check.lock or .check.state.json.

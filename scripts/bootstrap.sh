@@ -60,10 +60,9 @@ if [ "$BS_OWNER" != "the Maintainer" ]; then
   # The same files sync_baseline.py renames (those of its COPY_FILES that hold the owner word), so a sync right after bootstrap changes nothing.
   # Not renamed on purpose: docs/FIRST_USE.md and scripts/first_use_check.py, whose
   # "the owner" is an option, a role or a literal the script needs.
-  owner_files=("${files[@]}" .claude/skills/delegate/SKILL.md .claude/skills/audit/SKILL.md .claude/skills/project-log/SKILL.md .claude/skills/deliver/SKILL.md .claude/skills/personal-data/SKILL.md .claude/skills/rule-change/SKILL.md .claude/skills/handoff/SKILL.md .claude/skills/kit-update/SKILL.md .claude/skills/data-change/SKILL.md .claude/skills/verify/SKILL.md .claude/skills/instructions/SKILL.md
-    .claude/agents/reviewer.md .github/workflows/check.yml .claude/rule-tests.md scripts/bloat_check.py scripts/bloat_check_rules.py scripts/bloat_check_timing.py scripts/bloat_check_test_rules.py scripts/session_checkin.sh scripts/stop_check.py scripts/worker_guard.py scripts/check_lock.py
-    scripts/log_check.py scripts/timeline.py scripts/check_content.py scripts/check_content_scan.py scripts/check_content_hook.py scripts/check_content_test.py scripts/check_content_test_blocks.py scripts/check_content_scan_settings.py scripts/check_content_test_cli.py
-    scripts/bloat_check_skills.py scripts/bloat_check_test.py scripts/check_settings.py scripts/check_settings_read.py scripts/code_standard.py scripts/code_standard_test.py scripts/code_standard_docs.py scripts/code_standard_rules.py scripts/code_standard_ratchet.py scripts/code_standard_test_gate.py scripts/code_standard_test_docs.py docs/code-standard.md scripts/check.sh scripts/git-hooks/pre-push)
+  # The list comes from the sync itself (COPY_FILES without NO_OWNER_RENAME), so it cannot fall behind it.
+  mapfile -t kit_owner_files < <(python3 -c 'import os, sys; sys.path.insert(0, "scripts"); import sync_baseline as s; print("\n".join(f for f in s.COPY_FILES if f not in s.NO_OWNER_RENAME and os.path.isfile(f)))')
+  owner_files=("${files[@]}" "${kit_owner_files[@]}" .check docs/MAINTAINER_RUNBOOK.md docs/check-config-schema.md)  # kit-only text a project keeps
   for f in "${owner_files[@]}"; do
     perl -pi -e 'my $c = ucfirst $ENV{BS_OWNER}; s/\b([Tt])he Maintainer\b/$1 eq "T" ? $c : $ENV{BS_OWNER}/ge' "$f"
   done
@@ -106,7 +105,14 @@ find docs/reviews -maxdepth 1 -name '20*.md' -delete 2>/dev/null || true
 python3 scripts/sync_baseline.py --lock-here  # the kit lock (.check.lock) of the new project
 rm -f -- scripts/sync_baseline.py scripts/sync_merge.py scripts/drift.py scripts/token_log.py scripts/token_log_test.py \
   scripts/drift_test.py scripts/sync_baseline_repo.py scripts/sync_baseline_run.py scripts/token_log_test_report.py scripts/token_log_rows.py scripts/token_log_report.py \
-  KIT_VERSION docs/CHANGELOG.md docs/KIT_HANDOFF.md
+  scripts/bootstrap_cli_test.py scripts/check_lock_cli_test.py scripts/drift_cli_test.py scripts/sync_baseline_cli_test.py \
+  scripts/sync_merge_cli_test.py KIT_VERSION docs/CHANGELOG.md docs/KIT_HANDOFF.md
+# The kit's threat model describes the kit. The DoD group (sync_baseline.DOD_FILES) stays only with `dod-security: on`
+# in .check (fleet v2 DEC 4: opt-in); a project writes its own threat model.
+rm -f -- docs/threat-model.md
+if ! python3 -c 'import sys; sys.path.insert(0, "scripts"); from build_site_html import dod_security; sys.exit(0 if dod_security(".") else 1)'; then
+  rm -f -- SECURITY.md .github/dependabot.yml .github/workflows/security.yml
+fi
 if [ -f LICENSE ]; then mv -- LICENSE docs/archimedes_lever-LICENSE.txt; fi
 
 rm -- "$0"

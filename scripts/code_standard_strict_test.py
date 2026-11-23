@@ -27,7 +27,7 @@ from code_standard_test_gate import SAMPLE_GATE, commit, config_of, write   # no
 STRICT_FILE = Path(__file__).resolve().parent / 'code_standard_strict.py'
 
 
-def row_text(text, by='the Maintainer'):
+def row_text(text, by='the Keeper'):
     """Return one DECISIONS table row (four cells) whose decision cell is `text` and names the settings file, and whose
     By cell is `by`."""
     return '| 2026-11-17 | %s %s | %s | — |\n' % (text, settings.CHECK, by)
@@ -70,27 +70,27 @@ def check_rows(gate):
     """
     name = settings.CHECK
     plus = lambda by: row_text('cap', by).rstrip('\n')
-    ok, why = gate.owner_row('The decision names %s in prose.' % name, name, 'maintainer')
+    ok, why = gate.owner_row('The decision names %s in prose.' % name, name, 'keeper')
     assert not ok and 'rule 1' in why[0], 'a plain non-table line is refused: %s' % why
-    ok, why = gate.owner_row(plus('scripts/bump_lock.py'), name, 'maintainer')
+    ok, why = gate.owner_row(plus('scripts/bump_lock.py'), name, 'keeper')
     assert not ok and 'rule 3' in why[0], 'a row by a script is refused: %s' % why
-    ok, why = gate.owner_row(plus("agent, under the Maintainer's delegation"), name, 'maintainer')
+    ok, why = gate.owner_row(plus("agent, under the Keeper's delegation"), name, 'keeper')
     assert not ok and 'rule 3' in why[0], 'a row by an agent is refused: %s' % why
-    ok, why = gate.owner_row(plus('someone else'), name, 'maintainer')
+    ok, why = gate.owner_row(plus('someone else'), name, 'keeper')
     assert not ok and 'rule 4' in why[0], 'a row by another person is refused: %s' % why
-    assert gate.owner_row('| 2026-11-17 | other | the Maintainer | - |', name, 'maintainer') == (False, []), \
+    assert gate.owner_row('| 2026-11-17 | other | the Keeper | - |', name, 'keeper') == (False, []), \
         'a row that does not name the file is not a decision for it'
-    assert not gate.owner_row('| 2026-11-17 | names %s | the Maintainer |' % name, name, 'maintainer')[0], \
+    assert not gate.owner_row('| 2026-11-17 | names %s | the Keeper |' % name, name, 'keeper')[0], \
         'a row with fewer than four cells is refused'
-    assert gate.owner_row(plus('the Maintainer'), name, 'maintainer') == (True, []), 'the Maintainer row passes'
+    assert gate.owner_row(plus('the Keeper'), name, 'keeper') == (True, []), 'the Keeper row passes'
     exact = settings.NAMES_CHECK.search   # the test the check uses: `.check` itself, not .check.lock or .check.state.json
-    assert gate.owner_row(plus('the Maintainer'), name, 'maintainer', '', exact) == (True, []), 'it passes the exact test'
-    assert gate.owner_row(plus('the Maintainer').replace(name, settings.STATE), name, 'maintainer', '', exact) == (False, []), \
+    assert gate.owner_row(plus('the Keeper'), name, 'keeper', '', exact) == (True, []), 'it passes the exact test'
+    assert gate.owner_row(plus('the Keeper').replace(name, settings.STATE), name, 'keeper', '', exact) == (False, []), \
         'a row that names only the state file is not a decision for the settings'
     check_row_tricks(gate, name)
     with tempfile.TemporaryDirectory() as d:
-        (Path(d) / 'AGENTS.md').write_text('# Rules\n- Owner: the Maintainer\n')
-        assert gate.owner_role(d) == 'maintainer', 'the Maintainer role is read from AGENTS.md, without "the "'
+        (Path(d) / 'AGENTS.md').write_text('# Rules\n- Owner: the Keeper\n')
+        assert gate.owner_role(d) == 'keeper', 'the Keeper role is read from AGENTS.md, without "the "'
         assert gate.owner_role(Path(d) / 'none') == '', 'no AGENTS.md: no owner'
 
 
@@ -107,14 +107,14 @@ def check_row_tricks(gate, name):
         name: the settings file name.
     """
     row = row_text('the cap of the function length goes from sixty to seventy lines, see').rstrip('\n')
-    short = '| 2026-11-10 | The Maintainer is not a tenant admin. | the Maintainer | archive |'
+    short = '| 2026-11-10 | The Keeper is not a tenant admin. | the Keeper | archive |'
     head = '# Decisions\n| Date | Decision | By | Replaces |\n|---|---|---|---|\n'
     old = head + short + '\n' + row + '\n'
 
     def check(line, old_text='', gone=''):
         """Return owner_row for a file that is `old_text` with `line` added and, when `gone` is given, without that
         old line."""
-        return gate.owner_row(line + '\n' + (old_text.replace(gone + '\n', '') if gone else old_text), name, 'maintainer', old_text)
+        return gate.owner_row(line + '\n' + (old_text.replace(gone + '\n', '') if gone else old_text), name, 'keeper', old_text)
     for what, line in (('moved', row), ('re-spaced', row.replace('| the cap', '|   the cap'))):
         assert check(line, old, row) == (False, []), 'an old row %s is not a decision' % what
     edits = (('with a full stop added', row, row.replace(', see', '., see')), ('with a word changed', row, row.replace('sixty', 'fifty')),
@@ -130,20 +130,20 @@ def check_row_tricks(gate, name):
     assert not ok and 'rule 5' in why[0], 'a new owner row beside a removed old row is refused: %s' % why
     assert check(row_text('new opt-in rule for line length, cap 200, adopted in').rstrip('\n'), old)[0], 'a new row passes'
     forged = row.replace('sixty', 'fifty') + '\n' + short + '\r' + row   # a lone CR hides the old row from a tool that splits on it
-    ok, why = gate.owner_row(head + forged + '\n', name, 'maintainer', old)
+    ok, why = gate.owner_row(head + forged + '\n', name, 'keeper', old)
     assert not ok and 'rule 5' in why[0], 'an old row edited in place with a carriage-return trick is refused: %s' % why
     assert gate.owner_role_in('- Owner: Claude\n') == 'claude', 'odd input'
-    for line in ('| 2026-11-17 | raise the cap in %s (`a | b`) | agent, for the Maintainer | - |' % name,
-                 '| 2026-11-17 | raise the cap in %s | Agent | the Maintainer | - |' % name,
-                 '| 2026-11-17 | raise the cap in %s | the Maintainer | - | x |' % name):
+    for line in ('| 2026-11-17 | raise the cap in %s (`a | b`) | agent, for the Keeper | - |' % name,
+                 '| 2026-11-17 | raise the cap in %s | Agent | the Keeper | - |' % name,
+                 '| 2026-11-17 | raise the cap in %s | the Keeper | - | x |' % name):
         ok, why = check(line)
         assert not ok and 'rule 1' in why[0], 'a row with a spare cell is refused: %s' % why
-    for by in ('Claude, for the Maintainer', 'not the Maintainer', 'the Maintainer (2A); Claude (drafted it)',
-               'the Maintainer (not asked; written by Claude) and others'):
+    for by in ('Claude, for the Keeper', 'not the Keeper', 'the Keeper (2A); Claude (drafted it)',
+               'the Keeper (not asked; written by Claude) and others'):
         ok, why = check(row_text('cap', by).rstrip('\n'))
-        assert not ok and 'rule 4' in why[0], 'the Maintainer beside another writer is refused (%s): %s' % (by, why)
+        assert not ok and 'rule 4' in why[0], 'the Keeper beside another writer is refused (%s): %s' % (by, why)
     assert check('  ' + row)[0], 'an indented owner row passes'
-    assert check('| 2026-11-17 | a \\| b in %s | the Maintainer (answer 2A) | - |' % name)[0], 'an escaped | and a note pass'
+    assert check('| 2026-11-17 | a \\| b in %s | the Keeper (answer 2A) | - |' % name)[0], 'an escaped | and a note pass'
 
 
 def check_lines(cs, root, g):
@@ -191,9 +191,9 @@ def check_strict_main(cs, root, g):
     """
     import contextlib
     import io
-    (root / 'AGENTS.md').write_text('- Owner: the Maintainer\n')
+    (root / 'AGENTS.md').write_text('- Owner: the Keeper\n')
     (root / 'docs').mkdir()
-    old_row = '| 2026-11-01 | The Maintainer is not a tenant admin. | the Maintainer | - |\n'
+    old_row = '| 2026-11-01 | The Keeper is not a tenant admin. | the Keeper | - |\n'
     (root / 'docs' / 'DECISIONS.md').write_text('# Decisions\n' + old_row)
     for f in ('a.py', 'b.py'):
         (root / f).write_text('x = 1\n')
@@ -214,14 +214,14 @@ def check_strict_main(cs, root, g):
     edited = old_row.replace('admin.', 'admin. ' + settings.CHECK)
     assert 'rule 5' in problems(strict, both, '', edited), 'main\'s old row with the file name added does not open the gate'
     assert 'rule 5' in problems(strict, both, row_text(strict_text), ''), 'a new row beside a removed old row does not either'
-    for by, rule in (('scripts/x.py', 'rule 3'), ("agent, under the Maintainer's delegation", 'rule 3'),
+    for by, rule in (('scripts/x.py', 'rule 3'), ("agent, under the Keeper's delegation", 'rule 3'),
                      ('someone else', 'rule 4')):
         assert rule in problems(strict, both, row_text(strict_text, by)), 'a row by %r is refused by %s' % (by, rule)
     assert 'rule 1' in problems(strict, both, 'Level changes %s.\n' % settings.CHECK), 'a plain line is refused'
-    (root / 'AGENTS.md').write_text('- Owner: Claude\n')   # the Maintainer line changed in the same change: main's owner still counts
+    (root / 'AGENTS.md').write_text('- Owner: Claude\n')   # the Keeper line changed in the same change: main's owner still counts
     assert 'rule 4' in problems(strict, both, row_text(strict_text, 'Claude')), 'a new owner named in this change cannot decide'
-    (root / 'AGENTS.md').write_text('- Owner: the Maintainer\n')
-    assert 'setting' in problems(strict, both, '| 2026-11-17 | other | the Maintainer | - |\n'), 'a row for another thing'
+    (root / 'AGENTS.md').write_text('- Owner: the Keeper\n')
+    assert 'setting' in problems(strict, both, '| 2026-11-17 | other | the Keeper | - |\n'), 'a row for another thing'
     new_file = {'safety': {'a.py': 1, 'new.py': 1}}
     assert 'new files meet the rules' in problems(strict, new_file, row_text(strict_text)), 'debt for a new file is refused'
     on = dict(cfg, caps=dict(cfg['caps'], max_line_chars=200))

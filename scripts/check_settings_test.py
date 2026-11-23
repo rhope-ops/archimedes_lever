@@ -141,7 +141,8 @@ def case_validate(root, git):
              ("code-max-file-lines: many\n", 1, "code:"),
              ("audit-every-days: -3\n", 1, "audit:"),
              ("dod-security: maybe\n", 1, "dod-security:"),
-             ("profile: dodd\n", 1, "profile:"))
+             ("profile: dodd\n", 1, "profile:"),
+             ("code-strict-gate = on\n", 1, "looks like a setting"), ("code_strict_gate: on\n", 1, "looks like a setting"))
     for text, code, mark in cases:
         (root / CHECK).write_text(text)
         out = io.StringIO()
