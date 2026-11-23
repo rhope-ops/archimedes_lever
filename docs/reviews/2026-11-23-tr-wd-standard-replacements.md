@@ -18,18 +18,18 @@ Packages and tools used (this container only; none added to any repo):
 
 | Tool | Version | Source |
 |---|---|---|
-| Python | 3.13 (container) | preinstalled |
+| Python | 3.13.18 | preinstalled |
 | pip | 26.3 (the container had 24.0 from Debian; `pip install --ignore-installed pip` was needed first) | PyPI |
 | cyclonedx-bom (command `cyclonedx-py`) | 9.0.0 (with cyclonedx-python-lib 11.12.0) | PyPI |
 | pip-tools (command `pip-compile`) | 7.7.0 | PyPI |
 | markdown (python-markdown) | 3.11.3 | PyPI |
 | markdown-it-py | 4.3.0 (+ linkify-it-py 2.2.0, mdit-py-plugins 0.7.0) | PyPI |
 | bandit (comparison only) | 1.9.4 (the version the repos' own workflows pin) | PyPI |
-| CodeQL CLI | 2.27.5 (`codeql-linux64.zip`, 418,509,202 bytes) | github.com release download |
+| CodeQL CLI | 2.27.5 (`codeql-linux64.zip`, 418,509,202 bytes) and the bundle with the query packs (`codeql-bundle-linux64.tar.gz`, 696,138,291 bytes, same release) | github.com release downloads |
 | PowerShell | 7.4.6 | preinstalled |
 | Node.js / Google Chrome for Testing / playwright (npm) | 22.23.5 / 153.0.8010.12 / 1.63.0 | preinstalled |
 
-Side effect to know: `pip install` upgraded some packages of the container (for example python-dateutil, which conan 2.32.0 now flags). It touched no repo.
+Deviations from the brief and the full install list are in "Installs and deviations" at the end of this file.
 
 ---
 
@@ -48,20 +48,30 @@ Baseline for comparison: `bandit -r scripts -ll` (medium and higher), as the rep
 
 ### (a) CodeQL
 
-Local run: the CodeQL CLI 2.27.5 downloaded (the proxy allowed github.com release assets) and created a Python database for each repo. The query packs could not be downloaded: `codeql pack download codeql/python-queries` is refused by the agent proxy (`pkg-containers.githubusercontent.com` is not on the allowlist), and the CodeQL source archive on github.com is also refused (403). So no query ran, and **the finding count is not measured** (not zero, not known). The main session's later run in GitHub Actions will give it.
+Local run: the CodeQL CLI 2.27.5 (CLI-only zip, no query packs) downloaded from a github.com release asset and created the databases. `codeql pack download` is refused by the agent proxy (the `ghcr.io` blob host `pkg-containers.githubusercontent.com` is not on the allowlist) and the CodeQL source archive is refused (403). The query packs came from the second release asset, the bundle `codeql-bundle-linux64.tar.gz` of the github/codeql-action release "latest" (696,138,291 bytes, same CLI release 2.27.5, ships `python-code-scanning.qls`, `javascript-code-scanning.qls`, `actions-code-scanning.qls`). The databases made with the CLI-only zip were analyzed with the bundle (same release number).
 
-Measured: database creation (extraction) time for Python on this container:
+Measured with the code-scanning suites (the default suite of the GitHub action), threads=0 (all cores of this container):
 
-| Repo | Python database create | Result |
-|---|---|---|
-| kit | 19 s | "Successfully created database" |
-| RADE | 19 s | ok |
-| 90-161.Z | 16 s (JavaScript database of the same repo: 14 s) | ok |
-| 33-332.Z | 11 s | ok |
+| Repo | Language | Database create | Analyze | Findings |
+|---|---|---|---|---|
+| kit | python | 19 s | 25 s | 1: `py/redos`, scripts/build_site_html.py line 121 (a regular expression that may backtrack exponentially on strings starting with `<table>`) |
+| kit | actions | 6 s | 13 s | 0 |
+| kit | javascript-typescript | 4 s | 1 s | database creation **fails** (exit 32): "CodeQL detected code written in JavaScript/TypeScript but could not process any of it" (its one .js file is not picked up) |
+| RADE | python | 19 s | 26 s | 3: `py/bad-tag-filter` x2 (tests/page_test.py lines 40 and 94: a regular expression does not match upper-case `<SCRIPT>`), `py/redos` x1 (scripts/build_site_html.py line 121, the same line as in the kit) |
+| RADE | actions | 7 s | 15 s | 0 |
+| RADE | javascript-typescript | 13 s | 45 s | 0 |
+| 90-161.Z | python | 16 s | 22 s | 1: `py/redos`, scripts/build_site_html.py line 121 |
+| 90-161.Z | actions | 7 s | 16 s | 0 |
+| 90-161.Z | javascript-typescript | 14 s | 51 s | 1: `js/bad-tag-filter`, tests/check_go_page.js line 51 (does not match upper-case `<SCRIPT>`) |
+| 33-332.Z | python | 11 s | 27 s | 1: `py/redos`, scripts/build_site_html.py line 121 |
+| 33-332.Z | actions | 7 s | 15 s | 0 |
+| 33-332.Z | javascript-typescript | 4 s | 1 s | database creation fails (exit 32), as the kit |
 
-Run-time estimate for GitHub Actions (an estimate, not a measurement): extraction as above, plus the action's CodeQL bundle download and query pack download, plus query run. For repos of 50 to 85 Python files expect about 3 to 6 minutes per language per run. The two existing jobs (bandit, gitleaks) each have `timeout-minutes: 10`; the same cap fits.
+Reading: 7 findings in all (4 `py/redos` that are one file, `scripts/build_site_html.py`, copied into all four repos; 3 `bad-tag-filter` in test files). Whether each is a real defect was not judged here (the regular expressions run on the repo's own HTML at build time or in tests, not on user input). The bandit baseline (0 results) found none of them: CodeQL finds a different class. In the Actions job a language with no source it can process (kit, 33-332.Z for JavaScript) fails the step, so the matrix must list languages per repo.
 
-Coverage limit that matters here: CodeQL has no PowerShell support. The bulk of the code in RADE (39 .ps1 files), 90-161.Z (67) and 33-332.Z (38) is PowerShell and stays uncovered. The languages CodeQL does cover per repo: Python in all four; JavaScript in RADE (2 .js files + inline page script), 90-161.Z (5), 33-332.Z (1), kit (1); the `actions` language (checks the workflow YAML itself) in all four.
+Run time: create plus analyze took 40 to 45 s for Python, 59 to 65 s for JavaScript and about 20 s for the workflow YAML; one repo with all its languages in sequence took 63 s (kit) to 126 s (90-161.Z). In GitHub Actions add the action's own start: the CodeQL bundle download and unpack (the bundle is 696 MB; the action caches it per runner image, so the first run is slower), and the job start. The Actions time is an estimate, not a measurement: about 3 to 6 minutes per language job. The two existing jobs (bandit, gitleaks) each have `timeout-minutes: 10`; the same cap fits.
+
+Coverage limit that matters here: CodeQL has no PowerShell support (`codeql resolve languages` of CLI 2.27.5 lists: html, xml, yaml, go, csharp, java, actions, python, swift, rust, csv, properties, ruby, cpp, javascript). The bulk of the code in RADE (39 .ps1/.psm1 files), 90-161.Z (67) and 33-332.Z (38) is PowerShell and stays uncovered. What CodeQL does cover per repo: Python in all four; JavaScript in RADE and 90-161.Z (it fails for kit and 33-332.Z, see the table); the `actions` language (the workflow YAML itself) in all four, 0 findings.
 
 Workflow I would use (not pushed; the action pins must be set to commit SHAs like the repos' other workflows; I did not invent the SHA, set it when adding the file):
 
@@ -103,7 +113,7 @@ jobs:
           category: "/language:${{ matrix.language }}"
 ```
 
-Open points for the Maintainer: (1) results upload to the Security tab needs `security-events: write`, which widens a workflow permission (AGENTS.md "Guards and checks": the workflow is a guard file; a change needs the Maintainer's request). (2) Code scanning is free for public repos; for a private repo it needs GitHub Code Security (a cost; the repo visibility of kit was not checked here). (3) `paths:` as written skips a pull request that changes no listed file; drop `paths` to run on every pull request. (4) A repo with no `.js` file in the pull request still gets an empty JavaScript run unless the matrix is cut per repo.
+Open points for the Maintainer: (1) results upload to the Security tab needs `security-events: write`, which widens a workflow permission (AGENTS.md "Guards and checks": the workflow is a guard file; a change needs the Maintainer's request). (2) Licence: my recollection, not checked in this session, is that code scanning is free for public repos and needs GitHub Code Security (a cost) for private repos; the visibility of each repo was not checked. (3) `paths:` as written skips a pull request that changes no listed file; drop `paths` to run on every pull request. (4) The matrix must be cut per repo: JavaScript fails on kit and 33-332.Z (measured above).
 
 ### (b) CycloneDX SBOM
 
@@ -140,7 +150,7 @@ Trade-offs to weigh: a hash-pinned file lists every platform wheel (a long file,
 
 | Item | Retire | Shrink | Keep | Adopt |
 |---|---|---|---|---|
-| CodeQL | no custom tool replaced (bandit and gitleaks are standard already) | | | Adopt for Python, JavaScript and workflow YAML next to bandit: finds data-flow issues bandit cannot; leaves PowerShell uncovered; needs a permission change and (private repos) a licence |
+| CodeQL | no custom tool replaced (bandit and gitleaks are standard already) | | | Adopt for Python, JavaScript (RADE, 90-161.Z only) and workflow YAML next to bandit: it found 7 results the bandit baseline (0) did not (3 of them in test files; 4 are one copied file); leaves PowerShell uncovered; needs a permission change and, for a private repo, possibly a licence (unchecked) |
 | CycloneDX SBOM | | | | Adopt only for 90-161.Z today (3 or 9 components); for kit, 33-332.Z an SBOM would be empty, for RADE it would be wrong until a manifest exists |
 | Hash-pinned Python | | | Keep as is for kit and 33-332.Z (nothing to pin) | Adopt for 90-161.Z (replace the hand-pinned 3 lines with a 9-package hashed file); RADE would first need a manifest, which is a new file the repo does not have |
 
@@ -163,10 +173,19 @@ Method: cut each bundle after line N (N spread over the file), and ask the Power
 | Bundle | Cut points tried | Parse-clean prefixes (these RUN) | Where |
 |---|---|---|---|
 | Ion-script.txt | 700 evenly spread + every line 1 to 130 | 0 of 700; in 1..130: lines 83 to 91 only | 83..91 = after the header comment and the three Settings assignments, before `try {`: runs three variable assignments, nothing else |
-| 90161Z-R41-round-r2.ps1 (unchanged) | 650 evenly spread | 49 of 650 (7.5 %) | lines 24 to 74 (inside the header comment: harmless) and from line 3,943 on, many cuts between 10,334 and 12,549 and later: top-level statements, the files part and engine parts run, with later engine parts missing |
-| 90161Z-R41-round-r2.ps1 + guard (prototype below) | 650 | 3 of 650 (lines 25, 50, 75: header comment only) | no cut inside the body or after it runs the body |
+| 90161Z-R41-round-r2.ps1 (unchanged) | 650 evenly spread | 49 of 650 (7.5 %) | lines 24, 49, 74 (in the `#   line` Contents list: after `$buildId` and `$engineRelease` are assigned), then from line 3,943 on up to line 13,579 (83.6 % of the file); what these prefixes execute is traced below |
+| 90161Z-R41-round-r2.ps1 + guard (prototype below) | 650 | 3 of 650 (lines 25, 50, 75: before the start block, in the Contents list) | no cut inside the body or after it runs the body |
 
-So the 90-161.Z / RADE bundle shape has the problem (a 63 % to 77 % cut parses and runs part of the work); Ion does not, because of its `try`/`finally`.
+What a parse-clean prefix executes (traced with the parser: top-level statements of the prefix, `trace.ps1`):
+
+| Cut at line | Top-level statements | What runs |
+|---|---|---|
+| 3,943 | 23 | assignments only (no command call) |
+| 10,334 | 59 | assignments only |
+| 12,549 | 506: 380 assignments, 123 function definitions, 2 `if`, 1 `try` | the assignments and definitions, the bundle reading its own text (line 11,580) and `Get-ScriptCheck` (line 11,615: hash check, display only); no step, no file write |
+| 13,579 (the last parse-clean cut found) | 585: 417 assignments, 163 function definitions, 3 `if`, 1 `try`, 1 pipeline | the above, plus `Select-App 0` (line 13,564), `Test-NiprDevice` (line 13,575), `Get-Date`: the engine start begins; no step ran in this prefix as far as the statements show |
+
+So the measured hazard: in 7.5 % of the sampled cuts the text is a valid script that starts to run (up to the engine start at the end of the file) without telling the person that it is cut. What it would do between those cuts was traced for four cuts only; it did not write files in any of the four. A cut between 13,579 and the end, or inside Part 3, was not found parse-clean in the sample. Ion does not have the problem, because of its `try`/`finally`.
 
 ### Prototype (temp copy only)
 
@@ -237,9 +256,9 @@ Not proven here (needs a Windows ISE round, spec Q5 of docs/specs/bundle-hash.md
 
 | Option | Effect | Trade-off |
 |---|---|---|
-| Adopt the guard in the RADE generator | Closes the 7.5 % partial-run window of 90-161.Z / RADE bundles; one 28-line block for all apps | A new guard in generated code (rule text and guard-file rules apply to the generator's change); needs one Windows round; the cut-before-end case stays silent (no "complete" line is the signal) |
+| Adopt the guard in the RADE generator | Closes the window of 7.5 % of sampled cuts (a valid, silent partial start) in 90-161.Z / RADE bundles; one 28-line block for all apps | A change in generated code; needs one Windows round; the cut-before-end case stays silent (no "complete" line is the signal) |
 | Shrink: only the wrapper (no read-back, no hash compare) | 12 lines; nothing runs unless the end is reached | No message on a changed (not cut) text; relies on the existing hash check, which stops nothing yet |
-| Keep | no work | 49 of 650 cut points of the 90-161.Z bundle run partly |
+| Keep | no work | 49 of 650 cut points of the 90-161.Z bundle are valid scripts that start without a message (traced: up to the engine start, no file write) |
 | 33-332.Z | Keep: Ion is protected by its `try`/`finally` (0 of 700 cuts run, except the 3 Settings assignments) | adding a hash line would be a separate feature |
 
 ---
@@ -275,7 +294,7 @@ Visible words (5,159 in the client):
 What the differences are:
 - Same words, different structure: the client's cards (`details`/`summary` 3, `h3` 4, `button` 44, `div` 48, `span` 96: state chips, "Done 57 items", folder boxes with a Copy button, file cards with "Open as .txt" and "Copy script") are not Markdown. A library gives h2/h3 headings and lists only. The card layer (about 130 lines of `go.js`: `card`, `renderSecs`, `renderBody`'s folder, file and note rules, `fileCard`) would have to be rewritten as a build script (a markdown-it-py plugin or a post-render pass in Python) or stay in the page; the build-time step then keeps the same custom rules in Python instead of JavaScript.
 - python-markdown does not make the nested lists the file uses (3-space indent): `ol` 0 against 8, and it does not link bare URLs without an extension: 0 links against 48.
-- `Rounds\<round>`: standard Markdown reads `\<` as an escape, so the backslash disappears (`Rounds<round>`); the client keeps it. Two places in go.md. With markdown-it-py's default `html=True` the `<round>` text is taken as an HTML tag and vanishes too, so `html=False` is required (it is also what keeps raw HTML out of the page).
+- `Rounds\<round>` (two places in go.md): standard Markdown reads `\<` as an escape, so markdown-it-py (both `html=True` and `html=False` give the same text, `Rounds<round>`) loses the backslash; the client keeps it. python-markdown loses the `<round>` tag as well (`Rounds\ .`). `html=False` is not what fixes this; it is a hardening option (it keeps raw HTML in go.md out of the page).
 - 1 to 2 words per line labels such as "opens:" (colon kept by the library) differ.
 
 ### CSP `connect-src 'none'`
@@ -290,7 +309,7 @@ Also: go.md is read at run time so a push to go.md shows after at most 5 minutes
 
 | Repo | Retire | Shrink | Keep | Adopt |
 |---|---|---|---|---|
-| 90-161.Z `go.js` Markdown parts | | Shrink: a library does the lists, bold, code and links (`inl`, list handling: about 30 of 389 lines); the card layer stays | | Adopt build-time HTML: needs the card layer ported (about 130 lines), `html=False`, a backslash rule for `\<`; saves the runtime fetch of go.md |
+| 90-161.Z `go.js` Markdown parts | | Shrink: a library does the lists, bold, code and links (`inl`, list handling: about 30 of 389 lines); the card layer stays | | Adopt build-time HTML: needs the card layer ported (about 130 lines), a rule for `\<` (escape it as `\\<` in go.md, or keep the text in a code span); `html=False` as a hardening option; saves the runtime fetch of go.md |
 | RADE | | | Keep: no client-side Markdown exists; the intro is static already | |
 | `connect-src 'none'` | | | | Possible for the task text; not possible while the round script is fetched at run time |
 
@@ -324,7 +343,7 @@ Source: Microsoft Learn, "pac solution" reference (`https://learn.microsoft.com/
 | Environment variable definitions, connection reference XML | `env_definition_files`, `connection_reference_xml` | none to generate (hand-made files in the unpacked layout; the repo's notes say the first attempts failed on exactly these, R16 to R18) |
 | Zip the files deterministically (fixed timestamps, stored, uuid5 IDs, CRLF text, `--check` compares with the committed zip) | `zip_solution`, `exported_text`, `guid`, `flow_guid` | `pac solution pack` makes a zip; whether its output is byte-identical between runs (timestamps, ordering) was not tested, so the repo's `--check` (compare committed zip with a fresh build) may need a different test (compare unpacked files) |
 | Import test: a test solution for each test def (one harmless flow) | `test_jobs`, `test_variant` | `pac solution import` (needs an environment and a login) |
-| Legacy "Import Package (Legacy)" zip (manifest.json + `Microsoft.Flow/flows/<id>/definition.json`, apisMap, connectionsMap) | `build_flow_package.py` (207 lines) | **no equivalent**: pac handles Dataverse solutions, not the legacy flow package format |
+| Legacy "Import Package (Legacy)" zip (manifest.json + `Microsoft.Flow/flows/<id>/definition.json`, apisMap, connectionsMap) | `build_flow_package.py` (207 lines) | no equivalent on the `pac solution` page I read (it lists Dataverse solution commands only); I did not read the rest of the pac reference, so another `pac` command group may cover the legacy flow package: **unverified** |
 | SharePoint provisioning payload (lists, fields, views, MERGE requests from `schemas/lists/*.json`) | `build_flow_payload.py` (151 lines) | **no equivalent** (a domain generator, not a packaging step) |
 | Version number in the file name (`-r5`) | all builders, the `-rN` rule | `pac solution version` / `online-version` set the solution version inside `Solution.xml` (4-part version, today `1.0.0.1`); the file name itself stays a repo convention |
 
@@ -343,7 +362,7 @@ Summary of the map: of 866 builder lines, the XML/zip packaging part (about 130 
 | `build_flow_solution.py` + `_xml.py` | | Shrink to the flow-definition part (about 300 lines) if the unpacked solution folder is committed and `pac solution pack` makes the zip | | Adopt `pac solution pack` for the zip only after a Windows or dotnet run proves a byte-stable zip and an accepted import |
 | `-rN` file names | Retire the suffix in file names and put the version in one manifest | | Keep (the suffix names which file a round used) | |
 
-Trade-offs: pac needs .NET and a Windows or Linux dotnet tool install; nothing in the repo today needs a login to build, and `pack` alone does not (the commands that need a login are export, import, clone, sync).
+Trade-offs: pac is a .NET tool (install route and platform support not checked here: **unverified**). Which commands need a signed-in environment: from the docs page, `clone`, `export`, `import`, `list`, `delete`, `publish`, `sync`, `online-version`, `upgrade` act on an environment; `pack`, `unpack`, `init`, `version` and `add-reference` read or write local files (my reading of the descriptions, not run). Nothing in the repo today needs a login to build.
 
 ---
 
@@ -416,8 +435,8 @@ Note on names: there is no `questions.json` or `glossary.json` in `data/`; both 
 |---|---|
 | `site/dist/questions.json` | 1,979,688 bytes (359,619 gzipped), 1,357 questions |
 | `site/dist/glossary.json` | 1,414,230 bytes (258,629 gzipped) |
-| Spans in `questions.json` | **1,485** objects `{text, start, end}` in `questions[].keywords[]`, all in the stem, in all 1,357 questions (90,093 bytes of JSON), per block: B1 350, B2 329, B3 250, B4 253, B5 303 |
-| Spans in `glossary.json` | 8,911 triples `[start, end, termSlug]` in `questionLinks`: stem 1,278, answers 3,927, rationales 3,706 (537,921 bytes; 1,333 questions have a link). These are produced by the build (`build_glossary_links.py` and the matcher), not authored: they are derived from the question text |
+| Spans in `questions.json` | **1,485** objects `{text, start, end}` in `questions[].keywords[]`, all in the stem, in all 1,357 questions (82,540 bytes of JSON in the file's own compact form; 98,824 with the `"keywords":` key), per block: B1 350, B2 329, B3 250, B4 253, B5 303 |
+| Spans in `glossary.json` | 8,911 triples `[start, end, termSlug]` in `questionLinks`: stem 1,278, answers 3,927, rationales 3,706 (489,688 bytes; 1,333 questions have a link). These are produced by the build (`build_glossary_links.py` and the matcher), not authored: they are derived from the question text |
 | Authored source of the keyword spans | `data/questions/**`: 49 JSON files hold 2,624 `{text,start,end}` objects (13,121,137 bytes of source JSON): exam 1,344, hard 542, b1 181, b2 169, b5 146, b3 120, root unit files 122. More span objects sit in revision, publication and quality files: across all of `data/` and `config/` 160 JSON files contain 10,301 objects with `start` and `end` |
 | Integrity of the 1,485 keyword spans | 0 spans where `stem[start:end]` differs from `text`; 0 overlapping spans; 0 characters above U+FFFF (so Python and JavaScript string offsets are the same); 0 stems, answers or rationales that already contain `==` (no clash with the markup) |
 
@@ -431,7 +450,7 @@ Files: `proto.py` in scratch. The build step: scan the marked text with `==(.+?)
 |---|---|
 | 20 sample questions (every 67th question: `B1-U2-Q015` to `B5-H-U6-Q040`), 23 spans | 0 questions differ, 0 spans differ (`text`, `start` and `end` all equal) |
 | All 1,357 questions (1,485 spans) | 0 differ |
-| Size effect | the keyword JSON arrays (90,093 bytes) leave the source; the markup adds 5,940 characters (4 per span) to the stems |
+| Size effect | the keyword JSON arrays (82,540 bytes in the built file) leave the source; the markup adds 5,940 characters (4 per span) to the stems |
 
 Example of the marked stem: "An airman carries his laptop ... tied to ==one central distribution system==. Each room's unit ==broadcasts the ...".
 
@@ -439,15 +458,27 @@ What this proves and does not: the markup and the offsets carry the same informa
 
 ### Block (B1 to B5) split: size estimate
 
-Served questions by block (bytes of the JSON of each question): B1 282 questions 413,733 bytes; B2 295, 439,971; B3 248, 382,296; B4 252, 391,838; B5 280, 437,584 (array total 2,065,422 with the key layer; the part of `questions.json` outside the questions array is 13,964 bytes: blocks, examForms, textDictionary). Per-question glossary links by block: B1 98,361; B2 92,873; B3 109,145; B4 111,280; B5 103,194 bytes. `glossary.json` has 813,706 bytes that are not per-question (698 entries, 110 acronyms, `docs`; entries carry excerpts from all five blocks: B1 300, B2 304, B3 237, B4 234, B5 288 excerpt records), plus `answerTerms` 121,371 and `questionEntry` 38,578 bytes that are per question.
+Sizes, measured with the files' own compact serialization (`json.dumps(separators=(',', ':'), ensure_ascii=False)` reproduces `glossary.json` exactly and `questions.json` to 1 byte; the parts below add up to the file sizes: questions 1,966,350 + 13,323 other keys; glossary parts 1,414,110 of 1,414,230):
 
-Estimate of the split (from these numbers, nothing was built): five question files of about 0.38 to 0.44 MB each (about 70 to 75 KB gzipped each, taking the whole file's ratio of 18 %) with a shared 14 KB part; the glossary stays one shared file of about 0.81 MB plus five per-block link files of about 0.13 to 0.15 MB (links + answerTerms + questionEntry share). A learner who opens one block would fetch about 0.4 MB instead of 2.0 MB of questions (and the glossary parts still have to be fetched for the glossary view). Code touched: 60 files mention `questions.json` and 32 mention `glossary.json` (scripts, tests and `site/dist` modules, such as `data-load.mjs`, which fetches `./glossary.json` at line 61), so the split is a loader and a test change across about 60 files, not a data change alone. Cross-block features (the exam forms, the hard bank, the glossary's cross-block entries, the service worker's pre-cache list) were not traced here.
+| Block | Questions | Question bytes | Keyword bytes | Glossary `questionLinks` | `answerTerms` | `questionEntry` | Glossary per-block total |
+|---|---|---|---|---|---|---|---|
+| B1 | 282 | 393,118 | 18,889 | 94,142 | 18,607 | 7,676 | 120,425 |
+| B2 | 295 | 418,641 | 17,609 | 89,465 | 14,743 | 8,756 | 112,964 |
+| B3 | 248 | 364,163 | 14,789 | 102,856 | 27,017 | 6,289 | 136,162 |
+| B4 | 252 | 373,432 | 14,202 | 104,630 | 26,005 | 6,171 | 136,806 |
+| B5 | 280 | 416,995 | 17,051 | 98,594 | 28,599 | 7,572 | 134,765 |
+
+Not per block: `questions.json` outside the questions array 13,323 bytes (blocks, examForms, textDictionary, hardMode); `glossary.json` shared parts 772,985 bytes (698 entries 757,333, acronyms 13,743, docs 1,833; the entries carry excerpts from all five blocks: B1 300, B2 304, B3 237, B4 234, B5 288 excerpt records).
+
+Estimate of the split (from these numbers, nothing was built): five question files of about 0.36 to 0.42 MB each (about 65 to 76 KB gzipped each, taking the whole file's ratio of 18 %) with a shared 13 KB part; the glossary stays one shared file of about 0.77 MB plus five per-block link files of about 0.11 to 0.14 MB (links + answerTerms + questionEntry). A learner who opens one block would fetch about 0.4 MB instead of 2.0 MB of questions (and the glossary parts still have to be fetched for the glossary view). Code touched: 60 files mention `questions.json` and 32 mention `glossary.json` (scripts, tests and `site/dist` modules, such as `data-load.mjs`, which fetches `./glossary.json` at line 61), so the split is a loader and a test change across about 60 files, not a data change alone. Cross-block features (the exam forms, the hard bank, the glossary's cross-block entries, any cache list of the site) were not traced here.
+
+Open choice for the Maintainer on what P2-8a targets: the prototype covers the **1,485 keyword spans** (authored, `==text==` can carry them). The **8,911 glossary link triples** carry a term slug that `==text==` cannot hold, and they are derived by the build already; they are a different set (a `==text|slug==` markup, or leaving them derived, or a matcher change).
 
 ### Candidate verdicts (trial 6)
 
 | Item | Retire | Shrink | Keep | Adopt |
 |---|---|---|---|---|
-| Offsets in the question source (P2-8a) | | | Keep (works, 0 integrity errors today) | Adopt `==term==` in the source with a build step that derives the 1,485 spans: lossless on all 1,357 questions; the risk is the 12 scripts and the revision files (10,301 span objects) that read offsets |
+| Offsets in the question source (P2-8a) | | | Keep (works, 0 integrity errors today) | Adopt `==term==` in the source with a build step that derives the 1,485 spans: lossless on all 1,357 questions; the risk is the 12 scripts and the revision files (10,301 span objects) that read offsets; covers the 1,485 keyword spans only, not the 8,911 link triples (see the open choice above) |
 | Glossary link triples | Retire as stored data only if the build derives them in the browser (not tried); today they are already derived at build time | | Keep (8,911 triples, derived) | |
 | Block split (P2-8b) | | | Keep one file: 1.98 MB (360 KB gzipped) loads once | Adopt a split for load size: about 0.4 MB per block; costs a loader and test change across about 60 files |
 
@@ -465,6 +496,8 @@ pip-compile --generate-hashes --strip-extras -o req.hashed.txt 90-161.Z/requirem
 curl -L -o codeql.zip https://github.com/github/codeql-cli-binaries/releases/latest/download/codeql-linux64.zip
 codeql database create db --language=python --source-root=<repo copy>      # 11 to 19 s per repo
 codeql pack download codeql/python-queries                                   # refused by the proxy
+curl -L -o bundle.tgz https://github.com/github/codeql-action/releases/latest/download/codeql-bundle-linux64.tar.gz   # worked
+codeql database analyze db-<repo> python-code-scanning.qls --format=sarif-latest --output=res.sarif   # 22 to 27 s per repo
 bandit -r <repo>/scripts -ll                                                 # 0 results in all four
 # trial 2
 pwsh -NoProfile -File parsecut.ps1 <bundle> 650        # parse-clean prefixes
@@ -485,8 +518,18 @@ The scratch scripts (`parsecut.ps1`, `guard.py`, `run.sh`, `client_render.js`, `
 
 ## Limits of these trials
 
-- CodeQL findings: not measured (query packs blocked by the proxy). Run time of CodeQL in Actions: estimated, not measured.
+- CodeQL: findings and local run times are measured (Python, JavaScript, actions); the run time in GitHub Actions is an estimate. Each finding was listed, not judged. The query packs came from the codeql-action bundle (a first attempt with the CLI-only zip and `codeql pack download` failed on the proxy).
 - Windows-only behaviour (ISE script pane text, the real 90-161.Z bundle running, a 175 % window, WPF, `pac`): not run; the container has PowerShell 7.4.6 on Linux only.
 - The guard was proven on a stub body and by parsing the real bundle; the real bundle body was not run.
 - pac commands were read from the docs only.
 - The ICF prototype used the built `site/dist` files; the source files under `data/questions/` were counted but not rewritten.
+
+## Installs and deviations
+
+Installs beyond the brief's list (cyclonedx-bom, pip-tools, markdown/markdown-it-py, CodeQL CLI), all in this container, none in any repo:
+- `bandit` 1.9.4 (a comparison baseline; its dependencies PyYAML 6.0.3, rich 15.0.0, stevedore 5.10.0, Pygments 2.21.0 came with it), `linkify-it-py` 2.2.0 and `mdit-py-plugins` 0.7.0 (the markdown-it-py link rule), the CodeQL bundle `codeql-bundle-linux64.tar.gz` (696,138,291 bytes, release 2.27.5, ships the query packs), Google Chrome and playwright (already installed in the image, not installed by me).
+- `pip download playwright` (a try to see if the Python package could be had) wrote two wheel files into this worktree's top folder (`greenlet-3.5.6-*.whl`, `playwright-1.65.2-*.whl`); they were not installed and I deleted both before the commit. The committed diff holds only this file.
+- Full output of the first install (`pip install --ignore-installed pip cyclonedx-bom pip-tools markdown markdown-it-py`): arrow 1.4.0, attrs 26.1.0, boolean.py 5.0, build 1.6.1, chardet 7.7.0, click 8.5.0, cyclonedx-bom 9.0.0, cyclonedx-python-lib 11.12.0, defusedxml 0.7.1, fqdn 1.6.0, idna 3.19, isoduration 20.11.0, jsonpointer 3.12, jsonschema 4.26.0, jsonschema-specifications 2025.9.1, lark 1.3.1, license-expression 30.4.4, lxml 6.1.3, markdown 3.11.3, markdown-it-py 4.3.0, mdurl 0.1.2, packageurl-python 0.17.6, packaging 26.3, pip 26.3, pip-requirements-parser 32.0.1, pip-tools 7.7.0, py-serializable 2.2.0, pyparsing 3.3.3, pyproject_hooks 1.3.3, python-dateutil 2.9.0.post0, referencing 0.37.0, rfc3339-validator 0.1.4, rfc3986-validator 0.1.1, rfc3987-syntax 1.1.0, rpds-py 2026.6.3, setuptools 84.2.1, six 1.17.0, sortedcontainers 2.4.0, tzdata 2026.6, uri-template 1.3.0, webcolors 25.10.0, wheel 0.48.0. pip warned that conan 2.32.0 requires python-dateutil below 3 and an installed python-dateutil 4.0.0 conflicts; the install itself ended with python-dateutil 2.9.0.post0. Pip 24.0 (Debian) could not be uninstalled in place, hence `--ignore-installed`.
+- Network use: github.com release assets (CodeQL CLI zip, CodeQL bundle), learn.microsoft.com (the `pac solution` page), PyPI (packages). Requests refused by the proxy: the GitHub API, the CodeQL source archive, `ghcr.io` blobs.
+
+Claims taken from recall and not verified in this session (each is marked in the text where used): the CodeQL licence rule for private repos; whether a Pages build runs on every push to main; pac install route and platform support; which pac command groups beyond `pac solution` exist.
