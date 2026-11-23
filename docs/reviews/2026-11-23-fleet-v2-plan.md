@@ -153,3 +153,5 @@ DoD file list absent in ICF-Source, pagecount.mjs beacon present, 4 a11y !import
 
 ## Notes after approval
 - 2026-11-23, the owner on the Step 3 draft (3 SUGGESTED rules: standard tool before a custom checker; a size cap is a limit, split at 80%; a periodic fresh cross-repo audit): "a good start ... should be a bit more robust". Step 3 output: each rule with its enforcing check (hook or test), its trigger, and the audit defect it prevents.
+- 2026-11-23, the owner (question dialog, before stepping away): DEC 12: at each stage checkpoint, report (handoff + chat) and continue; stop at once only on a MAJOR review finding, a red gate, drift from this plan, or an invariant failure. DEC 13: pre-approved: after the Stage 2 PR merges green with a clean fresh review, run RADE release.yml for engine-v36 and verify the release and its attestation.
+- Evidence for DEC 3 (no Bypass flag): 90-161.Z docs/reviews/2026-11-19-r33-results.md:21 records "without Bypass [ran]" on the work PC (R34 console test, 2026-11-19; one reading, one device; confidence medium).
