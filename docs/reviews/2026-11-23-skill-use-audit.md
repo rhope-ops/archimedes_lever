@@ -1,0 +1,51 @@
+# Skill use audit, 2026-11-23 (started; partial data)
+
+Started 2026-11-23 ~17:20 America/Chicago at the Maintainer's request ("start auditing skill use"), by session
+"Kit · Tool retirement · 2026-11-23 · #125", with `.claude/skills/audit/SKILL.md` category 19 loaded. Follows the first
+audit, [2026-11-20-skill-use-analysis.md](2026-11-20-skill-use-analysis.md) (12 sessions, 4 Skill-tool calls).
+Counts only; no message text.
+
+## Method and what blocked it
+
+1. This session's own logs: `python3 scripts/skill_use.py $(find ~/.claude/projects -name "*.jsonl")`, 19 log files
+   (this session and its workers and reviewers, from 2026-11-23 ~14:33).
+2. 14 other cloud sessions (kit, RADE, 90-161.Z, 33-332.Z, ICF; 2026-11-21 to 11-23) with `list_events`:
+   **blocked.** The results now come back inline (one page of 100 assistant events was ~25,000 tokens) and are not
+   saved to files, so `skill_use.py` has no input; on 2026-11-20 the same tool saved 84 pages to files. A worker
+   (Sonnet) fetched 3 pages inline and stopped before transcribing anything (correct: a hand copy is not raw data).
+3. The token log (`scripts/token_log_rows.py`) records agent types (Agent/Task calls), not Skill calls or SKILL.md reads.
+4. Asked the coordinator session to run step 1 on its own container and to ask other running sessions (pending).
+
+## Result: this session (19 logs)
+
+| Group | Count | Detail |
+|---|---|---|
+| Skill tool (full load) | 5 (now 6, with project-log after the count) | where-to-save 1, deliver 1, delegate 1, rule-change 1, audit 1 |
+| Read of a SKILL.md (full read) | 0 | - |
+| Shell slice of a SKILL.md (`grep`, `sed`) | 44 | delegate 10, deliver 9, audit 7, rule-change 6, handoff 4, personal-data 4, kit-update 2, project-log 1, "f" 1 (false hit) |
+| Agent calls | 17 | worker 11, reviewer 5, general-purpose 1 |
+| Tools | 1,298 | Bash 977, Write 203, Read 19, ... |
+
+Kit skills by use in this session: loaded in full: audit, delegate, deliver, rule-change, project-log; slice only:
+handoff, personal-data, kit-update; not used: data-change, instructions, verify. Account skills: where-to-save 1;
+turn-summary 0, ship 0, pages-and-tools 0 (none of the work was a page).
+
+## Findings
+
+| # | Finding | Evidence | Cost |
+|---|---|---|---|
+| F1 | No fleet-wide source of skill-use data in cloud sessions | method 2 and 3 above | the audit cannot cover more than the running containers |
+| F2 | Workers cannot load a skill: the `worker` agent has no Skill tool (Read, Edit, Write, Bash, Grep, Glob), and they read skills by `grep`/`sed` slices, not a full Read | `.claude/agents/worker.md`; 44 slices, 0 Reads | AGENTS.md "Skills": "a slice read through the shell misses steps" |
+| F3 | The main session skipped skills its rules name: handoff (KIT_HANDOFF.md edited without it), project-log (log rows written only after this audit), turn-summary (every work turn), instructions (paste steps), verify | this session's Skill calls vs its actions | the same pattern as 2026-11-20 (account skills 0 calls) |
+| F4 | `skill_use.py` counts a false skill "f" from a shell command | the shell group above | inflates the shell count by 1 |
+
+## Proposals (none made; each needs the Maintainer's approval)
+
+| # | Proposal | Home | Cost | Benefit |
+|---|---|---|---|---|
+| P1 | The token log's Stop hook also counts, per session, Skill-tool calls and Reads and shell slices of SKILL.md files (it already reads the session log for Agent calls) | `scripts/token_log_rows.py` (extend; rule T1), plan P2 | ~2 h worker + strong review (lane C: a hook script) | every session records skill use on the token-log branch; the audit reads it fleet-wide |
+| P2 | Worker briefs say: "read each skill you need in full with the Read tool, never by grep or sed" | delegate skill "Brief" (one bullet next to S4) | 0 session-load tokens | workers follow whole procedures |
+| P3 | Fix the "f" false hit in `skill_use.py` (match a skill folder name only after `skills/`) | `scripts/skill_use.py`, plan P2 | ~15 min | correct shell counts |
+| P4 | Re-run this audit fleet-wide after P1 has run for 14 days, and propose a merge, a better description or a removal for each skill with 0 loads | audit skill "Fleet audit" (S3) | ~1 h | data-based skill changes |
+
+Status: partial. The coordinator's counts, when they arrive, are added here.
