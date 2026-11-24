@@ -81,6 +81,9 @@ def write_lock(base, root, files, kit_files):
         root: the project folder.
         files: the paths a sync wrote or planned.
         kit_files: the paths the kit lock covers (sync_baseline.COPY_FILES).
+
+    Returns:
+        The kit version that the lock records.
     """
     version = (base / "KIT_VERSION").read_text().strip() if (base / "KIT_VERSION").exists() else "unknown"
     check_lock.write(root, check_lock.build(root, [r for r in files if r in kit_files], version,

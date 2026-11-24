@@ -456,8 +456,7 @@ def main():
             if args.apply:
                 write_lock(base, root, new, COPY_FILES)
             return
-        print(f"
-{len(changed)} file(s) to change: {', '.join(changed)}")
+        print(f"\n{len(changed)} file(s) to change: {', '.join(changed)}")
         if not args.apply:
             print("Dry run: nothing written. Run again with --apply to write.")
             return
