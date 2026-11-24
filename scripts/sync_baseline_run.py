@@ -32,18 +32,25 @@ def check_placeholders(root):
             die(f"{rel} still has template placeholders; run scripts/bootstrap.sh first")
 
 
-def stop_on_changed_kit_files(root):
-    """Stop (exit 2, nothing written) when a kit file in the project differs from its hash in the kit lock .check.lock.
+def stop_on_changed_kit_files(root, new):
+    """Stop (exit 2, nothing written) when a kit file that this sync writes differs from its hash in the kit lock
+    .check.lock, or is an override in it. A lock that cannot be read is said in one line and does not stop the sync.
 
     Args:
         root: the project folder.
+        new: a dict of project path to the synced text (the files this sync writes).
     """
-    changed = check_lock.changed(root)
+    try:
+        changed = check_lock.changed(root, set(new))
+    except ValueError:
+        print(f"{check_lock.LOCK} could not be read: local edits to kit files were not checked.")
+        return
     if changed:
+        part = check_lock.KIT_PART
+        way = ("Put this project's own rules in AGENTS.md \"Project rules\"" if part in changed else
+               "Move this project's change into a PROJECT.md beside the kit skill") + ", or change the text in the kit and sync from there."
         print(f"Sync stopped, nothing written: {len(changed)} kit file(s) in this project differ from the kit lock "
-              f"{check_lock.LOCK}:\n  " + "\n  ".join(changed) + "\nA sync would overwrite them. Move this project's change into a "
-              "PROJECT.md beside the kit skill (or into AGENTS.md \"Project rules\" or .check), or make the change in the kit "
-              "and sync from there. Then run the sync again.")
+              f"{check_lock.LOCK} or are overrides in it:\n  " + "\n  ".join(changed) + f"\nA sync would overwrite them. {way} Then run the sync again.")
         sys.exit(2)
 
 
@@ -72,8 +79,8 @@ def run(sb):
         print(f"Kit baseline: {sb.baseline_sha(base)}. A sync writes the kit lock {sb.check_lock.LOCK} (the kit version and a "
               "hash of each kit file); the project does not keep the sync tools.")
         check_placeholders(root)
-        stop_on_changed_kit_files(root)
         new, tier = sb.planned_files(base, root, args)
+        stop_on_changed_kit_files(root, new)
         changed = sb.show_diff(root, new)
         sb.report_leftovers(root, tier)
         for note in sb.COPY_NOTES:

@@ -106,6 +106,60 @@ class SyncBaselineCli(unittest.TestCase):
         self.assertIn("PROJECT.md", p.stdout)
         self.assertEqual(self.tree_hashes(), before)
 
+    def synced_and_committed(self, *extra):
+        """Sync the kit into the repo and commit the result."""
+        self.assertEqual(sync(self.path, *extra).returncode, 0)
+        self.commit_all("sync")
+
+    def commit_all(self, msg):
+        """Commit every change of the repo."""
+        run(["git", "add", "-A"], self.path)
+        run(GIT + ["commit", "-q", "-m", msg], self.path)
+
+    def test_relocked_override_stops_the_sync(self):
+        """Prove: a file the Maintainer relocked (an override) stops the sync (exit 2): nothing written, lock unchanged."""
+        self.synced_and_committed()
+        with (self.path / "scripts/check.sh").open("a") as f:
+            f.write("# local\n")
+        p = py("check_lock.py", "--relock", "scripts/check.sh", "--project", str(self.path), cwd=self.path)
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.commit_all("relock")
+        before = self.tree_hashes()
+        p = sync(self.path)
+        self.assertEqual(p.returncode, 2, p.stdout + p.stderr)
+        self.assertIn("scripts/check.sh", p.stdout)
+        self.assertEqual(self.tree_hashes(), before)
+
+    def test_unreadable_lock_is_said(self):
+        """Prove: a lock that cannot be read does not stop the sync, and one line says the edits were not checked."""
+        self.synced_and_committed()
+        (self.path / ".check.lock").write_text("[]")
+        self.commit_all("break the lock")
+        p = sync(self.path)
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertIn("could not be read", p.stdout)
+
+    def test_edit_of_a_file_this_sync_does_not_write_is_no_stop(self):
+        """Prove: an edited advanced file (full tier) does not stop a --tier starter sync that never writes it."""
+        self.synced_and_committed("--tier", "full")
+        (self.path / ".claude/agents/scout.md").write_text("# local\n")
+        self.commit_all("edit scout")
+        p = sync(self.path, "--tier", "starter")
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertEqual((self.path / ".claude/agents/scout.md").read_text(), "# local\n")
+
+    def test_edit_of_the_kit_part_of_agents_md_says_project_rules(self):
+        """Prove: an edit in the kit part of AGENTS.md stops the sync and points to "Project rules", not to a PROJECT.md."""
+        self.synced_and_committed()
+        text = (self.path / "AGENTS.md").read_text()
+        (self.path / "AGENTS.md").write_text(text.replace("## Defaults\n", "## Defaults\n\n- A local rule.\n", 1))
+        self.commit_all("edit AGENTS.md")
+        p = sync(self.path)
+        self.assertEqual(p.returncode, 2, p.stdout + p.stderr)
+        self.assertIn("AGENTS.md (kit sections)", p.stdout)
+        self.assertIn('AGENTS.md "Project rules"', p.stdout)
+        self.assertNotIn("PROJECT.md", p.stdout)
+
     def test_project_without_a_lock_is_synced_as_before(self):
         """Prove: a project with no .check.lock is not stopped (nothing to compare with): the first sync writes the lock."""
         self.assertFalse((self.path / ".check.lock").exists())
