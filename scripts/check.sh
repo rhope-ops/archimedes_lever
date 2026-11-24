@@ -26,7 +26,7 @@
 #   5b. the site's shared parts (scripts/build_site.py --check: index.html says what README.md's site sections say;
 #      a project's own kinds in scripts/build_site_local.py), when README.md has a `<!-- site:` mark,
 #   5c. the steps a person follows (scripts/check_instructions.py), both lanes, when .check has `audit-instructions:`
-#      lines (else a SKIP line); a project's own module: scripts/check_instructions_local.py,
+#      lines (else on README.md); a project's own module: scripts/check_instructions_local.py,
 #   6. scripts/check.local.sh, when it exists: this project's own tests (SKIP when missing: the review gate in
 #      .claude/skills/deliver/SKILL.md then guards main).
 # The checks run in parallel: each one works on its own temporary files. CHECK_SERIAL=1 runs them one at a time.
@@ -479,7 +479,7 @@ if [ -f scripts/check_instructions.py ]; then
   if grep -Eq '^[[:space:]]*audit-instructions[[:space:]]*:' .check 2>/dev/null; then
     run "instructions" python3 scripts/check_instructions.py
   else
-    skip "instructions" "no audit-instructions: lines in .check: name the files whose steps a person follows"
+    run "instructions (README.md; no audit-instructions: lines in .check)" python3 scripts/check_instructions.py README.md
   fi
 fi
 

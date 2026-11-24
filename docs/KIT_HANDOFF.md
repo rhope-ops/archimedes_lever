@@ -12,16 +12,17 @@ Updated: 2026-11-24 08:57 by "Kit · Fleet audit · 2026-11-24 · #158": fleet a
 
 Plan and decisions 1-10: [reviews/2026-11-23-tool-retirement-plan.md](reviews/2026-11-23-tool-retirement-plan.md); P2 record: [reviews/2026-11-23-tool-retirement-handoff.md](reviews/2026-11-23-tool-retirement-handoff.md).
 
-- [x] Research and plan. [x] P1 (PR 137). [x] P2. [x] Fleet audit (PRs 158, 159). [ ] P3 pilot 33-332.Z (pip/pipx). [ ] P4 RADE sentinel + release, 90-161.Z, 33-332.Z, ICF runbook. [ ] P5 kit release to the repos. [ ] P6 exports, branch deletes (with the Maintainer's OK).
+- [x] Research and plan. [x] P1 (PR 137). [x] P2. [x] Fleet audit (PRs 158, 159). [ ] P3 pilot 33-332.Z (pip/pipx; trim its handoff ~50 tokens first). [ ] P4 RADE sentinel + release, 90-161.Z, 33-332.Z, ICF runbook. [~] P5 kit 10.0.0 repos, fleet audit (fleet audit done 2026-11-24). [ ] P6 exports, branch deletes (with the Maintainer's OK).
 
 ## Open
 
-- Fleet audit questions: audit-the-audit texts (A1-A15) and the Dependabot content-step fix (report, "Open questions"). Skill-use audit due 2026-12-08.
+- Fleet audit (report, "Open questions"): A10, A11, A15 in PR 160; the other audit-the-audit items (A1-A9, A12-A14) open. Cut proposals 5, 8, 9 and each project's AUDIT DUE wait for that project's own audit (the Maintainer, 2026-11-24). Skill-use audit due 2026-12-08.
 - Kit PATCH fixes (a)-(f) and Step 5: archive file, "Open".
 
 ## Needs the owner
 
 - Tags, branch deletes, account skills, the 2026-11-21 items: archive file, "Needs the owner".
+- Add the Dependabot secret `PII_GUARD_DENYLIST` (steps: archive file, "Dependabot secret"), then re-run the checks of PRs 115 and 116.
 - Delete the merged branches `claude/fleet-audit-cli-helpers`, `claude/fleet-audit-report` (kit) and `claude/fleet-audit-site-page-dedup` (33-332.Z).
 
 ## Do not
