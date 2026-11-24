@@ -299,8 +299,8 @@ selftest() {
   if touched "${deps[@]}"; then run "$name self-test" "$@"; else untested=$((untested + 1)); fi
 }
 
-for s in stop_check worker_guard; do
-  selftest "$s" "scripts/$s.py" -- python3 "scripts/$s.py" --test
+for s in stop_check worker_guard; do   # worker_guard --test also runs the scan self-test (worker_guard_scan.py)
+  selftest "$s" "scripts/$s.py" scripts/worker_guard_scan.py scripts/worker_guard_scan_samples.json scripts/check_content_scan.py -- python3 "scripts/$s.py" --test
 done
 selftest log_check scripts/log_check.py scripts/log_check_plan.py -- python3 scripts/log_check.py --test
 # A script whose cases or parts live in sibling modules lists them, so the fast lane reruns its self-test when they change.
