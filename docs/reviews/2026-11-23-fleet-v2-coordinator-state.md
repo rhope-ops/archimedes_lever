@@ -114,3 +114,25 @@ stages in reverse order (4, 3, 2, 1), because each later stage depends on the on
 
 Exports: the 6 .7z archives of 2026-11-23 are a reference copy; the Maintainer wants fresh exports after the tool
 retirement program.
+
+## Coordinator 2: evening (~19:00-23:30 America/Chicago)
+
+Tool retirement program P2 (session_01PyXpdWCaPYjt4M7hbiPpzm) and the README cards. Each merge below had the Maintainer's
+own merge message in the coordinator chat; the coordinator checked CI on the head commit and the merge on origin/main.
+
+| PR | What | Merge commit | T2 baseline after |
+|---|---|---|---|
+| #144 | P2 (b) two-line marking and keyword+number | fdeed30 | |
+| #146 | Kit README shows its social preview card (cards also fixed in RADE, 90-161.Z, 33-332.Z, ICF) | e0c9a52 | |
+| #149 | P2 (d): the sync stops instead of overwriting a project's local kit edits | 6bd300e | 18,663 (+360) |
+| #150 | P2 (a): ruff 0.17.6 + pylint 4.1.4 check Python parse, line length, file size (C0302 WARN only) | 7dd6f4d | 18,785 (+122) |
+| #147, #148, #151, #152 | Handoffs and P2 (h) AUD-5 records (lane A) | 2fbde15, 747754f, 00356b1, e56eeef | |
+
+- Feature retirements measured: timeline.py (-475), fulcrum_palette.py (-314), build_site.py (-481). The Maintainer chose
+  "Keep it, no retirement" for timeline.py (real fleet use). No retirement is planned, so T2 has only risen tonight
+  (18,303 -> 18,785).
+- Freeze: the Maintainer lifted it in the P2 chat ("This chat: d at 18663"); each rise is still asked on its own.
+- Open in P2 (built locally, each waits for its own T2 number): (g) shellcheck WARN +51, (j) skill-use counts +138,
+  (i) worker_guard --scan + S8 +246. All three would put the baseline at 19,220.
+- Ion (33-332.Z, session_01PyXpdRW1VbtvtPjBsVLfRe): paused at the Maintainer's request; PR #60 (013ca82) newest fixes not
+  reviewed; PR #61 (fd64a8e) 1 open MAJOR (non-ASCII digits after "passport"). Nothing merged or released.
