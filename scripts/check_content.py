@@ -54,8 +54,8 @@ Checks:
     blocked    a tracked, pushed or named file that a `block:` line names
 DoD checks (only with `profile: dod`):
     milhost    a host name in the US military top-level domain (also inside a URL), and the DoD cloud hosts in MILHOST
-    marking    controlled-information and classification banner marks (the list: MARKING)
-    dodid      10 digits next to a DoD ID keyword (the list: DODID)
+    marking    controlled-information and classification banner marks (the list: MARKING; a phrase mark also over two lines)
+    dodid      10 digits next to a DoD ID keyword (the list: DODID; the keyword and number also over two lines)
     unscanned  a file the scanner cannot read: a SKIP_SUFFIX type, a binary file (Office files too) or one over
                MAX_BYTES (a `content-max-bytes: <number>` line in .check raises it; the tool-call hook keeps its
                own limit on the total of the files one call names, HOOK_MAX_BYTES in scripts/check_content_hook.py,
