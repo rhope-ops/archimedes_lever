@@ -8,6 +8,7 @@ sync_baseline.py imports every name here and re-exports it, so `sync_baseline.<n
 Inputs:  the baseline folder or URL, the project folder, and the planned file texts.
 Outputs: paths, texts and lists; show_diff prints a unified diff.
 Usage:   imported by scripts/sync_baseline.py; it has no command line.
+Prevents: a sync reads the wrong baseline commit or file version, so a project gets a kit file that is not the kit's
 Network: the baseline repo, only in get_baseline when it is a URL (one git clone).
 Writes: a clone in the temporary folder that get_baseline is given; nothing else.
 Credentials: none itself; a clone uses the credentials git already has.

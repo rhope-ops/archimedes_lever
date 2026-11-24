@@ -7,7 +7,7 @@ phase lanes, models, agents and hours, and each "REC" marked "(choice)" that you
 Inputs (all in this pull request; the research files are copied from their worker branches, not merged):
 [coverage list](2026-11-23-tool-retirement-coverage.md) (85 rows: 51 in, 34 out, approved; ION-1 and AUD-1..5 added),
 [research plan](2026-11-23-tool-retirement-research-plan.md),
-R1 [kit tools](2026-11-23-tr-r1-kit-tools.md), R2 [project tools](2026-11-23-tr-r2a-project-tools.md) and
+R1 [kit tools](../tools.md), R2 [project tools](2026-11-23-tr-r2a-project-tools.md) and
 [kit 10.0.0 repos](2026-11-23-tr-r2b-kit10-repos.md), R3 [ICF scans](2026-11-23-tr-r3-icf-scans.md),
 R4 [linters](2026-11-23-tr-wa-linters.md), [scanners](2026-11-23-tr-wb-scanners.md) (W-B: final, d071cb1),
 [sync and distribution](2026-11-23-tr-wc-sync-distribution.md), [standard replacements](2026-11-23-tr-wd-standard-replacements.md),

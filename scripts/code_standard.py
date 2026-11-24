@@ -14,8 +14,9 @@ What it measures (the rule numbers are those of docs/code-standard.md):
   C2 full        opt-in (`code-c2: full`): a function longer than 10 lines also documents each
                  parameter and its return value in its language's help form (scripts/code_standard_docs.py)
   C3 length      each function is at most `max_function_lines` lines long
-  C4 file size   each source file is at most `max_file_lines` lines long; a `code-paste:` file (a script a person
-                 pastes into another tool) at most `max_file_lines_paste`
+  C4 file size   WARN only (the Maintainer, 2026-11-23): a source file over `max_file_lines` lines (a `code-paste:` file:
+                 `max_file_lines_paste`) prints a WARN line with its size; it is not debt and not in the baseline
+  C1 prevents    FAIL in the kit, WARN in a project (AUD-1): a check entry point (check.sh or a hook runs it) has `Prevents: <defect>`
   C5 duplicate   no two functions in hand-written files have the same body (a copy must be generated, with a banner)
   C6 generated   each generated file says GENERATED near its top and names its source
   C10 parse      each Python and PowerShell file parses
@@ -58,6 +59,7 @@ Usage:   python3 scripts/code_standard.py            check (scripts/check.sh run
          python3 scripts/code_standard.py --adopt    add the debt of a rule the baseline does not list yet (a rule just
                                                      turned on, such as `code-c2: full`); needs a DECISIONS row
          python3 scripts/code_standard.py --test     prove the check on small sample repos (scripts/code_standard_test.py)
+Prevents: code without a header, function comment, size limit or safety label is added, so the code grows hard to read and edit
 Network: none (it runs local git read commands, and pwsh to parse PowerShell files).
 Writes:  .check.state.json, only with --init, --update or --adopt (and Python's __pycache__ when it imports its modules).
 Credentials: none.
@@ -79,8 +81,9 @@ import code_standard_docs as docs   # scripts/code_standard_docs.py: the opt-in 
 import code_standard_parse as parse   # scripts/code_standard_parse.py: headers, generated blocks, function finders
 import code_standard_ratchet as ratchet   # scripts/code_standard_ratchet.py: the baseline against main, and --adopt
 # scripts/code_standard_rules.py: the rule table and the measures of one function (kept apart, rule C4).
-from code_standard_rules import (LANGS, MIN_DUP_LINES, MIN_HEADER_CHARS, OPT_IN, RULE, SAFETY_LABELS,  # noqa: F401
-                                 file_functions, function_rules, gate_settings, matches, summary, unique_key)
+from code_standard_rules import (LANGS, MIN_DUP_LINES, MIN_HEADER_CHARS, OPT_IN, PREVENTS, RULE, SAFETY_LABELS,  # noqa: F401
+                                 WARN_KINDS, entry_points, file_functions, function_rules, gate_settings, matches,
+                                 summary, unique_key, warn_lines)
 
 ROOT = Path(__file__).resolve().parent.parent
 # A project's own gate (the header lists its five names). GATE is the loaded module, or None: load() sets it.
@@ -209,7 +212,7 @@ def file_rules(v, p, lines, head, config, skip):
         GATE.file_rules(v, p, lines, head, config, skip)
 
 
-def measure_file(v, p, config, ps, bodies):
+def measure_file(v, p, config, ps, bodies, entries=()):
     """Measure one hand-written source file: its per-file rules, its functions and its script blocks.
 
     Args:
@@ -218,6 +221,7 @@ def measure_file(v, p, config, ps, bodies):
         config: the code standard settings.
         ps: the result of parse.powershell_functions() for the repo's PowerShell files.
         bodies: {body hash: [keys]} of the functions seen so far (rule C5), changed in place.
+        entries: the check entry points (entry_points): one of them needs a "Prevents:" header line (C1).
 
     Returns:
         The report entry of the file.
@@ -231,6 +235,8 @@ def measure_file(v, p, config, ps, bodies):
         v['parse'][p] = len(errors)
     skip = parse.generated_blocks(lines)
     file_rules(v, p, lines, head, config, skip)
+    if p in entries and not PREVENTS.search(head):
+        v['prevents'][p] = 1
     full = config.get('c2') == 'full' and not errors
     ctx = {'lang': lang, 'head_last': head_last, 'seen': {}, 'full': full, 'bodies': bodies,
            'py': docs.python_docs(text) if full and lang == 'python' else None, 'cap': config['caps']['max_function_lines']}
@@ -261,12 +267,12 @@ def measure(config):
     source = [p for p in files if p not in generated]
     ps = parse.powershell_functions(ROOT, [p for p in source if lang_of(p) == 'powershell'], config.get('c2') == 'full')
     report, v = {}, {k: {} for k in rules()}
-    bodies = {}
+    bodies, entries = {}, entry_points(ROOT)
     for p in generated:
         if not parse.is_generated_ok((ROOT / p).read_text(encoding='utf-8-sig', errors='replace').split('\n')):
             v['generated'][p] = 1
     for p in source:
-        report[p] = measure_file(v, p, config, ps, bodies)
+        report[p] = measure_file(v, p, config, ps, bodies, entries)
     for keys in bodies.values():
         if len(keys) > 1:
             for k in keys:
@@ -292,6 +298,8 @@ def compare(now, debt, caps):
     new, fixed = [], []
     table = rules()
     for kind, items in now.items():
+        if kind in WARN_KINDS:   # a warning: no FAIL, no baseline (warn_lines)
+            continue
         text, cap = table[kind]
         label = text % caps.get(cap, 0) if cap else text
         old = debt.get(kind, {})
@@ -347,7 +355,7 @@ def load():
 
 def save(debt):
     """Write the debt list into .check.state.json (the parts of the other tools stay as they are)."""
-    settings.save_part(ROOT, 'code_standard', {'debt': debt})
+    settings.save_part(ROOT, 'code_standard', {'debt': {k: x for k, x in debt.items() if k not in WARN_KINDS}})
 
 
 def parse_args():
@@ -413,7 +421,7 @@ def check(args, config, debt, m):
     new, fixed = compare(m['violations'], debt, config['caps'])
     hand, note = against_main(config, debt)
     new += hand
-    for line in new + fixed + ([note] if note else []):
+    for line in warn_lines(m['violations'], config['caps']) + new + fixed + ([note] if note else []):
         print(line)
     if args.update:
         if new:

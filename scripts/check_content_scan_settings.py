@@ -7,6 +7,7 @@ tiers and limits are described in the check_content.py header.
 Inputs: the word lists (environment or file) and the settings file (working tree, or at a git ref).
 Outputs: lists, sets and flags for the scans; nothing is printed here.
 Run: not run alone; check_content_scan.py imports it.
+Prevents: the content check reads the wrong settings or word lists, so a listed name or term, or a blocked file, passes the scan
 Network: none (it runs local git read commands).
 Writes: none.
 Credentials: none; it reads the name denylist and the terms list (each from an environment variable or a file).

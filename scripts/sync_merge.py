@@ -11,6 +11,7 @@ What it gives:
                    read and set the parts of an AGENTS.md text (sync_baseline.py imports them; drift.py reads them there)
 Inputs:  the baseline's file and the project's file (paths), or a text. Outputs: the merged text; nothing is written.
 Run:     imported by scripts/sync_baseline.py; proved by `python3 scripts/drift.py --test`.
+Prevents: a sync replaces a project's own settings, log table or ignore lines instead of adding the kit's part, so project content is lost
 Network: none.
 Writes: none.
 Credentials: none.

@@ -23,6 +23,7 @@ The numbers say where a repo has drifted, not which side is right: a project may
 (for example a repo whose rules predate the baseline). Use the report to choose hand edits or a sync.
 Exit 0 always, unless --strict and something is not "same" (exit 1).
 Standard library only; it imports sync_baseline.py from this folder for the shared parsing.
+Prevents: a project's AGENTS.md sections drift from the kit baseline without anyone seeing it
 Network: the baseline repo, only when --baseline is a URL (one git clone); none for a local folder and in the self-test.
 Writes: none (the self-test: temporary folders).
 Credentials: none itself; a clone uses the credentials git already has.

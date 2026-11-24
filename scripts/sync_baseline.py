@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Sync a project repo to the current kit baseline (the repo that kit.config.json "kit_url" names).
 
+Prevents: a project that drifts from the kit: an old copy of a kit file, a missing kit lock, and a docs/DECISIONS.md with no
+approval-quote marker (so the T6 check would read every old row).
+
 Run it from inside the project repo:
     python3 scripts/sync_baseline.py            # dry run: show the diff, write nothing
     python3 scripts/sync_baseline.py --apply    # write the files (commit them yourself)
@@ -53,7 +56,9 @@ What it changes:
                            script), "the Maintainer" becomes the project owner ("The Maintainer" becomes the owner with a capital
                            first letter). Project text is never renamed. A private repo may keep a real name
                            (--owner NAME); a public repo uses a role. Owner: letters, digits, space . _ , ( ) -
-What it never changes: README.md, docs/ (except docs/FIRST_USE.md as said above, docs/code-standard.md and the kit
+    docs/DECISIONS.md      In a full project: the line `<!-- approval-quote-exempt-from: TEXT -->` above the Decisions table when it
+                           is missing (TEXT: the Decision cell of the newest row), so the T6 check reads only new rows. Nothing else.
+What it never changes: README.md, docs/ (except docs/FIRST_USE.md and docs/DECISIONS.md as said above, docs/code-standard.md and the kit
 license), .check and all other files. A project's own code lives in its own files (scripts/check.local.sh,
 scripts/check_content_local.py, scripts/check_instructions_local.py, scripts/code_standard_gate.py), which a sync
 never touches.
@@ -85,13 +90,13 @@ DEFAULT_BASELINE = kit_config.value("kit_url")  # None when kit.config.json is m
 RULES_HEADING = "## Project rules"
 COMMANDS_HEADING = "## Commands"
 COPY_FILES = ["scripts/session_checkin.sh", "scripts/stop_check.py", "scripts/check_blocks.py", "scripts/check_lock.py", "scripts/check_content_test_blocks.py",
-              "scripts/worker_guard.py", "scripts/log_check.py", "scripts/timeline.py", "scripts/fleet_harvest.py", "scripts/fleet_harvest_test.py", "scripts/check_content.py", "scripts/first_use_check.py",
+              "scripts/worker_guard.py", "scripts/log_check.py", "scripts/log_check_plan.py", "scripts/timeline.py", "scripts/fleet_harvest.py", "scripts/fleet_harvest_test.py", "scripts/check_content.py", "scripts/first_use_check.py",
               "scripts/fleet_harvest_parse.py",
               "scripts/check_content_scan.py", "scripts/check_content_hook.py", "scripts/check_content_test.py",
               "scripts/check_content_finders.py", "scripts/check_content_test_local.py", "scripts/check_settings_test.py",
               "scripts/check_content_scan_settings.py", "scripts/check_content_test_cli.py",
               "scripts/check.sh", "scripts/check_settings.py", "scripts/check_settings_read.py", "scripts/bloat_check.py", "scripts/bloat_check_skills.py", "scripts/bloat_check_test.py",
-              "scripts/bloat_check_rules.py", "scripts/skill_use.py", "scripts/bloat_check_timing.py", "scripts/bloat_check_test_rules.py",
+              "scripts/bloat_check_rules.py", "scripts/bloat_check_files.py", "scripts/skill_use.py", "scripts/bloat_check_timing.py", "scripts/bloat_check_test_rules.py",
               "scripts/code_standard.py", "scripts/code_standard_test.py", "scripts/code_standard_docs.py", "scripts/code_standard_parse.py",
               "scripts/code_standard_rules.py", "scripts/code_standard_ratchet.py", "scripts/code_standard_test_gate.py", "scripts/code_standard_test_docs.py",
               "scripts/code_standard_strict.py", "scripts/code_standard_strict_test.py",
@@ -120,8 +125,8 @@ BASELINE_OWNER = "the Maintainer"  # role word in baseline text; no real name li
 
 # Advanced parts: a starter project has none of these (one list for bootstrap, sync and drift).
 ADVANCED_FILES = [".claude/skills/delegate/SKILL.md", ".claude/agents/scout.md", ".claude/agents/worker.md",
-                  ".claude/skills/project-log/SKILL.md", "docs/LOG.md", "scripts/log_check.py", "scripts/timeline.py",
-                  ".claude/skills/audit/SKILL.md", "scripts/bloat_check.py", "scripts/bloat_check_skills.py", "scripts/bloat_check_rules.py",
+                  ".claude/skills/project-log/SKILL.md", "docs/LOG.md", "scripts/log_check.py", "scripts/log_check_plan.py", "scripts/timeline.py",
+                  ".claude/skills/audit/SKILL.md", "scripts/bloat_check.py", "scripts/bloat_check_skills.py", "scripts/bloat_check_rules.py", "scripts/bloat_check_files.py",
                   "scripts/bloat_check_test.py", ".claude/rule-tests.md", "scripts/skill_use.py",
                   "scripts/bloat_check_timing.py", "scripts/bloat_check_test_rules.py"]
 # Moved or renamed in the kit (to .claude/skills/ on 2026-11-16; the guard to check_content on 2026-11-18; run-verify
@@ -163,6 +168,31 @@ def apply_owner(text, owner):
     # One pass with word boundaries: "the ownership" stays, and an owner that contains the role word is not re-replaced.
     word = re.escape(BASELINE_OWNER.split(" ", 1)[1])
     return re.sub(r"\b([Tt])he " + word + r"\b", lambda m: cap if m.group(1) == "T" else owner, text)
+
+
+def decisions_marker(text):
+    """Add the line `<!-- approval-quote-exempt-from: <newest row's first text cell> -->` above the Decisions table when it is missing.
+    Rows from the one it names down are older than the T6 check and are not checked (scripts/log_check_plan.py).
+
+    Args:
+        text: the text of docs/DECISIONS.md.
+
+    Returns:
+        The text with the marker, or the same text when it has the marker, has no Decisions table, or the table has no row.
+    """
+    if re.search(r"<!--\s*approval-quote-exempt-from:", text):
+        return text
+    lines = text.split("\n")
+    head = next((i + 1 for i, l in enumerate(lines) if re.match(r"##\s+Decisions\s*$", l)), None)
+    table = next((i for i in range(head or len(lines), len(lines)) if lines[i].lstrip().startswith("|")), None)
+    if table is None:
+        return text
+    rows = [l for l in lines[table + 2:] if l.lstrip().startswith("|")]   # table + 1 is the separator row
+    row = re.split(r"(?<!\\)\|", rows[0].strip().strip("|")) if rows else []
+    first = row[1].strip().replace("\\|", "|") if len(row) > 1 else ""
+    if not first or "-->" in first:
+        return text
+    return "\n".join(lines[:table] + [f"<!-- approval-quote-exempt-from: {first} -->", ""] + lines[table:])
 
 
 def copy_state(base, root, rel, owner):
@@ -374,6 +404,11 @@ def planned_files(base, root, args):
     tuned, notes = plan_if_missing(base, root, copy_if_missing, owner, args.baseline)
     new.update(tuned)
     COPY_NOTES[:] = notes
+    decisions = root / "docs/DECISIONS.md"
+    if "scripts/log_check_plan.py" in copy_files and decisions.is_file():
+        marked = decisions_marker(decisions.read_text())
+        if marked != decisions.read_text():
+            new["docs/DECISIONS.md"] = marked
     if (base / ".claude/settings.json").exists():
         new[".claude/settings.json"] = merge_settings(base / ".claude/settings.json", root / ".claude/settings.json")
     if (base / ".gitignore").exists():

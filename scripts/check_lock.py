@@ -14,6 +14,7 @@ Usage:
     python3 scripts/check_lock.py --test            # self-test; prints LOCK TEST PASS
 Input: the repo at the current folder (or --project DIR). Output: PASS, FAIL and WARN lines on stdout.
 Writes: .check.lock (--relock only). Standard library only.
+Prevents: a kit-owned file is changed inside a project without the Maintainer, or a project runs a kit version that no one can name
 Network: none.
 Credentials: none.
 """

@@ -5,6 +5,7 @@ token_log.py loads this file only when the report or a price is needed (its modu
 never imports it, so an installed copy that has only token_log.py keeps working, and its self-update fetches this file.
 Inputs:  rows of the token log CSV (from token_log.py), a git ref for --report.
 Outputs: the report text on stdout.
+Prevents: a rise in estimated cost by week, model or agent that no one sees until the usage limit stops work
 Network: --report fetches the log branch through token_log.git_net; none in the self-test.
 Writes: none.
 Credentials: none (git uses the repo's own remote).

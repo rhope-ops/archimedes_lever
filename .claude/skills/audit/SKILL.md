@@ -55,6 +55,10 @@ Due: every 14 days or 300 commits to main, whichever comes first, and before a r
 
 Why: two audits of one project found layered bloat that made a simple operation 5x slower (116.6 s to 23.4 s after the fix). Each layer looked reasonable when an agent added it. Agents add; they seldom remove. This audit finds what to remove and proposes it.
 
+## Fleet audit
+
+At each kit release, or 14 days after the last fleet audit (AUDIT DUE (fleet) at the kit check-in), report it and ask the Maintainer; when the Maintainer says yes, run the full audit for every fleet repo in a fresh session. Report per repo: kit version and lock state, caps, open branches, kit lag; and the outcome metrics: defects found per check in the last 30 days, mutant kill rate where measured, files changed per kit change, and fix-of-a-fix rate (commits that fix a commit of the last 7 days). File size and file counts are warnings only. Write the date to `fleet.last_audit` in kit.config.json. Each check, and this skill, gets a retire / shrink / keep line in docs/tools.md.
+
 ## Rules for the auditor
 
 - Measure first, then change. Every finding has evidence: a path and line, a count, a size or a time. No finding from impression.
