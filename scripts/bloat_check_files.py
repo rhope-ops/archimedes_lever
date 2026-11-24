@@ -23,6 +23,7 @@ import re
 
 import bloat_check_rules as brules   # scripts/bloat_check_rules.py: git, the rule lines, the record readers
 import check_settings   # scripts/check_settings.py: the reader of .check.state.json
+import log_check_plan as plan   # scripts/log_check_plan.py: the DECISIONS cells and the approval quote
 
 
 TOOL_EXT = (".py", ".sh", ".ps1", ".psm1", ".js", ".mjs", ".cjs", ".bat", ".cmd")
@@ -168,9 +169,10 @@ def ratchet_report(root):
     except (ValueError, AttributeError):
         was = None
     if isinstance(was, int) and base > was:
-        rows = (brules.git(root, "diff", ref, "--", "docs/DECISIONS.md") or "").splitlines()
-        if not any(r.startswith("+") and str(base) in r and "Maintainer" in r for r in rows):
-            problems.append(f"the script lines baseline rose from {was} to {base} with no new docs/DECISIONS.md row By the Maintainer that names {base}")
+        rows = [plan.cells(r[1:]) for r in (brules.git(root, "diff", ref, "--", "docs/DECISIONS.md") or "").splitlines() if r.startswith("+|")]
+        if not any(len(c) > 2 and str(base) in c[1] and re.match(r"the Maintainer\b", c[2], re.I) and plan.APPROVAL_QUOTE.search(c[2])
+                   and re.search(r"\d{4}-\d\d-\d\d", c[2]) for c in rows):
+            problems.append(f"the script lines baseline rose from {was} to {base} with no new docs/DECISIONS.md row that names {base}, By the Maintainer, with the approval quoted and dated")
     return [f"scripts:     {n} lines in scripts/*.py and *.sh (baseline {base})"], problems
 
 
@@ -212,13 +214,10 @@ def role_report(root):
     for rel in sorted(synced_files(root)):
         p = root / rel
         for n, line in enumerate(p.read_text(encoding="utf-8", errors="replace").splitlines() if p.is_file() else [], 1):
-            allow = ROLE_ALLOW.get(rel, ())
-            if ROLE_WORD.search(DATED.sub("", line)) and not any(re.search(a, line) for a in allow):
+            if ROLE_WORD.search(DATED.sub("", line)) and not any(re.search(a, line) for a in ROLE_ALLOW.get(rel, ())):
                 hits.append(f"{rel}:{n}")
-    if not hits:
-        return [], []
     return [], [f"{len(hits)} line(s) of kit-synced text use an old role word (T6: write \"the Maintainer\"; the sync swaps it): "
-                f"{', '.join(hits[:5])}{' ...' if len(hits) > 5 else ''}"]
+                f"{', '.join(hits[:5])}{' ...' if len(hits) > 5 else ''}"] if hits else []
 
 
 def caps_of(text):

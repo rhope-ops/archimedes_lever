@@ -337,9 +337,10 @@ def ratchet_cases(sk, root):
     problems = sk.ratchet_report(root)[1]
     assert len(problems) == 1 and "rose from 2 to 3" in problems[0], "a higher baseline needs a row: %s" % problems
     (root / "docs").mkdir(exist_ok=True)
-    (root / "docs/DECISIONS.md").write_text("| 2026-11-23 | Script lines baseline 3 | By the Maintainer |\n")
-    git_in(root, "add", "-A")
-    assert not sk.ratchet_report(root)[1], "a new row By the Maintainer with the number passes"
+    for by in ("Agent: the Maintainer approves 3", "the Maintainer (2026-11-23)", 'the Maintainer: "Approve 3"', 'the Maintainer: "Approve 3" (2026-11-23 18:10)'):
+        (root / "docs/DECISIONS.md").write_text(f"| 2026-11-23 | Script lines baseline 3 \\| wc | {by} |\n")
+        git_in(root, "add", "-A")
+        assert bool(sk.ratchet_report(root)[1]) != by.endswith("18:10)"), "only a row By the Maintainer, quoted and dated, passes: %s" % by
 
 
 def role_cases(sk, root):
