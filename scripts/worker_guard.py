@@ -15,6 +15,7 @@ simple command into words (quotes respected), so "main" inside a branch name or 
 Exit 2 with the reason on stderr blocks the call; exit 0 lets the normal permission flow decide. A command string run by
 eval or a shell's -c is checked too; other commands built at run time (a script file, stdin, `$(...)` output) are not
 seen: it is a seat belt for honest mistakes, not a security boundary.
+Prevents: a worker or reviewer subagent that pushes to main, force-pushes, rewrites history or deletes a branch by mistake.
 Network: none.
 Writes: none.
 Credentials: none.
