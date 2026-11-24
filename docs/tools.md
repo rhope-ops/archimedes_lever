@@ -148,3 +148,27 @@ Without `scripts/git-hooks/pre-push`: 65 files, 17,096 lines (the prompt's basel
 | `scripts/log_check.py` | Check a project log (docs/LOG.md) against the project log rules (AGENTS.md "Project log" and .claude/skills/pr | 320 | check.sh,settings +4 scripts | yes | 9 | 448 | 16 | markdownlint + a schema (e.g. frontmatter), none known for fleet harvest |
 | `scripts/log_check_plan.py` | The T6 (DECISIONS approval quote) and T7 (plan coverage list) checks of scripts/log_check.py, and their self-test cases. | 194 | log_check.py | yes (log_check.py --test) | new | new | new | markdownlint + a schema (e.g. frontmatter), none known for fleet harvest |
 | `scripts/skill_use.py` | Count which skills, agent types and tools a set of Claude session records really used. | 220 | check.sh +2 scripts | yes | 4 | 324 | 4 | markdownlint + a schema (e.g. frontmatter), none known for fleet harvest |
+
+## Fleet audit verdicts (2026-11-24)
+
+One line per check of `scripts/check.sh` and for the audit skill: **REC** (a recommendation of the fleet audit), not a
+decision; the Maintainer decides each retire or shrink. Evidence and method: docs/reviews/2026-11-24-fleet-audit.md
+(3 of 5 repos read: kit, 33-332.Z, RADE). "Decided" names the dated choice that the line follows.
+
+| Check (check.sh step) | REC | Evidence |
+|---|---|---|
+| code standard (`code_standard*.py`) | keep, shrink done | P2 (a) moved Python parse, line and size to ruff + pylint; C1 safety, C6, the ratchet have no standard rule (W-A); 0 dead functions, 0 same-body duplicates |
+| content check (`check_content*.py`) | keep (decided 9A) | gitleaks with custom rules covers 10 of 11 checks, not `unscanned`, commit metadata, `.check` or the hook (W-B) |
+| instructions (`check_instructions*.py`) | keep (decided 10) | Vale 8 of 9 seeded, 54 false positives on 225 real steps (W-B) |
+| rule caps and pointers, skills well-formed (`bloat_check*.py`) | keep; change the T2 measure | no standard tool for a rule census; T2 counts tests and only `scripts/` (audit-the-audit A1, A2) |
+| deny rules (`check_blocks.py`) | keep | the one list of blocked git forms for the hook and settings |
+| project log, decisions approval quote, plan coverage (`log_check*.py`) | keep | the T6 and T7 checks stop a DECISIONS row with no approval quote |
+| fleet format (`fleet_harvest*.py`) | keep | the fleet page reads it; no standard reader |
+| python lint (ruff, pylint) | keep | the standard tools that replaced custom Python checks (P2 (a)) |
+| shellcheck (WARN) | keep | standard tool (P2 (g)) |
+| self-tests (each `--test`, `*_cli_test.py`) | keep; shrink in #158 (open) | #158 merges 4 copies of the CLI test helpers (-105 lines) |
+| kit lock (`check_lock.py`), drift (`drift.py`), sync (`sync_baseline*.py`, `sync_merge.py`) | keep until P3 | P3 (a package) can move 13,237 kit-owned lines out of each project; lock and sync change then |
+| token log (`token_log*.py`) | keep (decided, plan decision 5) | kit only, 1,566 lines with tests; OpenTelemetry needs a collector (W-C) |
+| site and brand (`build_site*.py`, `fulcrum_palette.py`, `timeline.py`) | keep (decided in P2) | measured real use in P2 |
+| stop, worker guard, first use, check-in (`stop_check.py`, `worker_guard*.py`, `first_use_check.py`, `session_checkin.sh`) | keep | hooks; no standard tool covers the stop and worker rules |
+| the audit skill (`.claude/skills/audit/SKILL.md`) | shrink the metrics, keep the procedure | 4 of its metrics are not measured or can be gamed (A4, A8, A9 and T2 in A1); proposals in the report |
