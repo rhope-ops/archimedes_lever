@@ -12,7 +12,7 @@ Updated: 2026-11-24 14:19 by "Kit · Tool retirement P3 pilot · 2026-11-24 · #
 
 Plan and decisions 1-10: [reviews/2026-11-23-tool-retirement-plan.md](reviews/2026-11-23-tool-retirement-plan.md); P2 record: [reviews/2026-11-23-tool-retirement-handoff.md](reviews/2026-11-23-tool-retirement-handoff.md).
 
-- [x] Research and plan. [x] P1 (PR 137). [x] P2. [x] Fleet audit (PRs 158, 159). [~] P3: kit package merged (PR 164, design B, S7); 33-332.Z trim and pilot wait for its attach to a session (add_repo refused 2026-11-24). [ ] P4 RADE sentinel + release, 90-161.Z, 33-332.Z, ICF runbook. [~] P5 kit 10.0.0 repos, fleet audit (fleet audit done 2026-11-24). [ ] P6 exports, branch deletes (with the Maintainer's OK).
+- [x] Research and plan. [x] P1 (PR 137). [x] P2. [x] Fleet audit (PRs 158, 159). [~] P3: kit package merged (PR 164, design B, S7); 33-332.Z attached 2026-11-24: handoff trim in its PR 99; the pilot needs a kit fix first (CI install step). [ ] P4 RADE sentinel + release, 90-161.Z, 33-332.Z, ICF runbook. [~] P5 kit 10.0.0 repos, fleet audit (fleet audit done 2026-11-24). [ ] P6 exports, branch deletes (with the Maintainer's OK).
 
 ## Open
 
