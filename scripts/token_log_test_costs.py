@@ -121,8 +121,20 @@ def case_bad_records(fx):
                   ("cost record skipped" in r.stdout, f"b{i}" in [x["message_id"] for x in remote(fx, "sessions/c8.csv")],
                    (remote(fx, "costs/c8.csv"), remote(fx, "limits/c8.csv")) == before), (True, True, True))
     os.remove(os.path.join(fx.logs, "cost", "c8.json"))
-    fx.expect("record gone: the files on the branch stay", (remote(fx, "costs/c8.csv"), remote(fx, "limits/c8.csv")),
-              before)
+    append(t8, msg("b9", "2026-01-05T12:00:09Z"))
+    fx.hook(fx.work, "c8", t8, fx.logs)
+    fx.expect("record gone: the next push keeps the files on the branch",
+              ("b9" in [x["message_id"] for x in remote(fx, "sessions/c8.csv")],
+               (remote(fx, "costs/c8.csv"), remote(fx, "limits/c8.csv")) == before), (True, True))
+    odd = {**record("c8"), "limits_read_at": "2026-01-05T13:00:00Z",
+           "limits": [{"window": "five_hour", "percent_used": float("nan")}, {"window": "seven_day", "percent_used": 101},
+                      {"window": "spend_limit", "percent_used": "abc"}, "five_hour", {"window": "seven_day",
+                                                                                      "percent_used": 30}]}
+    fx.expect("limits: NaN, over 100, a text and a non-object entry are skipped",
+              [(x["read_at"][11:16], x["window"]) for x in csv.DictReader(io.StringIO(fx.rows.limits_csv(odd, "")))],
+              [("13:00", "seven_day")])
+    fx.expect("limits: a read_at with no time zone is skipped",
+              fx.rows.limits_csv({**record("c8"), "limits_read_at": "2026-01-05T13:00:00"}, ""), "")
 
 
 def at(hhmm, day=1):
@@ -145,6 +157,17 @@ def case_limit_split(fx):
     got = {k: {s: round(p, 2) for s, p in v.items()} for k, v in rep.split_rises(series, 168, spend).items()}
     fx.expect("split: by $ share; a fall is not split; no use is not attributed; a new window starts at 0 %", got,
               {r1: {"A": 17.5, "B": 2.5, "(not attributed)": 10.0}, r2: {"B": 4.0}})
+    one = [(at("10:00"), 10.0, r1), (at("11:00"), 20.0, ""), (at("12:00"), 30.0, r1)]
+    fx.expect("split: a missing reset time stays in its period (no use counted twice)",
+              {k: {s: round(p, 2) for s, p in v.items()} for k, v in rep.split_rises(one, 168, spend).items()},
+              {r1: {"A": 17.5, "B": 2.5, "(not attributed)": 10.0}})  # 30 points in all
+    moved = [(at("10:00"), 10.0, r1), (at("11:00"), 20.0, "2026-01-08T00:01Z"), (at("12:00"), 30.0, r1)]
+    fx.expect("split: a reset time that moves by a minute stays in its period",
+              round(sum(rep.split_rises(moved, 168, spend)[r1].values()), 2), 30.0)
+    fx.expect("/cost total: no session_usd and no main usd: no total (not the subagents' sum)",
+              rep.cost_per_session([{"session_id": "x", "source": "main", "usd": "", "session_usd": ""},
+                                    {"session_id": "x", "source": "subagent", "usd": "0.5", "session_usd": ""}]),
+              {"x": None})
     fx.expect("split: no window length (spend_limit): the first reading of a period is not split",
               rep.split_rises([(at("10:00"), 5.0, ""), (at("11:00"), 7.0, "")], None, spend), {"": {"A": 2.0}})
     rows = [{"session_id": "sessA", "timestamp": "2026-01-01T09:00:00Z", "model": "claude-opus-5-5",

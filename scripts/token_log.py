@@ -170,6 +170,8 @@ def cost_files(root, parent, sid):
         if rec is None:
             return {}
         old = git(root, "show", f"{parent[0]}:limits/{sid}.csv", check=False) if parent else ""
+        if not old and parent and git(root, "ls-tree", "--name-only", parent[0], f"limits/{sid}.csv", check=False):
+            raise RuntimeError("the limits file on the branch cannot be read")  # never rewrite it without its rows
         limits = token_log_rows.limits_csv(rec, old)
         return {f"costs/{sid}.csv": token_log_rows.cost_csv(rec), **({f"limits/{sid}.csv": limits} if limits else {})}
     except Exception as e:  # a bad record never stops the rows push
@@ -177,13 +179,14 @@ def cost_files(root, parent, sid):
         return {}
 
 
-def sibling(name):
+def sibling(name, *needs):
     """Import one of the other two hook files (token_log_rows or token_log_report) from this file's folder. A copy
     from before the plain imports (it still has the `core` slot its old loader filled) raises ImportError, so the
-    push takes the repair path: the self-update runs at once and installs the matching copy."""
+    push takes the repair path: the self-update runs at once and installs the matching copy. So does a copy that lacks
+    a name in needs (older than this file)."""
     import importlib
     mod = importlib.import_module(name)
-    if hasattr(mod, "core"):
+    if hasattr(mod, "core") or not all(hasattr(mod, n) for n in needs):
         raise ImportError(f"{name}.py is an older copy than token_log.py")
     return mod
 
@@ -200,7 +203,7 @@ def push(root, sid, tpath):
     Returns:
         A short result text: "pushed ...", "up to date" or "nothing to log". Raises RuntimeError when git fails.
     """
-    token_log_rows = sibling("token_log_rows")  # only the background push needs it
+    token_log_rows = sibling("token_log_rows", "read_cost_record")  # only the background push needs it
     ref, path = branch_name(), f"sessions/{sid}.csv"
     for attempt in (1, 2):
         rc, heads, err = git_net(root, "ls-remote", "--heads", "origin", ref)

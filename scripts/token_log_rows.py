@@ -326,6 +326,15 @@ def cost_csv(rec):
     return csv_text(COST_FIELDS, rows)
 
 
+def has_zone(ts):
+    """True when ts is an ISO time with a time zone (UTC "Z" or an offset)."""
+    from datetime import datetime
+    try:
+        return datetime.fromisoformat(str(ts).replace("Z", "+00:00")).tzinfo is not None if isinstance(ts, str) else False
+    except ValueError:
+        return False
+
+
 def limits_csv(rec, old):
     """The limits/<session id>.csv series: the rows already on the branch plus this record's readings, one row per
     (read_at, window); an earlier row is kept as it is.
@@ -338,8 +347,10 @@ def limits_csv(rec, old):
     """
     rows = {(r.get("read_at"), r.get("window")): r for r in csv.DictReader(io.StringIO(old))}
     at = rec.get("limits_read_at")
-    for x in rec.get("limits", []) if isinstance(at, str) and at else []:
-        if isinstance(x, dict) and isinstance(x.get("window"), str) and cell(x.get("percent_used")) != "":
+    for x in rec.get("limits", []) if has_zone(at) else []:  # a time with no zone cannot be placed: skipped
+        p = x.get("percent_used") if isinstance(x, dict) else None
+        if isinstance(p, (int, float)) and not isinstance(p, bool) and 0 <= p <= 100 \
+                and isinstance(x.get("window"), str):  # NaN, text and values outside 0-100 are skipped
             rows.setdefault((at, x["window"]), {"session_id": rec["session_id"], "read_at": at, "window": x["window"],
                                                 "percent_used": x["percent_used"], "resets_at": cell(x.get("resets_at"))})
     return csv_text(LIMIT_FIELDS, [rows[k] for k in sorted(rows, key=lambda k: (str(k[0]), str(k[1])))]) if rows else ""

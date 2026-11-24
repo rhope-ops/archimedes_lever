@@ -202,6 +202,29 @@ def readings(limits):
     return {w: sorted(v) for w, v in out.items()}
 
 
+def periods(series, hours):
+    """Mark the period of each reading of one window. A new period starts only when the reset time moves forward by
+    at least half a window (an hour for a window of unknown length): a missing reset time, or one that moves by a
+    minute, stays in the period before it, so no use is counted twice.
+
+    Args:
+        series: [(read time, percent used, resets_at)] of one window, sorted by time.
+        hours: the window length in hours, or None.
+    Returns:
+        [(read time, percent used, period key, start of a new period: bool)]; the key is the period's first known
+        resets_at ("" while none is known).
+    """
+    from datetime import timedelta
+    out, key, cur = [], "", None
+    for t, pct, reset in series:
+        r = parse_ts(reset)
+        new = not out or (r is not None and cur is not None and r - cur >= timedelta(hours=(hours or 2) / 2))
+        if r is not None and (new or cur is None):
+            key, cur = reset, r
+        out.append((t, pct, key, new))
+    return out
+
+
 def split_rises(series, hours, spend):
     """Split each rise of one window's percent used among the sessions, by their estimated $ in that time.
 
@@ -210,24 +233,24 @@ def split_rises(series, hours, spend):
         hours: the window length in hours, or None (no known start: the first reading of a period is not split).
         spend: [(time, session id, estimated $)] of the logged rows, sorted by time.
     Returns:
-        {resets_at: {session id or "(not attributed)": percent points}}; a fall is never split.
+        {period key: {session id or "(not attributed)": percent points}}; a fall is never split.
     """
     import bisect
     from datetime import timedelta
     times, out, prev = [x[0] for x in spend], {}, None
-    for t, pct, reset in series:
-        if prev is None or reset != prev[2]:  # a new period starts at 0 %
-            start = parse_ts(reset) - timedelta(hours=hours) if parse_ts(reset) and hours else None
+    for t, pct, key, new in periods(series, hours):
+        if new:  # a new period starts at 0 % at its window start
+            start = parse_ts(key) - timedelta(hours=hours) if parse_ts(key) and hours else None
             base = (max(start, prev[0]) if prev and start else start, 0.0)
         else:
-            base = (prev[0], prev[1])
-        prev = (t, pct, reset)
+            base = prev
+        prev = (t, pct)
         if base[0] is None or pct <= base[1]:
             continue
         share, rise = {}, pct - base[1]
         for _, sid, usd in spend[bisect.bisect_right(times, base[0]):bisect.bisect_right(times, t)]:
             share[sid] = share.get(sid, 0.0) + usd
-        got, total = out.setdefault(reset, {}), sum(share.values())
+        got, total = out.setdefault(key, {}), sum(share.values())
         for sid, usd in share.items() if total > 0 else [("(not attributed)", 1.0)]:
             got[sid] = got.get(sid, 0.0) + rise * usd / (total or 1.0)
     return out
@@ -242,20 +265,23 @@ def num(v):
 
 
 def cost_per_session(costs):
-    """Claude Code's /cost total of each session from costs/*.csv: session_usd, else the sum of the usd cells.
+    """Claude Code's /cost total of each session from costs/*.csv: session_usd; else, when the main row has a usd
+    figure, the sum of the usd cells; else None (no total: a subagent-only sum is not the session's total).
 
     Args:
         costs: rows of costs/*.csv (dicts with the token_log_rows.COST_FIELDS).
     Returns:
-        {session id: USD, or None for a record with no figure}.
+        {session id: USD, or None for a record with no total}.
     """
-    total, parts = {}, {}
+    total, parts, main = {}, {}, set()
     for r in costs:
         sid, usd = r.get("session_id") or "", num(r.get("usd"))
         if r.get("source") == "main" and num(r.get("session_usd")) is not None:
             total[sid] = num(r.get("session_usd"))
-        parts[sid] = parts.get(sid) if usd is None else (parts.get(sid) or 0.0) + usd
-    return {sid: total.get(sid, parts[sid]) for sid in parts}
+        if r.get("source") == "main" and usd is not None:
+            main.add(sid)
+        parts[sid] = parts.get(sid, 0.0) + (usd or 0.0)
+    return {sid: total[sid] if sid in total else parts[sid] if sid in main else None for sid in parts}
 
 
 def cost_by_week(rows, costs):
@@ -303,9 +329,10 @@ def limits_report(rows, costs, limits):
     read = readings(limits)
     out = ["Plan limits (/usage, for the whole account): highest percent used of each 7-day window",
            "window resets (America/Chicago)  highest %  seen at           readings"]
-    for reset in sorted({x[2] for x in read.get("seven_day", [])}):
-        top = max((x for x in read["seven_day"] if x[2] == reset), key=lambda x: (x[1], x[0]))
-        n = sum(1 for x in read["seven_day"] if x[2] == reset)
+    week = periods(read.get("seven_day", []), WINDOW_HOURS["seven_day"])
+    for reset in sorted({x[2] for x in week}):
+        top = max((x for x in week if x[2] == reset), key=lambda x: (x[1], x[0]))
+        n = sum(1 for x in week if x[2] == reset)
         when = local(parse_ts(reset)) if parse_ts(reset) else "unknown"
         out.append(f"{when:<32} {top[1]:>9.1f}  {local(top[0])} {n:>8}")
     spend = sorted((parse_ts(r.get("timestamp")), r.get("session_id") or "", row_cost(r) or 0.0) for r in rows
