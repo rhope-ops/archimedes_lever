@@ -160,7 +160,7 @@ decision; the Maintainer decides each retire or shrink. Evidence and method: doc
 | code standard (`code_standard*.py`) | keep, shrink done | P2 (a) moved Python parse, line and size to ruff + pylint; C1 safety, C6, the ratchet have no standard rule (W-A); 0 dead functions, 0 same-body duplicates |
 | content check (`check_content*.py`) | keep (decided 9A) | gitleaks with custom rules covers 10 of 11 checks, not `unscanned`, commit metadata, `.check` or the hook (W-B) |
 | instructions (`check_instructions*.py`) | keep (decided 10) | Vale 8 of 9 seeded, 54 false positives on 225 real steps (W-B) |
-| rule caps and pointers, skills well-formed (`bloat_check*.py`) | keep; change the T2 measure | no standard tool for a rule census; T2 counts tests and only `scripts/` (audit-the-audit A1, A2) |
+| rule caps and pointers, skills well-formed (`bloat_check*.py`) | keep; change the T2 measure | 17 of 25 failed CI runs (2026-11-13 to 11-24): a changed rule line with no conflict-check record; no standard tool for a rule census; T2 counts tests and only `scripts/` (audit-the-audit A1, A2) |
 | deny rules (`check_blocks.py`) | keep | the one list of blocked git forms for the hook and settings |
 | project log, decisions approval quote, plan coverage (`log_check*.py`) | keep | the T6 and T7 checks stop a DECISIONS row with no approval quote |
 | fleet format (`fleet_harvest*.py`) | keep | the fleet page reads it; no standard reader |
@@ -171,4 +171,10 @@ decision; the Maintainer decides each retire or shrink. Evidence and method: doc
 | token log (`token_log*.py`) | keep (decided, plan decision 5) | kit only, 1,566 lines with tests; OpenTelemetry needs a collector (W-C) |
 | site and brand (`build_site*.py`, `fulcrum_palette.py`, `timeline.py`) | keep (decided in P2) | measured real use in P2 |
 | stop, worker guard, first use, check-in (`stop_check.py`, `worker_guard*.py`, `first_use_check.py`, `session_checkin.sh`) | keep | hooks; no standard tool covers the stop and worker rules |
+| check.sh, pre-push (`scripts/check.sh`, `scripts/git-hooks/pre-push`) | keep | the one front door of the checks; the hook runs the fast lane on each push |
+| CI content step (`.github/workflows/`) | keep; fix for Dependabot | 6 of 6 Dependabot runs failed with no denylist secret (a setup error, not a defect) |
+| settings reader (`check_settings*.py`), kit addresses (`kit_config.py`) | keep | the one reader of `.check` and of kit.config.json (one home) |
+| skill use (`skill_use.py`) | keep until 2026-12-08 | the skill-use audit of P2 (j) reads it; decide at that audit |
+| bootstrap (`bootstrap.sh`) | keep | first use of a new project; no standard tool fills the placeholders and the lock |
+| page measure (`.claude/skills/verify/measure.mjs`) | keep | the verify skill's UI numbers (contrast, targets, scroll) |
 | the audit skill (`.claude/skills/audit/SKILL.md`) | shrink the metrics, keep the procedure | 4 of its metrics are not measured or can be gamed (A4, A8, A9 and T2 in A1); proposals in the report |
