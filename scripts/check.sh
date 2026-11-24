@@ -373,10 +373,15 @@ elif [ -f docs/LOG.md ]; then
 else
   skip "project log" "no docs/LOG.md: the log lives in the place AGENTS.md Project rules names"
 fi
-# T6 (plan 2026-11-23): a DECISIONS row By the Maintainer quotes the approval; it runs where docs/DECISIONS.md has the
-# approval-quote-exempt-from marker (a project gets it at its sync). T7: each plan coverage list is complete.
+# T6 (plan 2026-11-23): a DECISIONS row By the Maintainer quotes the approval. The kit (no .check.lock) always runs it: with no
+# approval-quote-exempt-from marker every row is checked. A project runs it where docs/DECISIONS.md has the marker (its sync adds
+# it) and prints a SKIP line otherwise. T7: each plan coverage list is complete.
 if [ -f scripts/log_check_plan.py ]; then
-  grep -qs 'approval-quote-exempt-from' docs/DECISIONS.md && run "decisions approval quote" python3 scripts/log_check.py --decisions
+  if [ ! -f .check.lock ] || grep -qs 'approval-quote-exempt-from' docs/DECISIONS.md; then
+    run "decisions approval quote" python3 scripts/log_check.py --decisions
+  else
+    skip "decisions approval quote" "docs/DECISIONS.md has no approval-quote-exempt-from marker (a sync adds it)"
+  fi
   for f in docs/reviews/*-coverage.md; do
     [ -f "$f" ] && run "plan coverage ${f##*/}" python3 scripts/log_check.py --coverage "$f"
   done

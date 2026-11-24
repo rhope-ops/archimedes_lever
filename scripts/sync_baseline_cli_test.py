@@ -17,6 +17,7 @@ import unittest
 from pathlib import Path
 
 KIT = Path(__file__).resolve().parent.parent
+TABLE = "# D\n\n## Decisions\n\nNewest first.\n\n| Date | Decision | By |\n|---|---|---|\n| 2026-11-22 | Newest row | the owner |\n| 2026-11-21 | Older row | the owner |\n"
 GIT = ["git", "-c", "user.name=Test", "-c", "user.email=test@example.invalid"]
 
 
@@ -100,6 +101,22 @@ class SyncBaselineCli(unittest.TestCase):
         run(["git", "add", "-A"], self.path)
         run(GIT + ["commit", "-q", "-m", "setup"], self.path)
 
+    def test_sync_full_tier_adds_the_decisions_marker(self):
+        """Prove: a full-tier sync writes the marker into docs/DECISIONS.md, and a second sync changes nothing."""
+        self.commit_file("docs/DECISIONS.md", TABLE)
+        p = sync(self.path, "--tier", "full")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        text = (self.path / "docs/DECISIONS.md").read_text()
+        self.assertIn("<!-- approval-quote-exempt-from: Newest row -->", text)
+        run(["git", "add", "-A"], self.path)
+        self.assertIn("No changes", sync(self.path, "--tier", "full").stdout)
+
+    def test_sync_starter_tier_leaves_decisions_alone(self):
+        """Prove: a starter project has no T6 check, so its docs/DECISIONS.md is not changed."""
+        self.commit_file("docs/DECISIONS.md", TABLE)
+        self.assertEqual(sync(self.path).returncode, 0)
+        self.assertEqual((self.path / "docs/DECISIONS.md").read_text(), TABLE)
+
     def test_dod_group_off_by_default(self):
         """Prove: with no `dod-security: on` line, the sync adds no DoD file (fleet v2 DEC 4: ICF-Source)."""
         self.assertEqual(sync(self.path).returncode, 0)
@@ -122,6 +139,17 @@ class SyncBaselineCli(unittest.TestCase):
 
 class ApplyOwner(unittest.TestCase):
     """apply_owner follows BASELINE_OWNER (fleet v2 DEC 2): the baseline word is swapped, other words stay."""
+
+
+    def test_decisions_marker_added_above_the_table(self):
+        """Prove: a Decisions table with no marker gets the line with the newest row's Decision cell, above the header row."""
+        sys.path.insert(0, str(KIT / "scripts"))
+        import sync_baseline as sb
+        got = sb.decisions_marker(TABLE)
+        self.assertIn("\n<!-- approval-quote-exempt-from: Newest row -->\n\n| Date | Decision | By |\n", got)
+        self.assertEqual(sb.decisions_marker(got), got, "a second run changes nothing")
+        self.assertEqual(sb.decisions_marker("# D\n\n## Decisions\n\n| Date | Decision | By |\n|---|---|---|\n"), "# D\n\n## Decisions\n\n| Date | Decision | By |\n|---|---|---|\n", "no row: no marker")
+        self.assertEqual(sb.decisions_marker("# No table\n"), "# No table\n")
 
     def swap(self, base, text, owner):
         """apply_owner(text, owner) with BASELINE_OWNER set to base for this call."""
