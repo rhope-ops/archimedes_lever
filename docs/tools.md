@@ -89,6 +89,7 @@ Without `scripts/git-hooks/pre-push`: 65 files, 17,096 lines (the prompt's basel
 | `scripts/sync_baseline_cli_test.py` | The command line of scripts/sync_baseline.py, tested as a process. | 148 | check.sh +3 scripts | yes | 4 | 152 | 0 | copier, cruft, pre-commit autoupdate / Renovate |
 | `scripts/sync_baseline_repo.py` | The reads of the baseline repo for scripts/sync_baseline.py: git, the baseline folder or clone, the earlier | 150 | check.sh +3 scripts | no | 2 | 150 | 0 | copier, cruft, pre-commit autoupdate / Renovate |
 | `scripts/sync_baseline_run.py` | The write side of one run of scripts/sync_baseline.py: the placeholder check, the leftover report, the file writes and the kit lock | 91 | check.sh +3 scripts | no | 1 | 74 | 0 | copier, cruft, pre-commit autoupdate / Renovate |
+| `scripts/sync_baseline_stop.py` | The stop of scripts/sync_baseline.py on a project's local edits to kit files: locked, relocked and unlocked files, with a way forward per file | 91 | check.sh +2 scripts | no | 1 | 91 | 0 | copier, cruft, pre-commit autoupdate / Renovate |
 | `scripts/sync_merge.py` | The merges of scripts/sync_baseline.py: a sync does not replace these project files, it adds the kit's part to | 260 | check.sh +6 scripts | yes | 7 | 266 | 0 | copier, cruft, pre-commit autoupdate / Renovate |
 | `scripts/sync_merge_cli_test.py` | The merges of scripts/sync_merge.py, tested through the command line of scripts/sync_baseline.py (sync_merge.p | 110 |  +1 scripts | yes | 2 | 122 | 0 | copier, cruft, pre-commit autoupdate / Renovate |
 
