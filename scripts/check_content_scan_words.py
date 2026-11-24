@@ -1,7 +1,7 @@
 """The word lists of the content check: the readers of the name denylist and the terms list (environment variable or
 file), and the fingerprint of a list.
 
-Part of scripts/check_content_scan.py (split out to keep each file under the line cap of docs/code-standard.md C4);
+Part of scripts/check_content_scan.py (split by subject: the word-list sources here, the `.check` parsing in the settings file);
 check_content_scan.py imports every name here and re-exports it, so `check_content_scan.<name>` keeps working. The
 settings file (`.check`) is read in check_content_scan_settings.py, which does not import this file.
 Inputs: the word lists (environment or file).
