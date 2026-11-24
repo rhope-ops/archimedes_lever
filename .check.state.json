@@ -1,7 +1,7 @@
 {
  "audit": {
   "last_audit": {
-   "commit": "eab8b98570d0d90dce728fa159ec67acf37563df",
+   "commit": "b51eef6",
    "date": "2026-11-13",
    "report": "docs/reviews/2026-11-13-bloat-audit.md"
   }
@@ -10,7 +10,7 @@
   "debt": {}
  },
  "script_lines": {
-  "baseline": 19666,
+  "baseline": 19801,
   "command": "cat scripts/*.py scripts/*.sh | wc -l",
   "commit": "65b08d3",
   "files": 71,
