@@ -16,7 +16,8 @@
 #      code standard (scripts/code_standard.py, when .check.state.json holds its baseline; settings: the `code-` lines of .check),
 #   1b. the Python parse, line length and file size: ruff and pylint (ruff.toml, .pylintrc; a SKIP line when a linter is missing),
 #   1c. shellcheck on the shell files the code standard covers: findings are WARN lines and never fail (a SKIP line when it is missing),
-#   1d. the kit package (scripts/kit_package.py --verify), when .check.lock lists a script that git does not track,
+#   1d. the kit package (scripts/kit_package.py --verify), when .check.lock lists a script that git does not track
+#       (scripts/check.sh --kit-install installs it at the lock commit),
 #   2. the rule caps and the paths AGENTS.md names, the lint of changed rule lines (WARN lines), and in the full lane
 #      the conflict-check record for changed rule lines (scripts/bloat_check.py --rules [--gate]; full tier),
 #   3. the project log check (full tier),
@@ -219,27 +220,31 @@ rc=1"
   c >/dev/null; ok "a failing self-test of an extension file fails the run" "$?" 1
   # Package mode (scripts/kit_package.py): a lock-listed script that git does not track needs the installed package.
   printf '%s\n' '{"commit": "c0ffee", "files": {"scripts/gone.py": "x"}}' > "$t/r/.check.lock"
-  out="$(cd "$t/r" && PATH="$t/nopkg:$(dirname "$(command -v python3)"):$(dirname "$(command -v git)"):/usr/bin:/bin" bash scripts/check.sh 2>&1)"
-  ok "package mode with no package fails and names the install" "$(printf '%s\n' "$out" | grep -c -e '^FAIL  kit package' -e 'archimedes_lever@c0ffee", then archimedes-kit --install')" 2
+  nopkg="$t/nopkg:$(dirname "$(command -v python3)"):$(dirname "$(command -v git)"):/usr/bin:/bin"  # a PATH with no archimedes-kit
+  out="$(cd "$t/r" && PATH="$nopkg" bash scripts/check.sh 2>&1)"
+  ok "package mode with no package fails and names the install" "$(printf '%s\n' "$out" | grep -c -e '^FAIL  kit package' -e 'install: scripts/check.sh --kit-install')" 2
   printf '%s\n' '{"commit": "c0ffee"}' > "$t/r/.check.lock"
-  ok "a lock with no file list fails the package step, never skips it" "$(cd "$t/r" && PATH="$t/nopkg:$(dirname "$(command -v python3)"):$(dirname "$(command -v git)"):/usr/bin:/bin" bash scripts/check.sh 2>&1 | grep -c '^FAIL  kit package')" 1
+  ok "a lock with no file list fails the package step, never skips it" "$(cd "$t/r" && PATH="$nopkg" bash scripts/check.sh 2>&1 | grep -c '^FAIL  kit package')" 1
   printf '%s\n' '{"commit": "c0ffee", "files": {"scripts/gone.py": "x"}}' > "$t/r/.check.lock"
   mkdir -p "$t/pkgbin"; printf '#!/bin/sh\necho "KIT PACKAGE PASS: $*"\n' > "$t/pkgbin/archimedes-kit"; chmod +x "$t/pkgbin/archimedes-kit"
   ok "package mode runs the package's verify" "$(cd "$t/r" && PATH="$t/pkgbin:$PATH" bash scripts/check.sh 2>&1 | grep -c '^PASS  kit package')" 1
   g add -f .check.lock; printf 'x\n' > "$t/r/scripts/gone.py"; g add -f scripts/gone.py
   ok "with each locked script tracked there is no package step" "$(c | grep -c 'kit package')" 0
+  ok "with each locked script tracked --kit-install does nothing" "$(c --kit-install; echo "rc=$?")" "KIT PACKAGE: not used (each kit script in .check.lock is tracked)
+rc=0"
   [ "$fails" = 0 ] && echo "CHECK SELF-TEST PASS" || { echo "CHECK SELF-TEST FAIL"; exit 1; }
   exit 0
 fi
 
-lane=full cached=0 pii=1 record=0
+lane=full cached=0 pii=1 record=0 kitinstall=0
 for a in "$@"; do
   case "$a" in
     --fast) lane=fast ;;
     --cached) cached=1 ;;
     --no-content) pii=0 ;;
     --record) record=1 ;;
-    *) echo "usage: scripts/check.sh [--fast] [--cached] [--no-content] [--record] | --content ARGS... | --status | --hook" >&2; exit 2 ;;
+    --kit-install) kitinstall=1 ;;
+    *) echo "usage: scripts/check.sh [--fast] [--cached] [--no-content] [--record] | --kit-install | --content ARGS... | --status | --hook" >&2; exit 2 ;;
   esac
 done
 [ "$record" = 1 ] && [ "$lane" = fast ] && { echo "usage: --record needs the full lane" >&2; exit 2; }
@@ -257,6 +262,14 @@ try: f = [k for k in json.load(open(".check.lock"))["files"] if k.startswith("sc
 except Exception: sys.exit(0)
 sys.exit(0 if set(f) - set(subprocess.run(["git", "ls-files", "-z", "--"] + f, capture_output=True, text=True).stdout.split("\0")) else 1)'
 }
+# --kit-install: in package mode, install the kit package at the lock commit and write the kit scripts (the CI step, the
+# cloud setup script and the kit-update skill use it: one home for the install command); else nothing to do.
+if [ "$kitinstall" = 1 ]; then
+  pkg_mode || { echo "KIT PACKAGE: not used (each kit script in .check.lock is tracked)"; exit 0; }
+  c="$(python3 -c 'import json; print(json.load(open(".check.lock"))["commit"])')" || exit 1
+  python3 -m pip install -q --force-reinstall "git+https://github.com/rhope-ops/archimedes_lever@$c" && archimedes-kit --install
+  exit $?
+fi
 if [ "$cached" = 1 ] && [ -f "$stamp" ] && clean && ! pkg_mode; then
   read -r s_lane s_head <"$stamp" || true
   if [ "${s_head:-}" = "$head" ] && { [ "${s_lane:-}" = full ] || [ "$lane" = fast ]; }; then
@@ -459,7 +472,7 @@ fi
 # alone, because with the package missing the untracked scripts are missing too, and their steps above skip).
 kit_package() {
   command -v archimedes-kit >/dev/null && archimedes-kit --verify && return 0
-  echo "install: pip install \"git+https://github.com/rhope-ops/archimedes_lever@$(python3 -c 'import json; print(json.load(open(".check.lock"))["commit"])')\", then archimedes-kit --install"
+  echo "install: scripts/check.sh --kit-install (pip installs the kit package at the commit in .check.lock)"
   return 1
 }
 pkg_mode && run "kit package" kit_package
