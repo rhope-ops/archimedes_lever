@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Session-start check: is this repo set up, and can the personal-data guard check names here?
 
+Prevents: work that starts in a repo that still has template placeholders, or with no name denylist (so every push is blocked), and
+a resumed session that starts a new plan review.
+
 Usage:
     python3 scripts/first_use_check.py         # prints what the agent must do first; prints nothing when all is set
     python3 scripts/first_use_check.py --test  # self-test; prints FIRST USE TEST PASS

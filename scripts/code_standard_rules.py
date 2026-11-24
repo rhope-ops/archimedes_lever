@@ -3,6 +3,9 @@
 caps (RULE), the opt-in rules (OPT_IN), the language of each file extension, and the per-function rules C2, C2 full,
 C3 and the body hash for C5.
 
+Prevents: a function or a file that breaks the code standard unseen: the rule table, the opt-in rules and the per-function
+measures that scripts/code_standard.py checks.
+
 Part of scripts/code_standard.py (split out to keep each file under the line cap of docs/code-standard.md C4);
 code_standard.py imports every name here and re-exports it, so `code_standard.<name>` keeps working. These functions
 read no state of the check (no repo root, no gate): the check passes in what they need.

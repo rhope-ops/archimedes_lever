@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Sync a project repo to the current kit baseline (the repo that kit.config.json "kit_url" names).
 
+Prevents: a project that drifts from the kit: an old copy of a kit file, a missing kit lock, and a docs/DECISIONS.md with no
+approval-quote marker (so the T6 check would read every old row).
+
 Run it from inside the project repo:
     python3 scripts/sync_baseline.py            # dry run: show the diff, write nothing
     python3 scripts/sync_baseline.py --apply    # write the files (commit them yourself)
@@ -91,7 +94,7 @@ COPY_FILES = ["scripts/session_checkin.sh", "scripts/stop_check.py", "scripts/ch
               "scripts/check_content_finders.py", "scripts/check_content_test_local.py", "scripts/check_settings_test.py",
               "scripts/check_content_scan_settings.py", "scripts/check_content_test_cli.py",
               "scripts/check.sh", "scripts/check_settings.py", "scripts/check_settings_read.py", "scripts/bloat_check.py", "scripts/bloat_check_skills.py", "scripts/bloat_check_test.py",
-              "scripts/bloat_check_rules.py", "scripts/skill_use.py", "scripts/bloat_check_timing.py", "scripts/bloat_check_test_rules.py",
+              "scripts/bloat_check_rules.py", "scripts/bloat_check_files.py", "scripts/skill_use.py", "scripts/bloat_check_timing.py", "scripts/bloat_check_test_rules.py",
               "scripts/code_standard.py", "scripts/code_standard_test.py", "scripts/code_standard_docs.py", "scripts/code_standard_parse.py",
               "scripts/code_standard_rules.py", "scripts/code_standard_ratchet.py", "scripts/code_standard_test_gate.py", "scripts/code_standard_test_docs.py",
               "scripts/code_standard_strict.py", "scripts/code_standard_strict_test.py",
@@ -121,7 +124,7 @@ BASELINE_OWNER = "the Maintainer"  # role word in baseline text; no real name li
 # Advanced parts: a starter project has none of these (one list for bootstrap, sync and drift).
 ADVANCED_FILES = [".claude/skills/delegate/SKILL.md", ".claude/agents/scout.md", ".claude/agents/worker.md",
                   ".claude/skills/project-log/SKILL.md", "docs/LOG.md", "scripts/log_check.py", "scripts/log_check_plan.py", "scripts/timeline.py",
-                  ".claude/skills/audit/SKILL.md", "scripts/bloat_check.py", "scripts/bloat_check_skills.py", "scripts/bloat_check_rules.py",
+                  ".claude/skills/audit/SKILL.md", "scripts/bloat_check.py", "scripts/bloat_check_skills.py", "scripts/bloat_check_rules.py", "scripts/bloat_check_files.py",
                   "scripts/bloat_check_test.py", ".claude/rule-tests.md", "scripts/skill_use.py",
                   "scripts/bloat_check_timing.py", "scripts/bloat_check_test_rules.py"]
 # Moved or renamed in the kit (to .claude/skills/ on 2026-11-16; the guard to check_content on 2026-11-18; run-verify
