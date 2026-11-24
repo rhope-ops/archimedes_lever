@@ -72,6 +72,39 @@ def case_agent_type(fx):
               [x["agent_id"] for x in got], ["", "ab1", "zz9"])
 
 
+def case_skill_use(fx):
+    """The skill_use column: one Skill call, one Read of a SKILL.md, one sed slice of a SKILL.md and one Read of
+    another file, on invented data; a shell command with a false folder name; a row from before the column.
+
+    Args:
+        fx: the shared test fixture (Fixture).
+    """
+    t6 = os.path.join(fx.root, "proj", "s6.jsonl")
+    u = json.loads(msg("k1", "2026-01-04T00:00:01Z"))["message"]["usage"]
+
+    def call(mid, ts, name, **tool_input):
+        """One assistant log line with one tool_use block."""
+        block = {"type": "tool_use", "id": "t" + mid, "name": name, "input": tool_input}
+        return json.dumps({"type": "assistant", "timestamp": ts,
+                           "message": {"id": mid, "model": "claude-test", "usage": u, "content": [block]}})
+
+    append(t6, prompt("2026-01-04T00:00:00Z"),
+           call("k1", "2026-01-04T00:00:01Z", "Skill", skill="alpha"),
+           call("k2", "2026-01-04T00:00:02Z", "Read", file_path="/r/.claude/skills/alpha/SKILL.md"),
+           call("k3", "2026-01-04T00:00:03Z", "Bash", command="sed -n 1,9p .claude/skills/beta/SKILL.md"),
+           call("k4", "2026-01-04T00:00:04Z", "Read", file_path="/r/AGENTS.md"),
+           call("k5", "2026-01-04T00:00:05Z", "Bash", command='for f in a b; do grep x "$f/SKILL.md"; done'),
+           call("k6", "2026-01-04T00:00:06Z", "Bash", command="ls .claude/skills/beta/SKILL.md"))
+    fx.hook(fx.work, "s6", t6, fx.logs)
+    got = {x["message_id"]: x["skill_use"] for x in fx.remote_rows("s6") or []}
+    fx.expect("skill_use column: Skill call, Read, sed slice; other Read, false folder name, ls: nothing",
+              got, {"k1": '{"alpha":{"skill_tool":1}}', "k2": '{"alpha":{"read":1}}', "k3": '{"beta":{"slice":1}}',
+                    "k4": "", "k5": "", "k6": ""})
+    old = {"message_id": "m1", "timestamp": "2026-01-01T00:00:00Z"}  # a row from before the column
+    merged = list(csv.DictReader(io.StringIO(fx.tl.to_csv({"m1": old}))))
+    fx.expect("old row without skill_use: merged with an empty value", merged[0]["skill_use"], "")
+
+
 def case_agent_type_bad_input(fx):
     """Each bad field alone: a non-text type, an unmapped id, a non-text id and a non-number count. Each row still
     pushes; the bad type and the unmapped id say "unknown".

@@ -26,7 +26,7 @@ import unittest
 
 # scripts/token_log_test_report.py: the sample log lines and more case groups (kept apart, docs/code-standard.md C4).
 from token_log_test_report import (append, case_agent_type, case_agent_type_bad_input, case_prices,  # noqa: F401
-                                   case_report, case_self_update, msg, prompt, tool_result)
+                                   case_report, case_self_update, case_skill_use, msg, prompt, tool_result)
 
 
 class Fixture:
@@ -344,7 +344,7 @@ def run(tl):
     try:
         for case in (case_first_turn, case_second_turn, case_blocked_and_shallow, case_retry, case_coalesce,
                      case_fetch_head_and_timeout, case_waiting_push, case_bad_input_and_off, case_agent_type,
-                     case_agent_type_bad_input, case_report, case_prices, case_self_update):
+                     case_skill_use, case_agent_type_bad_input, case_report, case_prices, case_self_update):
             case(fx)
     finally:
         tl.push = fx.real_push

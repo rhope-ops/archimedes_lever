@@ -25,7 +25,11 @@ and system wake-ups such as task notifications, not tool results or interrupt ma
 session_id, repo, model, source (main, subagent), agent (main; the subagent type of the Agent call, else unknown; empty
 for an old row whose log is gone), agent_id (the subagent's id, one per Agent call, so its calls group into one task;
 empty for main), input_tokens, cache_creation_input_tokens, cache_read_input_tokens, output_tokens, and the price columns
-cache_write_1h_tokens (the 1-hour part of the cache writes), speed, web_search_requests, inference_geo (empty in an old row).
+cache_write_1h_tokens (the 1-hour part of the cache writes), speed, web_search_requests, inference_geo (empty in an
+old row), and skill_use (JSON; empty when the reply made no skill call). skill_use counts, by the reply that made the
+call, per skill: skill_tool (Skill-tool calls), read (Reads of its SKILL.md) and slice (shell commands with grep, sed,
+head, tail, cat or awk on its SKILL.md); a count of 0 is left out, e.g. {"deliver":{"skill_tool":1,"slice":2}}. Add the
+rows of a session for its counts. An old row has no skill_use: it reads as empty.
 
 Settings (environment): TOKEN_LOG=off turns it off; TOKEN_LOG_BRANCH (default claude/token-usage); TOKEN_LOG_SYNC=1
 pushes in the foreground; TOKEN_LOG_HOME (default ~/.claude/token-log) holds push.log and the lock files;
@@ -62,7 +66,7 @@ from datetime import datetime, timezone
 
 FIELDS = ["message_id", "timestamp", "turn", "session_id", "repo", "model", "source", "agent", "agent_id",
           "input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens", "output_tokens", "cache_write_1h_tokens",
-          "speed", "web_search_requests", "inference_geo"]
+          "speed", "web_search_requests", "inference_geo", "skill_use"]
 USAGE_KEYS = FIELDS[9:13]  # the four token counts that the report sums
 PRIVATE_REF = "refs/token-log/remote"
 NOT_PROMPTS = ("[Request interrupted",)
