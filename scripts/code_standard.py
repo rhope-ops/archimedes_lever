@@ -19,8 +19,8 @@ What it measures (the rule numbers are those of docs/code-standard.md):
   C1 prevents    FAIL in the kit, WARN in a project (AUD-1): a check entry point (check.sh or a hook runs it) has `Prevents: <defect>`
   C5 duplicate   no two functions in hand-written files have the same body (a copy must be generated, with a banner)
   C6 generated   each generated file says GENERATED near its top and names its source
-  C10 parse      each PowerShell file parses
-  Python parse, line length and file size: ruff and pylint (ruff.toml, .pylintrc; scripts/check.sh) on the files `--python-files` lists
+  C10 parse      each PowerShell file parses; each Python file too, when ruff or pylint is not installed
+  Python parse (with both installed), line length and file size: ruff and pylint (ruff.toml, .pylintrc; check.sh) on `--python-files`
 A comment that is the file header, or a divider line ("# ----", "# ===="), does not count as a function's comment.
 A script block passed as an argument ($b.Add_Click({ ... })) is measured for C3 too, named by the call it is in.
 Settings: the `code-` lines of `.check` (caps, scope, opt-in rules; read by scripts/check_settings.py, which lists
@@ -242,7 +242,7 @@ def measure_file(v, p, config, ps, bodies, entries=()):
     if full and lang == 'python':
         try:
             py = docs.python_docs(text)
-        except SyntaxError:   # the parse error is for ruff and pylint (scripts/check.sh); no docs check on a file that does not parse
+        except SyntaxError:   # the parse error is C10 (here, or ruff and pylint); no docs check on a file that does not parse
             full = False
     ctx = {'lang': lang, 'head_last': head_last, 'seen': {}, 'full': full, 'bodies': bodies, 'py': py,
            'cap': config['caps']['max_function_lines']}
