@@ -26,6 +26,11 @@ Tiers (the owner, 2026-11-13): a starter project has the core rules, hooks and c
 for one tier with lines "<!-- full -->" ... "<!-- /full -->" and "<!-- starter -->" ... "<!-- /starter -->";
 apply_tier() keeps the blocks for the project's tier and drops the marker lines.
 
+Before it writes (also in a dry run), it compares the kit files it would write with the project's .check.lock. When one differs from its lock hash, is an
+override, or is not in the lock and differs from the kit's file, it writes nothing, names the files and exits 2, with the way forward
+for each (a PROJECT.md beside a kit skill, AGENTS.md "Project rules", scripts/check.local.sh or .check, or the kit). With no .check.lock, an unreadable one, or a
+missing kit file, it does not stop.
+
 What it changes:
     AGENTS.md              Baseline text above "## Project rules", with this project's header values.
                            Keeps this project's "## Commands" section and everything from "## Project rules" on.
@@ -62,7 +67,8 @@ What it never changes: README.md, docs/ (except docs/FIRST_USE.md and docs/DECIS
 license), .check and all other files. A project's own code lives in its own files (scripts/check.local.sh,
 scripts/check_content_local.py, scripts/check_instructions_local.py, scripts/code_standard_gate.py), which a sync
 never touches.
-Parts: scripts/sync_baseline_repo.py (the reads of the baseline repo, the diff) and scripts/sync_baseline_run.py (the writes). Standard library only. Needs git.
+Parts: scripts/sync_baseline_repo.py (the reads of the baseline repo, the diff), scripts/sync_baseline_stop.py (the stop before a write)
+and scripts/sync_baseline_run.py (the writes). Standard library only. Needs git.
 Network: the baseline repo, only when --baseline is a URL (one git clone); none for a local folder.
 Writes: with --apply, the kit files of the project and its kit lock .check.lock (the list: "What it changes" above); without it, nothing.
 Credentials: none itself; a clone uses the credentials git already has.
@@ -85,6 +91,8 @@ from sync_baseline_repo import (baseline_sha, dod_files, get_baseline, git, head
                                 log_template, show_diff)
 # scripts/sync_baseline_run.py: the write side (the placeholder stop, the leftovers report, the files and the kit lock).
 from sync_baseline_run import check_placeholders, report_leftovers, write_files, write_lock  # noqa: E402,F401
+# scripts/sync_baseline_stop.py: the check side (the stop before a write when a kit file holds a project change).
+from sync_baseline_stop import stop_on_changed_kit_files, unlocked_kit_files  # noqa: E402,F401
 
 import kit_config  # noqa: E402 - scripts/kit_config.py: the one home of the kit addresses (kit.config.json)
 DEFAULT_BASELINE = kit_config.value("kit_url")  # None when kit.config.json is missing: parse_args stops
@@ -374,6 +382,22 @@ def new_log(base, root, proj_text, agents_text, owner, tier):
     return result
 
 
+def project_owner(root, args):
+    """The owner word of this sync: --owner, else the project's "- Owner:" line, else the baseline's word.
+
+    Args:
+        root: the project folder.
+        args: the parsed command line.
+    Returns:
+        The owner word; the sync stops when it holds a character that the baseline text cannot hold.
+    """
+    proj_agents = root / "AGENTS.md"
+    owner = args.owner or header_owner(proj_agents.read_text() if proj_agents.exists() else "") or BASELINE_OWNER
+    if not re.fullmatch(OWNER_RE, owner):
+        die(f"owner {owner!r}: use letters, digits, space . _ , ( ) - only")
+    return owner
+
+
 def planned_files(base, root, args):
     """Map each project path to its synced text, and return it with the tier.
 
@@ -386,9 +410,7 @@ def planned_files(base, root, args):
     """
     proj_agents = root / "AGENTS.md"
     proj_text = proj_agents.read_text() if proj_agents.exists() else None
-    owner = args.owner or header_owner(proj_text or "") or BASELINE_OWNER
-    if not re.fullmatch(OWNER_RE, owner):
-        die(f"owner {owner!r}: use letters, digits, space . _ , ( ) - only")
+    owner = project_owner(root, args)
     tier = args.tier or header_tier(proj_text or "")
     copy_files, copy_if_missing = tier_files(tier)
     new = {}
@@ -444,6 +466,7 @@ def main():
               "hash of each kit file); the project does not keep the sync tools.")
         check_placeholders(root)
         new, tier = planned_files(base, root, args)
+        stop_on_changed_kit_files(base, root, new, project_owner(root, args), COPY_FILES, copy_state)
         changed = show_diff(root, new)
         report_leftovers(root, tier, ADVANCED_FILES, MOVED_FILES)
         for note in COPY_NOTES:

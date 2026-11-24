@@ -87,6 +87,23 @@ baseline rise until item (a) lands with a measured net cut. Map (a) first (which
 replace, exact delete and add counts), show the Maintainer the cut, then build it. d (claude/tr-p2-d3) waits and lands
 later inside the freed lines, with its restored test (+360), with no new number. Main is 18303.
 
+**P2 on hold (2026-11-23 21:10 America/Chicago).** Facts measured since the freeze:
+- Item (a) cuts nothing. A prototype gave 0 deletable lines, because the checks that stay share the Python parse. The
+  Maintainer chose "Build as planned": it is built on the local branch claude/tr-p2-a (b13bc6b, +41 lines) and waits
+  under the freeze. Its fresh review found 4 MAJOR findings. 2 are join items: T2, and ruff.toml and .pylintrc are
+  missing from COPY_FILES. 2 are code defects to fix before a PR: the lint step ignores code-exclude, code-generated and
+  generated blocks; a Python file that does not parse crashes code_standard_docs.py with code-c2: full, where main
+  printed a C10 FAIL. Fixing them adds lines (estimate +5 to +15).
+- No kit tool is dead (all 47 non-test tools are called and changed). Feature tools measured for retirement:
+  timeline.py (-414 to -475), fulcrum_palette.py (-314; reverses the 2026-11-20 decision), build_site.py (-481; RADE and
+  33-332.Z use it; reverses the 2026-11-21 decision). The Maintainer chose timeline.py, then a fleet read showed real
+  use (icf-source LOG.md and its 2026-11-11 talk slide; no-more-beyond project-log PROJECT.md), and the Maintainer
+  chose "Keep it, no retirement".
+- So no cut is planned, and the freeze holds (a), d (claude/tr-p2-d3: +351, or +360 with the restored test) and items
+  (g), (i), (j), which all add lines. Item (h) (AUD-5 records) adds none.
+- Next: the Maintainer chooses another cut or lifts the freeze. The local branches cannot be pushed under T2; rebuild
+  from this file and the PR bodies if the container is lost.
+
 ## Later phases (plan sections)
 
 - P2: the split above, with the skill-use proposals P1-P4 (audit file

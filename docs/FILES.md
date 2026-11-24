@@ -60,7 +60,7 @@ Every file in the archimedes_lever kit and what it does. Kit only: `scripts/boot
 | kit.config.json | Kit only (bootstrap deletes it; not synced). The one home of the kit addresses: `kit_repo`, `kit_url` (the repo that sync_baseline.py, drift.py and the token_log self-update clone) and `fleet_page`. A new maintainer changes them here only. |
 | scripts/kit_config.py | Kit only (bootstrap deletes it; not synced). The reader of kit.config.json (no fallback address in code). `--test`. |
 | scripts/token_log_test_report.py | Kit only. More self-test cases of token_log.py (agents, report, prices, self-update). |
-| scripts/sync_baseline_repo.py, sync_baseline_run.py, drift_test.py | Kit only. Parts of sync_baseline.py (baseline reads; the write side of a run: placeholders, leftovers, files, lock) and the self-test cases of drift.py. |
+| scripts/sync_baseline_repo.py, sync_baseline_run.py, sync_baseline_stop.py, drift_test.py | Kit only. Parts of sync_baseline.py (baseline reads; the write side of a run: placeholders, leftovers, files, lock; the stop on a project's local edits to kit files) and the self-test cases of drift.py. |
 | scripts/*_cli_test.py | Kit only. unittest cases that run sync_baseline, drift, check_lock and bootstrap.sh by their command line in temporary repos (`python3 -m unittest discover -s scripts -p '*_test.py'`). |
 | scripts/worker_guard.py | PreToolUse hook that limits what `worker` and `reviewer` may do in git. `--test`. |
 | scripts/log_check.py | Full only. Checks docs/LOG.md against the project log rules. `--decisions` checks that a new docs/DECISIONS.md row quotes its approval (T6); `--coverage FILE` checks a plan coverage list (T7). `--test`. Its T6 and T7 parts are in scripts/log_check_plan.py. |

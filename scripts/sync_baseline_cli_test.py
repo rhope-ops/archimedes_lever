@@ -9,7 +9,9 @@ Network: none (the baseline is this checkout, a local folder).
 Writes: temporary folders only.
 Credentials: none.
 """
+import hashlib
 import json
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -79,6 +81,208 @@ class SyncBaselineCli(unittest.TestCase):
         self.assertEqual(p.returncode, 0, p.stderr)
         self.assertIn("No changes", p.stdout)
         self.assertEqual((self.path / ".check.lock").read_text(), before)
+
+    def tree_hashes(self):
+        """Map each file of the project (not .git) to its hash."""
+        return {str(f.relative_to(self.path)): hashlib.sha256(f.read_bytes()).hexdigest()
+                for f in sorted(self.path.rglob("*")) if f.is_file() and ".git" not in f.relative_to(self.path).parts}
+
+    def test_edited_kit_file_stops_the_sync(self):
+        """Prove: one edited kit file stops the sync with exit 2, names the file, and writes nothing."""
+        self.assertEqual(sync(self.path).returncode, 0)
+        (self.path / "scripts/check_lock.py").write_text("# local edit\n")
+        run(["git", "add", "-A"], self.path)
+        run(GIT + ["commit", "-q", "-m", "edit"], self.path)
+        before = self.tree_hashes()
+        p = sync(self.path)
+        self.assertEqual(p.returncode, 2, p.stdout + p.stderr)
+        self.assertIn("scripts/check_lock.py", p.stdout)
+        self.assertIn("scripts/check.local.sh", p.stdout)
+        self.assertEqual(self.tree_hashes(), before)
+
+    def synced_and_committed(self, *extra):
+        """Sync the kit into the repo and commit the result."""
+        self.assertEqual(sync(self.path, *extra).returncode, 0)
+        self.commit_all("sync")
+
+    def commit_all(self, msg):
+        """Commit every change of the repo."""
+        run(["git", "add", "-A"], self.path)
+        run(GIT + ["commit", "-q", "-m", msg], self.path)
+
+    def test_relocked_override_stops_the_sync(self):
+        """Prove: a file the Maintainer relocked (an override) stops the sync (exit 2): nothing written, lock unchanged."""
+        self.synced_and_committed()
+        with (self.path / "scripts/check.sh").open("a") as f:
+            f.write("# local\n")
+        p = py("check_lock.py", "--relock", "scripts/check.sh", "--project", str(self.path), cwd=self.path)
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.commit_all("relock")
+        before = self.tree_hashes()
+        p = sync(self.path)
+        self.assertEqual(p.returncode, 2, p.stdout + p.stderr)
+        self.assertIn("scripts/check.sh", p.stdout)
+        self.assertEqual(self.tree_hashes(), before)
+
+    def test_unreadable_lock_is_said(self):
+        """Prove: a lock that cannot be read does not stop the sync, and one line says the edits were not checked."""
+        self.synced_and_committed()
+        (self.path / ".check.lock").write_text("[]")
+        self.commit_all("break the lock")
+        p = sync(self.path)
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertIn("could not be read", p.stdout)
+
+    def test_edit_of_a_file_this_sync_does_not_write_is_no_stop(self):
+        """Prove: an edited advanced file (full tier) does not stop a --tier starter sync that never writes it."""
+        self.synced_and_committed("--tier", "full")
+        (self.path / ".claude/agents/scout.md").write_text("# local\n")
+        self.commit_all("edit scout")
+        p = sync(self.path, "--tier", "starter")
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertEqual((self.path / ".claude/agents/scout.md").read_text(), "# local\n")
+
+    def test_edit_of_the_kit_part_of_agents_md_says_project_rules(self):
+        """Prove: an edit in the kit part of AGENTS.md stops the sync and points to "Project rules", not to a PROJECT.md."""
+        self.synced_and_committed()
+        text = (self.path / "AGENTS.md").read_text()
+        (self.path / "AGENTS.md").write_text(text.replace("## Defaults\n", "## Defaults\n\n- A local rule.\n", 1))
+        self.commit_all("edit AGENTS.md")
+        p = sync(self.path)
+        self.assertEqual(p.returncode, 2, p.stdout + p.stderr)
+        self.assertIn("AGENTS.md (kit sections)", p.stdout)
+        self.assertIn('AGENTS.md "Project rules"', p.stdout)
+        self.assertNotIn("PROJECT.md", p.stdout)
+
+    def advice_line(self, out, rel):
+        """The line of the sync output that names this file."""
+        return next(line for line in out.splitlines() if line.strip().startswith(rel))
+
+    def test_each_file_gets_its_own_way_forward(self):
+        """Prove: an edited kit part of AGENTS.md, kit skill and kit script each get their own way forward."""
+        self.synced_and_committed()
+        text = (self.path / "AGENTS.md").read_text()
+        (self.path / "AGENTS.md").write_text(text.replace("## Defaults\n", "## Defaults\n\n- A local rule.\n", 1))
+        with (self.path / ".claude/skills/deliver/SKILL.md").open("a") as f:
+            f.write("# local\n")
+        with (self.path / "scripts/check.sh").open("a") as f:
+            f.write("# local\n")
+        self.commit_all("edit three")
+        p = sync(self.path)
+        self.assertEqual(p.returncode, 2, p.stdout + p.stderr)
+        rules = self.advice_line(p.stdout, "AGENTS.md (kit sections)")
+        skill = self.advice_line(p.stdout, ".claude/skills/deliver/SKILL.md")
+        script = self.advice_line(p.stdout, "scripts/check.sh")
+        self.assertIn('AGENTS.md "Project rules"', rules)
+        self.assertNotIn("PROJECT.md", rules)
+        self.assertIn("PROJECT.md", skill)
+        self.assertIn("scripts/check.local.sh", script)
+        self.assertIn(".check", script)
+        self.assertNotIn("PROJECT.md", script)
+
+    def test_null_overrides_is_an_unreadable_lock(self):
+        """Prove: a lock with "overrides": null is said as unreadable and does not crash the sync."""
+        self.synced_and_committed()
+        lock = json.loads((self.path / ".check.lock").read_text())
+        lock["overrides"] = None
+        (self.path / ".check.lock").write_text(json.dumps(lock))
+        self.commit_all("null overrides")
+        p = sync(self.path)
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertIn("could not be read", p.stdout)
+
+    def test_unlocked_kit_file_that_differs_stops_the_sync(self):
+        """Prove: a kit file that is not in the lock, exists with other text, and will be written stops the sync (exit 2, nothing written)."""
+        self.synced_and_committed()
+        lock = json.loads((self.path / ".check.lock").read_text())
+        del lock["files"]["scripts/stop_check.py"]
+        (self.path / ".check.lock").write_text(json.dumps(lock))
+        (self.path / "scripts/stop_check.py").write_text("# mine\n")
+        self.commit_all("unlocked and different")
+        before = self.tree_hashes()
+        p = sync(self.path)
+        self.assertEqual(p.returncode, 2, p.stdout + p.stderr)
+        self.assertIn("scripts/stop_check.py", p.stdout)
+        self.assertEqual(self.tree_hashes(), before)
+
+    def test_unlocked_kit_file_that_matches_is_no_stop(self):
+        """Prove: a kit file that is not in the lock but has the kit's text is no stop."""
+        self.synced_and_committed()
+        lock = json.loads((self.path / ".check.lock").read_text())
+        del lock["files"]["scripts/stop_check.py"]
+        (self.path / ".check.lock").write_text(json.dumps(lock))
+        self.commit_all("unlocked and equal")
+        self.assertEqual(sync(self.path).returncode, 0)
+
+    def unlock(self, rel):
+        """Drop one file from the lock of the project, and commit."""
+        lock = json.loads((self.path / ".check.lock").read_text())
+        del lock["files"][rel]
+        (self.path / ".check.lock").write_text(json.dumps(lock))
+        self.commit_all("unlock " + rel)
+
+    def test_unchanged_older_kit_copy_is_no_stop(self):
+        """Prove: a file that is an earlier kit version, with no project change, is replaced and does not stop the sync."""
+        old = {".claude/skills/audit/SKILL.md": "8ad5448", "scripts/bloat_check.py": "239cdfd"}
+        for rel, sha in old.items():
+            if run(["git", "cat-file", "-e", f"{sha}:{rel}"], KIT).returncode != 0:
+                self.skipTest("the kit history has no " + sha)
+        self.synced_and_committed("--tier", "full")
+        self.synced_and_committed("--tier", "starter")
+        for rel, sha in old.items():
+            shown = subprocess.run(["git", "show", f"{sha}:{rel}"], cwd=KIT, capture_output=True, check=True)
+            (self.path / rel).write_bytes(shown.stdout)
+        self.commit_all("older kit copies")
+        p = sync(self.path, "--tier", "full")
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        for rel, sha in old.items():
+            shown = subprocess.run(["git", "show", f"{sha}:{rel}"], cwd=KIT, capture_output=True, check=True)
+            self.assertNotEqual((self.path / rel).read_bytes(), shown.stdout, rel + " is updated")
+        self.commit_all("synced")
+        self.assertIn("No changes", sync(self.path, "--tier", "full").stdout)
+
+    def test_unlocked_file_with_other_line_ends_is_no_stop(self):
+        """Prove: an unlocked kit file that differs from the kit's only by CRLF line ends is no stop, as with a locked file."""
+        self.synced_and_committed()
+        path = self.path / "scripts/stop_check.py"
+        path.write_bytes(path.read_bytes().replace(b"\n", b"\r\n"))
+        self.unlock("scripts/stop_check.py")
+        p = sync(self.path)
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+
+    def test_unlocked_file_and_a_baseline_with_no_history_stops_with_advice(self):
+        """Prove: with no git history in the baseline, a differing unlocked file stops, and the advice names the delete."""
+        self.synced_and_committed()
+        self.unlock("scripts/stop_check.py")
+        (self.path / "scripts/stop_check.py").write_text("# mine\n")
+        self.commit_all("edit")
+        with tempfile.TemporaryDirectory() as plain:
+            copy = Path(plain) / "kit"
+            shutil.copytree(KIT, copy, ignore=shutil.ignore_patterns(".git", "__pycache__", "worktrees"))
+            p = py("sync_baseline.py", "--baseline", str(copy), "--name", "Demo", "--repo", "org/demo", "--purpose", "A demo.",
+                   "--timezone", "UTC", "--owner", "the maintainer", "--tier", "starter", "--apply", cwd=self.path)
+        self.assertEqual(p.returncode, 2, p.stdout + p.stderr)
+        line = self.advice_line(p.stdout, "scripts/stop_check.py")
+        self.assertIn("delete", line)
+        self.assertIn("scripts/check.local.sh", line)
+        self.assertNotIn("PROJECT.md", line)
+
+    def test_relock_with_null_overrides_is_an_unreadable_lock(self):
+        """Prove: --relock on a lock with "overrides": null says the lock is not readable and exits 1, with no traceback."""
+        self.synced_and_committed()
+        lock = json.loads((self.path / ".check.lock").read_text())
+        lock["overrides"] = None
+        (self.path / ".check.lock").write_text(json.dumps(lock))
+        p = py("check_lock.py", "--relock", "scripts/check.sh", "--project", str(self.path), cwd=self.path)
+        self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+        self.assertIn("not readable", p.stdout)
+        self.assertNotIn("Traceback", p.stderr)
+
+    def test_project_without_a_lock_is_synced_as_before(self):
+        """Prove: a project with no .check.lock is not stopped (nothing to compare with): the first sync writes the lock."""
+        self.assertFalse((self.path / ".check.lock").exists())
+        self.assertEqual(sync(self.path).returncode, 0)
+        self.assertTrue((self.path / ".check.lock").is_file())
 
     def test_owner_role_replaces_the_owner_word(self):
         """Prove: owner role replaces the owner word."""
