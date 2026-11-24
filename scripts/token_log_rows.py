@@ -1,23 +1,31 @@
-"""The row part of scripts/token_log.py: reads a session log and its subagent logs into one row per API call
-(message id, turn, source, agent, the token counts and the price facts). Split out so that token_log.py stays under
-the C4 file cap.
+"""The rows of the token log: reads a session log and its subagent logs into one row per API call (message id,
+turn, source, agent, the token counts and the price facts), and writes them as CSV. The one home of the columns
+(FIELDS). Kit only. One of the three hook files: token_log.py (the hook), this file (the rows), token_log_report.py.
 
-token_log.py loads this file on first use. An installed copy from before the split has no such file: its background
-push then fails with ImportError and runs the self-update at once, which installs this file; the next push rebuilds
-every row from the logs, so no row is lost.
+token_log.py imports this file in the background push, never on the Stop path. An installed copy from before the
+split has no such file: its push then fails with ImportError and runs the self-update at once, which installs this
+file; the next push rebuilds every row from the logs, so no row is lost.
 Inputs:  the session log path (JSON lines) and its <session>/**/*.jsonl subagent logs.
-Outputs: {message_id: row} for token_log.push.
+Outputs: {message_id: row} and its CSV text for token_log.push.
 Prevents: double counts of one reply (the session log repeats its usage on each content block) and lost subagent rows
 Network: none.
 Writes: none.
 Credentials: none.
-Run:     loaded by scripts/token_log.py; tested by its self-test (python3 scripts/token_log.py --test).
+Run:     imported by scripts/token_log.py; tested by its self-test (python3 scripts/token_log.py --test).
 """
 import bisect
+import csv
 import glob
+import io
 import json
 import os
 import re
+
+FIELDS = ["message_id", "timestamp", "turn", "session_id", "repo", "model", "source", "agent", "agent_id",
+          "input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens", "output_tokens", "cache_write_1h_tokens",
+          "speed", "web_search_requests", "inference_geo", "skill_use"]
+USAGE_KEYS = FIELDS[9:13]  # the four token counts that the report sums
+NOT_PROMPTS = ("[Request interrupted",)
 
 # A skill's name is the folder after skills/; skills/ must start a path part (not "myskills/").
 SKILL_PATH = re.compile(r"(?:^|(?<=[/\s\"']))skills/([A-Za-z0-9_.-]+)/SKILL\.md")
@@ -25,8 +33,6 @@ SLICE_COMMANDS = ("grep", "sed", "head", "tail", "cat", "awk")  # shell commands
 SIMPLE_COMMANDS = re.compile(r";|&&|\|\||\||\n")  # the split between simple commands (no \s* around it: linear on long runs of spaces)
 ENV_ASSIGNMENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=")  # NAME=value before the command word
 SHELL_WORDS = ("do", "then", "else", "if", "while", "!", "(", "{", "time", "sudo")  # words before the command word
-
-core = None  # scripts/token_log.py as a module: set by its loader before any call here
 
 
 def prompt_text(d):
@@ -44,7 +50,7 @@ def prompt_text(d):
         if any(isinstance(x, dict) and x.get("type") == "tool_result" for x in c):
             return None
         c = " ".join(x.get("text", "") for x in c if isinstance(x, dict) and x.get("type") == "text")
-    if not isinstance(c, str) or not c.strip() or c.lstrip().startswith(core.NOT_PROMPTS):
+    if not isinstance(c, str) or not c.strip() or c.lstrip().startswith(NOT_PROMPTS):
         return None
     return c
 
@@ -218,7 +224,7 @@ def log_rows(sid, tpath, repo):
         tpath: the path of the session's log file.
         repo: the repo name.
     Returns:
-        A dict of message id to the row (a dict with the core.FIELDS).
+        A dict of message id to the row (a dict with the FIELDS).
     """
     msgs, prompts = read_log(tpath, "main")
     types = agent_types(tpath)
@@ -241,5 +247,110 @@ def log_rows(sid, tpath, repo):
                      "session_id": sid, "repo": repo, "model": model, "source": src, "agent": agent[mid],
                      "agent_id": agent_id.get(mid, ""),
                      "skill_use": json.dumps(skills[mid], sort_keys=True, separators=(",", ":")) if mid in skills else "",
-                     **{k: tokens(u.get(k)) for k in core.USAGE_KEYS}, **price_facts(u)}
+                     **{k: tokens(u.get(k)) for k in USAGE_KEYS}, **price_facts(u)}
     return rows
+
+
+def to_csv(rows):
+    """The CSV text of the rows, header first, sorted by timestamp and message id."""
+    out = io.StringIO()
+    w = csv.DictWriter(out, fieldnames=FIELDS, lineterminator="\n")
+    w.writeheader()
+    for r in sorted(rows.values(), key=lambda r: (r["timestamp"], r["message_id"])):
+        w.writerow({k: r.get(k, "") for k in FIELDS})
+    return out.getvalue()
+
+
+# The /cost and /usage record of the agents-pane mod: <TOKEN_LOG_HOME>/cost/<session id>.json, version 1.
+COST_FIELDS = ["session_id", "written_at", "source", "agent_id", "type", "model", "status", "usd", "input", "output",
+               "cache_read", "cache_write", "started_at", "ended_at", "session_usd"]
+LIMIT_FIELDS = ["session_id", "read_at", "window", "percent_used", "resets_at"]
+COST_TOKENS = ("input", "output", "cache_read", "cache_write")
+
+
+def read_cost_record(path, sid):
+    """The agents-pane record of this session, or None when there is no file.
+
+    Args:
+        path: the record file (<TOKEN_LOG_HOME>/cost/<session id>.json).
+        sid: the session id the record must name.
+    Returns:
+        The record (a dict), or None when the file does not exist. Raises ValueError with the reason when the file
+        does not parse, is not version 1, names another session, or has a part of the wrong type.
+    """
+    try:
+        with open(path, encoding="utf-8") as f:
+            text = f.read()
+    except FileNotFoundError:
+        return None
+    rec = json.loads(text)  # a ValueError when it does not parse (for example a half-written file)
+    if not isinstance(rec, dict) or rec.get("version") != 1 or isinstance(rec.get("version"), bool):
+        raise ValueError("not a version 1 record")
+    if rec.get("session_id") != sid:
+        raise ValueError("the record names another session")
+    if not isinstance(rec.get("main"), dict) or not isinstance(rec.get("subagents", []), list) \
+            or not isinstance(rec.get("limits", []), list):
+        raise ValueError("main, subagents or limits has the wrong type")
+    return rec
+
+
+def cell(v):
+    """A CSV cell: a number or a text as itself, anything else (None, a list, a dict, a bool) empty."""
+    return v if isinstance(v, (int, float, str)) and not isinstance(v, bool) else ""
+
+
+def csv_text(fields, rows):
+    """The CSV text of a list of row dicts, header first."""
+    out = io.StringIO()
+    w = csv.DictWriter(out, fieldnames=fields, lineterminator="\n", extrasaction="ignore")
+    w.writeheader()
+    w.writerows({k: r.get(k, "") for k in fields} for r in rows)
+    return out.getvalue()
+
+
+def cost_csv(rec):
+    """The costs/<session id>.csv snapshot of a record: one main row, then one row per subagent.
+
+    Args:
+        rec: a record from read_cost_record().
+    Returns:
+        The CSV text.
+    """
+    base = {"session_id": rec["session_id"], "written_at": cell(rec.get("written_at")),
+            "session_usd": cell(rec.get("session_usd"))}
+    m = rec["main"]
+    rows = [{**base, "source": "main", "usd": cell(rec.get("main_usd")), **{k: cell(m.get(k)) for k in COST_TOKENS}}]
+    for a in rec.get("subagents", []):
+        if isinstance(a, dict):
+            rows.append({**base, "source": "subagent", **{k: cell(a.get(k)) for k in COST_FIELDS[3:14]}})
+    return csv_text(COST_FIELDS, rows)
+
+
+def has_zone(ts):
+    """True when ts is an ISO time with a time zone (UTC "Z" or an offset)."""
+    from datetime import datetime
+    try:
+        return datetime.fromisoformat(str(ts).replace("Z", "+00:00")).tzinfo is not None if isinstance(ts, str) else False
+    except ValueError:
+        return False
+
+
+def limits_csv(rec, old):
+    """The limits/<session id>.csv series: the rows already on the branch plus this record's readings, one row per
+    (read_at, window); an earlier row is kept as it is.
+
+    Args:
+        rec: a record from read_cost_record().
+        old: the CSV text of the file on the branch ("" when there is none).
+    Returns:
+        The CSV text, sorted by read_at and window, or "" when there is no row.
+    """
+    rows = {(r.get("read_at"), r.get("window")): r for r in csv.DictReader(io.StringIO(old))}
+    at = rec.get("limits_read_at")
+    for x in rec.get("limits", []) if has_zone(at) else []:  # a time with no zone cannot be placed: skipped
+        p = x.get("percent_used") if isinstance(x, dict) else None
+        if isinstance(p, (int, float)) and not isinstance(p, bool) and 0 <= p <= 100 \
+                and isinstance(x.get("window"), str):  # NaN, text and values outside 0-100 are skipped
+            rows.setdefault((at, x["window"]), {"session_id": rec["session_id"], "read_at": at, "window": x["window"],
+                                                "percent_used": x["percent_used"], "resets_at": cell(x.get("resets_at"))})
+    return csv_text(LIMIT_FIELDS, [rows[k] for k in sorted(rows, key=lambda k: (str(k[0]), str(k[1])))]) if rows else ""
