@@ -62,15 +62,16 @@ What it never changes: README.md, docs/ (except docs/FIRST_USE.md and docs/DECIS
 license), .check and all other files. A project's own code lives in its own files (scripts/check.local.sh,
 scripts/check_content_local.py, scripts/check_instructions_local.py, scripts/code_standard_gate.py), which a sync
 never touches.
-Parts: scripts/sync_baseline_repo.py (the reads of the baseline repo, the diff) and scripts/sync_baseline_run.py (main). Standard library only. Needs git.
+Parts: scripts/sync_baseline_repo.py (the reads of the baseline repo, the diff) and scripts/sync_baseline_run.py (the writes). Standard library only. Needs git.
 Network: the baseline repo, only when --baseline is a URL (one git clone); none for a local folder.
 Writes: with --apply, the kit files of the project and its kit lock .check.lock (the list: "What it changes" above); without it, nothing.
 Credentials: none itself; a clone uses the credentials git already has.
 """
 import argparse
 import re
-import shutil
+import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -82,8 +83,8 @@ from sync_merge import (apply_tier, find_heading, header_short_name, header_time
 # scripts/sync_baseline_repo.py: the reads of the baseline repo and the diff (kept apart, docs/code-standard.md C4).
 from sync_baseline_repo import (baseline_sha, dod_files, get_baseline, git, header_owner, kit_history, log_stamp,  # noqa: E402,F401
                                 log_template, show_diff)
-import sync_baseline_run  # noqa: E402 - scripts/sync_baseline_run.py: the steps of one run (main)
-from sync_baseline_run import check_placeholders  # noqa: E402,F401 - re-exported
+# scripts/sync_baseline_run.py: the write side (the placeholder stop, the leftovers report, the files and the kit lock).
+from sync_baseline_run import check_placeholders, report_leftovers, write_files, write_lock  # noqa: E402,F401
 
 import kit_config  # noqa: E402 - scripts/kit_config.py: the one home of the kit addresses (kit.config.json)
 DEFAULT_BASELINE = kit_config.value("kit_url")  # None when kit.config.json is missing: parse_args stops
@@ -421,59 +422,46 @@ def planned_files(base, root, args):
     return new, tier
 
 
-def report_leftovers(root, tier):
-    """List the advanced files a starter project keeps and old copies of moved files, for deletion by hand.
-
-    Args:
-        root: the project folder.
-        tier: the kit tier.
-    """
-    if tier == "starter":
-        extra = [f for f in ADVANCED_FILES if (root / f).exists()]
-        if extra:
-            print(f"Tier starter: these advanced files are not synced; delete them by hand if you want: {', '.join(extra)}")
-    old = [f for f in MOVED_FILES if (root / f).exists()]
-    if old:
-        print(f"These files moved or were renamed in the kit; delete the old copies by hand: {', '.join(old)}")
-    old = [f for f in (".pii-guard", ".code-standard.json", ".bloat-audit.json") if (root / f).exists()]
-    if old:
-        print(f"Old settings files ({', '.join(old)}): run 'python3 scripts/check_settings.py --migrate' (it moves "
-              "them into .check and .check.state.json; the lines of .check stay as they are).")
-
-
-def write_files(base, root, new, changed):
-    """Write the changed files (with the baseline's file mode for scripts); stop when the project is not committed.
-
-    Args:
-        base: the baseline folder.
-        root: the project folder.
-        new: a dict of project path to the synced text.
-        changed: the paths to write.
-    """
-    if git("status", "--porcelain", cwd=root):
-        die("the project has uncommitted changes; commit them first")
-    for rel in changed:
-        path = root / rel
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(new[rel])
-        if rel.endswith((".sh", ".py")) or rel.startswith("scripts/git-hooks/"):
-            shutil.copymode(base / rel, path) if (base / rel).exists() else None
-    version = write_lock(base, root, new)
-    print(f"Written, with the kit lock {check_lock.LOCK} (kit version {version}). Review with 'git diff', then commit and push.")
-
-
-def write_lock(base, root, files):
-    """Write the kit lock of the project for the kit files among `files`; return the kit version."""
-    version = (base / "KIT_VERSION").read_text().strip() if (base / "KIT_VERSION").exists() else "unknown"
-    check_lock.write(root, check_lock.build(root, [r for r in files if r in COPY_FILES], version,
-                                            baseline_sha(base).split()[0]))
-    return version
-
-
 def main():
-    """Sync the project: show the diff (dry run) or write it (--apply); or apply --set-tier in place (the steps:
-    scripts/sync_baseline_run.py)."""
-    sync_baseline_run.run(sys.modules[__name__])
+    """Sync the project: show the diff (dry run) or write it (--apply); or apply --set-tier or --lock-here in place."""
+    args = parse_args()
+    try:
+        root = Path(git("rev-parse", "--show-toplevel"))
+    except subprocess.CalledProcessError:
+        die("run this inside the project git repo")
+    if args.set_tier:
+        set_tier(root, args.set_tier)
+        return
+    if args.lock_here:  # bootstrap: this clone of the kit becomes a project; lock its kit files as they are now
+        write_lock(root, root, COPY_FILES, COPY_FILES)
+        return
+
+    with tempfile.TemporaryDirectory() as tmp:
+        base = get_baseline(args.baseline, tmp)
+        if base.resolve() == root.resolve():
+            die("this is the baseline repo itself; run the script in a project repo")
+        print(f"Kit baseline: {baseline_sha(base)}. A sync writes the kit lock {check_lock.LOCK} (the kit version and a "
+              "hash of each kit file); the project does not keep the sync tools.")
+        check_placeholders(root)
+        new, tier = planned_files(base, root, args)
+        changed = show_diff(root, new)
+        report_leftovers(root, tier, ADVANCED_FILES, MOVED_FILES)
+        for note in COPY_NOTES:
+            print(note)
+        for matcher in changed_matchers(REPLACED_HOOKS, base / ".claude/settings.json"):
+            print("An older kit hook entry is replaced by the kit's. If you had added tool names to its matcher, add a "
+                  f"hook entry of your own for them. The old matcher: {matcher}")
+        if not changed:
+            print("No changes: the project already matches the baseline.")
+            if args.apply:
+                write_lock(base, root, new, COPY_FILES)
+            return
+        print(f"
+{len(changed)} file(s) to change: {', '.join(changed)}")
+        if not args.apply:
+            print("Dry run: nothing written. Run again with --apply to write.")
+            return
+        write_files(base, root, new, changed, COPY_FILES)
 
 
 if __name__ == "__main__":
