@@ -118,7 +118,7 @@ def lines_of(target):
     """
     root = Path(target)
     if root.is_dir():
-        for p in sorted(x for x in root.rglob('*') if x.is_file() and '.git' not in x.parts and '.claude/worktrees/' not in x.as_posix()):
+        for p in sorted(x for x in root.rglob('*') if x.is_file() and '.git' not in x.parts and '.claude/worktrees/' not in x.relative_to(root).as_posix()):
             try:
                 text = p.read_text(encoding='utf-8', errors='replace')
             except OSError:
@@ -150,7 +150,7 @@ def git(args, check=True):
     Returns:
         The standard output.
     """
-    return subprocess.run(['git', *args], capture_output=True, check=check).stdout.decode('utf-8', 'replace')
+    return subprocess.run(['git', '--literal-pathspecs', *args], capture_output=True, check=check).stdout.decode('utf-8', 'replace')
 
 
 def scan_targets(targets, deny=None, terms=None):
@@ -211,6 +211,11 @@ def selftest():
             (Path(tmp) / name).write_text(text)
         kinds = {Path(p).name: k for p, _, k in scan_targets([tmp], deny=[word], terms=[])}
         bad += [f'{n}: want {w}, got {kinds.get(n)}' for n, (_, w) in cases.items() if kinds.get(n) != w]
+        inner = Path(tmp) / '.claude' / 'worktrees' / 'agent-x'   # a worker's scratch folder, given as the target
+        inner.mkdir(parents=True)
+        (inner / 'a.py').write_text(cases['a.py'][0])
+        if not scan_targets([str(inner)], deny=[word], terms=[]):
+            bad.append('a target inside .claude/worktrees is scanned')
         repo = Path(tmp) / 'repo'
         run = lambda *a: subprocess.run(['git', '-C', str(repo), '-c', 'user.name=t', '-c', 'user.email=t@t.invalid', *a],
                                         capture_output=True, check=True)
