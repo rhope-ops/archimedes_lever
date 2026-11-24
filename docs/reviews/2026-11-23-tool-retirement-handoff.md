@@ -63,16 +63,16 @@ A missing linter must print a SKIP line with the install command, never pass in 
 for reading (list_repos). Briefs: the adversarial inputs, a test that fails against the old code, no line squeezing to
 meet T2 (report the net count; the Maintainer approves a higher number per PR), commit locally, no stray files.
 
-## P2 status (2026-11-23 19:35 America/Chicago)
+## P2 status (2026-11-23 20:05 America/Chicago)
 
 | Item | State | T2 baseline (the Maintainer) |
 |---|---|---|
 | T2 MINORs + downward ratchet | merged, PR 139 | 18159 ("Approve 18159") |
 | (f) ReDoS fix | merged, PR 140 | 18195 ("Approve all 5") |
-| (e) content split | PR 141, ready, waits for merge | 18215 ("Approve all 4", 18:59; "The 18:59 batch holds") |
-| (e) sync split | branch claude/tr-p2-e-sync 7624cd1, reviewed, local only | 18218 (same batch) |
-| (b) two-line marking + keyword/number | branch claude/tr-p2-b f61054a, reviewed, local only | 18303 (same batch) |
-| (d) sync stop on local edits | branch claude/tr-p2-d a66c3ab, 5 reviews, last 0 MAJOR, local only | 18660 ("Approve 18660", shortly before 19:33) |
+| (e) content split | merged, PR 141 | 18215 ("Approve all 4", 18:59; "The 18:59 batch holds") |
+| (e) sync split | merged, PR 143 | 18218 (same batch) |
+| (b) two-line marking + keyword/number | merged, PR 144 | 18303 (same batch) |
+| (d) sync stop on local edits | branch claude/tr-p2-d3 (local only): d a66c3ab merged with the sync split into the kit-only module sync_baseline_stop.py (6e17870, join e16677f, review 0 MAJOR); +378 lines, so a worker cuts 21 by real cuts | 18660 ("Approve 18660", shortly before 19:33; "Keep 18660, cut 21", shortly after 20:02) |
 | (a), (g), (h), (i), (j) | not started | ask each rise on its own |
 
 Merge order is fixed by the numbers: 141, e-sync, b, d. The local branches cannot be pushed before their turn (T2
@@ -81,6 +81,28 @@ Maintainer in P2: `%40` not decoded; build keyword+number on two lines; the sync
 differs (an unchanged older kit copy is no stop); relock way out names check.local.sh / .check / a kit change; no lock:
 as built. The coordinator relayed a later condition (a retirement before more rises; one number per question): the
 Maintainer kept the 18:59 batch; ask each later rise on its own.
+
+**Freeze (the Maintainer, question dialog, 2026-11-23 about 20:15: "Freeze rises, (a) first"; scope: P2).** No T2
+baseline rise until item (a) lands with a measured net cut. Map (a) first (which code_standard checks ruff and pylint
+replace, exact delete and add counts), show the Maintainer the cut, then build it. d (claude/tr-p2-d3) waits and lands
+later inside the freed lines, with its restored test (+360), with no new number. Main is 18303.
+
+**P2 on hold (2026-11-23 21:10 America/Chicago).** Facts measured since the freeze:
+- Item (a) cuts nothing. A prototype gave 0 deletable lines, because the checks that stay share the Python parse. The
+  Maintainer chose "Build as planned": it is built on the local branch claude/tr-p2-a (b13bc6b, +41 lines) and waits
+  under the freeze. Its fresh review found 4 MAJOR findings. 2 are join items: T2, and ruff.toml and .pylintrc are
+  missing from COPY_FILES. 2 are code defects to fix before a PR: the lint step ignores code-exclude, code-generated and
+  generated blocks; a Python file that does not parse crashes code_standard_docs.py with code-c2: full, where main
+  printed a C10 FAIL. Fixing them adds lines (estimate +5 to +15).
+- No kit tool is dead (all 47 non-test tools are called and changed). Feature tools measured for retirement:
+  timeline.py (-414 to -475), fulcrum_palette.py (-314; reverses the 2026-11-20 decision), build_site.py (-481; RADE and
+  33-332.Z use it; reverses the 2026-11-21 decision). The Maintainer chose timeline.py, then a fleet read showed real
+  use (icf-source LOG.md and its 2026-11-11 talk slide; no-more-beyond project-log PROJECT.md), and the Maintainer
+  chose "Keep it, no retirement".
+- So no cut is planned, and the freeze holds (a), d (claude/tr-p2-d3: +351, or +360 with the restored test) and items
+  (g), (i), (j), which all add lines. Item (h) (AUD-5 records) adds none.
+- Next: the Maintainer chooses another cut or lifts the freeze. The local branches cannot be pushed under T2; rebuild
+  from this file and the PR bodies if the container is lost.
 
 ## Later phases (plan sections)
 

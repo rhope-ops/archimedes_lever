@@ -1,5 +1,7 @@
 # archimedes_lever
 
+![archimedes_lever: Central project management to help you leverage agentic workflows.](docs/assets/social-preview.png)
+
 A starter kit for working with Claude so that it is reliable and needs little effort from you. It collects lessons from real projects in a form you can copy.
 
 The name comes from Archimedes: "Give me a place to stand, and I will move the world." Here, the place to stand is a set of files that every agent reads, so your rules, decisions and history stay put instead of disappearing with each chat.
