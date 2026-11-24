@@ -104,6 +104,14 @@ later inside the freed lines, with its restored test (+360), with no new number.
 - Next: the Maintainer chooses another cut or lifts the freeze. The local branches cannot be pushed under T2; rebuild
   from this file and the PR bodies if the container is lost.
 
+**P2 status (2026-11-23 22:32 America/Chicago).** The Maintainer lifted the freeze ("a", 21:14; confirmed "This chat:
+d at 18663"). Merged since the hold: d (PR 149, 18663, the sync stops instead of overwriting local edits) and (a)
+(PR 150, 18785, ruff 0.17.6 and pylint 4.1.4 for Python parse, line length and file size; a minimal parse FAIL in
+code_standard when a linter is missing). Main is 18785 (P2 total +643 from 18142, each rise approved on its own).
+Left in P2: (h) AUD-5 records for bloat_check*.py and the audit skill (docs only); (g) shellcheck WARN, (i) AUD-6
+worker_guard --scan with text S8, (j) skill-use counts: each adds lines, so each rise is asked on its own. (c): no
+change (decision 10A). No cut is planned (timeline.py kept).
+
 ## Later phases (plan sections)
 
 - P2: the split above, with the skill-use proposals P1-P4 (audit file
