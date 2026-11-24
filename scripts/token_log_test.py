@@ -374,11 +374,24 @@ def case_private_repo(fx):
     r = fx.hook(fx.work, "pv2", t2, fx.logs, extra={"TOKEN_LOG_REPO": "file://" + os.path.join(fx.root, "none.git")})
     fx.expect("private log repo not reachable: the rows go to origin, with a log line",
               ("private log repo not reachable" in r.stdout, len(fx.remote_rows("pv2") or [])), (True, 1))
+    ro = os.path.join(fx.root, "readonly.git")  # can be read, refuses every push (as with read-only access)
+    fx.sh(fx.root, "git", "init", "-q", "--bare", "-b", "main", ro)
+    with open(os.path.join(ro, "hooks", "pre-receive"), "w") as f:
+        f.write("#!/bin/sh\necho read only >&2\nexit 1\n")
+    os.chmod(os.path.join(ro, "hooks", "pre-receive"), 0o700)
+    t3 = os.path.join(fx.root, "proj", "pv3.jsonl")
+    append(t3, prompt("2026-01-06T02:00:00Z"), msg("v3", "2026-01-06T02:00:01Z"))
+    r = fx.hook(fx.work, "pv3", t3, fx.logs, extra={"TOKEN_LOG_REPO": "file://" + ro})
+    fx.expect("private log repo refuses the push: the rows go to origin in the same try, with a log line",
+              ("private log repo push failed" in r.stdout, len(fx.remote_rows("pv3") or [])), (True, 1))
+    os.environ["TOKEN_LOG_REPO"] = "--upload-pack=touch x"
+    fx.expect("an address that starts with '-' (a git option) is not used", fx.tl.log_repo(fx.tl.__file__), None)
+    os.environ.pop("TOKEN_LOG_REPO")
     rep = subprocess.run([sys.executable, os.path.abspath(fx.tl.__file__), "--report"], cwd=fx.work, text=True,
                          capture_output=True, env={**fx.env, **on}, timeout=120)
     missing = [ln for ln in rep.stdout.splitlines() if ln.startswith("no /cost record")]
     fx.expect("--report: reads origin and the private log repo",
-              (rep.returncode, bool(missing) and "pv1" in missing[0] and "pv2" in missing[0]), (0, True))
+              (rep.returncode, bool(missing) and all(x in missing[0] for x in ("pv1", "pv2", "pv3"))), (0, True))
 
 
 def run(tl):

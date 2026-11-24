@@ -10,7 +10,7 @@ Prevents: a rise in estimated cost by week, model or agent that no one sees unti
 Network: --report fetches the log branch from origin and from the private log repo through token_log.git_net; none in
          the self-test.
 Writes: none.
-Credentials: none (git uses the repo's own remote).
+Credentials: none (git uses its own credentials for origin and the private log repo).
 Run:     python3 scripts/token_log.py --report [REF]
 """
 import csv
@@ -151,7 +151,7 @@ def fetch_refs(core, root):
             refs.append(ref)
         else:
             print(f"token_log --report: not read: {'origin' if remote == 'origin' else 'the private log repo'}: "
-                  + (err.splitlines() or [""])[-1], file=sys.stderr)
+                  + " / ".join(err.splitlines()[-3:]), file=sys.stderr)
     return refs
 
 
@@ -179,7 +179,8 @@ def report_main(args):
         print(f"token_log --report: {e}", file=sys.stderr)
         return 1
     rows = list({r.get("message_id"): r for r in got["sessions"]}.values())  # a row in both places counts once
-    costs = list({(r.get("session_id"), r.get("source"), r.get("agent_id")): r for r in got["costs"]}.values())
+    newest = sorted(got["costs"], key=lambda r: r.get("written_at") or "")  # the newest snapshot of a session wins
+    costs = list({(r.get("session_id"), r.get("source"), r.get("agent_id")): r for r in newest}.values())
     print(report(rows) + "\n\n" + limits_report(rows, costs, got["limits"]))
     return 0
 
