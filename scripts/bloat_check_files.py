@@ -31,7 +31,7 @@ TOOL_SKIP = ("node_modules/", "vendor/", "dist/")   # not the repo's own tools
 TOOLS_DOC = "docs/tools.md"
 STATE_KEY = "script_lines"   # in .check.state.json: {"baseline": N, "command": ..., "measured": ..., "commit": ...}
 # T2: the By cell of a baseline row: "the Maintainer:", then the approval in quotes, then a date after the quote
-APPROVED_BY = re.compile(r'the Maintainer:\s*(?:"[^"\n]*\S[^"\n]*"|“[^”\n]*\S[^”\n]*”).*?(?<!\d)\d{4}-\d\d-\d\d(?!\d)', re.I)
+APPROVED_BY = re.compile(r'the Maintainer:\s*(?:"[^"\S\n]*[^"\s][^"\n]*"|“[^”\S\n]*[^”\s][^”\n]*”).*?(?<!\d)\d{4}-\d\d-\d\d(?!\d)', re.I)
 ROLE_WORD = re.compile(r"\bthe owner\b|\bOwner's\b")
 DATED = re.compile(r"\(the owner, \d{4}-\d{2}-\d{2}")   # an attribution that records a past role word stays as written
 # The files that hold the check itself name the word they look for: allowed whole (re.compile(".")).
