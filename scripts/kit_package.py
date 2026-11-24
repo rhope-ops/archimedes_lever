@@ -137,9 +137,9 @@ def self_test():
         run(root, pkg, "c0ffee", None, write=True)
         ok("a second install keeps one exclude block", (root / ".git/info/exclude").read_text().count(BEGIN) == 1)
         ex = root / ".git/info/exclude"
-        ex.write_text(ex.read_text().replace(END + "\n", "") + "my-own-line\n")
+        ex.write_text(ex.read_text().replace(END + "\n", "") + "/scripts/my_own.py\n")
         run(root, pkg, "c0ffee", None, write=True)
-        ok("a block with no end line keeps the user's lines", ex.read_text().endswith(END + "\nmy-own-line\n"))
+        ok("a block with no end line keeps the user's lines", ex.read_text().endswith(END + "\n/scripts/my_own.py\n"))
         ok("verify passes after install", run(root, pkg, "c0ffee", None, write=False) == (["KIT PACKAGE PASS: 1 kit scripts from the package at c0ffee"], False))
         (root / "scripts/a.py").write_text("print('edited')\n")
         lines, bad = run(root, pkg, "c0ffee", None, write=False)
