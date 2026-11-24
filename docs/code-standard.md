@@ -7,6 +7,7 @@ The kit owns this file and the check. A project gets both by sync. It sets its o
 ## Scope
 
 - Every file git tracks with the extension `.py`, `.ps1`, `.psm1`, `.js`, `.mjs`, `.cjs` or `.sh`, and every file with no extension whose first line is a shell or Python shebang (for example scripts/git-hooks/pre-push).
+- Shell files also get shellcheck (scripts/check.sh, on the same file list: `scripts/code_standard.py --shell-files`). Its findings are WARN lines and never fail a check; a missing shellcheck is a SKIP line. Install: `pip install shellcheck-py==0.9.0.6` (a wheel with the 0.9.0 binary; it needs no root, and the CI step installs it the same way).
 - Generated files get rule C6 only (their source gets the other rules). The list is the `code-generated:` lines in [.check](../.check). For Python, ruff and pylint (scripts/check.sh) check parse, line length and file size on the same file list: no excluded or generated file; a file with a generated block is left out of the linters' line check only (they cannot skip a block), and the strict gate measures its hand-written lines instead, as for other languages.
 - A script a person pastes into another tool (one file is one paste) gets every rule, with its own C4 cap. The list is the `code-paste:` lines in `.check`.
 

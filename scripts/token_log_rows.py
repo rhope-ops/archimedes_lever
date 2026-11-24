@@ -17,6 +17,14 @@ import bisect
 import glob
 import json
 import os
+import re
+
+# A skill's name is the folder after skills/; skills/ must start a path part (not "myskills/").
+SKILL_PATH = re.compile(r"(?:^|(?<=[/\s\"']))skills/([A-Za-z0-9_.-]+)/SKILL\.md")
+SLICE_COMMANDS = ("grep", "sed", "head", "tail", "cat", "awk")  # shell commands that read part of a file
+SIMPLE_COMMANDS = re.compile(r";|&&|\|\||\||\n")  # the split between simple commands (no \s* around it: linear on long runs of spaces)
+ENV_ASSIGNMENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=")  # NAME=value before the command word
+SHELL_WORDS = ("do", "then", "else", "if", "while", "!", "(", "{", "time", "sudo")  # words before the command word
 
 core = None  # scripts/token_log.py as a module: set by its loader before any call here
 
@@ -111,6 +119,76 @@ def agent_types(tpath):
     return types
 
 
+def sliced_skills(command):
+    """The skills whose SKILL.md a shell command reads with grep, sed, head, tail, cat or awk. The command word and
+    the path must be in the same simple command (split on ; && || | and new lines).
+
+    Args:
+        command: the shell command text.
+    Returns:
+        A sorted list of skill names, each one time.
+    """
+    names = set()
+    for part in SIMPLE_COMMANDS.split(command):
+        words = part.split()
+        while words and (words[0] in SHELL_WORDS or ENV_ASSIGNMENT.match(words[0])):
+            words.pop(0)
+        if words and os.path.basename(words[0]) in SLICE_COMMANDS:
+            names.update(SKILL_PATH.findall(part))
+    return sorted(names)
+
+
+def skill_calls(tpath):
+    """Count the skill use in one log file, by the reply (message id) that made each call. A tool_use block counts
+    one time (its id), though the log repeats a reply on each content block; a block with no usable id counts each
+    time. A line or block of an unexpected type is skipped, as in read_log. The same rules as scripts/skill_use.py.
+
+    Args:
+        tpath: the path of a log file.
+    Returns:
+        A dict of message id to {skill name: {"skill_tool": n, "read": n, "slice": n}}; a count of 0 is left out.
+        "skill_tool" is a call of the Skill tool, "read" a Read of a SKILL.md file, "slice" a shell command with
+        grep, sed, head, tail, cat or awk on a SKILL.md path (counted once for each skill file it names).
+    """
+    found, seen = {}, set()
+    try:
+        f = open(tpath, encoding="utf-8")
+    except OSError:
+        return found
+    with f:
+        for line in f:
+            try:
+                d = json.loads(line)
+            except ValueError:
+                continue
+            if not isinstance(d, dict) or d.get("type") != "assistant" or not isinstance(d.get("message"), dict):
+                continue
+            m = d["message"]
+            c = m.get("content")
+            if not isinstance(m.get("id"), str) or not isinstance(c, list):
+                continue
+            for b in c:
+                if not isinstance(b, dict) or b.get("type") != "tool_use":
+                    continue
+                key = b.get("id")
+                if isinstance(key, str) and key:
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                i = b.get("input") if isinstance(b.get("input"), dict) else {}
+                hits = []  # (skill name, kind)
+                if b.get("name") == "Skill" and isinstance(i.get("skill"), str) and i["skill"]:
+                    hits.append((i["skill"], "skill_tool"))
+                elif b.get("name") == "Read":
+                    hits += [(n, "read") for n in SKILL_PATH.findall(str(i.get("file_path") or ""))]
+                elif b.get("name") == "Bash":
+                    hits += [(n, "slice") for n in sliced_skills(str(i.get("command") or ""))]
+                for name, kind in hits:
+                    per = found.setdefault(m["id"], {}).setdefault(name, {})
+                    per[kind] = per.get(kind, 0) + 1
+    return found
+
+
 def tokens(v):
     """A token count as int(v), or 0 when int() rejects v (non-numeric text, NaN or an infinite number); the row is kept.
 
@@ -145,19 +223,23 @@ def log_rows(sid, tpath, repo):
     msgs, prompts = read_log(tpath, "main")
     types = agent_types(tpath)
     agent = {mid: "main" if src == "main" else "unknown" for mid, (_, _, _, src) in msgs.items()}
-    agent_id = {}
+    agent_id, skills = {}, skill_calls(tpath)
     for p in sorted(glob.glob(os.path.join(os.path.splitext(tpath)[0], "**", "*.jsonl"), recursive=True)):
         name = os.path.basename(p)
         aid = name[len("agent-"):-len(".jsonl")] if name.startswith("agent-") else ""
+        sub = skill_calls(p)
         for k, v in read_log(p, "subagent")[0].items():
             if k not in msgs:
                 msgs[k] = v
                 agent[k], agent_id[k] = types.get(aid, "unknown"), aid
+                if k in sub:
+                    skills[k] = sub[k]
     prompts.sort()
     rows = {}
     for mid, (ts, model, u, src) in msgs.items():
         rows[mid] = {"message_id": mid, "timestamp": ts, "turn": bisect.bisect_right(prompts, ts) if ts else len(prompts),
                      "session_id": sid, "repo": repo, "model": model, "source": src, "agent": agent[mid],
                      "agent_id": agent_id.get(mid, ""),
+                     "skill_use": json.dumps(skills[mid], sort_keys=True, separators=(",", ":")) if mid in skills else "",
                      **{k: tokens(u.get(k)) for k in core.USAGE_KEYS}, **price_facts(u)}
     return rows

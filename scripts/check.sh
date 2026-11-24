@@ -15,6 +15,7 @@
 #      file names --test; the full lane always, the fast lane when the file or a file it extends changed), and the
 #      code standard (scripts/code_standard.py, when .check.state.json holds its baseline; settings: the `code-` lines of .check),
 #   1b. the Python parse, line length and file size: ruff and pylint (ruff.toml, .pylintrc; a SKIP line when a linter is missing),
+#   1c. shellcheck on the shell files the code standard covers: findings are WARN lines and never fail (a SKIP line when it is missing),
 #   2. the rule caps and the paths AGENTS.md names, the lint of changed rule lines (WARN lines), and in the full lane
 #      the conflict-check record for changed rule lines (scripts/bloat_check.py --rules [--gate]; full tier),
 #   3. the project log check (full tier),
@@ -146,13 +147,31 @@ PY
   ok "a large baseline on the default branch, state file deleted: the code standard runs" "$(c | grep -c '^PASS  code standard$')" 1
   g checkout -q .check.state.json; g update-ref -d refs/remotes/origin/main
   # The Python lint (ruff and pylint): no config files, no step; with them and a linter missing, a SKIP line that names the install, never a silent pass.
-  # The PATH of the case drops each folder that holds ruff or pylint; python3 comes through a link.
-  mkdir -p "$t/nolint"; ln -sf "$(command -v python3)" "$t/nolint/python3"; nolint="$t/nolint"
-  while IFS= read -r d; do [ -x "$d/ruff" ] || [ -x "$d/pylint" ] || nolint+=":$d"; done < <(tr ':' '\n' <<<"$PATH")
+  # The PATH of the case puts, in place of each folder that holds ruff, pylint or shellcheck, a folder of links to its
+  # other programs (a runner can have shellcheck in /usr/bin, next to bash and git).
+  nolint=""; i=0
+  while IFS= read -r d; do
+    if [ -x "$d/ruff" ] || [ -x "$d/pylint" ] || [ -x "$d/shellcheck" ]; then
+      i=$((i+1)); mkdir -p "$t/nolint/$i"
+      for f in "$d"/*; do case "${f##*/}" in ruff|pylint|shellcheck) ;; *) [ -x "$f" ] && ln -s "$f" "$t/nolint/$i/";; esac; done
+      d="$t/nolint/$i"
+    fi
+    nolint+="${nolint:+:}$d"
+  done < <(tr ':' '\n' <<<"$PATH")
   ok "no ruff.toml and .pylintrc: no Python lint step" "$(c | grep -c 'python lint')" 0
   touch "$t/r/ruff.toml" "$t/r/.pylintrc"
   ok "a missing linter is a SKIP line that names the install" "$(cd "$t/r" && PATH="$nolint" bash scripts/check.sh 2>&1 | grep -c '^SKIP  python lint (ruff or pylint is missing: pip install ruff==0.17.6 pylint==4.1.4)$')" 1
   rm "$t/r/ruff.toml" "$t/r/.pylintrc"
+  # The shell lint: a missing tool is a SKIP line that names the install; findings are WARN lines and the step passes.
+  ok "a missing shellcheck is a SKIP line that names the install" "$(cd "$t/r" && PATH="$nolint" bash scripts/check.sh 2>&1 | grep -c '^SKIP  shellcheck (shellcheck is missing: pip install shellcheck-py==0.9.0.6)$')" 1
+  if command -v shellcheck >/dev/null; then
+    printf '%s\n' '#!/bin/bash' 'echo $1' > "$t/r/bad.sh"; printf '%s\n' 'import sys' 'sys.stdout.write("bad.sh\0" if "--shell-files" in sys.argv else "")' > "$t/r/scripts/code_standard.py"
+    out="$(c)"; ok "a shellcheck finding is a WARN line" "$(printf '%s\n' "$out" | grep -c '^      WARN  bad.sh:2:.*SC2086')" 1
+    ok "a finding does not fail the step" "$(printf '%s\n' "$out" | grep -c '^PASS  shellcheck$')" 1
+    ok "the run with a finding exits 0" "$(cd "$t/r" && bash scripts/check.sh >/dev/null 2>&1; echo $?)" 0
+    rm "$t/r/bad.sh"
+  else echo "SKIP the shellcheck WARN cases: shellcheck is not installed here"; fi
+  printf '%s\n' 'print("CODE-STANDARD fake")' > "$t/r/scripts/code_standard.py"
   # A git error is not a clean tree: with a broken index, a stamp for this commit must not be used.
   c >/dev/null; ok "a stamp exists before the index breaks" "$(cut -d' ' -f2 "$t/r/.git/check-pass")" "$(g rev-parse HEAD)"
   cp "$t/r/.git/index" "$t/index.bak"; echo broken > "$t/r/.git/index"
@@ -385,6 +404,23 @@ python_lint() {
 if [ -f ruff.toml ] && [ -f .pylintrc ]; then
   if command -v ruff >/dev/null && command -v pylint >/dev/null; then run "python lint" python_lint
   else skip "python lint" "ruff or pylint is missing: pip install ruff==0.17.6 pylint==4.1.4"; fi
+fi
+
+# The shell lint on the files the code standard covers (the plan's decision 6: WARN first, so a finding never fails the step;
+# a tool that fails to run is a WARN line too). Never a silent pass: a missing shellcheck is a SKIP line.
+shell_lint() {
+  local files=() f out rc
+  python3 scripts/code_standard.py --shell-files >"$tmp/shell.all" || return 1
+  while IFS= read -r -d '' f; do files+=("$f"); done <"$tmp/shell.all"
+  [ "${#files[@]}" -gt 0 ] || return 0
+  out="$(shellcheck -f gcc -- "${files[@]}" 2>&1)"; rc=$?
+  [ "$rc" -le 1 ] || echo "WARN  shellcheck stopped with exit code $rc; a warning only"
+  [ -z "$out" ] || printf '%s\n' "$out" | sed 's/^/WARN  /; s/$/; a warning only (shellcheck, docs\/code-standard.md)/'
+  return 0
+}
+if [ -f scripts/code_standard.py ]; then
+  if command -v shellcheck >/dev/null; then run "shellcheck" shell_lint
+  else skip "shellcheck" "shellcheck is missing: pip install shellcheck-py==0.9.0.6"; fi
 fi
 
 # Rule caps, paths, the lint of changed rule lines, and (full lane) the conflict-check record for changed rule lines.
