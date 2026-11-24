@@ -597,4 +597,17 @@ msg_011ChLujRhfSAZXeSJS3ADFB,2026-11-24T01:47:17.411Z,22,124f2c93-3fe6-5208-8a6a
 msg_011ChLuk4S1TBGFXRpSKUHrM,2026-11-24T01:47:19.684Z,22,124f2c93-3fe6-5208-8a6a-d78491ce2e00,archimedes_lever,claude-opus-5-5,main,main,,4,1272,450245,141,1272,standard,0,global
 msg_011ChLukNgsA7A7522ezrUUN,2026-11-24T01:47:23.177Z,22,124f2c93-3fe6-5208-8a6a-d78491ce2e00,archimedes_lever,claude-opus-5-5,main,main,,2,1178,451517,1893,1178,standard,0,global
 msg_011ChLukmtNvgpe31dEKKRwf,2026-11-24T01:47:27.727Z,22,124f2c93-3fe6-5208-8a6a-d78491ce2e00,archimedes_lever,claude-sonnet-5-5,subagent,worker,abcda94275ed3a6cf,2,5767,27546,2471,0,standard,0,global
+msg_011ChLumgQ1E7wAvvNEQwdrN,2026-11-24T01:47:39.595Z,22,124f2c93-3fe6-5208-8a6a-d78491ce2e00,archimedes_lever,claude-sonnet-5-5,subagent,worker,abcda94275ed3a6cf,2,2636,33313,2595,0,standard,0,global
 msg_011ChLumYVzWs625hd1o72pc,2026-11-24T01:47:39.872Z,22,124f2c93-3fe6-5208-8a6a-d78491ce2e00,archimedes_lever,claude-opus-5-5,main,main,,1,2150,452695,201,2150,standard,0,global
+msg_011ChLunZ5FWuDhkaHNa7TDz,2026-11-24T01:47:52.773Z,22,124f2c93-3fe6-5208-8a6a-d78491ce2e00,archimedes_lever,claude-sonnet-5-5,subagent,worker,abcda94275ed3a6cf,2,2957,35949,268,0,standard,0,global
+msg_011ChLuns5ignmfDCxjL3GVC,2026-11-24T01:47:55.821Z,22,124f2c93-3fe6-5208-8a6a-d78491ce2e00,archimedes_lever,claude-sonnet-5-5,subagent,worker,abcda94275ed3a6cf,2,398,38906,313,0,standard,0,global
+msg_011ChLuo6qiFrQYjsx9fv4UW,2026-11-24T01:47:59.282Z,22,124f2c93-3fe6-5208-8a6a-d78491ce2e00,archimedes_lever,claude-sonnet-5-5,subagent,worker,abcda94275ed3a6cf,2,482,39304,354,0,standard,0,global
+msg_011ChLupogeUzJ9PzFmZ86jX,2026-11-24T01:48:21.988Z,22,124f2c93-3fe6-5208-8a6a-d78491ce2e00,archimedes_lever,claude-sonnet-5-5,subagent,worker,abcda94275ed3a6cf,2,548,39786,329,0,standard,0,global
+msg_011ChLus1KgUJQTGVC5uYVQC,2026-11-24T01:48:52.985Z,22,124f2c93-3fe6-5208-8a6a-d78491ce2e00,archimedes_lever,claude-sonnet-5-5,subagent,worker,abcda94275ed3a6cf,2,1436,40334,265,0,standard,0,global
+msg_011ChLusEUTTTDX75tr7WAZ3,2026-11-24T01:48:55.777Z,22,124f2c93-3fe6-5208-8a6a-d78491ce2e00,archimedes_lever,claude-sonnet-5-5,subagent,worker,abcda94275ed3a6cf,2,443,41770,1540,0,standard,0,global
+msg_011ChLut3tVz1wzTYsCAeDmc,2026-11-24T01:49:09.999Z,22,124f2c93-3fe6-5208-8a6a-d78491ce2e00,archimedes_lever,claude-opus-5-5,main,main,,4,1778,455045,793,1778,standard,0,global
+msg_011ChLuttg8aHq1jZVT4vnnZ,2026-11-24T01:49:22.311Z,22,124f2c93-3fe6-5208-8a6a-d78491ce2e00,archimedes_lever,claude-opus-5-5,main,main,,2,1891,456823,1083,1891,standard,0,global
+msg_011ChLuwrMpS1MUx3xwAPNiV,2026-11-24T01:50:03.877Z,22,124f2c93-3fe6-5208-8a6a-d78491ce2e00,archimedes_lever,claude-opus-5-5,main,main,,2,1346,458714,600,1346,standard,0,global
+msg_011ChLuyDjy89mn9DwRgQZbS,2026-11-24T01:50:27.638Z,22,124f2c93-3fe6-5208-8a6a-d78491ce2e00,archimedes_lever,claude-opus-5-5,main,main,,2,635,460060,1228,635,standard,0,global
+msg_011ChLuz98B7TmE5mpjQbCyF,2026-11-24T01:50:32.257Z,22,124f2c93-3fe6-5208-8a6a-d78491ce2e00,archimedes_lever,claude-opus-5-5,subagent,reviewer,a926d2e2c5d89a858,2,9204,5820,132,0,standard,0,global
+msg_011ChLuz9THFczZcoJNPdyvJ,2026-11-24T01:50:33.097Z,22,124f2c93-3fe6-5208-8a6a-d78491ce2e00,archimedes_lever,claude-opus-5-5,main,main,,2,1603,460695,379,1603,standard,0,global
