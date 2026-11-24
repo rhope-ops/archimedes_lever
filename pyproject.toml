@@ -1,0 +1,24 @@
+# The kit package (plan 2026-11-23, P3; scripts/kit_package.py): the kit's scripts/ folder as the package archimedes_kit.
+# Kit only (scripts/bootstrap.sh removes it from a new project). Install by commit, never from an index:
+#   pip install "git+https://github.com/rhope-ops/archimedes_lever@<the commit in the project's .check.lock>"
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "archimedes-kit"
+dynamic = ["version"]
+requires-python = ">=3.9"
+
+[project.scripts]
+archimedes-kit = "archimedes_kit.kit_package:main"
+
+[tool.setuptools]
+package-dir = { "archimedes_kit" = "scripts" }
+packages = ["archimedes_kit"]
+
+[tool.setuptools.package-data]
+archimedes_kit = ["*.sh", "*.json", "git-hooks/*"]
+
+[tool.setuptools.dynamic]
+version = { file = "KIT_VERSION" }
