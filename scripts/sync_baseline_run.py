@@ -9,6 +9,7 @@ helpers in force are the ones of that module.
 Inputs:  the command line (sync_baseline.parse_args), the project git repo, and the baseline folder or URL.
 Outputs: the kit baseline line, the diff, notes and the result line; with --apply, the files (sync_baseline.py header).
 Usage:   imported by scripts/sync_baseline.py; it has no command line of its own.
+Prevents: a sync writes the wrong kit files or lock into a project, or writes with no dry-run diff the Maintainer can see
 Network: the baseline repo, only when --baseline is a URL (one git clone).
 Writes: with --apply, the kit files of the project and its kit lock .check.lock; without it, nothing.
 Credentials: none itself; a clone uses the credentials git already has.

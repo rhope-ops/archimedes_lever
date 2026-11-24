@@ -7,6 +7,7 @@ Keys:    kit_repo (owner/name), kit_url (the git URL that sync_baseline.py and t
          fleet_page (the private fleet page that docs/fleet.md names).
 Inputs:  kit.config.json in the repo root (the parent of this scripts/ folder), or in a folder the caller names.
 Outputs: the value of a key, or None when the file or the key is missing (the caller stops with its own message).
+Prevents: a script holds its own copy of the kit repo or fleet page address, so a change of address leaves a stale one
 Network: none.  Writes: none.  Credentials: none.
 Run:     kit only (not synced; bootstrap deletes it); imported by scripts/sync_baseline.py and scripts/drift.py;
          `python3 scripts/kit_config.py --test` is the self-test (scripts/check.sh runs it).

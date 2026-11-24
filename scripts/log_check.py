@@ -29,6 +29,7 @@ Checks (each failure prints FILE:LINE: message):
 Exit 0 and "LOG CHECK PASS: N rows" when clean, exit 1 with the findings otherwise.
 It does not judge whether a row's type or text is right; that stays a human review.
 Standard library only. It reads files only; it never writes.
+Prevents: a project log or a DECISIONS row is malformed or its approval quote is missing, so the story record is wrong or an approval is not shown
 Network: none.
 Writes: none (the self-test: temporary files).
 Credentials: none.

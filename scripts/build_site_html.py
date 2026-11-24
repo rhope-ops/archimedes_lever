@@ -3,6 +3,7 @@ under its line cap) and the shared shell of a page the kit builds from scratch (
 main landmark, theme-colour meta tags, reduced motion, and, only when the repo's `.check` has `dod-security: on`, a
 Content-Security-Policy and a no-referrer meta tag (fleet v2 plan 2026-11-23: docs/reviews/2026-11-23-fleet-v2-plan.md).
 Standard library only.
+Prevents: a page the kit builds ships without a skip link, a main landmark or theme colours, or (DoD tier) without a Content-Security-Policy
 Network: none.
 Writes: nothing.
 Credentials: none.

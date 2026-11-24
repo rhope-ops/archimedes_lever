@@ -13,6 +13,7 @@ What it gives:
 Inputs:  one line of text; for load_local the path of scripts/check_content_local.py.
 Outputs: matches as (start, end, value) tuples; nothing is printed here.
 Run:     not run alone; check_content_scan.py imports it. Proved by `python3 scripts/check_content.py --test`.
+Prevents: the content check misses a kind of personal datum or secret, or a broken project finder silently weakens the scan
 Network: none.
 Writes: none.
 Credentials: none.
