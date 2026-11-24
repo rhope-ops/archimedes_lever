@@ -2,7 +2,7 @@
 
 Machine: Linux, `nproc` = 4, Python 3.13.18, Node v22.23.5 (shared VM; run-to-run noise is large, see 1.2).
 Read only. No `--record`, no network, no `session_checkin.mjs`. `git status --short` empty after every run.
-Scratch outputs: /tmp/claude-0/-home-user/de601a4d-1b6c-5e2b-b3e9-0b666edd4d50/scratchpad/icf-work/ (bloat.txt, check.txt, steptimes.txt, callers.json, unreach.json, dups.py, callers.py).
+Scratch outputs: (session scratch folder, not kept) icf-work/ (bloat.txt, check.txt, steptimes.txt, callers.json, unreach.json, dups.py, callers.py).
 Last audit before this one: 2026-11-17, commit a4622652, docs/reviews/2026-11-17-bloat-audit.md (`.check.state.json` audit.last_audit). AUDIT DUE: 887 commits since a462265.
 
 ## 1. Step 1: inventory and baseline
@@ -189,7 +189,7 @@ Since last audit: bullets 24 to 31 (guide 28); session load 6,318 to 5,143 token
 
 ### 2.3 Scripts: callers and no-caller list
 
-Command: `python3 -I icf-work/callers.py` (code references: any tracked .py/.sh/.mjs/.js/.yml/.json outside data/, docs/reviews/, docs/archive/, site/dist/; a file name match or `import <stem>`). Raw table with each script's callers and line count: /tmp/claude-0/-home-user/de601a4d-1b6c-5e2b-b3e9-0b666edd4d50/scratchpad/icf-work/callers.json. Set: 183 files (157 py/sh = 33,645 lines, ties to your count; plus 26 .mjs/.js = 4,199 lines; T2 total `cat scripts/*.py scripts/*.sh | wc -l` = 46,882 lines in 204 files, the other 47 files / 13,237 lines are kit-locked).
+Command: `python3 -I icf-work/callers.py` (code references: any tracked .py/.sh/.mjs/.js/.yml/.json outside data/, docs/reviews/, docs/archive/, site/dist/; a file name match or `import <stem>`). Raw table with each script's callers and line count: (session scratch folder, not kept) icf-work/callers.json. Set: 183 files (157 py/sh = 33,645 lines, ties to your count; plus 26 .mjs/.js = 4,199 lines; T2 total `cat scripts/*.py scripts/*.sh | wc -l` = 46,882 lines in 204 files, the other 47 files / 13,237 lines are kit-locked).
 
 Entry points, by code (a script is "reached" when named by one of these or by a script they reach): scripts/check.sh, scripts/check.local.sh, scripts/check_project.sh, scripts/refresh_site.sh, .claude/hooks/*, .claude/settings.json, .github/workflows/*, scripts/git-hooks/*, site/tests/*.mjs. There is no package.json.
 

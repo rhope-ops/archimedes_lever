@@ -1,7 +1,7 @@
 # Kit audit measurements, 2026-11-24 (read only)
 
 Repo: rhope-ops/archimedes_lever, detached at 6a4b727 (KIT_VERSION 11.0.1). Machine: 4 cores (`nproc` = 4), Linux 6.18 container, python 3.13 (pycache cpython-313). No file in the repo was edited; the only side effect is untracked `scripts/__pycache__/` made by my runs (gitignored? not checked; remove-free).
-Scratch scripts: /tmp/claude-0/-home-user/de601a4d-1b6c-5e2b-b3e9-0b666edd4d50/scratchpad/kit-work/ (inv.py, dead.py, refs.py, same.py, def.py, census.py, links.py, steps.sh, tt.py; raw check output check1.txt, serial.txt, steps.out).
+Scratch scripts (session scratch folder, not kept): kit-work/ (inv.py, dead.py, refs.py, same.py, def.py, census.py, links.py, steps.sh, tt.py; raw check output check1.txt, serial.txt, steps.out).
 Caveat on all times: shared container; the same step varied up to 2x between runs (bootstrap_cli_test 18.3 s alone, then 9.7 s under cProfile). Treat times as +-2x; the audit skill asks for the median of 3 only for baselines, which I did not record.
 Not measured (reason): Actions minutes (no network, no gh); skill use (no `list_events`, no session records here); mutation kill rate (no tool).
 
