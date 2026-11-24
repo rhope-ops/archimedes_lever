@@ -89,8 +89,11 @@ later inside the freed lines, with its restored test (+360), with no new number.
 
 **P2 on hold (2026-11-23 21:10 America/Chicago).** Facts measured since the freeze:
 - Item (a) cuts nothing. A prototype gave 0 deletable lines, because the checks that stay share the Python parse. The
-  Maintainer chose "Build as planned": it is built on the local branch claude/tr-p2-a (b13bc6b, +41 lines, fresh review
-  running at the time of writing) and waits under the freeze.
+  Maintainer chose "Build as planned": it is built on the local branch claude/tr-p2-a (b13bc6b, +41 lines) and waits
+  under the freeze. Its fresh review found 4 MAJOR findings. 2 are join items: T2, and ruff.toml and .pylintrc are
+  missing from COPY_FILES. 2 are code defects to fix before a PR: the lint step ignores code-exclude, code-generated and
+  generated blocks; a Python file that does not parse crashes code_standard_docs.py with code-c2: full, where main
+  printed a C10 FAIL. Fixing them adds lines (estimate +5 to +15).
 - No kit tool is dead (all 47 non-test tools are called and changed). Feature tools measured for retirement:
   timeline.py (-414 to -475), fulcrum_palette.py (-314; reverses the 2026-11-20 decision), build_site.py (-481; RADE and
   33-332.Z use it; reverses the 2026-11-21 decision). The Maintainer chose timeline.py, then a fleet read showed real
