@@ -94,12 +94,30 @@ def case_skill_use(fx):
            call("k3", "2026-01-04T00:00:03Z", "Bash", command="sed -n 1,9p .claude/skills/beta/SKILL.md"),
            call("k4", "2026-01-04T00:00:04Z", "Read", file_path="/r/AGENTS.md"),
            call("k5", "2026-01-04T00:00:05Z", "Bash", command='for f in a b; do grep x "$f/SKILL.md"; done'),
-           call("k6", "2026-01-04T00:00:06Z", "Bash", command="ls .claude/skills/beta/SKILL.md"))
+           call("k6", "2026-01-04T00:00:06Z", "Bash", command="ls .claude/skills/beta/SKILL.md"),
+           call("k7", "2026-01-04T00:00:07Z", "Bash", command="grep x README.md; ls skills/a/SKILL.md"),
+           call("k8", "2026-01-04T00:00:08Z", "Bash", command="ls .claude/skills/cat/SKILL.md"),
+           call("k9", "2026-01-04T00:00:09Z", "Read", file_path="/r/myskills/z/SKILL.md"),
+           call("k10", "2026-01-04T00:00:10Z", "Bash", command="ls x && cat skills/p/SKILL.md | head -3"))
     fx.hook(fx.work, "s6", t6, fx.logs)
     got = {x["message_id"]: x["skill_use"] for x in fx.remote_rows("s6") or []}
     fx.expect("skill_use column: Skill call, Read, sed slice; other Read, false folder name, ls: nothing",
               got, {"k1": '{"alpha":{"skill_tool":1}}', "k2": '{"alpha":{"read":1}}', "k3": '{"beta":{"slice":1}}',
-                    "k4": "", "k5": "", "k6": ""})
+                    "k4": "", "k5": "", "k6": "", "k7": "", "k8": "", "k9": "",
+                    "k10": '{"p":{"slice":1}}'})
+    t7 = os.path.join(fx.root, "proj", "s7.jsonl")  # bad lines and blocks, then good calls
+    skill = {"type": "tool_use", "name": "Skill", "input": {"skill": "alpha"}}
+    good = {"type": "assistant", "timestamp": "2026-01-04T01:00:03Z",
+            "message": {"id": "g1", "model": "claude-test", "usage": u,
+                        "content": [{**skill, "id": "x1"}, {**skill, "id": [1]}, {**skill}, {**skill}, "text", [2]]}}
+    append(t7, prompt("2026-01-04T01:00:00Z"), "[1]", '{"type":"assistant","message":"x"}',
+           json.dumps({"type": "assistant", "message": {"id": "g0", "content": {"a": 1}}}),
+           json.dumps({"type": "assistant", "message": {"id": "b1", "usage": u, "content": [{**skill, "id": [1]}]}}),
+           json.dumps(good))
+    fx.hook(fx.work, "s7", t7, fx.logs)
+    got = {x["message_id"]: x["skill_use"] for x in fx.remote_rows("s7") or []}
+    fx.expect("skill_use column: bad lines and blocks are skipped; blocks with no usable id count each",
+              got, {"b1": '{"alpha":{"skill_tool":1}}', "g1": '{"alpha":{"skill_tool":4}}'})
     old = {"message_id": "m1", "timestamp": "2026-01-01T00:00:00Z"}  # a row from before the column
     merged = list(csv.DictReader(io.StringIO(fx.tl.to_csv({"m1": old}))))
     fx.expect("old row without skill_use: merged with an empty value", merged[0]["skill_use"], "")

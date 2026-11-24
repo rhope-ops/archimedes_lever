@@ -30,7 +30,7 @@ import json
 import re
 import sys
 
-SKILL_FILE = re.compile(r"skills/([A-Za-z0-9_.-]+)/SKILL\.md")  # the skill's name: the folder after skills/ ("$f/SKILL.md" is no skill)
+SKILL_FILE = re.compile(r"(?:^|(?<=[/\s\"']))skills/([A-Za-z0-9_.-]+)/SKILL\.md")  # the skill's name: the folder after skills/ ("$f/SKILL.md" is no skill)
 AGENT_TOOLS = ("Agent", "Task")  # the tools that start a subagent
 SHELL_TOOLS = ("Bash",)  # the tools whose input is a shell command
 GROUPS = ("skill", "read", "shell", "agent", "tool")  # the order of the report
@@ -161,7 +161,7 @@ def self_test():
               use("c", "Bash", command="sed -n 1,9p .claude/skills/deliver/SKILL.md; cat x/skills/audit/SKILL.md"),
               use("d", "Agent", subagent_type="reviewer"), use("e", "Agent"), use("f", "Read", file_path="/r/AGENTS.md"),
               use("g", "Bash", command="git status"),
-              use("i", "Bash", command='for f in a b; do grep x "$f/SKILL.md" x/audit/SKILL.md; done')]  # not under skills/: no skill
+              use("i", "Bash", command='for f in a b; do grep x "$f/SKILL.md" x/audit/SKILL.md /r/myskills/z/SKILL.md; done')]  # not under skills/: no skill
     saved = "<other-session>\nnote\n" + json.dumps({"ccr": {"data": [{"assistant": {"message": {"content": blocks}}}]}}) + "\n</other-session>\n"
     log = "\n".join(json.dumps({"message": {"content": [block]}}) for block in blocks[:2] + [use("h", "Skill", skill="verify")])
     with tempfile.TemporaryDirectory() as folder:

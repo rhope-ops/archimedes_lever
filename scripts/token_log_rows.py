@@ -19,8 +19,12 @@ import json
 import os
 import re
 
-SKILL_PATH = re.compile(r"skills/([A-Za-z0-9_.-]+)/SKILL\.md")  # the folder name after skills/ is the skill's name
-SLICE_COMMAND = re.compile(r"\b(?:grep|sed|head|tail|cat|awk)\b")  # a shell command that reads part of a file
+# A skill's name is the folder after skills/; skills/ must start a path part (not "myskills/").
+SKILL_PATH = re.compile(r"(?:^|(?<=[/\s\"']))skills/([A-Za-z0-9_.-]+)/SKILL\.md")
+SLICE_COMMANDS = ("grep", "sed", "head", "tail", "cat", "awk")  # shell commands that read part of a file
+SIMPLE_COMMANDS = re.compile(r"\s*(?:;|&&|\|\||\||\n)\s*")  # the split between simple commands
+ENV_ASSIGNMENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=")  # NAME=value before the command word
+SHELL_WORDS = ("do", "then", "else", "if", "while", "!", "(", "{", "time", "sudo")  # words before the command word
 
 core = None  # scripts/token_log.py as a module: set by its loader before any call here
 
@@ -115,9 +119,29 @@ def agent_types(tpath):
     return types
 
 
+def sliced_skills(command):
+    """The skills whose SKILL.md a shell command reads with grep, sed, head, tail, cat or awk. The command word and
+    the path must be in the same simple command (split on ; && || | and new lines).
+
+    Args:
+        command: the shell command text.
+    Returns:
+        A sorted list of skill names, each one time.
+    """
+    names = set()
+    for part in SIMPLE_COMMANDS.split(command):
+        words = part.split()
+        while words and (words[0] in SHELL_WORDS or ENV_ASSIGNMENT.match(words[0])):
+            words.pop(0)
+        if words and os.path.basename(words[0]) in SLICE_COMMANDS:
+            names.update(SKILL_PATH.findall(part))
+    return sorted(names)
+
+
 def skill_calls(tpath):
     """Count the skill use in one log file, by the reply (message id) that made each call. A tool_use block counts
-    one time (its id), though the log repeats a reply on each content block. The same rules as scripts/skill_use.py.
+    one time (its id), though the log repeats a reply on each content block; a block with no usable id counts each
+    time. A line or block of an unexpected type is skipped, as in read_log. The same rules as scripts/skill_use.py.
 
     Args:
         tpath: the path of a log file.
@@ -137,22 +161,28 @@ def skill_calls(tpath):
                 d = json.loads(line)
             except ValueError:
                 continue
-            m = d.get("message") if isinstance(d, dict) else None
-            c = m.get("content") if isinstance(m, dict) else None
-            if d.get("type") != "assistant" or not isinstance(m.get("id"), str) or not isinstance(c, list):
+            if not isinstance(d, dict) or d.get("type") != "assistant" or not isinstance(d.get("message"), dict):
+                continue
+            m = d["message"]
+            c = m.get("content")
+            if not isinstance(m.get("id"), str) or not isinstance(c, list):
                 continue
             for b in c:
-                if not isinstance(b, dict) or b.get("type") != "tool_use" or b.get("id") in seen:
+                if not isinstance(b, dict) or b.get("type") != "tool_use":
                     continue
-                seen.add(b.get("id"))
+                key = b.get("id")
+                if isinstance(key, str) and key:
+                    if key in seen:
+                        continue
+                    seen.add(key)
                 i = b.get("input") if isinstance(b.get("input"), dict) else {}
                 hits = []  # (skill name, kind)
                 if b.get("name") == "Skill" and isinstance(i.get("skill"), str) and i["skill"]:
                     hits.append((i["skill"], "skill_tool"))
                 elif b.get("name") == "Read":
                     hits += [(n, "read") for n in SKILL_PATH.findall(str(i.get("file_path") or ""))]
-                elif b.get("name") == "Bash" and SLICE_COMMAND.search(str(i.get("command") or "")):
-                    hits += [(n, "slice") for n in sorted(set(SKILL_PATH.findall(str(i.get("command") or ""))))]
+                elif b.get("name") == "Bash":
+                    hits += [(n, "slice") for n in sliced_skills(str(i.get("command") or ""))]
                 for name, kind in hits:
                     per = found.setdefault(m["id"], {}).setdefault(name, {})
                     per[kind] = per.get(kind, 0) + 1
