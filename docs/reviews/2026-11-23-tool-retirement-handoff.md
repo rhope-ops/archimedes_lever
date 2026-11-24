@@ -71,7 +71,7 @@ meet T2 (report the net count; the Maintainer approves a higher number per PR), 
 | (f) ReDoS fix | merged, PR 140 | 18195 ("Approve all 5") |
 | (e) content split | merged, PR 141 | 18215 ("Approve all 4", 18:59; "The 18:59 batch holds") |
 | (e) sync split | merged, PR 143 | 18218 (same batch) |
-| (b) two-line marking + keyword/number | PR 144, 3 reviews 0 MAJOR, CI green, waits for merge | 18303 (same batch) |
+| (b) two-line marking + keyword/number | merged, PR 144 | 18303 (same batch) |
 | (d) sync stop on local edits | branch claude/tr-p2-d3 (local only): d a66c3ab merged with the sync split into the kit-only module sync_baseline_stop.py (6e17870, join e16677f, review 0 MAJOR); +378 lines, so a worker cuts 21 by real cuts | 18660 ("Approve 18660", shortly before 19:33; "Keep 18660, cut 21", shortly after 20:02) |
 | (a), (g), (h), (i), (j) | not started | ask each rise on its own |
 
@@ -81,6 +81,11 @@ Maintainer in P2: `%40` not decoded; build keyword+number on two lines; the sync
 differs (an unchanged older kit copy is no stop); relock way out names check.local.sh / .check / a kit change; no lock:
 as built. The coordinator relayed a later condition (a retirement before more rises; one number per question): the
 Maintainer kept the 18:59 batch; ask each later rise on its own.
+
+**Freeze (the Maintainer, question dialog, 2026-11-23 about 20:15: "Freeze rises, (a) first"; scope: P2).** No T2
+baseline rise until item (a) lands with a measured net cut. Map (a) first (which code_standard checks ruff and pylint
+replace, exact delete and add counts), show the Maintainer the cut, then build it. d (claude/tr-p2-d3) waits and lands
+later inside the freed lines, with its restored test (+360), with no new number. Main is 18303.
 
 ## Later phases (plan sections)
 
