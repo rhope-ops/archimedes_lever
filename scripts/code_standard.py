@@ -282,6 +282,19 @@ def python_files(config, kind):
     return out
 
 
+def shell_files(config):
+    """The shell files that scripts/check.sh gives to shellcheck: the hand-written shell files this check covers
+    (include, exclude and generated as for every rule).
+
+    Args:
+        config: the code standard settings.
+
+    Returns:
+        The paths, each followed by a NUL character.
+    """
+    return ''.join(p + '\0' for p in tracked_files(config) if lang_of(p) == 'shell' and not matches(p, config.get('generated', [])))
+
+
 def measure(config):
     """Measure every covered file.
 
@@ -400,6 +413,7 @@ def parse_args():
     ap.add_argument('--adopt', action='store_true', help='add the debt of a rule the baseline does not list yet')
     ap.add_argument('--python-files', choices=('all', 'line'), help='list the Python files that ruff and pylint check, NUL-separated '
                     '(all: parse and size; line: also the line cap, so no file with a generated block)')
+    ap.add_argument('--shell-files', action='store_true', help='list the shell files that shellcheck checks, NUL-separated')
     ap.add_argument('--test', action='store_true', help='prove the check on small sample repos')
     return ap.parse_args()
 
@@ -421,6 +435,9 @@ def main():
         return 1
     if args.python_files:
         print(python_files(config, args.python_files), end='')
+        return 0
+    if args.shell_files:
+        print(shell_files(config), end='')
         return 0
     existed = debt is not None
     if not existed and not args.init:
