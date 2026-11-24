@@ -65,8 +65,8 @@ def file_functions(p, text, lang, ps):
     if lang == 'python':
         try:
             return parse.python_functions(text), [], []
-        except SyntaxError as err:
-            return [], [], ['line %s: %s' % (err.lineno, err.msg)]
+        except SyntaxError:
+            return [], [], []   # C10 for Python: ruff and pylint in scripts/check.sh
     pattern, mark = (parse.JS_FUNC, '//') if lang == 'js' else (parse.SH_FUNC, '#')
     return parse.brace_functions(text, pattern, mark), [], []
 

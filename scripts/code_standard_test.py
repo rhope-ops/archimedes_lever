@@ -51,6 +51,14 @@ def run(cs):
     return 0
 
 
+def python_is_not_sized(cs, ROOT, g, good_py):
+    """A Python file over the file cap is not a C4 finding here: pylint warns about it (scripts/check.sh)."""
+    (ROOT / 'p.py').write_text(good_py + '#\n' * 50)
+    g('add', 'p.py')
+    assert cs.measure(config_of(ROOT, SMALL))['violations']['file_size'] == {}, 'a Python file is not measured for size here'
+    g('rm', '-qf', 'p.py')
+
+
 def run_cases(cs, ROOT):
     """Prove the check on a sample repo: clean files pass; a new debt, a grown function and an unlowered fixed item
     each fail; --update refuses new debt; a marked generated block is skipped; then the other case groups.
@@ -79,12 +87,13 @@ def run_cases(cs, ROOT):
         m = cs.measure(config)
         assert not any(m['violations'].values()), 'clean files pass: %s' % m['violations']
         assert not PS or [f['name'] for f in m['files']['b.ps1']['functions']] == ['Get-Upper'], 'generated block skipped'
-        (ROOT / 'p.py').write_text(good_py + '#\n' * 50)   # 57 lines: over the file cap 50 of SMALL
-        g('add', 'p.py')
+        (ROOT / 'p.sh').write_text('# Sample shell file: it is over the file cap, for the check self-test only.\n' + '#\n' * 55)   # 57 lines: over the file cap 50 of SMALL
+        g('add', 'p.sh')
         sizes = [cs.measure(config_of(ROOT, SMALL + extra))['violations']['file_size'] for extra in
-                 ('', 'code-paste: p.py\n', 'code-paste: p.py\ncode-max-file-lines-paste: 52\n')]
-        assert sizes == [{'p.py': 57}, {}, {'p.py': 57}], 'a `code-paste:` file has its own cap: %s' % sizes
-        g('rm', '-qf', 'p.py')
+                 ('', 'code-paste: p.sh\n', 'code-paste: p.sh\ncode-max-file-lines-paste: 52\n')]
+        assert sizes == [{'p.sh': 57}, {}, {'p.sh': 57}], 'a `code-paste:` file has its own cap: %s' % sizes
+        g('rm', '-qf', 'p.sh')
+        python_is_not_sized(cs, ROOT, g, good_py)
         config = config_of(ROOT, SMALL)
         (ROOT / 'a.py').write_text(good_py + '\n\ndef bare(x):\n    return x\n')
         new, fixed = cs.compare(cs.measure(config)['violations'], {}, config['caps'])
@@ -239,7 +248,7 @@ def self_test_forms(cs, root, g, config):
     assert 'j.py::lead' not in v['comment'], 'a Python lead comment counts: %s' % v['comment']
     assert {'j.py::p', 'j.py::q'} <= set(v['duplicate']), 'docstring-only difference is a duplicate: %s' % v['duplicate']
     assert not any(k.startswith('k.js::') for k in v['comment'].keys() | v['length'].keys()), 'arrow: %s' % v['length']
-    assert v['parse'].get('l.py'), 'a Python parse error fails: %s' % v['parse']
+    assert not v['parse'].get('l.py'), 'a Python parse error is for ruff and pylint: %s' % v['parse']
     self_test_edges(cs, root, g, config)
     for f in ('h.sh', 'i.ps1', 'j.py', 'k.js', 'l.py'):
         (root / f).unlink(missing_ok=True)

@@ -20,6 +20,8 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Install the Python linters
+        run: pip install ruff==0.17.6 pylint==4.1.4
       - name: Repo checks (self-tests, project log in the full tier, project tests)
         run: scripts/check.sh
       - name: Content check of files and commits

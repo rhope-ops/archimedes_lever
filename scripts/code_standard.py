@@ -19,7 +19,8 @@ What it measures (the rule numbers are those of docs/code-standard.md):
   C1 prevents    FAIL in the kit, WARN in a project (AUD-1): a check entry point (check.sh or a hook runs it) has `Prevents: <defect>`
   C5 duplicate   no two functions in hand-written files have the same body (a copy must be generated, with a banner)
   C6 generated   each generated file says GENERATED near its top and names its source
-  C10 parse      each Python and PowerShell file parses
+  C10 parse      each PowerShell file parses
+  Python parse, line length and file size: ruff and pylint (ruff.toml, .pylintrc; scripts/check.sh)
 A comment that is the file header, or a divider line ("# ----", "# ===="), does not count as a function's comment.
 A script block passed as an argument ($b.Add_Click({ ... })) is measured for C3 too, named by the call it is in.
 Settings: the `code-` lines of `.check` (caps, scope, opt-in rules; read by scripts/check_settings.py, which lists
@@ -206,7 +207,7 @@ def file_rules(v, p, lines, head, config, skip):
     if config.get('c1_safety') and not all(x in head for x in SAFETY_LABELS):
         v['safety'][p] = 1
     paste = matches(p, config.get('paste', []))   # a script a person pastes into another tool: its own cap
-    if len(lines) > config['caps']['max_file_lines_paste' if paste else 'max_file_lines']:
+    if lang_of(p) != 'python' and len(lines) > config['caps']['max_file_lines_paste' if paste else 'max_file_lines']:
         v['file_size'][p] = len(lines)
     if GATE:
         GATE.file_rules(v, p, lines, head, config, skip)
