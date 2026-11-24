@@ -22,7 +22,7 @@ import re
 # A skill's name is the folder after skills/; skills/ must start a path part (not "myskills/").
 SKILL_PATH = re.compile(r"(?:^|(?<=[/\s\"']))skills/([A-Za-z0-9_.-]+)/SKILL\.md")
 SLICE_COMMANDS = ("grep", "sed", "head", "tail", "cat", "awk")  # shell commands that read part of a file
-SIMPLE_COMMANDS = re.compile(r"\s*(?:;|&&|\|\||\||\n)\s*")  # the split between simple commands
+SIMPLE_COMMANDS = re.compile(r";|&&|\|\||\||\n")  # the split between simple commands (no \s* around it: linear on long runs of spaces)
 ENV_ASSIGNMENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=")  # NAME=value before the command word
 SHELL_WORDS = ("do", "then", "else", "if", "while", "!", "(", "{", "time", "sudo")  # words before the command word
 
