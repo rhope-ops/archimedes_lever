@@ -32,25 +32,47 @@ def check_placeholders(root):
             die(f"{rel} still has template placeholders; run scripts/bootstrap.sh first")
 
 
-def stop_on_changed_kit_files(root, new):
+def unlocked_kit_files(root, new, kit_files):
+    """The kit files this sync writes that the lock does not list and that the project already has with other text.
+
+    Args:
+        root: the project folder.
+        new: a dict of project path to the synced text.
+        kit_files: the paths the kit lock covers (sync_baseline.COPY_FILES).
+
+    Returns:
+        A sorted list of paths; empty when the project has no lock.
+    """
+    data = check_lock.load(root)
+    if data is None:
+        return []
+    return sorted(rel for rel in new if rel in kit_files and rel not in data["files"] and (root / rel).is_file()
+                  and (root / rel).read_bytes() != new[rel].encode())
+
+
+def stop_on_changed_kit_files(root, new, kit_files):
     """Stop (exit 2, nothing written) when a kit file that this sync writes differs from its hash in the kit lock
-    .check.lock, or is an override in it. A lock that cannot be read is said in one line and does not stop the sync.
+    .check.lock, is an override in it, or is not in it and differs from the kit's text. A lock that cannot be read is
+    said in one line and does not stop the sync.
 
     Args:
         root: the project folder.
         new: a dict of project path to the synced text (the files this sync writes).
+        kit_files: the paths the kit lock covers (sync_baseline.COPY_FILES).
     """
     try:
-        changed = check_lock.changed(root, set(new))
+        found = {rel: "differs from the kit lock or is an override in it" for rel in check_lock.changed(root, set(new))}
+        found.update({rel: "not in the kit lock, and differs from the kit's file" for rel in unlocked_kit_files(root, new, kit_files)})
     except ValueError:
         print(f"{check_lock.LOCK} could not be read: local edits to kit files were not checked.")
         return
-    if changed:
-        part = check_lock.KIT_PART
-        way = ("Put this project's own rules in AGENTS.md \"Project rules\"" if part in changed else
-               "Move this project's change into a PROJECT.md beside the kit skill") + ", or change the text in the kit and sync from there."
-        print(f"Sync stopped, nothing written: {len(changed)} kit file(s) in this project differ from the kit lock "
-              f"{check_lock.LOCK} or are overrides in it:\n  " + "\n  ".join(changed) + f"\nA sync would overwrite them. {way} Then run the sync again.")
+    if found:
+        way = {True: "put the project's own rules in AGENTS.md \"Project rules\", or change the text in the kit",
+               False: "move the project's change into a PROJECT.md beside the kit skill, or change the file in the kit"}
+        print(f"Sync stopped, nothing written: {len(found)} kit file(s) in this project would be overwritten:")
+        for rel, why in sorted(found.items()):
+            print(f"  {rel} ({why}): {way[rel == check_lock.KIT_PART]}.")
+        print("Then run the sync again.")
         sys.exit(2)
 
 
@@ -80,7 +102,7 @@ def run(sb):
               "hash of each kit file); the project does not keep the sync tools.")
         check_placeholders(root)
         new, tier = sb.planned_files(base, root, args)
-        stop_on_changed_kit_files(root, new)
+        stop_on_changed_kit_files(root, new, sb.COPY_FILES)
         changed = sb.show_diff(root, new)
         sb.report_leftovers(root, tier)
         for note in sb.COPY_NOTES:

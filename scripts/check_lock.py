@@ -97,6 +97,8 @@ def load(root):
     data = json.loads(path.read_text())
     if not isinstance(data, dict) or not isinstance(data.get("files"), dict):
         raise ValueError("no \"files\" object")
+    if not isinstance(data.get("overrides", []), list):
+        raise ValueError("\"overrides\" is not a list")
     return data
 
 

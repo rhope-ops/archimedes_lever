@@ -160,6 +160,53 @@ class SyncBaselineCli(unittest.TestCase):
         self.assertIn('AGENTS.md "Project rules"', p.stdout)
         self.assertNotIn("PROJECT.md", p.stdout)
 
+    def test_each_file_gets_its_own_way_forward(self):
+        """Prove: with the kit part of AGENTS.md and scripts/check.sh both edited, the output gives both pieces of advice."""
+        self.synced_and_committed()
+        text = (self.path / "AGENTS.md").read_text()
+        (self.path / "AGENTS.md").write_text(text.replace("## Defaults\n", "## Defaults\n\n- A local rule.\n", 1))
+        with (self.path / "scripts/check.sh").open("a") as f:
+            f.write("# local\n")
+        self.commit_all("edit two")
+        p = sync(self.path)
+        self.assertEqual(p.returncode, 2, p.stdout + p.stderr)
+        self.assertIn('AGENTS.md "Project rules"', p.stdout)
+        self.assertIn("PROJECT.md", p.stdout)
+
+    def test_null_overrides_is_an_unreadable_lock(self):
+        """Prove: a lock with "overrides": null is said as unreadable and does not crash the sync."""
+        self.synced_and_committed()
+        lock = json.loads((self.path / ".check.lock").read_text())
+        lock["overrides"] = None
+        (self.path / ".check.lock").write_text(json.dumps(lock))
+        self.commit_all("null overrides")
+        p = sync(self.path)
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertIn("could not be read", p.stdout)
+
+    def test_unlocked_kit_file_that_differs_stops_the_sync(self):
+        """Prove: a kit file that is not in the lock, exists with other text, and will be written stops the sync (exit 2, nothing written)."""
+        self.synced_and_committed()
+        lock = json.loads((self.path / ".check.lock").read_text())
+        del lock["files"]["scripts/stop_check.py"]
+        (self.path / ".check.lock").write_text(json.dumps(lock))
+        (self.path / "scripts/stop_check.py").write_text("# mine\n")
+        self.commit_all("unlocked and different")
+        before = self.tree_hashes()
+        p = sync(self.path)
+        self.assertEqual(p.returncode, 2, p.stdout + p.stderr)
+        self.assertIn("scripts/stop_check.py", p.stdout)
+        self.assertEqual(self.tree_hashes(), before)
+
+    def test_unlocked_kit_file_that_matches_is_no_stop(self):
+        """Prove: a kit file that is not in the lock but has the kit's text is no stop."""
+        self.synced_and_committed()
+        lock = json.loads((self.path / ".check.lock").read_text())
+        del lock["files"]["scripts/stop_check.py"]
+        (self.path / ".check.lock").write_text(json.dumps(lock))
+        self.commit_all("unlocked and equal")
+        self.assertEqual(sync(self.path).returncode, 0)
+
     def test_project_without_a_lock_is_synced_as_before(self):
         """Prove: a project with no .check.lock is not stopped (nothing to compare with): the first sync writes the lock."""
         self.assertFalse((self.path / ".check.lock").exists())
