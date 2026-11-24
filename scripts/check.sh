@@ -162,10 +162,12 @@ PY
   done < <(tr ':' '\n' <<<"$PATH")
   ok "no ruff.toml and .pylintrc: no Python lint step" "$(c | grep -c 'python lint')" 0
   touch "$t/r/ruff.toml" "$t/r/.pylintrc"
-  ok "a missing linter is a SKIP line that names the install" "$(cd "$t/r" && PATH="$nolint" bash scripts/check.sh 2>&1 | grep -c '^SKIP  python lint (ruff or pylint is missing: pip install ruff==0.17.6 pylint==4.1.4)$')" 1
+  ok "a missing linter is a SKIP line that names the install" \
+    "$(cd "$t/r" && PATH="$nolint" bash scripts/check.sh 2>&1 | grep -c '^SKIP  python lint (ruff or pylint is missing: pip install ruff==0.17.6 pylint==4.1.4)$')" 1
   rm "$t/r/ruff.toml" "$t/r/.pylintrc"
   # The shell lint: a missing tool is a SKIP line that names the install; findings are WARN lines and the step passes.
-  ok "a missing shellcheck is a SKIP line that names the install" "$(cd "$t/r" && PATH="$nolint" bash scripts/check.sh 2>&1 | grep -c '^SKIP  shellcheck (shellcheck is missing: pip install shellcheck-py==0.9.0.6)$')" 1
+  ok "a missing shellcheck is a SKIP line that names the install" \
+    "$(cd "$t/r" && PATH="$nolint" bash scripts/check.sh 2>&1 | grep -c '^SKIP  shellcheck (shellcheck is missing: pip install shellcheck-py==0.9.0.6)$')" 1
   if command -v shellcheck >/dev/null; then
     printf '%s\n' '#!/bin/bash' 'echo $1' > "$t/r/bad.sh"; printf '%s\n' 'import sys' 'sys.stdout.write("bad.sh\0" if "--shell-files" in sys.argv else "")' > "$t/r/scripts/code_standard.py"
     out="$(c)"; ok "a shellcheck finding is a WARN line" "$(printf '%s\n' "$out" | grep -c '^      WARN  bad.sh:2:.*SC2086')" 1
@@ -341,11 +343,13 @@ selftest check_settings scripts/check_settings.py scripts/check_settings_test.py
   scripts/build_site_html.py scripts/check_content_scan_settings.py scripts/check_content_scan_words.py -- python3 scripts/check_settings.py --test
 selftest bloat_check scripts/bloat_check.py scripts/bloat_check_test.py scripts/bloat_check_skills.py scripts/bloat_check_rules.py \
   scripts/bloat_check_files.py scripts/bloat_check_timing.py scripts/bloat_check_test_rules.py \
-  scripts/check_settings.py scripts/check_settings_read.py scripts/build_site_html.py scripts/check_content_scan_settings.py scripts/check_content_scan_words.py -- python3 scripts/bloat_check.py --test
+  scripts/check_settings.py scripts/check_settings_read.py scripts/build_site_html.py \
+    scripts/check_content_scan_settings.py scripts/check_content_scan_words.py -- python3 scripts/bloat_check.py --test
 selftest token_log scripts/token_log.py scripts/token_log_rows.py scripts/token_log_report.py scripts/token_log_test.py \
   scripts/token_log_test_parts.py scripts/token_log_test_costs.py -- python3 scripts/token_log.py --test
 selftest code_standard scripts/code_standard.py scripts/code_standard_test.py scripts/code_standard_docs.py \
-  scripts/code_standard_parse.py scripts/check_settings.py scripts/check_settings_read.py scripts/build_site_html.py scripts/check_content_scan_settings.py scripts/check_content_scan_words.py scripts/code_standard_rules.py \
+  scripts/code_standard_parse.py scripts/check_settings.py scripts/check_settings_read.py \
+    scripts/build_site_html.py scripts/check_content_scan_settings.py scripts/check_content_scan_words.py scripts/code_standard_rules.py \
   scripts/code_standard_ratchet.py scripts/code_standard_test_gate.py scripts/code_standard_test_docs.py -- python3 scripts/code_standard.py --test
 selftest code_standard_strict scripts/code_standard_strict.py scripts/code_standard_strict_test.py scripts/code_standard.py \
   scripts/code_standard_test_gate.py scripts/check_settings.py scripts/check_settings_read.py scripts/build_site_html.py \
