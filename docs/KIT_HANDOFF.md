@@ -2,7 +2,7 @@
 
 The kit's own handoff (AGENTS.md "Handoff"). Kit only: first use deletes it in a project, which uses docs/NEXT_PROMPT.md. Keep it at 40 lines or fewer; evidence goes in docs/reviews/. Times are America/Chicago.
 
-Updated: 2026-11-23 17:12 by "Kit · Tool retirement · 2026-11-23 · #125": tool retirement plan approved; P1 next
+Updated: 2026-11-23 18:12 by "Kit · Tool retirement · 2026-11-23 · #125": stopping point; P1 built on branch, finish in a new session ([reviews/2026-11-23-tool-retirement-handoff.md](reviews/2026-11-23-tool-retirement-handoff.md))
 
 ## State
 
@@ -12,7 +12,7 @@ Updated: 2026-11-23 17:12 by "Kit · Tool retirement · 2026-11-23 · #125": too
 ## Approved plan (the Maintainer, 2026-11-23 17:12): custom tool retirement
 Plan, texts and decisions 1-10: [reviews/2026-11-23-tool-retirement-plan.md](reviews/2026-11-23-tool-retirement-plan.md); coverage list (85 rows) and research files beside it. Session "Kit · Tool retirement · 2026-11-23 · #125".
 
-- [x] Research R1-R4f and plan (PRs 125, 127, 131). [ ] P1 rules and checks (kit, lane C). [ ] P2 kit shrink and repair. [ ] P3 pilot 33-332.Z (pip/pipx; trim its handoff ~50 tokens first).
+- [x] Research R1-R4f and plan (PRs 125, 127, 131). [~] P1 rules and checks (kit, lane C): built on branch `claude/tr-p1` (2161319), not a PR yet; next: verify T1 first-cell match, full lane, fresh review, rule-conflict rerun if needed, PR for the Maintainer. [ ] P2 kit shrink and repair. [ ] P3 pilot 33-332.Z (pip/pipx; trim its handoff ~50 tokens first).
 - [ ] P4 RADE sentinel + release, 90-161.Z, 33-332.Z, ICF runbook. [ ] P5 kit 10.0.0 repos, fleet audit. [ ] P6 exports, branch deletes (with the Maintainer's OK).
 - Fleet v2 (approved 2026-11-23) is done and closed: [reviews/2026-11-23-fleet-v2-plan.md](reviews/2026-11-23-fleet-v2-plan.md), lessons [reviews/2026-11-23-fleet-v2-lessons.md](reviews/2026-11-23-fleet-v2-lessons.md).
 - Earlier approved plan 2026-11-19 (fleet decision hub, kit template): steps 0-5 and 7 done, step 4 dropped; open: step 6 loop proof after the owner ports a first project. Record: [reviews/2026-11-19-fleet-decision-hub-plan.md](reviews/2026-11-19-fleet-decision-hub-plan.md); live page preview https://claude.ai/artifact/RZwwoMT9fNJDARDcBzn7AR.
