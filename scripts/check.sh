@@ -309,7 +309,7 @@ selftest check_settings scripts/check_settings.py scripts/check_settings_test.py
 selftest bloat_check scripts/bloat_check.py scripts/bloat_check_test.py scripts/bloat_check_skills.py scripts/bloat_check_rules.py \
   scripts/bloat_check_files.py scripts/bloat_check_timing.py scripts/bloat_check_test_rules.py \
   scripts/check_settings.py scripts/check_settings_read.py scripts/build_site_html.py scripts/check_content_scan_settings.py scripts/check_content_scan_words.py -- python3 scripts/bloat_check.py --test
-selftest token_log scripts/token_log.py scripts/token_log_rows.py scripts/token_log_report.py scripts/token_log_test.py scripts/token_log_test_report.py -- python3 scripts/token_log.py --test
+selftest token_log scripts/token_log.py scripts/token_log_rows.py scripts/token_log_report.py scripts/token_log_test.py scripts/token_log_test_parts.py -- python3 scripts/token_log.py --test
 selftest code_standard scripts/code_standard.py scripts/code_standard_test.py scripts/code_standard_docs.py \
   scripts/code_standard_parse.py scripts/check_settings.py scripts/check_settings_read.py scripts/build_site_html.py scripts/check_content_scan_settings.py scripts/check_content_scan_words.py scripts/code_standard_rules.py \
   scripts/code_standard_ratchet.py scripts/code_standard_test_gate.py scripts/code_standard_test_docs.py -- python3 scripts/code_standard.py --test

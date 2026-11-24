@@ -1,23 +1,31 @@
-"""The row part of scripts/token_log.py: reads a session log and its subagent logs into one row per API call
-(message id, turn, source, agent, the token counts and the price facts). Split out so that token_log.py stays under
-the C4 file cap.
+"""The rows of the token log: reads a session log and its subagent logs into one row per API call (message id,
+turn, source, agent, the token counts and the price facts), and writes them as CSV. The one home of the columns
+(FIELDS). Kit only. One of the three hook files: token_log.py (the hook), this file (the rows), token_log_report.py.
 
-token_log.py loads this file on first use. An installed copy from before the split has no such file: its background
-push then fails with ImportError and runs the self-update at once, which installs this file; the next push rebuilds
-every row from the logs, so no row is lost.
+token_log.py imports this file in the background push, never on the Stop path. An installed copy from before the
+split has no such file: its push then fails with ImportError and runs the self-update at once, which installs this
+file; the next push rebuilds every row from the logs, so no row is lost.
 Inputs:  the session log path (JSON lines) and its <session>/**/*.jsonl subagent logs.
-Outputs: {message_id: row} for token_log.push.
+Outputs: {message_id: row} and its CSV text for token_log.push.
 Prevents: double counts of one reply (the session log repeats its usage on each content block) and lost subagent rows
 Network: none.
 Writes: none.
 Credentials: none.
-Run:     loaded by scripts/token_log.py; tested by its self-test (python3 scripts/token_log.py --test).
+Run:     imported by scripts/token_log.py; tested by its self-test (python3 scripts/token_log.py --test).
 """
 import bisect
+import csv
 import glob
+import io
 import json
 import os
 import re
+
+FIELDS = ["message_id", "timestamp", "turn", "session_id", "repo", "model", "source", "agent", "agent_id",
+          "input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens", "output_tokens", "cache_write_1h_tokens",
+          "speed", "web_search_requests", "inference_geo", "skill_use"]
+USAGE_KEYS = FIELDS[9:13]  # the four token counts that the report sums
+NOT_PROMPTS = ("[Request interrupted",)
 
 # A skill's name is the folder after skills/; skills/ must start a path part (not "myskills/").
 SKILL_PATH = re.compile(r"(?:^|(?<=[/\s\"']))skills/([A-Za-z0-9_.-]+)/SKILL\.md")
@@ -25,8 +33,6 @@ SLICE_COMMANDS = ("grep", "sed", "head", "tail", "cat", "awk")  # shell commands
 SIMPLE_COMMANDS = re.compile(r";|&&|\|\||\||\n")  # the split between simple commands (no \s* around it: linear on long runs of spaces)
 ENV_ASSIGNMENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=")  # NAME=value before the command word
 SHELL_WORDS = ("do", "then", "else", "if", "while", "!", "(", "{", "time", "sudo")  # words before the command word
-
-core = None  # scripts/token_log.py as a module: set by its loader before any call here
 
 
 def prompt_text(d):
@@ -44,7 +50,7 @@ def prompt_text(d):
         if any(isinstance(x, dict) and x.get("type") == "tool_result" for x in c):
             return None
         c = " ".join(x.get("text", "") for x in c if isinstance(x, dict) and x.get("type") == "text")
-    if not isinstance(c, str) or not c.strip() or c.lstrip().startswith(core.NOT_PROMPTS):
+    if not isinstance(c, str) or not c.strip() or c.lstrip().startswith(NOT_PROMPTS):
         return None
     return c
 
@@ -218,7 +224,7 @@ def log_rows(sid, tpath, repo):
         tpath: the path of the session's log file.
         repo: the repo name.
     Returns:
-        A dict of message id to the row (a dict with the core.FIELDS).
+        A dict of message id to the row (a dict with the FIELDS).
     """
     msgs, prompts = read_log(tpath, "main")
     types = agent_types(tpath)
@@ -241,5 +247,15 @@ def log_rows(sid, tpath, repo):
                      "session_id": sid, "repo": repo, "model": model, "source": src, "agent": agent[mid],
                      "agent_id": agent_id.get(mid, ""),
                      "skill_use": json.dumps(skills[mid], sort_keys=True, separators=(",", ":")) if mid in skills else "",
-                     **{k: tokens(u.get(k)) for k in core.USAGE_KEYS}, **price_facts(u)}
+                     **{k: tokens(u.get(k)) for k in USAGE_KEYS}, **price_facts(u)}
     return rows
+
+
+def to_csv(rows):
+    """The CSV text of the rows, header first, sorted by timestamp and message id."""
+    out = io.StringIO()
+    w = csv.DictWriter(out, fieldnames=FIELDS, lineterminator="\n")
+    w.writeheader()
+    for r in sorted(rows.values(), key=lambda r: (r["timestamp"], r["message_id"])):
+        w.writerow({k: r.get(k, "") for k in FIELDS})
+    return out.getvalue()

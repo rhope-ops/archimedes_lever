@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""More self-test cases of scripts/token_log.py: the agent and agent_id columns, bad agent input, the report, the
-prices and the self-update; and the sample log lines (msg, prompt, tool_result, append) that every case uses.
-Kit only: projects do not get a copy.
+"""Self-test cases of the token log's parts: the rows (agent, agent_id and skill_use columns, bad agent input), the
+report and prices (token_log_report.py) and the self-update. Kit only: projects do not get a copy.
 
-Part of scripts/token_log_test.py (split out to keep each file under the line cap of docs/code-standard.md C4);
-token_log_test.run() calls these cases on its shared fixture.
+The fixture, the sample log lines and the hook and push cases are in scripts/token_log_test.py (split by subject, to
+keep each file under the line cap of docs/code-standard.md C4); token_log_test.run() calls these cases on its fixture.
 Input: the shared test fixture of token_log_test.py. Output: one PASS or FAIL line per case. Needs git.
 Usage:   imported by scripts/token_log_test.py (run by `python3 scripts/token_log.py --test`); no command line.
 Network: none.
@@ -19,29 +18,7 @@ import shutil
 import subprocess
 import sys
 
-
-def msg(mid, ts, model="claude-test", side=False, n=1):
-    """One assistant log line with usage n, 10n, 100n, 1000n."""
-    u = {"input_tokens": n, "cache_creation_input_tokens": 10 * n, "cache_read_input_tokens": 100 * n,
-         "output_tokens": 1000 * n}
-    return json.dumps({"type": "assistant", "timestamp": ts, "isSidechain": side,
-                       "message": {"id": mid, "model": model, "usage": u}})
-
-
-def prompt(ts, text="hi"):
-    """One user prompt log line."""
-    return json.dumps({"type": "user", "timestamp": ts, "message": {"role": "user", "content": text}})
-
-
-def tool_result(ts):
-    """One tool-result log line (not a prompt)."""
-    return json.dumps({"type": "user", "timestamp": ts, "message": {"content": [{"type": "tool_result", "content": "x"}]}})
-
-
-def append(path, *lines):
-    """Append lines to a file."""
-    with open(path, "a") as f:
-        f.write("\n".join(lines) + "\n")
+from token_log_test import append, msg, prompt, tool_result
 
 
 def case_agent_type(fx):
@@ -119,7 +96,7 @@ def case_skill_use(fx):
     fx.expect("skill_use column: bad lines and blocks are skipped; blocks with no usable id count each",
               got, {"b1": '{"alpha":{"skill_tool":1}}', "g1": '{"alpha":{"skill_tool":4}}'})
     old = {"message_id": "m1", "timestamp": "2026-01-01T00:00:00Z"}  # a row from before the column
-    merged = list(csv.DictReader(io.StringIO(fx.tl.to_csv({"m1": old}))))
+    merged = list(csv.DictReader(io.StringIO(fx.rows.to_csv({"m1": old}))))
     fx.expect("old row without skill_use: merged with an empty value", merged[0]["skill_use"], "")
 
 
@@ -181,21 +158,20 @@ def case_report(fx):
     Args:
         fx: the shared test fixture (Fixture).
     """
-    tl = fx.tl
     row = {"model": "claude-opus-5-5", "input_tokens": "1000000", "cache_creation_input_tokens": "1000000",
            "cache_read_input_tokens": "1000000", "output_tokens": "1000000"}
-    fx.expect("row cost: opus-5-5 is 4 + 5 + 0.20 + 20", round(tl.row_cost(row), 2), 29.2)
-    fx.expect("row cost: unknown model is None", tl.row_cost({**row, "model": "claude-test"}), None)
+    fx.expect("row cost: opus-5-5 is 4 + 5 + 0.20 + 20", round(fx.rep.row_cost(row), 2), 29.2)
+    fx.expect("row cost: unknown model is None", fx.rep.row_cost({**row, "model": "claude-test"}), None)
     fx.expect("week: Sunday 23:00 Chicago is the week of the Monday before",
-              tl.week_of("2026-11-23T05:00:00Z"), "2026-11-16")
-    fx.expect("week: bad timestamp", tl.week_of("not a time"), "unknown")
+              fx.rep.week_of("2026-11-23T05:00:00Z"), "2026-11-16")
+    fx.expect("week: bad timestamp", fx.rep.week_of("not a time"), "unknown")
     rows = [{**row, "source": "main", "agent": "main", "timestamp": "2026-11-17T12:00:00Z"},
             {**row, "source": "subagent", "agent": "scout", "agent_id": "a1", "model": "claude-haiku-5-5",
              "timestamp": "2026-11-17T12:00:00Z"},
             {**row, "source": "subagent", "agent": "scout", "agent_id": "a1", "model": "claude-haiku-5-5",
              "timestamp": "2026-11-17T12:00:01Z"},
             {**row, "source": "main", "model": "claude-test", "timestamp": ""}]
-    text = tl.report(rows)
+    text = fx.rep.report(rows)
     fx.expect("report: week line with main and subagent cost",
               "2026-11-16                          3   29.20        7.35    36.55" in text, True)
     fx.expect("report: one scout task of 2 calls", any(l.split()[:3] == ["scout", "1", "2.0"] for l in text.splitlines()),
@@ -206,23 +182,23 @@ def case_report(fx):
               "Rows from before the cache_write_1h_tokens column (4): cache writes priced as 5-minute.")
     new = [{**r, "cache_write_1h_tokens": "0"} for r in rows]
     fx.expect("report: no old-row footer when every row has the column",
-              "cache_write_1h_tokens" in tl.report(new), False)
+              "cache_write_1h_tokens" in fx.rep.report(new), False)
     fx.expect("report: footer for 1 old row among new rows",
-              tl.report(new + rows[:1]).splitlines()[-1].endswith("column (1): cache writes priced as 5-minute."), True)
+              fx.rep.report(new + rows[:1]).splitlines()[-1].endswith("column (1): cache writes priced as 5-minute."), True)
     searched = {**row, "model": "claude-test", "web_search_requests": "3", "source": "main",
                 "timestamp": "2026-11-17T12:00:00Z", "cache_write_1h_tokens": "0"}
     fx.expect("row cost: unknown model with 3 web searches is the search fee only",
-              round(tl.row_cost(searched), 6), 0.03)
-    text = tl.report([searched])
+              round(fx.rep.row_cost(searched), 6), 0.03)
+    text = fx.rep.report([searched])
     fx.expect("report: search fee of an unknown model in the week total",
               "2026-11-16                          1    0.03        0.00     0.03" in text, True)
     fx.expect("report: unknown model with searches still listed as no token price",
               text.splitlines()[-1].endswith(": claude-test"), True)
     old = {k: v for k, v in rows[0].items() if k not in ("agent", "agent_id")}  # a row from before the columns
-    merged = list(csv.DictReader(io.StringIO(tl.to_csv({"m1": {**old, "message_id": "m1"}}))))
+    merged = list(csv.DictReader(io.StringIO(fx.rows.to_csv({"m1": {**old, "message_id": "m1"}}))))
     fx.expect("old row without agent and agent_id: merged with empty values",
               (merged[0]["agent"], merged[0]["agent_id"]), ("", ""))
-    fx.expect("old row: in the report", "29.20" in tl.report(merged), True)
+    fx.expect("old row: in the report", "29.20" in fx.rep.report(merged), True)
 
 
 def case_prices(fx):
@@ -231,14 +207,13 @@ def case_prices(fx):
     Args:
         fx: the shared test fixture (Fixture).
     """
-    tl = fx.tl
     M = 1_000_000
 
     def cost(model, **kw):
         """Cost of one row of this model with these fields (token counts default to 0)."""
         r = {"model": model, "input_tokens": 0, "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0,
              "output_tokens": 0}
-        return round(tl.row_cost({**r, **kw}), 6)
+        return round(fx.rep.row_cost({**r, **kw}), 6)
     fx.expect("5-minute cache write: 1.25 x input", cost("claude-opus-5", cache_creation_input_tokens=M), 6.25)
     fx.expect("1-hour cache write: 2 x input",
               cost("claude-opus-5", cache_creation_input_tokens=M, cache_write_1h_tokens=M), 10.0)
@@ -278,7 +253,7 @@ def case_prices(fx):
               [got[0].get(k) for k in ("cache_write_1h_tokens", "speed", "web_search_requests", "inference_geo")],
               ["6", "fast", "2", "us"])
     fx.expect("a row from before the new columns still parses and prices",
-              tl.row_cost({k: v for k, v in got[0].items() if k not in tl.FIELDS[13:]}) is not None, True)
+              fx.rep.row_cost({k: v for k, v in got[0].items() if k not in fx.rows.FIELDS[13:]}) is not None, True)
 
 
 def case_self_update(fx):
@@ -393,8 +368,15 @@ def case_installed_hook_works(fx):
     run = subprocess.run([sys.executable, "-E", "-s", os.path.join(hooks, "token_log.py")], input="{}", text=True,
                          capture_output=True, cwd=fx.root, timeout=60)
     fx.expect("installed hook: Stop outside a repo exits 0", (run.returncode, run.stderr), (0, ""))
-    probe = ("import sys; sys.path.insert(0, sys.argv[1]); import token_log as t; "
-             "print(callable(t.log_rows), callable(t.row_cost), bool(t.PRICES))")
+    probe = ("import sys; sys.path.insert(0, sys.argv[1]); import token_log, token_log_rows as r, token_log_report as p; "
+             "print(callable(r.log_rows), callable(p.row_cost), bool(p.PRICES))")
     run = subprocess.run([sys.executable, "-E", "-s", "-c", probe, hooks], text=True, capture_output=True, cwd=fx.root,
                          timeout=60)
-    fx.expect("installed hook: the parts load from the hooks folder", run.stdout.strip(), "True True True")
+    fx.expect("installed hook: the rows and report files load from the hooks folder", run.stdout.strip(), "True True True")
+    with open(os.path.join(hooks, "token_log_rows.py"), "w") as f:  # a rows file from before the plain imports
+        f.write("core = None\n")
+    probe = ("import sys; sys.path.insert(0, sys.argv[1]); import token_log\n"
+             "try:\n    token_log.sibling('token_log_rows')\nexcept ImportError:\n    print('repair')")
+    run = subprocess.run([sys.executable, "-E", "-s", "-c", probe, hooks], text=True, capture_output=True, cwd=fx.root,
+                         timeout=60)
+    fx.expect("installed hook: an older rows file takes the repair path (ImportError)", run.stdout.strip(), "repair")

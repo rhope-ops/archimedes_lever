@@ -4,8 +4,9 @@ case stays under the 60-line cap of docs/code-standard.md C3).
 
 It builds a bare origin and clones in a temporary folder (no network) and runs the Stop hook on sample session logs:
 one row per API call, turns, subagent rows, a second session, a blocking pre-push hook, a lost local folder, a shallow
-clone, retries, coalescing, FETCH_HEAD, a push with no answer, a push that waits for the lock, bad input,
-TOKEN_LOG=off, the agent and agent_id columns, the report and the self-update.
+clone, retries, coalescing, FETCH_HEAD, a push with no answer, a push that waits for the lock, bad input and
+TOKEN_LOG=off. The cases of the rows, the report and the self-update are in scripts/token_log_test_parts.py; this
+file holds the fixture and the sample log lines that both files use.
 Input: the token_log module. Output: one PASS or FAIL line per case and a "TOKEN LOG SELF-TEST" total line; returns
 the exit code (0 pass, 1 fail). Needs git.
 Network: none.
@@ -24,9 +25,28 @@ import tempfile
 import time
 import unittest
 
-# scripts/token_log_test_report.py: the sample log lines and more case groups (kept apart, docs/code-standard.md C4).
-from token_log_test_report import (append, case_agent_type, case_agent_type_bad_input, case_prices,  # noqa: F401
-                                   case_report, case_self_update, case_skill_use, msg, prompt, tool_result)
+def msg(mid, ts, model="claude-test", side=False, n=1):
+    """One assistant log line with usage n, 10n, 100n, 1000n."""
+    u = {"input_tokens": n, "cache_creation_input_tokens": 10 * n, "cache_read_input_tokens": 100 * n,
+         "output_tokens": 1000 * n}
+    return json.dumps({"type": "assistant", "timestamp": ts, "isSidechain": side,
+                       "message": {"id": mid, "model": model, "usage": u}})
+
+
+def prompt(ts, text="hi"):
+    """One user prompt log line."""
+    return json.dumps({"type": "user", "timestamp": ts, "message": {"role": "user", "content": text}})
+
+
+def tool_result(ts):
+    """One tool-result log line (not a prompt)."""
+    return json.dumps({"type": "user", "timestamp": ts, "message": {"content": [{"type": "tool_result", "content": "x"}]}})
+
+
+def append(path, *lines):
+    """Append lines to a file."""
+    with open(path, "a") as f:
+        f.write("\n".join(lines) + "\n")
 
 
 class Fixture:
@@ -38,7 +58,9 @@ class Fixture:
         Args:
             tl: the token_log module.
         """
-        self.tl = tl
+        import token_log_report
+        import token_log_rows
+        self.tl, self.rows, self.rep = tl, token_log_rows, token_log_report
         env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_") and not k.startswith("TOKEN_LOG")}
         env.update(GIT_AUTHOR_NAME="t", GIT_AUTHOR_EMAIL="t@t", GIT_COMMITTER_NAME="t", GIT_COMMITTER_EMAIL="t@t",
                    GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1", TOKEN_LOG_SYNC="1")
@@ -338,13 +360,15 @@ def run(tl):
     Returns:
         The exit code: 0 when every case passes, else 1.
     """
+    import token_log_test_parts as parts  # the cases of the rows, report and self-update (imports this file's samples)
     fx = Fixture(tl)
     fx.real_push = tl.push
     saved = {k: os.environ.get(k) for k in ("TOKEN_LOG_HOME", "TOKEN_LOG_NET_TIMEOUT")}  # restored at the end
     try:
         for case in (case_first_turn, case_second_turn, case_blocked_and_shallow, case_retry, case_coalesce,
-                     case_fetch_head_and_timeout, case_waiting_push, case_bad_input_and_off, case_agent_type,
-                     case_skill_use, case_agent_type_bad_input, case_report, case_prices, case_self_update):
+                     case_fetch_head_and_timeout, case_waiting_push, case_bad_input_and_off, parts.case_agent_type,
+                     parts.case_skill_use, parts.case_agent_type_bad_input, parts.case_report, parts.case_prices,
+                     parts.case_self_update):
             case(fx)
     finally:
         tl.push = fx.real_push
