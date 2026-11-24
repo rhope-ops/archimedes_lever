@@ -343,7 +343,7 @@ def ratchet_cases(sk, root):
 
 
 def role_cases(sk, root):
-    """T6: kit-synced text with "the owner" or "Owner's" fails in the kit; a dated attribution and the kept lines do not.
+    """T6: kit-synced text with an old role word fails in the kit; a dated attribution and the kept lines do not.
 
     Args:
         sk: the module bloat_check_files.
@@ -353,6 +353,14 @@ def role_cases(sk, root):
     (root / "docs/x.md").write_text("the owner decides\nRule (the owner, 2026-11-23: ok)\nThe Owner's word\nthe Maintainer\n")
     rows, problems = sk.role_report(root)
     assert not rows and len(problems) == 1 and "2 line(s)" in problems[0] and "docs/x.md:1, docs/x.md:3" in problems[0], problems
+    (root / "scripts/sync_baseline.py").write_text('COPY_FILES = ["docs/x.md", "docs/FIRST_USE.md"]\nCOPY_IF_MISSING = []\n')
+    (root / "docs/x.md").write_text("the Maintainer\n")
+    (root / "docs/FIRST_USE.md").write_text('| 7 | A "the owner" \xb7 B a role |\nAsk the owner.\n')
+    problems = sk.role_report(root)[1]
+    assert len(problems) == 1 and "1 line(s)" in problems[0] and "docs/FIRST_USE.md:2" in problems[0], "a kept line passes, the next line of the file fails: %s" % problems
+    (root / "docs/FIRST_USE.md").unlink()
+    (root / "scripts/sync_baseline.py").write_text('COPY_FILES = ["docs/x.md"]\nCOPY_IF_MISSING = []\n# Never rename the owner inside this script\n')
+    (root / "docs/x.md").write_text("the owner decides\nRule (the owner, 2026-11-23: ok)\nThe Owner's word\nthe Maintainer\n")
     (root / ".check.lock").write_text("{}")
     assert sk.role_report(root) == ([], []), "a project keeps its own role word"
     (root / ".check.lock").unlink()

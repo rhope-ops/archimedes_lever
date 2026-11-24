@@ -19,6 +19,7 @@ Credentials: none.
 import fnmatch
 import hashlib
 import re
+from pathlib import Path
 
 import check_settings as settings   # scripts/check_settings.py: STRICT, dash, OPT_IN_CAPS
 import code_standard_docs as docs   # scripts/code_standard_docs.py: rule C2 full
@@ -119,10 +120,15 @@ RULE = {'header': ('C1 no header comment', None), 'comment': ('C2 function witho
         'docs': ('C2 full: function without full docs (--report names the missing parts)', None)}
 
 
-# Debt kinds that only warn (the Maintainer, 2026-11-23): no FAIL, not in the baseline. C4 file size (decision 1 = A: a line
-# count is a proxy that a split games); C1 Prevents (AUD-1: 0 of the entry points have the line yet). Plan P2 makes
-# `prevents` a FAIL again: remove it from this tuple, then list its debt with --adopt.
-WARN_KINDS = ('file_size', 'prevents')
+def is_kit(root):
+    """True in the kit itself: it has kit.config.json and no `.check.lock` (a synced project has the lock)."""
+    return (root / 'kit.config.json').is_file() and not (root / '.check.lock').exists()
+
+
+# Debt kinds that only warn: no FAIL, not in the baseline. C4 file size (the Maintainer, 2026-11-23, decision 1 = A: a line count is
+# a proxy that a split games), everywhere. C1 Prevents (AUD-1; the Maintainer, 2026-11-23): a FAIL in the kit, a WARN in a project
+# until its debt is 0. The kit is told by the folder of this file, the same root as scripts/code_standard.py ROOT.
+WARN_KINDS = ('file_size',) if is_kit(Path(__file__).resolve().parent.parent) else ('file_size', 'prevents')
 
 
 def entry_points(root):
@@ -144,6 +150,7 @@ def entry_points(root):
 
 def warn_lines(now, caps, limit=10):
     """Return the WARN lines of the kinds in WARN_KINDS: each file with its number (file size), at most `limit` per kind.
+    The `prevents` kind is in WARN_KINDS in a project only; in the kit compare() fails it.
 
     Args:
         now: the violations measured now {kind: {key: value}}.

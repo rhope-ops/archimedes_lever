@@ -32,7 +32,19 @@ STATE_KEY = "script_lines"   # in .check.state.json: {"baseline": N, "command": 
 ROLE_WORD = re.compile(r"\bthe owner\b|\bOwner's\b")
 DATED = re.compile(r"\(the owner, \d{4}-\d{2}-\d{2}")   # an attribution that records a past role word stays as written
 # The files that hold the check itself name the word they look for: allowed whole (re.compile(".")).
-ROLE_ALLOW = {}   # file -> the regexes of the lines that may hold the word: filled below, one entry for each kept line
+# The lines of kit-synced text and of the files that test it that may hold the old role word: file -> one regex for each kept line.
+# Never a whole file. The regexes say "the[ ]owner" so that this list does not match itself.
+ROLE_ALLOW = {
+    "scripts/bloat_check_files.py": [r"^ROLE_WORD = re\.compile\(", r"^DATED = re\.compile\("],   # the searched patterns
+    "scripts/bloat_check_test_rules.py": [r"Never rename the[ ]owner inside this script",   # test text of the sync script
+                                          r"the[ ]owner decides\\nRule",   # the test lines with the searched word
+                                          r'"the[ ]owner" \\xb7 B a role'],
+    "scripts/log_check_plan.py": [r"\| Old row \| the[ ]owner \|"],   # a sample DECISIONS row of its self-test
+    "scripts/sync_baseline.py": [r"Never rename the[ ]owner inside this script", r'use "the[ ]owner" as an answer option'],   # lines 116-117
+    "scripts/sync_baseline_cli_test.py": [r'"the[ ]owner"', r"\| the[ ]owner \|", r"the[ ]owner word"],   # the words the sync swaps
+    "docs/FIRST_USE.md": [r'agents call you "the[ ]owner"', r'A "the[ ]owner" \xb7 B a role', r'Give "the[ ]owner" as the 4th argument',
+                          r"\(the[ ]owner, YYYY-MM-DD\)"],   # answer options and the attribution form a user types
+}
 ENTRY = re.compile(r"(?:python3|bash)\s+(scripts/[\w.-]+\.(?:py|sh))|^[ \t]*(?:selftest|extension)\s+\S+\s+(scripts/[\w.-]+\.(?:py|sh))", re.M)
 CAPS_FILE = "scripts/check_settings_read.py"
 
@@ -185,7 +197,7 @@ def synced_files(root):
 
 def role_report(root):
     """T6, in the kit: kit-synced text says "the Maintainer", not the old role words (the sync swaps the word per project). A FAIL
-    in the kit. Allowed: a dated attribution "(the owner, YYYY-MM-DD" and the lines of ROLE_ALLOW. A project has no such check:
+    in the kit. Allowed: a dated attribution and the lines of ROLE_ALLOW. A project has no such check:
     its synced text holds that project's own role word.
 
     Args:
