@@ -363,14 +363,21 @@ fi
 # Python parse, line length and file size (docs/code-standard.md C4, C10): ruff and pylint, the configs ruff.toml and .pylintrc,
 # the caps from .check. The parse and the line cap fail; the file size only warns. Never a silent pass: a missing linter is a SKIP line.
 python_lint() {
-  local caps cap max files=() f rc=0 ropt=() popt=()
+  local caps cap max files=() long=() f rc=0
   caps=$(python3 -c 'import sys; sys.path.insert(0, "scripts"); import check_settings as s; c = s.code_config(".")["caps"]; print(c.get("max_line_chars") or 0, c["max_file_lines"])') || return 1
   read -r cap max <<<"$caps"
-  while IFS= read -r -d '' f; do [ -f "$f" ] && files+=("$f"); done < <(git ls-files -z '*.py')
+  # The files are the ones the code standard covers (include, exclude, generated). A file with a generated block is out of the line list.
+  python3 scripts/code_standard.py --python-files all >"$tmp/lint.all" && python3 scripts/code_standard.py --python-files line >"$tmp/lint.line" || return 1
+  while IFS= read -r -d '' f; do files+=("$f"); done <"$tmp/lint.all"
+  while IFS= read -r -d '' f; do long+=("$f"); done <"$tmp/lint.line"
   [ "${#files[@]}" -gt 0 ] || return 0
-  if [ "$cap" != 0 ]; then ropt=(--select E9,E501 --line-length "$cap"); popt=(--max-line-length "$cap"); else popt=(--disable=line-too-long); fi
-  ruff check -q --config ruff.toml ${ropt[@]+"${ropt[@]}"} "${files[@]}" || rc=1
-  pylint -sn -j 0 --rcfile .pylintrc --disable=too-many-lines ${popt[@]+"${popt[@]}"} "${files[@]}" || rc=1
+  # An empty line list must not become "every file": ruff and pylint with no file name lint the whole folder.
+  if [ "$cap" != 0 ] && [ "${#long[@]}" -gt 0 ]; then
+    ruff check -q --config ruff.toml --select E501 --line-length "$cap" "${long[@]}" || rc=1
+    pylint -sn -j 0 --rcfile .pylintrc --disable=all --enable=line-too-long --max-line-length "$cap" "${long[@]}" || rc=1
+  fi
+  ruff check -q --config ruff.toml "${files[@]}" || rc=1
+  pylint -sn -j 0 --rcfile .pylintrc --disable=too-many-lines,line-too-long "${files[@]}" || rc=1
   pylint -sn -j 0 --rcfile .pylintrc --disable=syntax-error,line-too-long --max-module-lines "$max" \
     --msg-template='WARN  {path}: {msg}; a warning only (docs/code-standard.md C4)' "${files[@]}" | grep '^WARN '
   return $rc

@@ -57,6 +57,34 @@ def python_is_not_sized(cs, ROOT, g, good_py):
     g('add', 'p.py')
     assert cs.measure(config_of(ROOT, SMALL))['violations']['file_size'] == {}, 'a Python file is not measured for size here'
     g('rm', '-qf', 'p.py')
+    python_for_the_linters(cs, ROOT, g, good_py)
+
+
+def python_for_the_linters(cs, ROOT, g, good_py):
+    """Ruff and pylint get the Python files this check covers: not an excluded or a generated file; a file with a
+    generated block only for parse and size, not for the line cap. A file that does not parse is no crash with
+    `code-c2: full`: the parse error is for the linters.
+
+    Args:
+        cs: the check module.
+        ROOT: the sample repo.
+        g: runs git in the sample repo.
+        good_py: the text of a sample Python file that passes.
+    """
+    (ROOT / 'vendor').mkdir(exist_ok=True)
+    (ROOT / 'x').mkdir(exist_ok=True)
+    (ROOT / 'vendor/v.py').write_text(good_py)
+    (ROOT / 'x/gen.py').write_text('# GENERATED from src/x.py by build.py\nx = 1\n')
+    (ROOT / 'x/blk.py').write_text(good_py + '# >>> s: generated from src/s.py by b.py\nx = 1\n# <<< s\n')
+    (ROOT / 'x/bad.py').write_text(good_py + 'def (:\n')
+    g('add', '-A')
+    config = config_of(ROOT, SMALL + FULL + 'code-exclude: vendor/**\ncode-generated: x/gen.py\n')
+    everything, lines = cs.python_files(config, 'all').split('\0')[:-1], cs.python_files(config, 'line').split('\0')[:-1]
+    assert 'vendor/v.py' not in everything and 'x/gen.py' not in everything, 'excluded and generated files: %s' % everything
+    assert {'x/blk.py', 'x/bad.py'} <= set(everything), 'a block file and a bad file are parsed and sized: %s' % everything
+    assert 'x/blk.py' not in lines and 'x/bad.py' in lines, 'a generated block: no line cap for that file: %s' % lines
+    cs.measure(config)   # a file that does not parse: no traceback with `code-c2: full`
+    g('rm', '-rqf', 'vendor', 'x')
 
 
 def run_cases(cs, ROOT):
