@@ -259,3 +259,87 @@ def to_csv(rows):
     for r in sorted(rows.values(), key=lambda r: (r["timestamp"], r["message_id"])):
         w.writerow({k: r.get(k, "") for k in FIELDS})
     return out.getvalue()
+
+
+# The /cost and /usage record of the agents-pane mod: <TOKEN_LOG_HOME>/cost/<session id>.json, version 1.
+COST_FIELDS = ["session_id", "written_at", "source", "agent_id", "type", "model", "status", "usd", "input", "output",
+               "cache_read", "cache_write", "started_at", "ended_at", "session_usd"]
+LIMIT_FIELDS = ["session_id", "read_at", "window", "percent_used", "resets_at"]
+COST_TOKENS = ("input", "output", "cache_read", "cache_write")
+
+
+def read_cost_record(path, sid):
+    """The agents-pane record of this session, or None when there is no file.
+
+    Args:
+        path: the record file (<TOKEN_LOG_HOME>/cost/<session id>.json).
+        sid: the session id the record must name.
+    Returns:
+        The record (a dict), or None when the file does not exist. Raises ValueError with the reason when the file
+        does not parse, is not version 1, names another session, or has a part of the wrong type.
+    """
+    try:
+        with open(path, encoding="utf-8") as f:
+            text = f.read()
+    except FileNotFoundError:
+        return None
+    rec = json.loads(text)  # a ValueError when it does not parse (for example a half-written file)
+    if not isinstance(rec, dict) or rec.get("version") != 1 or isinstance(rec.get("version"), bool):
+        raise ValueError("not a version 1 record")
+    if rec.get("session_id") != sid:
+        raise ValueError("the record names another session")
+    if not isinstance(rec.get("main"), dict) or not isinstance(rec.get("subagents", []), list) \
+            or not isinstance(rec.get("limits", []), list):
+        raise ValueError("main, subagents or limits has the wrong type")
+    return rec
+
+
+def cell(v):
+    """A CSV cell: a number or a text as itself, anything else (None, a list, a dict, a bool) empty."""
+    return v if isinstance(v, (int, float, str)) and not isinstance(v, bool) else ""
+
+
+def csv_text(fields, rows):
+    """The CSV text of a list of row dicts, header first."""
+    out = io.StringIO()
+    w = csv.DictWriter(out, fieldnames=fields, lineterminator="\n", extrasaction="ignore")
+    w.writeheader()
+    w.writerows({k: r.get(k, "") for k in fields} for r in rows)
+    return out.getvalue()
+
+
+def cost_csv(rec):
+    """The costs/<session id>.csv snapshot of a record: one main row, then one row per subagent.
+
+    Args:
+        rec: a record from read_cost_record().
+    Returns:
+        The CSV text.
+    """
+    base = {"session_id": rec["session_id"], "written_at": cell(rec.get("written_at")),
+            "session_usd": cell(rec.get("session_usd"))}
+    m = rec["main"]
+    rows = [{**base, "source": "main", "usd": cell(rec.get("main_usd")), **{k: cell(m.get(k)) for k in COST_TOKENS}}]
+    for a in rec.get("subagents", []):
+        if isinstance(a, dict):
+            rows.append({**base, "source": "subagent", **{k: cell(a.get(k)) for k in COST_FIELDS[3:14]}})
+    return csv_text(COST_FIELDS, rows)
+
+
+def limits_csv(rec, old):
+    """The limits/<session id>.csv series: the rows already on the branch plus this record's readings, one row per
+    (read_at, window); an earlier row is kept as it is.
+
+    Args:
+        rec: a record from read_cost_record().
+        old: the CSV text of the file on the branch ("" when there is none).
+    Returns:
+        The CSV text, sorted by read_at and window, or "" when there is no row.
+    """
+    rows = {(r.get("read_at"), r.get("window")): r for r in csv.DictReader(io.StringIO(old))}
+    at = rec.get("limits_read_at")
+    for x in rec.get("limits", []) if isinstance(at, str) and at else []:
+        if isinstance(x, dict) and isinstance(x.get("window"), str) and cell(x.get("percent_used")) != "":
+            rows.setdefault((at, x["window"]), {"session_id": rec["session_id"], "read_at": at, "window": x["window"],
+                                                "percent_used": x["percent_used"], "resets_at": cell(x.get("resets_at"))})
+    return csv_text(LIMIT_FIELDS, [rows[k] for k in sorted(rows, key=lambda k: (str(k[0]), str(k[1])))]) if rows else ""

@@ -15,7 +15,11 @@ does nothing: sessions with no repo are not logged, and the repo is the folder t
   3. Merges, by message id, the rows already in sessions/<session id>.csv with the rows from the logs. The file is
      built from the logs alone, so no local state can be lost: a failed push, a race with another session, or a
      new container is caught up by the next push, and no row is counted twice.
-  4. Commits with a temporary index and pushes through the normal pre-push hook. The work tree, the index and the
+  4. Adds costs/<session id>.csv (a snapshot of Claude Code's /cost figures: one main row, one row per subagent) and
+     limits/<session id>.csv (the /usage plan limits over time, one row per reading and window; earlier rows kept)
+     from the agents-pane record <TOKEN_LOG_HOME>/cost/<session id>.json, read at push time. No record: no files; a
+     bad record (no JSON, not version 1, another session) is skipped with a line in push.log.
+  5. Commits with a temporary index and pushes through the normal pre-push hook. The work tree, the index and the
      current branch never change. That hook runs the check lanes on the current work tree, so a failing work tree
      holds back the log push until it passes; the rows wait in the session log. A failed push is tried again after
      1 and 5 minutes, so the last turn of a session is not lost to one failure (only while the container still runs);
@@ -34,7 +38,7 @@ head, tail, cat or awk on its SKILL.md); a count of 0 is left out, e.g. {"delive
 rows of a session for its counts. An old row has no skill_use: it reads as empty.
 
 Settings (environment): TOKEN_LOG=off turns it off; TOKEN_LOG_BRANCH (default claude/token-usage); TOKEN_LOG_SYNC=1
-pushes in the foreground; TOKEN_LOG_HOME (default ~/.claude/token-log) holds push.log and the lock files;
+pushes in the foreground; TOKEN_LOG_HOME (default ~/.claude/token-log) holds push.log, the lock files and cost/ (the agents-pane records);
 TOKEN_LOG_NET_TIMEOUT (seconds, default 600) limits each ls-remote, fetch and push; TOKEN_LOG_UPDATE=off turns the
 self-update off; TOKEN_LOG_KIT_URL is the repo the self-update clones (default: "kit_url" of kit.config.json, see kit_url()).
 
@@ -49,7 +53,7 @@ Self-test (temporary repos, no network):  python3 scripts/token_log.py --test.  
 Prevents: token use and cost per session that no one can see (no log, or a log lost with the container)
 Network: the git remote "origin" of the repo (fetch and push of the branch claude/token-usage); the self-update: a
 shallow clone of the kit (kit_url()) at most once a day; none in the self-test.
-Writes: the branch claude/token-usage (one CSV file for each session), through a temporary index; push.log, lock
+Writes: the branch claude/token-usage (sessions/, costs/ and limits/: one CSV file each for each session), through a temporary index; push.log, lock
 files and update.stamp in TOKEN_LOG_HOME; the installed hook file (self-update); never the work tree.
 Credentials: none itself; the push uses the credentials git already has for origin.
 """
@@ -123,8 +127,57 @@ def git_net(cwd, *args):
         return p.returncode, out.read().strip(), err.read().strip()
 
 
+def write_tree(root, parent, files):
+    """The tree of the parent commit (or an empty one) with these files added or replaced, through a temporary index:
+    the repo's own index and work tree never change.
+
+    Args:
+        root: the repo folder.
+        parent: [the parent commit] or [] for the first commit of the branch.
+        files: {path in the branch: text}.
+    Returns:
+        The tree id.
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        env = {**os.environ, "GIT_INDEX_FILE": os.path.join(tmp, "index")}
+        git(root, "read-tree", *(parent or ["--empty"]), env=env)
+        for i, (path, text) in enumerate(sorted(files.items())):
+            f = os.path.join(tmp, f"file{i}.csv")
+            with open(f, "w", encoding="utf-8", newline="") as fh:
+                fh.write(text)
+            blob = git(root, "hash-object", "-w", f)
+            git(root, "update-index", "--add", "--cacheinfo", f"100644,{blob},{path}", env=env)
+        return git(root, "write-tree", env=env)
+
+
+def cost_files(root, parent, sid):
+    """The costs/<sid>.csv snapshot and the limits/<sid>.csv series from the agents-pane record
+    <TOKEN_LOG_HOME>/cost/<sid>.json, read now (at push time, so a later retry picks up a later write). A missing
+    record gives no file; a bad one gives no file and a line in push.log. The files already on the branch stay.
+
+    Args:
+        root: the repo folder.
+        parent: [the parent commit] or [].
+        sid: the session id.
+    Returns:
+        {path in the branch: CSV text}; {} when there is no usable record.
+    """
+    import token_log_rows
+    try:
+        rec = token_log_rows.read_cost_record(os.path.join(home(), "cost", sid + ".json"), sid)
+        if rec is None:
+            return {}
+        old = git(root, "show", f"{parent[0]}:limits/{sid}.csv", check=False) if parent else ""
+        limits = token_log_rows.limits_csv(rec, old)
+        return {f"costs/{sid}.csv": token_log_rows.cost_csv(rec), **({f"limits/{sid}.csv": limits} if limits else {})}
+    except Exception as e:  # a bad record never stops the rows push
+        print(datetime.now(timezone.utc).isoformat(timespec="seconds"), sid, "cost record skipped:", e, flush=True)
+        return {}
+
+
 def push(root, sid, tpath):
-    """Merge this session's rows into sessions/<sid>.csv on the log branch and push. Tries again at once only
+    """Merge this session's rows into sessions/<sid>.csv on the log branch, add the /cost and /usage files of
+    cost_files(), and push them in one commit. Tries again at once only
     after a race with another push. The caller holds the session's push lock.
 
     Args:
@@ -153,15 +206,7 @@ def push(root, sid, tpath):
         rows.update(token_log_rows.log_rows(sid, tpath, os.path.basename(root)))
         if not rows:
             return "nothing to log"
-        with tempfile.TemporaryDirectory() as tmp:
-            f = os.path.join(tmp, "rows.csv")
-            with open(f, "w", encoding="utf-8", newline="") as fh:
-                fh.write(token_log_rows.to_csv(rows))
-            blob = git(root, "hash-object", "-w", f)
-            env = {**os.environ, "GIT_INDEX_FILE": os.path.join(tmp, "index")}
-            git(root, "read-tree", *(parent or ["--empty"]), env=env)
-            git(root, "update-index", "--add", "--cacheinfo", f"100644,{blob},{path}", env=env)
-            tree = git(root, "write-tree", env=env)
+        tree = write_tree(root, parent, {path: token_log_rows.to_csv(rows), **cost_files(root, parent, sid)})
         if parent and git(root, "rev-parse", parent[0] + "^{tree}") == tree:
             return "up to date"
         args = sum((["-p", p] for p in parent), [])
