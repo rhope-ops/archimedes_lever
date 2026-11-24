@@ -321,13 +321,13 @@ selftest first_use_check scripts/first_use_check.py scripts/check_blocks.py scri
   scripts/check_content_scan_settings.py scripts/check_content_scan_words.py -- python3 scripts/first_use_check.py --test
 # Kit only: projects have no sync tools. The drift self-test reads the kit's AGENTS.md and stop_check.py.
 selftest drift scripts/drift.py scripts/sync_baseline.py scripts/sync_merge.py AGENTS.md scripts/stop_check.py \
-  scripts/drift_test.py scripts/sync_baseline_repo.py scripts/sync_baseline_run.py -- python3 scripts/drift.py --test
+  scripts/drift_test.py scripts/sync_baseline_repo.py scripts/sync_baseline_run.py scripts/sync_baseline_stop.py -- python3 scripts/drift.py --test
 selftest pre-push scripts/git-hooks/pre-push -- scripts/git-hooks/pre-push --test
 selftest session_checkin scripts/session_checkin.sh -- bash scripts/session_checkin.sh --test
 [ -f kit.config.json ] && selftest kit_config scripts/kit_config.py kit.config.json -- python3 scripts/kit_config.py --test  # kit only
 # Kit only: the command-line tests of the sync, drift, lock and bootstrap scripts (bootstrap deletes them in a project).
 [ -f scripts/sync_baseline_cli_test.py ] && selftest cli_tests scripts/*_cli_test.py scripts/sync_baseline.py scripts/sync_baseline_repo.py \
-  scripts/sync_baseline_run.py scripts/sync_merge.py scripts/drift.py scripts/check_lock.py scripts/bootstrap.sh \
+  scripts/sync_baseline_run.py scripts/sync_baseline_stop.py scripts/sync_merge.py scripts/drift.py scripts/check_lock.py scripts/bootstrap.sh \
   scripts/check_blocks.py scripts/kit_config.py scripts/build_site_html.py \
   -- python3 -m unittest discover -s scripts -p '*_cli_test.py'
 # This script's own self-test (not inside that self-test: it runs this script in temporary repos).
