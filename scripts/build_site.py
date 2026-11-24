@@ -31,6 +31,7 @@ import importlib.util
 import re
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -402,6 +403,37 @@ def test_case(edit, page, local, expect, write):
         return not found and aside and (not whole or all(part in built for part in TEST_BUILT)) and 'source:' not in built, found
 
 
+# Hostile key-facts text (an end tag missing or misplaced, rows that nest or repeat): each must be refused or read in
+# under HOSTILE_SECONDS, because a regex with a repeated ".*" group (ReDoS) once took minutes on the first one.
+HOSTILE_SECONDS = 1
+HOSTILE_TABLES = (
+    ('no end tag, many rows', '<table>\n' + '<tr></tr>' * 5000 + ' x' * 5000),
+    ('no end tag, many lines', '<table>\n' + '<tr></tr> x\n' * 5000),
+    ('end tag not at a line start', '<table>\n' + '<tr></tr>\n' * 5000 + ' </table>'),
+    ('many row starts, no row end', '<table>\n' + '<tr>' * 20000 + '\n</table>'),
+    ('many tables', '<table>\n<tr></tr>\n' * 5000),
+)
+
+
+def hostile_test():
+    """Time fact_rows on each hostile table and print one line each.
+
+    Returns:
+        The number of tables that took HOSTILE_SECONDS or more.
+    """
+    slow = 0
+    for label, text in HOSTILE_TABLES:
+        start = time.monotonic()
+        try:
+            fact_rows(text, False)
+        except ValueError:
+            pass  # refused: the expected result for every hostile table
+        seconds = time.monotonic() - start
+        slow += seconds >= HOSTILE_SECONDS
+        print(('ok   ' if seconds < HOSTILE_SECONDS else 'FAIL ') + f'a hostile key-facts table is read in under {HOSTILE_SECONDS} s: {label} ({seconds:.2f} s)')
+    return slow
+
+
 def self_test():
     """Run every self-test case on invented files and print one line each.
 
@@ -413,6 +445,7 @@ def self_test():
         ok, found = test_case(edit, page, local, expect, write)
         failed += not ok
         print(('ok   ' if ok else 'FAIL ') + label + ('' if ok else f': {found}'))
+    failed += hostile_test()
     print('SITE TEST PASS' if not failed else 'SITE TEST FAIL')
     return 1 if failed else 0
 

@@ -5,7 +5,8 @@ Inputs: text, repo-relative paths or git rev-list arguments; the word lists (env
 Outputs: findings as (where, line number, kind, masked value) tuples; nothing is printed here.
 Run: not run alone; check_content.py, check_content_hook.py and check_content_test.py import it (the checks, tiers and limits
 are described in the check_content.py header). The patterns and finders of each finding kind: check_content_finders.py.
-The readers of the word lists and of the settings file: check_content_scan_settings.py (its names are re-exported here).
+The readers of the settings file: check_content_scan_settings.py; of the word lists: check_content_scan_words.py (their
+names are re-exported here).
 
 A project's own finders (the extension point): when the file scripts/check_content_local.py stands next to this one,
 the scanner loads it. The kit has no such file, and the kit's own patterns stay the default. The module defines one
@@ -33,12 +34,14 @@ import sys
 
 import check_content_finders as finders_mod   # scripts/check_content_finders.py: the patterns, the kit's finders, the loader
 from check_content_finders import LocalError, emails   # noqa: F401 - LocalError is part of this module's interface
-# scripts/check_content_scan_settings.py: the word lists and the settings file (kept apart, docs/code-standard.md C4).
+# scripts/check_content_scan_settings.py and check_content_scan_words.py: the settings file and the word lists (kept
+# apart, docs/code-standard.md C4).
 from check_content_scan_settings import (  # noqa: F401 - every name is re-exported: other scripts import them from here
-    _TIER, BLOCKED, BOTH_FILES, CONFIG_NAMES, MAX_BYTES, MAX_BYTES_CEILING, MAX_BYTES_LINE, MISSING_HELP, OPTION_LINE,
-    OPTION_MAX, PROFILE_LINE, SETTING_LINE, UNKNOWN_PROFILE, UNREADABLE, WARN_OPTION, _clean_entry, _covers, _exists,
-    blocked, config_name, denylist_source, dod_mode, fingerprint, is_option_line, is_tier_line, load_allow,
-    load_denylist, load_terms, max_bytes_of, parse_denylist, profile_of, skipped, terms_source, warn_mode)
+    _TIER, BLOCKED, BOTH_FILES, CONFIG_NAMES, MAX_BYTES, MAX_BYTES_CEILING, MAX_BYTES_LINE, OPTION_LINE, OPTION_MAX,
+    PROFILE_LINE, SETTING_LINE, UNKNOWN_PROFILE, UNREADABLE, WARN_OPTION, _covers, _exists, blocked, config_name,
+    dod_mode, is_option_line, is_tier_line, load_allow, max_bytes_of, profile_of, skipped, warn_mode)
+from check_content_scan_words import (  # noqa: F401 - every name is re-exported: other scripts import them from here
+    MISSING_HELP, _clean_entry, denylist_source, fingerprint, load_denylist, load_terms, parse_denylist, terms_source)
 
 ZERO = re.compile(r"^0+$")
 LOCAL_FILE = pathlib.Path(__file__).resolve().parent / finders_mod.LOCAL_NAME   # a project's own finders (see the header)
