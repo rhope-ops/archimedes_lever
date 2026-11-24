@@ -205,6 +205,15 @@ class SyncBaselineCli(unittest.TestCase):
         self.assertIn("scripts/stop_check.py", p.stdout)
         self.assertEqual(self.tree_hashes(), before)
 
+    def test_unlocked_kit_file_that_matches_is_no_stop(self):
+        """Prove: a kit file that is not in the lock but has the kit's text is no stop."""
+        self.synced_and_committed()
+        lock = json.loads((self.path / ".check.lock").read_text())
+        del lock["files"]["scripts/stop_check.py"]
+        (self.path / ".check.lock").write_text(json.dumps(lock))
+        self.commit_all("unlocked and equal")
+        self.assertEqual(sync(self.path).returncode, 0)
+
     def unlock(self, rel):
         """Drop one file from the lock of the project, and commit."""
         lock = json.loads((self.path / ".check.lock").read_text())
