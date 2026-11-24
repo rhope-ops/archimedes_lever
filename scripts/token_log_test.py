@@ -5,7 +5,7 @@ case stays under the 60-line cap of docs/code-standard.md C3).
 It builds a bare origin and clones in a temporary folder (no network) and runs the Stop hook on sample session logs:
 one row per API call, turns, subagent rows, a second session, a blocking pre-push hook, a lost local folder, a shallow
 clone, retries, coalescing, FETCH_HEAD, a push with no answer, a push that waits for the lock, bad input and
-TOKEN_LOG=off. The cases of the rows, the report and the self-update are in scripts/token_log_test_parts.py, the
+TOKEN_LOG=off, and the private log repo (with its fallback to origin). The cases of the rows, the report and the self-update are in scripts/token_log_test_parts.py, the
 cases of the /cost and /usage records in scripts/token_log_test_costs.py; this file holds the fixture and the sample
 log lines that all three files use.
 Input: the token_log module. Output: one PASS or FAIL line per case and a "TOKEN LOG SELF-TEST" total line; returns
@@ -353,6 +353,47 @@ def case_bad_input_and_off(fx):
     fx.expect("TOKEN_LOG=off: nothing pushed", len(fx.remote_rows("s1") or []), count)
 
 
+def case_private_repo(fx):
+    """The private log repo: rows go there when it can be reached, else to origin (with a push.log line); --report
+    reads both places.
+
+    Args:
+        fx: the shared test fixture (Fixture).
+    """
+    private = os.path.join(fx.root, "private.git")
+    fx.sh(fx.root, "git", "init", "-q", "--bare", "-b", "main", private)
+    on = {"TOKEN_LOG_REPO": "file://" + private}
+    t1, t2 = (os.path.join(fx.root, "proj", f"{s}.jsonl") for s in ("pv1", "pv2"))
+    append(t1, prompt("2026-01-06T00:00:00Z"), msg("v1", "2026-01-06T00:00:01Z"))
+    fx.hook(fx.work, "pv1", t1, fx.logs, extra=on)
+    shown = subprocess.run(["git", "--git-dir", private, "show", "claude/token-usage:sessions/pv1.csv"],
+                           capture_output=True, text=True, env=fx.env).stdout
+    fx.expect("private log repo reachable: the rows go there, not to origin",
+              ("v1" in shown, fx.remote_rows("pv1")), (True, None))
+    append(t2, prompt("2026-01-06T01:00:00Z"), msg("v2", "2026-01-06T01:00:01Z"))
+    r = fx.hook(fx.work, "pv2", t2, fx.logs, extra={"TOKEN_LOG_REPO": "file://" + os.path.join(fx.root, "none.git")})
+    fx.expect("private log repo not reachable: the rows go to origin, with a log line",
+              ("private log repo not reachable" in r.stdout, len(fx.remote_rows("pv2") or [])), (True, 1))
+    ro = os.path.join(fx.root, "readonly.git")  # can be read, refuses every push (as with read-only access)
+    fx.sh(fx.root, "git", "init", "-q", "--bare", "-b", "main", ro)
+    with open(os.path.join(ro, "hooks", "pre-receive"), "w") as f:
+        f.write("#!/bin/sh\necho read only >&2\nexit 1\n")
+    os.chmod(os.path.join(ro, "hooks", "pre-receive"), 0o700)
+    t3 = os.path.join(fx.root, "proj", "pv3.jsonl")
+    append(t3, prompt("2026-01-06T02:00:00Z"), msg("v3", "2026-01-06T02:00:01Z"))
+    r = fx.hook(fx.work, "pv3", t3, fx.logs, extra={"TOKEN_LOG_REPO": "file://" + ro})
+    fx.expect("private log repo refuses the push: the rows go to origin in the same try, with a log line",
+              ("private log repo push failed" in r.stdout, len(fx.remote_rows("pv3") or [])), (True, 1))
+    os.environ["TOKEN_LOG_REPO"] = "--upload-pack=touch x"
+    fx.expect("an address that starts with '-' (a git option) is not used", fx.tl.log_repo(fx.tl.__file__), None)
+    os.environ.pop("TOKEN_LOG_REPO")
+    rep = subprocess.run([sys.executable, os.path.abspath(fx.tl.__file__), "--report"], cwd=fx.work, text=True,
+                         capture_output=True, env={**fx.env, **on}, timeout=120)
+    missing = [ln for ln in rep.stdout.splitlines() if ln.startswith("no /cost record")]
+    fx.expect("--report: reads origin and the private log repo",
+              (rep.returncode, bool(missing) and all(x in missing[0] for x in ("pv1", "pv2", "pv3"))), (0, True))
+
+
 def run(tl):
     """Run every case in order on one fixture; print the total line and return the exit code.
 
@@ -370,7 +411,8 @@ def run(tl):
         for case in (case_first_turn, case_second_turn, case_blocked_and_shallow, case_retry, case_coalesce,
                      case_fetch_head_and_timeout, case_waiting_push, case_bad_input_and_off, parts.case_agent_type,
                      parts.case_skill_use, parts.case_agent_type_bad_input, parts.case_report, parts.case_prices,
-                     parts.case_self_update, costs.case_cost_files, costs.case_bad_records, costs.case_limit_split):
+                     parts.case_self_update, costs.case_cost_files, costs.case_bad_records, costs.case_limit_split,
+                     case_private_repo):
             case(fx)
     finally:
         tl.push = fx.real_push

@@ -7,9 +7,10 @@ only token_log.py keeps working, and its self-update fetches this file.
 Inputs:  the files sessions/, costs/ and limits/ of the log branch (from token_log.py), a git ref for --report.
 Outputs: the report text on stdout.
 Prevents: a rise in estimated cost by week, model or agent that no one sees until the usage limit stops work
-Network: --report fetches the log branch through token_log.git_net; none in the self-test.
+Network: --report fetches the log branch from origin and from the private log repo through token_log.git_net; none in
+         the self-test.
 Writes: none.
-Credentials: none (git uses the repo's own remote).
+Credentials: none (git uses its own credentials for origin and the private log repo).
 Run:     python3 scripts/token_log.py --report [REF]
 """
 import csv
@@ -130,33 +131,57 @@ def report_rows(hook, root, ref, folder="sessions"):
     return rows
 
 
+def fetch_refs(core, root):
+    """Fetch the log branch from the repo's origin and from the private log repo (core.log_repo()), each into its own
+    ref. One that cannot be fetched (no branch there, or no access) is left out with a note on stderr.
+
+    Args:
+        core: the token_log module (its git helpers and settings).
+        root: the repo folder.
+    Returns:
+        The refs that were fetched (none, one or two).
+    """
+    refs = []
+    for remote, ref in (("origin", "refs/token-log/report"), (core.log_repo(core.__file__), "refs/token-log/report-private")):
+        if not remote:
+            continue
+        rc, _, err = core.git_net(root, "fetch", "-q", "--no-write-fetch-head", remote,
+                                  f"+refs/heads/{core.branch_name()}:{ref}")
+        if rc == 0:
+            refs.append(ref)
+        else:
+            print(f"token_log --report: not read: {'origin' if remote == 'origin' else 'the private log repo'}: "
+                  + " / ".join(err.splitlines()[-3:]), file=sys.stderr)
+    return refs
+
+
 def report_main(args):
-    """Print the report for the repo in the current folder: fetch the log branch, or read the ref in args.
+    """Print the report for the repo in the current folder: fetch the log branch from origin and from the private log
+    repo and merge them, or read the ref in args.
 
     Args:
         args: the arguments after --report: [] or [REF].
     Returns:
-        The exit code: 0, or 1 when the repo or the branch cannot be read.
+        The exit code: 0, or 1 when the repo or no log branch can be read.
     """
     import token_log as core  # the git helpers; a plain import, as this file is only loaded next to token_log.py
     root = core.git(os.getcwd(), "rev-parse", "--show-toplevel", check=False)
     if not root:
         print("token_log --report: not in a git repo", file=sys.stderr)
         return 1
-    ref = args[0] if args else "refs/token-log/report"
-    if not args:
-        rc, _, err = core.git_net(root, "fetch", "-q", "--no-write-fetch-head", "origin",
-                                  f"+refs/heads/{core.branch_name()}:{ref}")
-        if rc != 0:
-            print("token_log --report: fetch: " + err, file=sys.stderr)
-            return 1
+    refs = args[:1] or fetch_refs(core, root)
+    if not refs:
+        print("token_log --report: no log branch could be read", file=sys.stderr)
+        return 1
     try:
-        rows = report_rows(core, root, ref)
-        print(report(rows) + "\n\n" + limits_report(rows, report_rows(core, root, ref, "costs"),
-                                                      report_rows(core, root, ref, "limits")))
+        got = {f: [r for ref in refs for r in report_rows(core, root, ref, f)] for f in ("sessions", "costs", "limits")}
     except RuntimeError as e:
         print(f"token_log --report: {e}", file=sys.stderr)
         return 1
+    rows = list({r.get("message_id"): r for r in got["sessions"]}.values())  # a row in both places counts once
+    newest = sorted(got["costs"], key=lambda r: r.get("written_at") or "")  # the newest snapshot of a session wins
+    costs = list({(r.get("session_id"), r.get("source"), r.get("agent_id")): r for r in newest}.values())
+    print(report(rows) + "\n\n" + limits_report(rows, costs, got["limits"]))
     return 0
 
 
