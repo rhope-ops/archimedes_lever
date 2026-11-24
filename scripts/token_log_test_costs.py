@@ -23,7 +23,18 @@ from token_log_test import append, msg, prompt
 
 
 def record(sid, read_at="2026-01-05T10:00:00Z", pct=(10, 20), subagents=2, usd=1.5, version=1):
-    """One agents-pane record (version 1) with invented figures: a 5-hour and a 7-day reading at read_at."""
+    """One agents-pane record with invented figures: a 5-hour and a 7-day reading at read_at.
+
+    Args:
+        sid: the session id the record names.
+        read_at: limits_read_at.
+        pct: the percent used of the 5-hour and the 7-day window.
+        subagents: the number of subagent entries.
+        usd: session_usd.
+        version: the version field (1 for a good record).
+    Returns:
+        The record as a dict.
+    """
     sub = [{"agent_id": f"a{i}", "type": "scout", "model": "claude-haiku-5-5", "status": "completed", "usd": 0.25,
             "input": 1, "output": 2, "cache_read": 3, "cache_write": 4, "started_at": "2026-01-05T09:00:00Z",
             "ended_at": None} for i in range(subagents)]

@@ -44,7 +44,9 @@ self-update off; TOKEN_LOG_KIT_URL is the repo the self-update clones (default: 
 
 Manual push:  python3 scripts/token_log.py --push REPO_DIR SESSION_ID TRANSCRIPT_PATH
 Report:  python3 scripts/token_log.py --report [REF]  (in a repo: fetches the log branch, or reads REF; prints the
-  estimated cost by week in America/Chicago, by source, agent and model, and per subagent task, from PRICES)
+  estimated cost by week in America/Chicago, by source, agent and model, and per subagent task, from PRICES; the
+  highest percent of each 7-day plan limit, the limit used per session (an estimate: each rise split by estimated $
+  among the sessions logged on the branch), and Claude Code's /cost by week next to the estimate)
 Self-update: after each background push, the installed copy (token_log.py in ~/.claude/hooks) checks the kit's main
   branch at most once a day and replaces its files (UPDATE_FILES) with newer copies whose self-test passes; an old
   one-file install fetches the other two files the same way (the Stop path never needs them) (TOKEN_LOG_UPDATE=off
