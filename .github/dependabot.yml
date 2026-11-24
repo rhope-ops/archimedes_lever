@@ -1,6 +1,10 @@
 version: 2
 updates:
+  # Version-update PRs are off: GitHub signs every Dependabot commit with an e-mail address, which the content
+  # check blocks, and main allows no bypass. A kit release bumps the pinned actions by hand (the Maintainer,
+  # 2026-11-24). Dependabot security alerts and security updates are not changed by this file.
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
       interval: weekly
+    open-pull-requests-limit: 0
