@@ -148,6 +148,23 @@ def case_dod_patterns():
     for label, text in (("title-case banner with slashes", "Top Sec" + "ret/" + "/SI"), ("lower-case word with slashes", "sec" + "ret/" + "/rel"),
                         ("two-word banner, title case", "Top Sec" + "ret"), ("lowest level alone on a line", "UNCLASS" + "IFIED")):
         expect("dod marking: " + label, text, ["marking"], dod=True)
+    expect("dod: a one-word heading in title case is not a mark", "# Sec" + "ret", [], dod=True)
+    expect("dod: the word in a sentence, upper case, is not a banner", "THE SEC" + "RET IS OUT", [], dod=True)
+    expect("minimum tier: marks not checked", "CU" + "I//SP-PRVCY", [])
+    expect("dod: the acronym inside a sentence is not a mark", "the CU" + "I program office", [], dod=True)
+    expect("dod: the word secret alone is not a mark", "a secret in the settings", [], dod=True)
+    expect("dod id: keyword and 10 digits", "DoD ID: 12345" + "67890", ["dodid"], dod=True)
+    expect("dod id: EDIPI", "EDIPI 12345" + "67890", ["dodid"], dod=True)
+    expect("dod id: number, then keyword", "12345" + "67890 (DoD ID)", ["dodid"], dod=True)
+    for label, text in (("underscore name", "dod_id=12345" + "67890"), ("underscore name, colon", "dod_id: 12345" + "67890"),
+                        ("joined to the number", "DODID12345" + "67890"), ("wide space", "DoD   ID 12345" + "67890")):
+        expect("dod id: " + label, text, ["dodid"], dod=True)
+    expect("dod id: 11 digits are not an ID", "EDIPI 12345" + "678901", [], dod=True)
+
+
+def case_dod_split_lines():
+    """A phrase mark, or a DoD ID keyword and its number, over two lines in a row: found in the DoD tier only, reported
+    at the first line, allowed by its text; a blank line between the lines, or a third line, is not joined."""
     for label, text in (("short form, after FOR", "FOR\nOFFICIAL USE ONLY"), ("short form, after OFFICIAL", "FOR OFFICIAL\nUSE ONLY"),
                         ("short form, before ONLY", "for official use\nonly"), ("blanks at the break", "For Official  \n   Use Only"),
                         ("long form", "Controlled Unclassified\nInformation"), ("long form, after the first word", "Controlled\nUnclassified Information")):
@@ -172,18 +189,6 @@ def case_dod_patterns():
     expect("dod id over two lines: three lines are not read", "EDIPI\nnote\n1234567890", [], dod=True)
     expect("dod id over two lines: 9 digits are not an ID", "EDIPI\n123456789", [], dod=True)
     expect("dod id over two lines: no keyword", "ref\n1234567890", [], dod=True)
-    expect("dod: a one-word heading in title case is not a mark", "# Sec" + "ret", [], dod=True)
-    expect("dod: the word in a sentence, upper case, is not a banner", "THE SEC" + "RET IS OUT", [], dod=True)
-    expect("minimum tier: marks not checked", "CU" + "I//SP-PRVCY", [])
-    expect("dod: the acronym inside a sentence is not a mark", "the CU" + "I program office", [], dod=True)
-    expect("dod: the word secret alone is not a mark", "a secret in the settings", [], dod=True)
-    expect("dod id: keyword and 10 digits", "DoD ID: 12345" + "67890", ["dodid"], dod=True)
-    expect("dod id: EDIPI", "EDIPI 12345" + "67890", ["dodid"], dod=True)
-    expect("dod id: number, then keyword", "12345" + "67890 (DoD ID)", ["dodid"], dod=True)
-    for label, text in (("underscore name", "dod_id=12345" + "67890"), ("underscore name, colon", "dod_id: 12345" + "67890"),
-                        ("joined to the number", "DODID12345" + "67890"), ("wide space", "DoD   ID 12345" + "67890")):
-        expect("dod id: " + label, text, ["dodid"], dod=True)
-    expect("dod id: 11 digits are not an ID", "EDIPI 12345" + "678901", [], dod=True)
 
 
 def case_profile_lines():
@@ -269,7 +274,7 @@ def run():
     import check_content_test_local   # the cases for a project's own finders (scripts/check_content_local.py)
     with tempfile.TemporaryDirectory() as kit:
         without_local(kit, check_content_test_blocks)
-        for case in (case_speed, case_minimum_patterns, case_secrets_and_masks, case_dod_patterns, case_profile_lines,
+        for case in (case_speed, case_minimum_patterns, case_secrets_and_masks, case_dod_patterns, case_dod_split_lines, case_profile_lines,
                      case_denylist_and_fingerprint, case_cli, case_commits, case_hook):
             case()
         check_content_test_blocks.run(check)
