@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Claude Code Stop hook: log the token use of each API call to the branch claude/token-usage of the session's repo.
+"""Claude Code Stop hook: log the token use of each API call to the branch claude/token-usage of the private log repo
+(else of the session's repo).
 
 Kit only: projects do not get a copy. A cloud environment's setup script installs it from the kit's main branch
 as a user-level Stop hook, so every repo session is logged (the owner, 2026-11-17). Three files, installed side by
@@ -11,7 +12,8 @@ does nothing: sessions with no repo are not logged, and the repo is the folder t
 (CLAUDE_PROJECT_DIR, else the hook's cwd), so a session that starts outside a repo is not logged. The push:
   1. Reads the session log and its subagent logs (<session>/**/*.jsonl). The log repeats the same usage on every
      content block of one reply, so each message id gives one row.
-  2. Fetches claude/token-usage into a private ref (refs/token-log/remote; --depth 1 only in a shallow clone).
+  2. Fetches claude/token-usage into a private ref (refs/token-log/remote, or refs/token-log/remote-private for the
+     private log repo; --depth 1 only in a shallow clone).
   3. Merges, by message id, the rows already in sessions/<session id>.csv with the rows from the logs. The file is
      built from the logs alone, so no local state can be lost: a failed push, a race with another session, or a
      new container is caught up by the next push, and no row is counted twice.
@@ -37,7 +39,10 @@ call, per skill: skill_tool (Skill-tool calls), read (Reads of its SKILL.md) and
 head, tail, cat or awk on its SKILL.md); a count of 0 is left out, e.g. {"deliver":{"skill_tool":1,"slice":2}}. Add the
 rows of a session for its counts. An old row has no skill_use: it reads as empty.
 
-Settings (environment): TOKEN_LOG=off turns it off; TOKEN_LOG_BRANCH (default claude/token-usage); TOKEN_LOG_SYNC=1
+Where: the private log repo ("token_log_repo" of the kit.config.json next to the installed file, or TOKEN_LOG_REPO)
+when this session can reach it (a cloud session gets git credentials only for its attached repos), else the repo's
+own origin; a push.log line says so. Both hold the same branch and layout; --report reads both.
+Settings (environment): TOKEN_LOG=off turns it off; TOKEN_LOG_BRANCH (default claude/token-usage); TOKEN_LOG_REPO; TOKEN_LOG_SYNC=1
 pushes in the foreground; TOKEN_LOG_HOME (default ~/.claude/token-log) holds push.log, the lock files and cost/ (the agents-pane records);
 TOKEN_LOG_NET_TIMEOUT (seconds, default 600) limits each ls-remote, fetch and push; TOKEN_LOG_UPDATE=off turns the
 self-update off; TOKEN_LOG_KIT_URL is the repo the self-update clones (default: "kit_url" of kit.config.json, see kit_url()).
@@ -53,11 +58,13 @@ Self-update: after each background push, the installed copy (token_log.py in ~/.
   turns it off). The setup script installs it only when a container is built, so a resumed container kept an old copy.
 Self-test (temporary repos, no network):  python3 scripts/token_log.py --test.  Standard library only.
 Prevents: token use and cost per session that no one can see (no log, or a log lost with the container)
-Network: the git remote "origin" of the repo (fetch and push of the branch claude/token-usage); the self-update: a
+Network: the private log repo, else the git remote "origin" of the repo (fetch and push of the branch
+claude/token-usage); the self-update: a
 shallow clone of the kit (kit_url()) at most once a day; none in the self-test.
 Writes: the branch claude/token-usage (sessions/, costs/ and limits/: one CSV file each for each session), through a temporary index; push.log, lock
 files and update.stamp in TOKEN_LOG_HOME; the installed hook file (self-update); never the work tree.
-Credentials: none itself; the push uses the credentials git already has for origin.
+Credentials: none itself; the push uses the credentials git already has for the private log repo or origin; no git
+network call asks for credentials (GIT_TERMINAL_PROMPT=0).
 """
 import csv
 import fcntl
@@ -117,7 +124,8 @@ def git_net(cwd, *args):
     """
     # Output goes to files, not pipes: a hook child that escapes the kill (its own session) cannot keep this waiting.
     with tempfile.TemporaryFile("w+") as out, tempfile.TemporaryFile("w+") as err:
-        p = subprocess.Popen(["git", "-C", cwd, *args], stdout=out, stderr=err, start_new_session=True)
+        p = subprocess.Popen(["git", "-C", cwd, *args], stdout=out, stderr=err, start_new_session=True,
+                             env={**os.environ, "GIT_TERMINAL_PROMPT": "0"})  # no credentials: fail, never ask
         try:
             p.wait(timeout=net_timeout())
         except subprocess.TimeoutExpired:
@@ -191,32 +199,76 @@ def sibling(name, *needs):
     return mod
 
 
+def log_target(root, sid):
+    """Where the log goes: the private log repo (log_repo()) when this session can reach it, else the repo's own
+    origin. A session gets git credentials only for the repos attached to it, so the fallback keeps every row.
+
+    Args:
+        root: the repo folder.
+        sid: the session id (for the push.log line).
+    Returns:
+        (the git remote or URL to fetch from and push to, the private ref that holds its log branch).
+    """
+    url = log_repo(os.path.abspath(__file__))
+    if url:
+        rc, _, err = git_net(root, "ls-remote", "--heads", url, branch_name())
+        if rc == 0:
+            return url, PRIVATE_REF + "-private"
+        print(datetime.now(timezone.utc).isoformat(timespec="seconds"), sid,
+              "private log repo not reachable, pushing to origin:", " / ".join(err.splitlines()[-3:])[-300:], flush=True)
+    return "origin", PRIVATE_REF
+
+
 def push(root, sid, tpath):
-    """Merge this session's rows into sessions/<sid>.csv on the log branch, add the /cost and /usage files of
-    cost_files(), and push them in one commit. Tries again at once only
-    after a race with another push. The caller holds the session's push lock.
+    """Push the log to the private log repo when this session can reach it, else to origin (log_target()). A push
+    to the private log repo that fails (for example read-only access) goes to origin in the same try, so no row is
+    lost. The caller holds the session's push lock.
 
     Args:
         root: the repo folder.
         sid: the session id.
         tpath: the path of the session's log file.
     Returns:
+        The result text of push_to(). Raises RuntimeError when git fails.
+    """
+    remote, private_ref = log_target(root, sid)
+    if remote != "origin":
+        try:
+            return push_to(root, sid, tpath, remote, private_ref)
+        except RuntimeError as e:
+            print(datetime.now(timezone.utc).isoformat(timespec="seconds"), sid,
+                  "private log repo push failed, pushing to origin:", str(e)[-300:], flush=True)
+    return push_to(root, sid, tpath, "origin", PRIVATE_REF)
+
+
+def push_to(root, sid, tpath, remote, private_ref):
+    """Merge this session's rows into sessions/<sid>.csv on the log branch of one remote, add the /cost and /usage
+    files of cost_files(), and push them in one commit. Tries again at once only
+    after a race with another push.
+
+    Args:
+        root: the repo folder.
+        sid: the session id.
+        tpath: the path of the session's log file.
+        remote: "origin" or the private log repo's URL.
+        private_ref: the local ref that holds that remote's log branch.
+    Returns:
         A short result text: "pushed ...", "up to date" or "nothing to log". Raises RuntimeError when git fails.
     """
     token_log_rows = sibling("token_log_rows", "read_cost_record")  # only the background push needs it
     ref, path = branch_name(), f"sessions/{sid}.csv"
     for attempt in (1, 2):
-        rc, heads, err = git_net(root, "ls-remote", "--heads", "origin", ref)
+        rc, heads, err = git_net(root, "ls-remote", "--heads", remote, ref)
         if rc != 0:
             raise RuntimeError("ls-remote: " + err)
         parent, rows = [], {}
         if heads:
             shallow = git(root, "rev-parse", "--is-shallow-repository") == "true"
             rc, _, err = git_net(root, "fetch", "-q", "--no-write-fetch-head",
-                                 *(["--depth", "1"] if shallow else []), "origin", f"+refs/heads/{ref}:{PRIVATE_REF}")
+                                 *(["--depth", "1"] if shallow else []), remote, f"+refs/heads/{ref}:{private_ref}")
             if rc != 0:
                 raise RuntimeError("fetch: " + err)
-            parent = [git(root, "rev-parse", PRIVATE_REF)]
+            parent = [git(root, "rev-parse", private_ref)]
             old = git(root, "show", f"{parent[0]}:{path}", check=False)
             rows = {r["message_id"]: r for r in csv.DictReader(io.StringIO(old)) if r.get("message_id")}
         rows.update(token_log_rows.log_rows(sid, tpath, os.path.basename(root)))
@@ -227,10 +279,10 @@ def push(root, sid, tpath):
             return "up to date"
         args = sum((["-p", p] for p in parent), [])
         commit = git(root, "commit-tree", tree, *args, "-m", f"token log: session {sid}")
-        rc, out, err = git_net(root, "push", "-q", "origin", f"{commit}:refs/heads/{ref}")
+        rc, out, err = git_net(root, "push", "-q", remote, f"{commit}:refs/heads/{ref}")
         if rc == 0:
-            git(root, "update-ref", PRIVATE_REF, commit)
-            return f"pushed {commit[:7]} ({len(rows)} rows)"
+            git(root, "update-ref", private_ref, commit)
+            return f"pushed {commit[:7]} ({len(rows)} rows)" + ("" if remote == "origin" else " to the private log repo")
         err = err or out
         if attempt == 2 or not any(x in err for x in RACE):  # only a race with another push is tried at once
             raise RuntimeError("push: " + err[-500:])
@@ -306,26 +358,40 @@ def hook_main():
 KIT_CONFIG = "kit.config.json"  # the one home of the kit address (scripts/kit_config.py reads it in the kit)
 
 
-def kit_url(path):
-    """The kit repo the self-update clones: TOKEN_LOG_KIT_URL, else "kit_url" of the kit.config.json next to the
+def config_value(path, key, env):
+    """A setting of the installed hook: the environment variable env, else key in the kit.config.json next to the
     installed file (the setup script and each self-update install it). Never a repo's own kit.config.json: any repo
-    opened in a session could then point the update at its own code (security review, 2026-11-23). Residual risk:
-    a repo's .claude/settings.json "env" block can set TOKEN_LOG_KIT_URL for its sessions; such a repo can already
-    run its own hooks, so this adds little (threat model, kit 11.0.0).
+    opened in a session could then point the hook at its own address (security review, 2026-11-23). Residual risk:
+    a repo's .claude/settings.json "env" block can set the variable for its sessions; such a repo can already run its
+    own hooks, so this adds little (threat model, kit 11.0.0).
 
     Args:
         path: the installed token_log.py.
+        key: the kit.config.json key ("kit_url" or "token_log_repo").
+        env: the environment variable that wins over the file (TOKEN_LOG_KIT_URL or TOKEN_LOG_REPO).
     Returns:
-        The URL, or None when no source names one (the self-update then does nothing).
+        The value, or None when no source names one.
     """
-    if os.environ.get("TOKEN_LOG_KIT_URL"):
-        return os.environ["TOKEN_LOG_KIT_URL"]
+    if os.environ.get(env):
+        return None if os.environ[env].startswith("-") else os.environ[env]
     try:
         with open(os.path.join(os.path.dirname(path), KIT_CONFIG), encoding="utf-8") as f:
-            got = json.load(f).get("kit_url")
+            got = json.load(f).get(key)
     except (OSError, ValueError, AttributeError):
         return None
-    return got if isinstance(got, str) and got.strip() else None
+    return got if isinstance(got, str) and got.strip() and not got.startswith("-") else None  # "-": a git option
+
+
+def kit_url(path):
+    """The kit repo the self-update clones (TOKEN_LOG_KIT_URL, else "kit_url"), or None: the update does nothing."""
+    return config_value(path, "kit_url", "TOKEN_LOG_KIT_URL")
+
+
+def log_repo(path):
+    """The private log repo (TOKEN_LOG_REPO, else "token_log_repo"), or None: the log goes to the repo's origin."""
+    return config_value(path, "token_log_repo", "TOKEN_LOG_REPO")
+
+
 UPDATE_EVERY = 24 * 3600  # seconds between self-update checks
 UPDATE_FILES = ("token_log_rows.py", "token_log_report.py", "token_log.py")  # the installed files: the hook file last
 
@@ -361,7 +427,8 @@ def self_update(path, url=None, now=None):
         return "not updated: no kit address (TOKEN_LOG_KIT_URL or kit.config.json)"
     with tempfile.TemporaryDirectory() as tmp:
         r = subprocess.run(["git", "clone", "-q", "--depth", "1", "--branch", "main", url,
-                            os.path.join(tmp, "k")], capture_output=True, text=True, timeout=net_timeout())
+                            os.path.join(tmp, "k")], capture_output=True, text=True, timeout=net_timeout(),
+                           env={**os.environ, "GIT_TERMINAL_PROMPT": "0"})
         src = os.path.join(tmp, "k", "scripts")
         names = [n for n in UPDATE_FILES if os.path.isfile(os.path.join(src, n))]
         if r.returncode != 0 or "token_log.py" not in names:

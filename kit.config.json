@@ -1,6 +1,7 @@
 {
  "kit_repo": "rhope-ops/archimedes_lever",
  "kit_url": "https://github.com/rhope-ops/archimedes_lever",
+ "token_log_repo": "https://github.com/rhope-ops/token-logs",
  "fleet_page": "https://claude.ai/artifact/AWtpGxEqCWrjrPa1Afe7qW",
  "fleet": {
   "last_audit": "2026-11-24"

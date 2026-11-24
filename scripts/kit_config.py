@@ -4,6 +4,7 @@
 Why: the kit's repo address and the fleet page address were written into several scripts and docs. A new maintainer
 changes them in one file; no script holds a fallback copy of an address.
 Keys:    kit_repo (owner/name), kit_url (the git URL that sync_baseline.py and the token_log self-update clone),
+         token_log_repo (the private repo the token_log hook pushes to when the session can reach it),
          fleet_page (the private fleet page that docs/fleet.md names).
 Inputs:  kit.config.json in the repo root (the parent of this scripts/ folder), or in a folder the caller names.
 Outputs: the value of a key, or None when the file or the key is missing (the caller stops with its own message).
@@ -19,7 +20,7 @@ import sys
 import tempfile
 
 NAME = "kit.config.json"
-KEYS = ("kit_repo", "kit_url", "fleet_page")
+KEYS = ("kit_repo", "kit_url", "token_log_repo", "fleet_page")
 
 
 def find(folders=None):
