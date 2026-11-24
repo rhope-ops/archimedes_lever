@@ -90,7 +90,17 @@ def write(root, data):
 
 
 def load(root):
-    """The lock data, or None when the project has no lock; ValueError when the file is broken."""
+    """The lock data, or None when the project has no lock.
+
+    Args:
+        root: the repo root (a folder path).
+
+    Returns:
+        The lock data (a dict), or None when there is no lock file.
+
+    Raises:
+        ValueError: the file is broken (no "files" object, or "overrides" is not a list).
+    """
     path = pathlib.Path(root) / LOCK
     if not path.is_file():
         return None
