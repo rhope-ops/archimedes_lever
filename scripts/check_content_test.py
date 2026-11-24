@@ -160,6 +160,18 @@ def case_dod_patterns():
     expect("dod: words that only start a mark are not a mark", "FOR OFFICIAL\nBUSINESS ONLY", [], dod=True)
     expect("dod: a mark over two lines, with words before the break", "the FOR OFFICIAL\nUSE ONLY rule", ["marking"], dod=True)
     expect("dod: a mark inside a word is not a mark", "BEFOR OFFICIAL\nUSE ONLY", [], dod=True)
+    expect("dod marking over two lines: a blank line between the lines is a paragraph break, not joined", "FOR OFFICIAL\n\nUSE ONLY", [], dod=True)
+    for label, text in (("keyword, then number", "DoD ID:\n1234567890"), ("number, then keyword", "1234567890\n(EDIPI)"),
+                        ("blanks at the break", "EDIPI   \n   1234567890")):
+        expect("dod id over two lines: " + label, text, ["dodid"], dod=True)
+    split = scan_text("x\nDoD ID\n1234567890\ny", "t", [], set(), True)
+    check(f"dod id over two lines: one finding, on the first line: {split}", [(n, k) for _, n, k, _ in split] == [(2, "dodid")])
+    expect("minimum tier: an ID over two lines is not checked", "EDIPI\n1234567890", [])
+    expect("dod id over two lines: the number allowed", "EDIPI\n1234567890", [], allow=["1234567890"], dod=True)
+    expect("dod id over two lines: a blank line between the lines is not joined", "EDIPI\n\n1234567890", [], dod=True)
+    expect("dod id over two lines: three lines are not read", "EDIPI\nnote\n1234567890", [], dod=True)
+    expect("dod id over two lines: 9 digits are not an ID", "EDIPI\n123456789", [], dod=True)
+    expect("dod id over two lines: no keyword", "ref\n1234567890", [], dod=True)
     expect("dod: a one-word heading in title case is not a mark", "# Sec" + "ret", [], dod=True)
     expect("dod: the word in a sentence, upper case, is not a banner", "THE SEC" + "RET IS OUT", [], dod=True)
     expect("minimum tier: marks not checked", "CU" + "I//SP-PRVCY", [])

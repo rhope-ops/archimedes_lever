@@ -141,10 +141,11 @@ def scan_text(text, where, deny, allow, dod=False, terms=()):
                 continue
             seen.add(val)
             found.append((where, n, kind, mask(kind, val)))
-    if "marking" in kinds and finders_mod.find_marking in FINDERS["marking"]:   # a phrase mark over two lines: reported at the first
+    split = [(kind, find) for kind, kit, find in finders_mod.SPLIT_FINDERS if kind in kinds and kit in FINDERS[kind]]
+    if split:   # a mark, or a keyword and its number, over two lines: reported at the first
         near = range(len(lines) - 1) if rows is None else sorted({j for i in rows for j in (i - 1, i) if 0 <= j < len(lines) - 1})
-        found += [(where, i + 1, "marking", mask("marking", val)) for i in near
-                  for _, _, val in finders_mod.find_split_marking(lines[i], lines[i + 1]) if val not in allow]
+        found += [(where, i + 1, kind, mask(kind, val)) for i in near for kind, find in split
+                  for _, _, val in find(lines[i], lines[i + 1]) if val not in allow]
     return found
 
 

@@ -168,6 +168,28 @@ def find_split_marking(first, second):
                 yield m.start(), m.end(), m.group()
 
 
+def find_split_dodid(first, second):
+    """Yield (start, end, number) for each DoD ID keyword and 10-digit number (DODID) that stand over the end of
+    `first` and the start of `second`, two lines in a row. The lines are joined as in find_split_marking; start and end
+    are those of the number in the joined text.
+
+    Args:
+        first: a line of text.
+        second: the line after it.
+    """
+    head = first.rstrip()
+    joined = head + " " + second.lstrip()
+    for rx in DODID:
+        for m in rx.finditer(joined):
+            if m.start() < len(head) < m.end() - 1:
+                yield m.start(1), m.end(1), m.group(1)
+
+
+# (kind, the kit's finder of one line, the finder of two lines in a row): scan_text runs a two-line finder only while the
+# kit's one-line finder of its kind is in use. A blank line between the two lines is a paragraph break: not joined.
+SPLIT_FINDERS = (("marking", find_marking, find_split_marking), ("dodid", find_dodid, find_split_dodid))
+
+
 KIT_FINDERS = {"email": [find_email], "secret": [find_secret], "phone": [find_phone], "id": [find_id],
                "milhost": [find_milhost], "dodid": [find_dodid], "marking": [find_marking]}
 
