@@ -2,17 +2,17 @@
 
 The kit's own handoff (AGENTS.md "Handoff"). Kit only: first use deletes it in a project, which uses docs/NEXT_PROMPT.md. Keep it at 40 lines or fewer and inside the session-load cap (`.check` counts it); evidence and older items go in docs/reviews/. Times are America/Chicago.
 
-Updated: 2026-11-24 08:57 by "Kit · Fleet audit · 2026-11-24 · #158": fleet audit done (kit #158, #159; 33-332.Z #77), report [reviews/2026-11-24-fleet-audit.md](reviews/2026-11-24-fleet-audit.md). Older items moved word for word to [reviews/2026-11-24-kit-handoff-archive.md](reviews/2026-11-24-kit-handoff-archive.md).
+Updated: 2026-11-24 14:19 by "Kit · Tool retirement P3 pilot · 2026-11-24 · #164": P3 kit part merged (PR 164). Older items: [reviews/2026-11-24-kit-handoff-archive.md](reviews/2026-11-24-kit-handoff-archive.md); fleet audit report: [reviews/2026-11-24-fleet-audit.md](reviews/2026-11-24-fleet-audit.md).
 
 ## State
 
-- Kit 11.0.1 (tags v11.0.0 dedc3b3, v11.0.1 9e3f6fa); main adds P1, P2 and the fleet audit, not released. All 5 fleet repos lock 11.0.1 (LOCK PASS, 2026-11-24). Script lines (T2) 19,123.
+- Kit 11.0.1 (tags v11.0.0 dedc3b3, v11.0.1 9e3f6fa); main adds P1, P2 and the fleet audit, not released. All 5 fleet repos lock 11.0.1 (LOCK PASS, 2026-11-24). Script lines (T2) 20,006.
 
 ## Approved plan (the Maintainer, 2026-11-23 17:12): custom tool retirement
 
 Plan and decisions 1-10: [reviews/2026-11-23-tool-retirement-plan.md](reviews/2026-11-23-tool-retirement-plan.md); P2 record: [reviews/2026-11-23-tool-retirement-handoff.md](reviews/2026-11-23-tool-retirement-handoff.md).
 
-- [x] Research and plan. [x] P1 (PR 137). [x] P2. [x] Fleet audit (PRs 158, 159). [ ] P3 pilot 33-332.Z (pip/pipx; trim its handoff ~50 tokens first). [ ] P4 RADE sentinel + release, 90-161.Z, 33-332.Z, ICF runbook. [~] P5 kit 10.0.0 repos, fleet audit (fleet audit done 2026-11-24). [ ] P6 exports, branch deletes (with the Maintainer's OK).
+- [x] Research and plan. [x] P1 (PR 137). [x] P2. [x] Fleet audit (PRs 158, 159). [~] P3: kit package merged (PR 164, design B, S7); 33-332.Z trim and pilot wait for its attach to a session (add_repo refused 2026-11-24). [ ] P4 RADE sentinel + release, 90-161.Z, 33-332.Z, ICF runbook. [~] P5 kit 10.0.0 repos, fleet audit (fleet audit done 2026-11-24). [ ] P6 exports, branch deletes (with the Maintainer's OK).
 
 ## Open
 
