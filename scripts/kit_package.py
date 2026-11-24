@@ -42,7 +42,7 @@ def package_files(root):
     """(lock commit, the lock's scripts/ files that git does not track): the files the package provides here."""
     lock = json.loads((root / ".check.lock").read_text(encoding="utf-8"))
     want = sorted(k for k in lock["files"] if k.startswith("scripts/"))
-    tracked = set(git(root, "ls-files", "--", *want).split()) if want else set()
+    tracked = set(git(root, "ls-files", "-z", "--", *want).split("\0")) if want else set()
     return str(lock.get("commit", "")), [k for k in want if k not in tracked]
 
 
@@ -91,7 +91,8 @@ def run(root, pkg, have, url, write):
         before = before.rstrip("\n") + "\n" if before.strip() else ""  # the lines of others stay; the old block goes
         exclude.parent.mkdir(parents=True, exist_ok=True)
         exclude.write_text(before + "\n".join([BEGIN, *("/" + f for f in files), END]) + "\n"
-                           + rest.partition(END)[2].lstrip("\n"), encoding="utf-8")
+                           + (rest.partition(END)[2].lstrip("\n") if END in rest  # no end line: keep every line that is not ours
+                              else "".join(ln for ln in rest.splitlines(True) if not ln.startswith("/scripts/")).lstrip("\n")), encoding="utf-8")
     bad = any(ln.startswith("FAIL") for ln in out)
     out.append(f"KIT PACKAGE {'FAIL' if bad else 'PASS'}: {len(files)} kit scripts from the package at {commit[:7]}"
                + (" (written)" if write and not bad else ""))
@@ -135,6 +136,10 @@ def self_test():
         ok("install hides the written file from git", git(root, "status", "--porcelain", "--untracked-files=all").split() == ["A", ".check.lock", "A", "scripts/hook.sh"])
         run(root, pkg, "c0ffee", None, write=True)
         ok("a second install keeps one exclude block", (root / ".git/info/exclude").read_text().count(BEGIN) == 1)
+        ex = root / ".git/info/exclude"
+        ex.write_text(ex.read_text().replace(END + "\n", "") + "my-own-line\n")
+        run(root, pkg, "c0ffee", None, write=True)
+        ok("a block with no end line keeps the user's lines", ex.read_text().endswith(END + "\nmy-own-line\n"))
         ok("verify passes after install", run(root, pkg, "c0ffee", None, write=False) == (["KIT PACKAGE PASS: 1 kit scripts from the package at c0ffee"], False))
         (root / "scripts/a.py").write_text("print('edited')\n")
         lines, bad = run(root, pkg, "c0ffee", None, write=False)
