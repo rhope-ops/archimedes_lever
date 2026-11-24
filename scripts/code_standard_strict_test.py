@@ -163,9 +163,10 @@ def check_lines(cs, root, g):
     (root / 'short.py').write_text(head + 'x = 1\n')
     (root / 'gen.py').write_text('# GENERATED from src/x.py by build.py\nx = "%s"\n' % ('a' * 250))
     (root / 'blk.py').write_text(head + '# >>> s: generated from src/s.py by b.py\nx = "%s"\n# <<< s\n' % ('a' * 250))
+    (root / 'blk2.py').write_text(head + '# >>> s: generated from src/s.py by b.py\nx = 1\n# <<< s\nx = "%s"\n' % ('a' * 250))
     g('add', '.')
     now = cs.measure(config)['violations']['line']
-    assert now == {'long.sh': 256}, 'only the hand-written non-Python file over the cap fails, with its length: %s' % now
+    assert now == {'long.sh': 256, 'blk2.py': 256}, 'a non-Python file, and a .py with a generated block (the linters skip it), fail on hand-written lines: %s' % now
     off = dict(config, caps={k: v for k, v in caps.items() if k != 'max_line_chars'})
     assert cs.measure(off)['violations']['line'] == {}, 'a config with no cap measures nothing'
     assert config_of(root, 'code-max-line-chars: 200\n')['caps'] == dict(settings.CODE_DEFAULTS['caps'], max_line_chars=200), 'the cap is read from its .check line'

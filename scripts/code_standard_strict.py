@@ -84,7 +84,7 @@ def file_rules(v, p, lines, head, config, skip):
         v['safety'][p] = 1
     cap = config['caps'].get('max_line_chars')
     longest = longest_line(lines, skip) if cap else 0
-    if cap and longest > cap and not p.endswith('.py'):
+    if cap and longest > cap and not (p.endswith('.py') and not skip):   # a .py with no generated block: ruff and pylint
         v['line'][p] = longest
 
 

@@ -262,7 +262,8 @@ def measure_file(v, p, config, ps, bodies, entries=()):
 def python_files(config, kind):
     """The Python files that scripts/check.sh gives to ruff and pylint: the hand-written files this check covers
     (include, exclude and generated as for every rule). A file with a generated block is left out of the `line` list,
-    because the linters cannot skip the lines of a block; its parse and size stay in the `all` list.
+    because the linters cannot skip the lines of a block (the strict gate measures its hand-written lines); its parse
+    and size stay in the `all` list.
 
     Args:
         config: the code standard settings.
