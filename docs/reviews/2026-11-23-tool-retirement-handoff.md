@@ -72,7 +72,7 @@ meet T2 (report the net count; the Maintainer approves a higher number per PR), 
 | (e) content split | PR 141, ready, waits for merge | 18215 ("Approve all 4", 18:59; "The 18:59 batch holds") |
 | (e) sync split | branch claude/tr-p2-e-sync 7624cd1, reviewed, local only | 18218 (same batch) |
 | (b) two-line marking + keyword/number | branch claude/tr-p2-b f61054a, reviewed, local only | 18303 (same batch) |
-| (d) sync stop on local edits | branch claude/tr-p2-d a66c3ab, 5 reviews, last 0 MAJOR, local only | 18660 ("Approve 18660", 19:3x) |
+| (d) sync stop on local edits | branch claude/tr-p2-d a66c3ab, 5 reviews, last 0 MAJOR, local only | 18660 ("Approve 18660", shortly before 19:33) |
 | (a), (g), (h), (i), (j) | not started | ask each rise on its own |
 
 Merge order is fixed by the numbers: 141, e-sync, b, d. The local branches cannot be pushed before their turn (T2
