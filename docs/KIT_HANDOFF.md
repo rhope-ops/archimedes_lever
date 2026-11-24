@@ -2,17 +2,17 @@
 
 The kit's own handoff (AGENTS.md "Handoff"). Kit only: first use deletes it in a project, which uses docs/NEXT_PROMPT.md. Keep it at 40 lines or fewer and inside the session-load cap (`.check` counts it); evidence and older items go in docs/reviews/. Times are America/Chicago.
 
-Updated: 2026-11-24 14:19 by "Kit · Tool retirement P3 pilot · 2026-11-24 · #164": P3 kit part merged (PR 164). Older items: [reviews/2026-11-24-kit-handoff-archive.md](reviews/2026-11-24-kit-handoff-archive.md); fleet audit report: [reviews/2026-11-24-fleet-audit.md](reviews/2026-11-24-fleet-audit.md).
+Updated: 2026-11-24 15:58 by "Kit · Tool retirement P3 pilot · 2026-11-24 · #164": P3 done (kit 164, 168, 169; 33-332.Z 104). Older items: [reviews/2026-11-24-kit-handoff-archive.md](reviews/2026-11-24-kit-handoff-archive.md); fleet audit report: [reviews/2026-11-24-fleet-audit.md](reviews/2026-11-24-fleet-audit.md).
 
 ## State
 
-- Kit 11.0.1 (tags v11.0.0 dedc3b3, v11.0.1 9e3f6fa); main adds P1, P2 and the fleet audit, not released. All 5 fleet repos lock 11.0.1 (LOCK PASS, 2026-11-24). Script lines (T2) 20,006.
+- Kit 11.0.1 (tags v11.0.0 dedc3b3, v11.0.1 9e3f6fa); main adds P1, P2 and the fleet audit, not released. All 5 fleet repos lock 11.0.1 (LOCK PASS, 2026-11-24). Script lines (T2) 20,023.
 
 ## Approved plan (the Maintainer, 2026-11-23 17:12): custom tool retirement
 
 Plan and decisions 1-10: [reviews/2026-11-23-tool-retirement-plan.md](reviews/2026-11-23-tool-retirement-plan.md); P2 record: [reviews/2026-11-23-tool-retirement-handoff.md](reviews/2026-11-23-tool-retirement-handoff.md).
 
-- [x] Research and plan. [x] P1 (PR 137). [x] P2. [x] Fleet audit (PRs 158, 159). [~] P3: kit package merged (PR 164, design B, S7); 33-332.Z attached 2026-11-24: handoff trim in its PR 99; the pilot needs a kit fix first (CI install step). [ ] P4 RADE sentinel + release, 90-161.Z, 33-332.Z, ICF runbook. [~] P5 kit 10.0.0 repos, fleet audit (fleet audit done 2026-11-24). [ ] P6 exports, branch deletes (with the Maintainer's OK).
+- [x] Research and plan. [x] P1 (PR 137). [x] P2. [x] Fleet audit (PRs 158, 159). [x] P3: kit package (kit PRs 164, 168, 169); 33-332.Z pilot in package mode (its PRs 99, 102, 103, 104; 27 of 53 kit scripts from the package). Follow-ups: --kit-install after a branch switch (S7 text), check-in KIT line when the package is missing, MAINTAINER_GUIDE step, bandit in security.yml, 4 MINOR of PR 168. [ ] P4 RADE sentinel + release, 90-161.Z, 33-332.Z, ICF runbook. [~] P5 kit 10.0.0 repos, fleet audit (fleet audit done 2026-11-24). [ ] P6 exports, branch deletes (with the Maintainer's OK).
 
 ## Open
 
