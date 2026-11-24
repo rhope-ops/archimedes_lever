@@ -6,7 +6,8 @@ Adapted from an earlier project's worker guard (tested parser).
 Usage (wired in the .claude/agents/ frontmatter `hooks:`; runs only while that subagent is active):
   python3 scripts/worker_guard.py            # reads the hook JSON on stdin
   python3 scripts/worker_guard.py --readonly # reviewer: also blocks git verbs that change the repo
-  python3 scripts/worker_guard.py --test     # self-test of the block rules; prints GUARD TEST PASS
+  python3 scripts/worker_guard.py --test     # self-test of the block rules and the scan; prints GUARD TEST PASS
+  python3 scripts/worker_guard.py --scan TARGET ...  # a worker's branch range or scratch folder: guard workarounds (worker_guard_scan.py)
 
 Blocks Bash commands that push to main or master (also a bare push or HEAD while on one), rebase, git clean, branch deletes, force-push (--force, -f in
 grouped flags, +refspec, --force-with-lease), --mirror/--all, reset --hard or delete remote branches. It parses each
@@ -253,6 +254,8 @@ def selftest():
               'bash -c "git log --oneline -3"', 'bash scripts/check.sh']:
         if reason(c, 'claude/x', readonly=True):
             bad.append(c + ' (readonly allow)')
+    import worker_guard_scan   # scripts/worker_guard_scan.py (imported here: it imports this module)
+    bad += worker_guard_scan.selftest()
     for c in bad:
         print('WRONG:', c)
     print('GUARD TEST PASS' if not bad else 'GUARD TEST FAIL')
@@ -268,9 +271,13 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     ap.add_argument('--test', action='store_true', help='run the self-test')
     ap.add_argument('--readonly', action='store_true', help='also block git verbs that change the repo (reviewer)')
+    ap.add_argument('--scan', nargs='+', metavar='TARGET', help='scan folders or git ranges for guard workarounds')
     opts = ap.parse_args()
     if opts.test:
         return selftest()
+    if opts.scan:
+        import worker_guard_scan   # scripts/worker_guard_scan.py
+        return worker_guard_scan.main(opts.scan)
     try:
         hook = json.load(sys.stdin)
     except ValueError:
