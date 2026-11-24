@@ -1,8 +1,9 @@
-"""The report part of scripts/token_log.py: the price tables and the --report command (estimated cost by week, by
-source, agent and model, and per subagent task). Split out so that token_log.py stays under the C4 file cap.
+"""The report of the token log: the price tables and the --report command (estimated cost by week, by source, agent
+and model, and per subagent task). Kit only. One of the three hook files: token_log.py (the hook),
+token_log_rows.py (the rows), this file.
 
-token_log.py loads this file only when the report or a price is needed (its module __getattr__): the Stop hook path
-never imports it, so an installed copy that has only token_log.py keeps working, and its self-update fetches this file.
+token_log.py imports this file only for --report: the Stop hook path never imports it, so an installed copy that has
+only token_log.py keeps working, and its self-update fetches this file.
 Inputs:  rows of the token log CSV (from token_log.py), a git ref for --report.
 Outputs: the report text on stdout.
 Prevents: a rise in estimated cost by week, model or agent that no one sees until the usage limit stops work
@@ -17,7 +18,7 @@ import os
 import sys
 from datetime import date, datetime
 
-core = None  # scripts/token_log.py as a module: set by its loader before any call here
+from token_log_rows import USAGE_KEYS, tokens
 
 # Prices in USD per million tokens: (input, output, cache read, inference_geo "us" applies). A cache write costs 1.25 x
 # input (5-minute) or 2 x input (1-hour). Source: https://platform.claude.com/docs/en/about-claude/pricing (fetched
@@ -42,21 +43,21 @@ def row_cost(r):
     """The estimated cost of one row in USD, or None for a model with no price and no web search.
 
     Args:
-        r: a row (a dict with the core.FIELDS; token counts as text or int).
+        r: a row (a dict with the token_log_rows.FIELDS; token counts as text or int).
     Returns:
         The cost as a float (only the web search fee for a model with no token price), or None.
     """
     key = max((k for k in PRICES if (r.get("model") or "").startswith(k)), key=len, default=None)
-    search = core.tokens(r.get("web_search_requests")) * WEB_SEARCH_USD
+    search = tokens(r.get("web_search_requests")) * WEB_SEARCH_USD
     if key is None:
         return search or None
     inp, out, read, geo = PRICES[key]
-    n, write = [core.tokens(r.get(k)) for k in core.USAGE_KEYS], core.tokens(r.get("cache_creation_input_tokens"))
+    n, write = [tokens(r.get(k)) for k in USAGE_KEYS], tokens(r.get("cache_creation_input_tokens"))
     if key in LONG_PRICES and sum(n[:3]) > LONG_PROMPT:
         inp, out, read = LONG_PRICES[key]
     if r.get("speed") == "fast" and key in FAST_PRICES:
         read, (inp, out) = read * FAST_PRICES[key][0] / inp, FAST_PRICES[key]
-    w1h = min(max(core.tokens(r.get("cache_write_1h_tokens")), 0), write)  # an old row has none: all writes are 5-minute
+    w1h = min(max(tokens(r.get("cache_write_1h_tokens")), 0), write)  # an old row has none: all writes are 5-minute
     cost = (n[0] * inp + (write - w1h) * inp * 1.25 + w1h * inp * 2 + n[2] * read + n[3] * out) / 1e6
     return cost * (GEO_US_FACTOR if geo and r.get("inference_geo") == "us" else 1) + search
 
@@ -75,7 +76,7 @@ def report(rows):
     """The report text: estimated cost by week, by source, agent and model, and per subagent task.
 
     Args:
-        rows: a list of rows (dicts with the core.FIELDS).
+        rows: a list of rows (dicts with the token_log_rows.FIELDS).
     Returns:
         The report as text, one table per part.
     """
@@ -89,7 +90,7 @@ def report(rows):
         w[0] += 1
         w[1 if r.get("source") == "main" else 2] += c
         g = group.setdefault((r.get("source") or "", r.get("agent") or "", r.get("model") or ""), [0, 0, 0, 0, 0, 0.0])
-        for i, x in enumerate([1, *(core.tokens(r.get(k)) for k in core.USAGE_KEYS), c]):  # calls, the 4 token counts, cost
+        for i, x in enumerate([1, *(tokens(r.get(k)) for k in USAGE_KEYS), c]):  # calls, the 4 token counts, cost
             g[i] += x
         if r.get("agent_id"):
             t = task.setdefault(r.get("agent") or "unknown", {}).setdefault(r["agent_id"], [0, 0.0])
@@ -111,19 +112,20 @@ def report(rows):
     return "\n".join(out)
 
 
-def report_rows(root, ref):
-    """Every row in sessions/*.csv at a core.git ref.
+def report_rows(hook, root, ref):
+    """Every row in sessions/*.csv at a git ref.
 
     Args:
+        hook: the token_log module (its git helper).
         root: the repo folder.
-        ref: the core.git ref that holds the log branch's files.
+        ref: the git ref that holds the log branch's files.
     Returns:
         A list of rows (dicts).
     """
     rows = []
-    for f in core.git(root, "ls-tree", "-r", "--name-only", ref, "sessions/").splitlines():
+    for f in hook.git(root, "ls-tree", "-r", "--name-only", ref, "sessions/").splitlines():
         if f.endswith(".csv"):
-            rows += list(csv.DictReader(io.StringIO(core.git(root, "show", f"{ref}:{f}"))))
+            rows += list(csv.DictReader(io.StringIO(hook.git(root, "show", f"{ref}:{f}"))))
     return rows
 
 
@@ -135,6 +137,7 @@ def report_main(args):
     Returns:
         The exit code: 0, or 1 when the repo or the branch cannot be read.
     """
+    import token_log as core  # the git helpers; a plain import, as this file is only loaded next to token_log.py
     root = core.git(os.getcwd(), "rev-parse", "--show-toplevel", check=False)
     if not root:
         print("token_log --report: not in a git repo", file=sys.stderr)
@@ -142,12 +145,12 @@ def report_main(args):
     ref = args[0] if args else "refs/token-log/report"
     if not args:
         rc, _, err = core.git_net(root, "fetch", "-q", "--no-write-fetch-head", "origin",
-                             f"+refs/heads/{core.branch_name()}:{ref}")
+                                  f"+refs/heads/{core.branch_name()}:{ref}")
         if rc != 0:
             print("token_log --report: fetch: " + err, file=sys.stderr)
             return 1
     try:
-        print(report(report_rows(root, ref)))
+        print(report(report_rows(core, root, ref)))
     except RuntimeError as e:
         print(f"token_log --report: {e}", file=sys.stderr)
         return 1

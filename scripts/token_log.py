@@ -2,7 +2,9 @@
 """Claude Code Stop hook: log the token use of each API call to the branch claude/token-usage of the session's repo.
 
 Kit only: projects do not get a copy. A cloud environment's setup script installs it from the kit's main branch
-as a user-level Stop hook, so every repo session is logged (the owner, 2026-11-17).
+as a user-level Stop hook, so every repo session is logged (the owner, 2026-11-17). Three files, installed side by
+side: this one (the hook: push, lock, retries, self-update), token_log_rows.py (the rows and the CSV columns) and
+token_log_report.py (the prices and --report).
 
 At each Stop it starts a background push (the end of the turn does not wait) and exits 0. Outside a git repo it
 does nothing: sessions with no repo are not logged, and the repo is the folder the session started in
@@ -41,7 +43,7 @@ Report:  python3 scripts/token_log.py --report [REF]  (in a repo: fetches the lo
   estimated cost by week in America/Chicago, by source, agent and model, and per subagent task, from PRICES)
 Self-update: after each background push, the installed copy (token_log.py in ~/.claude/hooks) checks the kit's main
   branch at most once a day and replaces its files (UPDATE_FILES) with newer copies whose self-test passes; an old
-  one-file install fetches token_log_report.py the same way (the Stop path never needs it) (TOKEN_LOG_UPDATE=off
+  one-file install fetches the other two files the same way (the Stop path never needs them) (TOKEN_LOG_UPDATE=off
   turns it off). The setup script installs it only when a container is built, so a resumed container kept an old copy.
 Self-test (temporary repos, no network):  python3 scripts/token_log.py --test.  Standard library only.
 Prevents: token use and cost per session that no one can see (no log, or a log lost with the container)
@@ -64,12 +66,7 @@ import tempfile
 import time
 from datetime import datetime, timezone
 
-FIELDS = ["message_id", "timestamp", "turn", "session_id", "repo", "model", "source", "agent", "agent_id",
-          "input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens", "output_tokens", "cache_write_1h_tokens",
-          "speed", "web_search_requests", "inference_geo", "skill_use"]
-USAGE_KEYS = FIELDS[9:13]  # the four token counts that the report sums
 PRIVATE_REF = "refs/token-log/remote"
-NOT_PROMPTS = ("[Request interrupted",)
 RETRY_DELAYS = (0, 60, 300)  # seconds before each push try: the last turn of a session gets more than one chance
 def net_timeout():
     """Seconds for ls-remote, fetch or push: TOKEN_LOG_NET_TIMEOUT, else 600 (also for a value that is not a whole
@@ -126,16 +123,6 @@ def git_net(cwd, *args):
         return p.returncode, out.read().strip(), err.read().strip()
 
 
-def to_csv(rows):
-    """The CSV text of the rows, header first, sorted by timestamp and message id."""
-    out = io.StringIO()
-    w = csv.DictWriter(out, fieldnames=FIELDS, lineterminator="\n")
-    w.writeheader()
-    for r in sorted(rows.values(), key=lambda r: (r["timestamp"], r["message_id"])):
-        w.writerow({k: r.get(k, "") for k in FIELDS})
-    return out.getvalue()
-
-
 def push(root, sid, tpath):
     """Merge this session's rows into sessions/<sid>.csv on the log branch and push. Tries again at once only
     after a race with another push. The caller holds the session's push lock.
@@ -147,6 +134,7 @@ def push(root, sid, tpath):
     Returns:
         A short result text: "pushed ...", "up to date" or "nothing to log". Raises RuntimeError when git fails.
     """
+    import token_log_rows  # the rows file next to this one; only the background push needs it
     ref, path = branch_name(), f"sessions/{sid}.csv"
     for attempt in (1, 2):
         rc, heads, err = git_net(root, "ls-remote", "--heads", "origin", ref)
@@ -162,13 +150,13 @@ def push(root, sid, tpath):
             parent = [git(root, "rev-parse", PRIVATE_REF)]
             old = git(root, "show", f"{parent[0]}:{path}", check=False)
             rows = {r["message_id"]: r for r in csv.DictReader(io.StringIO(old)) if r.get("message_id")}
-        rows.update(_part("token_log_rows").log_rows(sid, tpath, os.path.basename(root)))
+        rows.update(token_log_rows.log_rows(sid, tpath, os.path.basename(root)))
         if not rows:
             return "nothing to log"
         with tempfile.TemporaryDirectory() as tmp:
             f = os.path.join(tmp, "rows.csv")
             with open(f, "w", encoding="utf-8", newline="") as fh:
-                fh.write(to_csv(rows))
+                fh.write(token_log_rows.to_csv(rows))
             blob = git(root, "hash-object", "-w", f)
             env = {**os.environ, "GIT_INDEX_FILE": os.path.join(tmp, "index")}
             git(root, "read-tree", *(parent or ["--empty"]), env=env)
@@ -278,7 +266,7 @@ def kit_url(path):
         return None
     return got if isinstance(got, str) and got.strip() else None
 UPDATE_EVERY = 24 * 3600  # seconds between self-update checks
-UPDATE_FILES = ("token_log_rows.py", "token_log_report.py", "token_log.py")  # the installed files: the parts first, the entry file last
+UPDATE_FILES = ("token_log_rows.py", "token_log_report.py", "token_log.py")  # the installed files: the hook file last
 
 
 def same_file(a, b):
@@ -351,26 +339,6 @@ def update_main():
         print("self-update error:", e, flush=True)
 
 
-PARTS = ("token_log_rows", "token_log_report")  # the sibling part files; UPDATE_FILES installs them
-
-
-def _part(name):
-    """A part file (token_log_rows or token_log_report), loaded on first use and bound to this module."""
-    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-    mod = __import__(name)
-    mod.core = sys.modules[__name__]
-    return mod
-
-
-def __getattr__(name):
-    """Names of the part files (log_rows, row_cost, report, PRICES, ...), so callers use token_log.<name> as before."""
-    if not name.startswith("__"):
-        for part in PARTS:
-            if hasattr(_part(part), name):
-                return getattr(_part(part), name)
-    raise AttributeError(name)
-
-
 def self_test():
     """Run the self-test in scripts/token_log_test.py on this module (temporary repos, no network)."""
     import token_log_test  # scripts/token_log_test.py: kept apart so each case stays short (rule C3)
@@ -381,7 +349,8 @@ if __name__ == "__main__":
     if sys.argv[1:2] == ["--test"]:
         sys.exit(self_test())
     if sys.argv[1:2] == ["--report"] and len(sys.argv) <= 3:
-        sys.exit(_part("token_log_report").report_main(sys.argv[2:]))
+        import token_log_report  # the report file next to this one
+        sys.exit(token_log_report.report_main(sys.argv[2:]))
     if sys.argv[1:2] == ["--push"] and len(sys.argv) == 5:
         try:
             push_main(sys.argv[2:])
