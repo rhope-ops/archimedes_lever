@@ -37,6 +37,12 @@ Something that does not fit: change the kit so that it fits (below). Do not edit
 7. Record a row in the project's docs/DECISIONS.md ("kit <version>, date; kept: ..."), and a project log row when it is a milestone. Do not copy the kit's docs/DECISIONS.md, docs/LOG.md or reviews: the project has its own.
 8. Deliver it (`.claude/skills/deliver/SKILL.md`). A kit update changes instruction and guard files, so it is lane C. The pull request text lists each kit rule line that changed.
 
+Package mode (plan 2026-11-23 P3, design B): the project does not track the kit scripts that no hook calls; the `archimedes-kit` package at the commit in `.check.lock` writes them (`scripts/kit_package.py`). `scripts/check.sh` then shows a `kit package` line. In such a project, the steps above change:
+- After step 5: run `pip install --force-reinstall "git+https://github.com/rhope-ops/archimedes_lever@$(python3 -c 'import json; print(json.load(open(".check.lock"))["commit"])')"`, then `archimedes-kit --install`. The sync also wrote the untracked kit scripts; `git status` does not show them (`.git/info/exclude`). Commit only what `git status` shows: `.check.lock`, the changed instruction files and the changed tracked kit files.
+- Step 6: the full lane shows `PASS  kit package`. Give the count of changed files.
+- Each cloud environment of the project runs the same two commands in its setup script, in the project folder. A new kit version needs no setup script change: the commit comes from `.check.lock`.
+- Rollback: revert the commit that untracked the kit scripts. The kit scripts are then tracked again as the last sync wrote them, and the `kit package` line goes.
+
 ## Change the kit from a project
 
 1. A kit file or kit rule is wrong or does not fit: make the change in the kit repo, by its own pull request, with the project named as the reason.
