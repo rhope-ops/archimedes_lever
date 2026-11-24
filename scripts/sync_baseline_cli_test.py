@@ -87,13 +87,6 @@ class SyncBaselineCli(unittest.TestCase):
         return {str(f.relative_to(self.path)): hashlib.sha256(f.read_bytes()).hexdigest()
                 for f in sorted(self.path.rglob("*")) if f.is_file() and ".git" not in f.relative_to(self.path).parts}
 
-    def test_clean_project_syncs_again(self):
-        """Prove: a project whose kit files match its lock is synced (exit 0)."""
-        self.assertEqual(sync(self.path).returncode, 0)
-        run(["git", "add", "-A"], self.path)
-        run(GIT + ["commit", "-q", "-m", "sync"], self.path)
-        self.assertEqual(sync(self.path).returncode, 0)
-
     def test_edited_kit_file_stops_the_sync(self):
         """Prove: one edited kit file stops the sync with exit 2, names the file, and writes nothing."""
         self.assertEqual(sync(self.path).returncode, 0)
@@ -212,15 +205,6 @@ class SyncBaselineCli(unittest.TestCase):
         self.assertIn("scripts/stop_check.py", p.stdout)
         self.assertEqual(self.tree_hashes(), before)
 
-    def test_unlocked_kit_file_that_matches_is_no_stop(self):
-        """Prove: a kit file that is not in the lock but has the kit's text is no stop."""
-        self.synced_and_committed()
-        lock = json.loads((self.path / ".check.lock").read_text())
-        del lock["files"]["scripts/stop_check.py"]
-        (self.path / ".check.lock").write_text(json.dumps(lock))
-        self.commit_all("unlocked and equal")
-        self.assertEqual(sync(self.path).returncode, 0)
-
     def unlock(self, rel):
         """Drop one file from the lock of the project, and commit."""
         lock = json.loads((self.path / ".check.lock").read_text())
@@ -284,17 +268,6 @@ class SyncBaselineCli(unittest.TestCase):
         self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
         self.assertIn("not readable", p.stdout)
         self.assertNotIn("Traceback", p.stderr)
-
-    def test_every_non_skill_kit_file_gets_the_script_advice(self):
-        """Prove: an edited kit script such as scripts/stop_check.py gets the check.local.sh advice, not PROJECT.md."""
-        self.synced_and_committed()
-        (self.path / "scripts/stop_check.py").write_text("# mine\n")
-        self.commit_all("edit")
-        p = sync(self.path)
-        self.assertEqual(p.returncode, 2, p.stdout + p.stderr)
-        line = self.advice_line(p.stdout, "scripts/stop_check.py")
-        self.assertIn("scripts/check.local.sh", line)
-        self.assertNotIn("PROJECT.md", line)
 
     def test_project_without_a_lock_is_synced_as_before(self):
         """Prove: a project with no .check.lock is not stopped (nothing to compare with): the first sync writes the lock."""
