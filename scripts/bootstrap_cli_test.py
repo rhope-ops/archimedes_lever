@@ -88,6 +88,7 @@ class BootstrapCli(unittest.TestCase):
         self.assertEqual(self.starter().returncode, 0)
         for gone in ("scripts/bootstrap.sh", "scripts/sync_baseline.py", "scripts/drift.py", "KIT_VERSION", "docs/FILES.md", "docs/tools.md",
                      "scripts/sync_baseline_cli_test.py", "scripts/bootstrap_cli_test.py", "docs/threat-model.md",
+                     "scripts/kit_package.py", "pyproject.toml",
                      "SECURITY.md", ".github/dependabot.yml", ".github/workflows/security.yml"):  # DoD group: key off
             self.assertFalse((self.path / gone).exists(), gone)
 
