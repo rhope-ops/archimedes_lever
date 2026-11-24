@@ -147,9 +147,17 @@ PY
   ok "a large baseline on the default branch, state file deleted: the code standard runs" "$(c | grep -c '^PASS  code standard$')" 1
   g checkout -q .check.state.json; g update-ref -d refs/remotes/origin/main
   # The Python lint (ruff and pylint): no config files, no step; with them and a linter missing, a SKIP line that names the install, never a silent pass.
-  # The PATH of the case drops each folder that holds ruff or pylint; python3 comes through a link.
-  mkdir -p "$t/nolint"; ln -sf "$(command -v python3)" "$t/nolint/python3"; nolint="$t/nolint"
-  while IFS= read -r d; do [ -x "$d/ruff" ] || [ -x "$d/pylint" ] || [ -x "$d/shellcheck" ] || nolint+=":$d"; done < <(tr ':' '\n' <<<"$PATH")
+  # The PATH of the case puts, in place of each folder that holds ruff, pylint or shellcheck, a folder of links to its
+  # other programs (a runner can have shellcheck in /usr/bin, next to bash and git).
+  nolint=""; i=0
+  while IFS= read -r d; do
+    if [ -x "$d/ruff" ] || [ -x "$d/pylint" ] || [ -x "$d/shellcheck" ]; then
+      i=$((i+1)); mkdir -p "$t/nolint/$i"
+      for f in "$d"/*; do case "${f##*/}" in ruff|pylint|shellcheck) ;; *) [ -x "$f" ] && ln -s "$f" "$t/nolint/$i/";; esac; done
+      d="$t/nolint/$i"
+    fi
+    nolint+="${nolint:+:}$d"
+  done < <(tr ':' '\n' <<<"$PATH")
   ok "no ruff.toml and .pylintrc: no Python lint step" "$(c | grep -c 'python lint')" 0
   touch "$t/r/ruff.toml" "$t/r/.pylintrc"
   ok "a missing linter is a SKIP line that names the install" "$(cd "$t/r" && PATH="$nolint" bash scripts/check.sh 2>&1 | grep -c '^SKIP  python lint (ruff or pylint is missing: pip install ruff==0.17.6 pylint==4.1.4)$')" 1
