@@ -177,7 +177,11 @@ def relock(root, files):
     Returns:
         The exit code: 0 pass, 1 fail.
     """
-    data = load(root)
+    try:
+        data = load(root)
+    except ValueError as e:
+        print(f"FAIL  {LOCK} is not readable ({e}): sync again from the kit")
+        return 1
     if data is None:
         print(f"no {LOCK}: nothing to relock")
         return 1

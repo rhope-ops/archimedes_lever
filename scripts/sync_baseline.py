@@ -378,6 +378,22 @@ def new_log(base, root, proj_text, agents_text, owner, tier):
     return result
 
 
+def project_owner(root, args):
+    """The owner word of this sync: --owner, else the project's "- Owner:" line, else the baseline's word.
+
+    Args:
+        root: the project folder.
+        args: the parsed command line.
+    Returns:
+        The owner word; the sync stops when it holds a character that the baseline text cannot hold.
+    """
+    proj_agents = root / "AGENTS.md"
+    owner = args.owner or header_owner(proj_agents.read_text() if proj_agents.exists() else "") or BASELINE_OWNER
+    if not re.fullmatch(OWNER_RE, owner):
+        die(f"owner {owner!r}: use letters, digits, space . _ , ( ) - only")
+    return owner
+
+
 def planned_files(base, root, args):
     """Map each project path to its synced text, and return it with the tier.
 
@@ -390,9 +406,7 @@ def planned_files(base, root, args):
     """
     proj_agents = root / "AGENTS.md"
     proj_text = proj_agents.read_text() if proj_agents.exists() else None
-    owner = args.owner or header_owner(proj_text or "") or BASELINE_OWNER
-    if not re.fullmatch(OWNER_RE, owner):
-        die(f"owner {owner!r}: use letters, digits, space . _ , ( ) - only")
+    owner = project_owner(root, args)
     tier = args.tier or header_tier(proj_text or "")
     copy_files, copy_if_missing = tier_files(tier)
     new = {}
