@@ -37,10 +37,55 @@ Status 2026-11-23 18:24 America/Chicago: steps 1-6 done (session "Kit · Tool re
 5. If a rule line changed after 0abd68228388, run the rule-conflict check again and update its record.
 6. Open the P1 PR (lane C) and ask the Maintainer to merge.
 
+## P1 result
+
+P1 merged to main at 067726a (2026-11-23, PR [#137](https://github.com/rhope-ops/archimedes_lever/pull/137), the Maintainer's
+approval in the coordinator's chat). 4 fresh reviews; the MINOR findings for P2 are in the PR body.
+
+## P2 split (session "Kit · Tool retirement P1 finish · 2026-11-23", 2026-11-23 18:37)
+
+Each item is its own lane C PR (T3), so each can be reverted alone. Shared files have one owner, the main session, in a
+join commit per PR: docs/tools.md, .check.state.json, docs/DECISIONS.md, scripts/check.sh, .check.lock, the sync lists in
+sync_baseline.py, and scripts/worker_guard.py (it guards the workers).
+
+| Stream | Items | Owner |
+|---|---|---|
+| Main 0 | T2 MINORs first (the coordinator's order): "the Maintainer: agent wrote" passes, number boundaries, a test; T2 lowers the baseline when lines drop (now the slack stays open) | main session |
+| 1 | (a) ruff + pylint config, (g) shellcheck WARN with the fleet list, (e) splits code_standard_ratchet and code_standard_test_gate | worker (Sonnet) |
+| 2 | (b) decision 9: 3 matching fixes, (f) ReDoS in build_site_html.py:121, (e) split check_content_scan_settings | worker (Sonnet) |
+| 3 | (d) sync stops on a project's local edit of a kit file, (e) split sync_baseline_run | worker (Sonnet) |
+| Main | (h) AUD-5 records, (i) AUD-6 worker_guard.py --scan and text S8 | main session |
+| Later | (j) skill use (token_log_rows.py, brief line, skill_use.py name) and (e) split token_log_test_report | worker, when a slot is free |
+| None | (c) decision 10A: keep check_instructions.py; no code change | - |
+
+Facts at 2026-11-23 18:37: ruff is installed here; pylint, shellcheck and gitleaks are not, and neither CI nor check.sh runs them.
+A missing linter must print a SKIP line with the install command, never pass in silence. Fleet repos can be attached
+for reading (list_repos). Briefs: the adversarial inputs, a test that fails against the old code, no line squeezing to
+meet T2 (report the net count; the Maintainer approves a higher number per PR), commit locally, no stray files.
+
+## P2 status (2026-11-23 19:35 America/Chicago)
+
+| Item | State | T2 baseline (the Maintainer) |
+|---|---|---|
+| T2 MINORs + downward ratchet | merged, PR 139 | 18159 ("Approve 18159") |
+| (f) ReDoS fix | merged, PR 140 | 18195 ("Approve all 5") |
+| (e) content split | PR 141, ready, waits for merge | 18215 ("Approve all 4", 18:59; "The 18:59 batch holds") |
+| (e) sync split | branch claude/tr-p2-e-sync 7624cd1, reviewed, local only | 18218 (same batch) |
+| (b) two-line marking + keyword/number | branch claude/tr-p2-b f61054a, reviewed, local only | 18303 (same batch) |
+| (d) sync stop on local edits | branch claude/tr-p2-d a66c3ab, 5 reviews, last 0 MAJOR, local only | 18660 ("Approve 18660", shortly before 19:33) |
+| (a), (g), (h), (i), (j) | not started | ask each rise on its own |
+
+Merge order is fixed by the numbers: 141, e-sync, b, d. The local branches cannot be pushed before their turn (T2
+blocks the push); if this container is lost, rebuild them from the PR bodies and review reports. Decisions of the
+Maintainer in P2: `%40` not decoded; build keyword+number on two lines; the sync stops on an unlocked kit file that
+differs (an unchanged older kit copy is no stop); relock way out names check.local.sh / .check / a kit change; no lock:
+as built. The coordinator relayed a later condition (a retirement before more rises; one number per question): the
+Maintainer kept the 18:59 batch; ask each later rise on its own.
+
 ## Later phases (plan sections)
 
-- P2: items (a)-(j), with the skill-use proposals P1-P4 (audit file
-  [2026-11-23-skill-use-audit.md](2026-11-23-skill-use-audit.md)) and AUD-6 (worker_guard.py --scan).
+- P2: the split above, with the skill-use proposals P1-P4 (audit file
+  [2026-11-23-skill-use-audit.md](2026-11-23-skill-use-audit.md)).
 - P3: pilot in 33-332.Z; trim its handoff by ~50 tokens first.
 - P4-P6 as the plan says. Branch deletes need the Maintainer's OK: `claude/tr-r2a-project-tools` holds a third-party
   name in b765169; merged worker branches.
