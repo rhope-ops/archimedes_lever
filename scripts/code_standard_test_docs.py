@@ -13,6 +13,7 @@ Credentials: none.
 """
 
 import check_settings as settings   # scripts/check_settings.py: the settings files
+import code_standard_rules as rules   # scripts/code_standard_rules.py: WARN_KINDS, set per level in self_test_warns
 from code_standard_test_gate import FULL, PS, commit, config_of, main, write
 
 
@@ -115,10 +116,15 @@ def self_test_adopt_ratchet(cs, root, g, full):
     assert cs.against_main(full, on)[0], 'the same list fails with no DECISIONS row'
 
 
+def set_levels(cs, kinds):
+    """Set the WARN kinds of the check module and of the rules module (the kit and a project differ: AUD-1)."""
+    cs.WARN_KINDS = rules.WARN_KINDS = kinds
+
+
 def self_test_warns(cs, root, g, config):
-    """Self-test of the WARN kinds: a file over the size cap and a check entry point without a `Prevents:` header line
-    warn (with their numbers) and are not debt: compare() gives no FAIL, the baseline never holds them, and a
-    *_test file is never an entry point.
+    """Self-test of the WARN kinds. In a project a file over the size cap and a check entry point without a `Prevents:` header
+    line warn (with their numbers) and are not debt: compare() gives no FAIL, the baseline never holds them, and a *_test file is
+    never an entry point. In the kit the missing `Prevents:` line is a FAIL (AUD-1) and the file size still warns.
 
     Args:
         cs: the check module.
@@ -126,6 +132,8 @@ def self_test_warns(cs, root, g, config):
         g: runs git in the sample repo.
         config: the settings of the sample repo.
     """
+    saved = cs.WARN_KINDS
+    set_levels(cs, ('file_size', 'prevents'))   # a project
     head = '"""Sample check script for the WARN self-test: it names no defect."""\n\n\n'
     (root / 'scripts').mkdir(exist_ok=True)
     (root / 'scripts/check.sh').write_text('# Sample runner: it runs the sample check scripts of the WARN self-test.\npython3 scripts/chk.py\npython3 scripts/chk_test.py\n')
@@ -140,9 +148,23 @@ def self_test_warns(cs, root, g, config):
     warns = cs.warn_lines(now, config['caps'])
     assert [w for w in warns if 'C4' in w and 'scripts/chk.py (54)' in w and 'longer than 50' in w], 'size shows: %s' % warns
     assert [w for w in warns if 'Prevents' in w and 'scripts/chk.py' in w], 'the missing line shows: %s' % warns
+    set_levels(cs, ('file_size',))   # the kit: AUD-1 fails
+    new, _ = cs.compare(now, {}, config['caps'])
+    assert [n for n in new if n.startswith('FAIL') and 'Prevents' in n and 'scripts/chk.py' in n], 'the kit fails it: %s' % new
+    assert not [n for n in new if 'C4' in n], 'the file size never fails'
+    assert not [w for w in cs.warn_lines(now, config['caps']) if 'Prevents' in w], 'the kit has no Prevents warning'
+    set_levels(cs, ('file_size', 'prevents'))
     (root / 'scripts/chk.py').write_text('"""Sample check script.\n\nPrevents: a check that runs with no stated defect to stop.\n"""\n')
     g('add', '-A')
     assert not cs.measure(config)['violations']['prevents'], 'the Prevents: line clears it'
     cs.save(now)
     assert not {'file_size', 'prevents'} & set(settings.load_state(root)['code_standard']['debt']), 'never in the baseline'
+    set_levels(cs, saved)
+    assert not rules.is_kit(root), 'no kit.config.json: not the kit'
+    (root / 'kit.config.json').write_text('{}')
+    assert rules.is_kit(root), 'kit.config.json and no lock: the kit'
+    (root / '.check.lock').write_text('{}')
+    assert not rules.is_kit(root), 'a lock: a project'
+    (root / 'kit.config.json').unlink()
+    (root / '.check.lock').unlink()
     g('rm', '-rqf', 'scripts')

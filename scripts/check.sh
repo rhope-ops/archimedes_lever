@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # One check command for the repo (AGENTS.md "Commands": Test): the one front door of every check and guard.
+# Prevents: a change that reaches main or a pull request with a check not run, or a check that fails and is not seen.
 # Two lanes (.claude/skills/deliver/SKILL.md):
 #   scripts/check.sh          full lane: everything. Before a merge, on a push to main (pre-push), in the pull-request Action (public repos).
 #   scripts/check.sh --fast   fast lane: each push to another branch (pre-push). Self-tests only of the kit scripts that
@@ -278,7 +279,7 @@ selftest log_check scripts/log_check.py scripts/log_check_plan.py -- python3 scr
 selftest check_settings scripts/check_settings.py scripts/check_settings_test.py scripts/check_settings_read.py \
   scripts/build_site_html.py scripts/check_content_scan_settings.py -- python3 scripts/check_settings.py --test
 selftest bloat_check scripts/bloat_check.py scripts/bloat_check_test.py scripts/bloat_check_skills.py scripts/bloat_check_rules.py \
-  scripts/bloat_check_timing.py scripts/bloat_check_test_rules.py \
+  scripts/bloat_check_files.py scripts/bloat_check_timing.py scripts/bloat_check_test_rules.py \
   scripts/check_settings.py scripts/check_settings_read.py scripts/build_site_html.py scripts/check_content_scan_settings.py -- python3 scripts/bloat_check.py --test
 selftest token_log scripts/token_log.py scripts/token_log_rows.py scripts/token_log_report.py scripts/token_log_test.py scripts/token_log_test_report.py -- python3 scripts/token_log.py --test
 selftest code_standard scripts/code_standard.py scripts/code_standard_test.py scripts/code_standard_docs.py \
@@ -372,10 +373,15 @@ elif [ -f docs/LOG.md ]; then
 else
   skip "project log" "no docs/LOG.md: the log lives in the place AGENTS.md Project rules names"
 fi
-# T6 (plan 2026-11-23): a DECISIONS row By the Maintainer quotes the approval; it runs where docs/DECISIONS.md has the
-# approval-quote-exempt-from marker (a project gets it at its sync). T7: each plan coverage list is complete.
+# T6 (plan 2026-11-23): a DECISIONS row By the Maintainer quotes the approval. The kit (no .check.lock) always runs it: with no
+# approval-quote-exempt-from marker every row is checked. A project runs it where docs/DECISIONS.md has the marker (its sync adds
+# it) and prints a SKIP line otherwise. T7: each plan coverage list is complete.
 if [ -f scripts/log_check_plan.py ]; then
-  grep -qs 'approval-quote-exempt-from' docs/DECISIONS.md && run "decisions approval quote" python3 scripts/log_check.py --decisions
+  if [ ! -f .check.lock ] || grep -qs 'approval-quote-exempt-from' docs/DECISIONS.md; then
+    run "decisions approval quote" python3 scripts/log_check.py --decisions
+  else
+    skip "decisions approval quote" "docs/DECISIONS.md has no approval-quote-exempt-from marker (a sync adds it)"
+  fi
   for f in docs/reviews/*-coverage.md; do
     [ -f "$f" ] && run "plan coverage ${f##*/}" python3 scripts/log_check.py --coverage "$f"
   done

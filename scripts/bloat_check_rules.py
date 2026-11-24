@@ -4,12 +4,17 @@ against their caps, the lint of rule lines, the conflict-check gate for changed 
 names. Kept apart so bloat_check.py stays under the line cap of docs/code-standard.md C4 (what each measure
 means: the header of bloat_check.py).
 
+Prevents: AGENTS.md or the session load passing its cap, a changed rule line with no conflict-check record, and a path that
+AGENTS.md names and that is gone.
+
 What it gives:
   start_read        what every session loads, in lines, bytes and ~tokens
   rule_lines        the rule lines of an AGENTS.md text: the kit sections, "## Project rules", and every line
   lint              WARN lines: near-duplicate pairs, vague words, untested rules
   readme_report     README.md exists and opens with the "- Purpose:" line of AGENTS.md (AGENTS.md "One home")
-  rules_report      the lines of `--rules` and the problems that fail scripts/check.sh
+  changed_lines     the rule lines added and removed against the default branch (the debt record of scripts/bloat_check_files.py reads it)
+  rules_report      the census lines of `--rules` and the problems that fail scripts/check.sh (scripts/bloat_check_files.py adds the
+                    file checks and the debt record, and the RULES FAIL lines)
   main_lint         the `--lint` mode
 Inputs:  the repo root, the audit settings (scripts/check_settings.py), AGENTS.md here and on origin/main,
          .claude/rule-tests.md and docs/reviews/.
@@ -215,9 +220,20 @@ def conflict_hash(added, removed):
 
 
 def conflict_recorded(root, h, label="rule-conflict-check", pattern="*.md"):
-    """True when a file of docs/reviews/ that matches pattern holds the line "<label>: <h>" (the debt record: "debt-check", "*-debt.md")."""
+    """True when a file of docs/reviews/ that matches pattern holds the line "<label>: <h>".
+
+    Args:
+        root: the repo root (a Path).
+        h: the hash of the changed rule lines (conflict_hash).
+        label: the line label; the debt record uses "debt-check".
+        pattern: the file name pattern; the debt record uses "*-debt.md".
+
+    Returns:
+        True when a record names the hash.
+    """
     d = root / REVIEWS
-    return d.is_dir() and any(f"{label}: {h}" in f.read_text(encoding="utf-8", errors="replace") for f in d.rglob(pattern))
+    return d.is_dir() and any(f"{label}: {h}" in f.read_text(encoding="utf-8", errors="replace")
+                              for f in d.rglob(pattern))
 
 
 def missing_pointers(root, text):
@@ -247,6 +263,29 @@ def missing_pointers(root, text):
     return sorted(n for n in names if n and not re.search(r"[<>*{]", n) and not (root / n).exists())
 
 
+def changed_lines(root, parts):
+    """The rule lines added and removed against the default branch (the kit lines too, unless the lock holds them).
+
+    Args:
+        root: the repo root (a Path).
+        parts: (kit, project, every), the rule lines of AGENTS.md now (rule_lines).
+
+    Returns:
+        (added, removed), or None when the default branch has no AGENTS.md to compare with.
+    """
+    old = None
+    for ref in ("origin/main", "origin/master"):
+        old = git(root, "show", f"{ref}:{RULES_FILE}")
+        if old is not None:
+            break
+    if old is None:
+        return None
+    import check_lock  # in a synced project the kit checked the locked kit lines: only "Project rules" count here
+    part = 1 if check_lock.kit_text_locked(root) else 2
+    was = set(rule_lines(old)[part])
+    return [l for l in parts[part] if l not in was], sorted(was - set(parts[part]))
+
+
 def changed_rules(root, text, parts, gate):
     """The part of the rules report on rule lines that changed against the default branch: the lines, the state of
     their conflict check, and the lint of the added ones.
@@ -260,22 +299,14 @@ def changed_rules(root, text, parts, gate):
     Returns:
         (lines to print, problems).
     """
-    out, problems, old = [], [], None
-    for ref in ("origin/main", "origin/master"):
-        old = git(root, "show", f"{ref}:{RULES_FILE}")
-        if old is not None:
-            break
-    if old is None:
+    out, problems = [], []
+    found = changed_lines(root, parts)
+    if found is None:
         return out, problems
-    import check_lock  # in a synced project the kit checked the locked kit lines: only "Project rules" count here
-    part = 1 if check_lock.kit_text_locked(root) else 2
-    every = parts[part]
-    was = set(rule_lines(old)[part])
-    now = set(every)
-    added, removed = [l for l in every if l not in was], sorted(was - now)
+    added, removed = found
     for mark, lines in (("+", added), ("-", removed)):
         out += [f"  {mark} {l}" for l in lines]  # the whole line: a change near its end must show
-    if was != now:
+    if added or removed:
         out.append("  (rule lines changed against the default branch: each one needs the Maintainer's approval of its exact text)")
         h = conflict_hash(added, removed)
         if conflict_recorded(root, h):
@@ -288,35 +319,7 @@ def changed_rules(root, text, parts, gate):
             else:
                 out.append(f"WARN  {need} (the full lane fails without it)")
         out += lint(root, rule_lines(text, with_sections=True), only=set(added))
-    rows, found = debt_record(root, added, removed, gate)
-    return out + rows, problems + found
-
-
-def debt_record(root, added, removed, gate):
-    """T5, in the kit: changed rule lines, a check entry point added to scripts/check.sh and a stricter KIT_CAPS cap need a file
-    docs/reviews/*-debt.md with the line "debt-check: <hash>" (what the change fails today in every fleet repo, and its fix plan).
-    The hash is the conflict-check hash for rule lines alone; debt_triggers' lines join it. As the conflict record: WARN, or in the full lane a problem.
-
-    Args:
-        root: the repo root (a Path).
-        added: the rule lines added against the default branch.
-        removed: the rule lines removed.
-        gate: True in the full lane.
-
-    Returns:
-        (lines to print, problems).
-    """
-    import bloat_check_skills  # scripts/bloat_check_skills.py: kept apart (code standard C4)
-    extra = bloat_check_skills.debt_triggers(root)
-    if not bloat_check_skills.is_kit(root) or not (added or removed or extra):
-        return [], []
-    out = [f"  debt check: {x}" for x in extra]
-    h = conflict_hash(added + extra, removed)
-    if conflict_recorded(root, h, "debt-check", "*-debt.md"):
-        return out + [f"  debt check: recorded (debt-check: {h})"], []
-    need = (f"no fleet debt list for these changes (T5): list what each changed rule line, new check and stricter cap fails today in "
-            f"every fleet repo, with a fix plan, and record the line \"debt-check: {h}\" in a {REVIEWS}/*-debt.md file")
-    return (out, [need]) if gate else (out + [f"WARN  {need} (the full lane fails without it)"], [])
+    return out, problems
 
 
 def readme_opening(text):
@@ -423,9 +426,6 @@ def rules_report(root, cfg, gate=False):
         out.append(f"WARN  {len(project)} project rule bullets (guide {b['project_rules']})")
     import bloat_check_skills  # scripts/bloat_check_skills.py: kept apart (code standard C4)
     problems += bloat_check_skills.second_homes(root)
-    rows, found = bloat_check_skills.file_report(root)  # tool rows (T1), script lines (T2), role word (T6)
-    out += rows
-    problems += found
     rows, found = changed_rules(root, text, (kit, project, every), gate)
     out += rows
     problems += found
@@ -435,8 +435,6 @@ def rules_report(root, cfg, gate=False):
     rows, found = readme_report(root, text)
     out += rows
     problems += found
-    for pr in problems:
-        out.append(f"RULES FAIL:  {pr}")
     return out, problems
 
 

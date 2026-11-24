@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Cheap bloat and drift metrics for a project repo, and the audit due date. Report only, unless --record.
 
+Prevents: the instruction files and the session load growing past their caps unseen, rule lines that change with no conflict
+check, a path that AGENTS.md names and that is gone, and a skill that is malformed.
+
 Usage:
     python3 scripts/bloat_check.py            # full report
     python3 scripts/bloat_check.py --brief    # one line (scripts/session_checkin.sh runs this)
@@ -53,11 +56,11 @@ It measures:
                   of a generated block, between the marker lines "# >>> ... generated from ..." and "# <<< ...")
     big files     tracked files over the size budget
     audit due     days and commits on main since the last full audit (.check.state.json "audit": "last_audit")
-    tool rows     (--rules, T1) each tool file the repo owns has a docs/tools.md row: 3 candidate tools, or "none known" and
-                  the search terms; FAIL in the kit, WARN in a project (code: scripts/bloat_check_skills.py)
+    tool rows     (--rules, T1) each tool file the repo owns has a docs/tools.md row, whose first cell names it: 3 candidate tools,
+                  or "none known" and the search terms; FAIL in the kit, WARN in a project (code: scripts/bloat_check_files.py)
     script lines  (--rules, T2) the lines of scripts/*.py and *.sh against "script_lines": {"baseline": N} in the state file
-                  (`cat scripts/*.py scripts/*.sh | wc -l`); over it fails, and so does a baseline above main's with no DECISIONS row
-    role word     (--rules, T6) kit-synced text in the kit says "the Maintainer", not "the owner" or "Owner's"; WARN only
+                  (`cat scripts/*.py scripts/*.sh | wc -l`); over it fails, and so does a baseline above main's with no DECISIONS row; no baseline: FAIL in the kit, SKIP in a project
+    role word     (--rules, T6) kit-synced text in the kit says "the Maintainer", not an old role word; FAIL in the kit, no check in a project
     debt record   (--rules --gate, T5, kit) changed rule lines, a check entry point added to scripts/check.sh and a lower
                   KIT_CAPS cap need a docs/reviews/*-debt.md file with the line "debt-check: <hash>" (the hash as the conflict gate)
     fleet audit   (kit, R3) AUDIT DUE (fleet): kit.config.json "fleet": {"last_audit": "YYYY-MM-DD"} missing, over 14 days old,
@@ -94,11 +97,11 @@ import re
 import sys
 from pathlib import Path
 
-import bloat_check_skills  # scripts/bloat_check_skills.py: the skills check and the file checks (kept apart, code standard C4)
+import bloat_check_files  # scripts/bloat_check_files.py: the file checks and the full --rules report (kept apart, code standard C4)
 import check_settings  # scripts/check_settings.py: the reader of .check and the reader and writer of .check.state.json
 # scripts/bloat_check_rules.py: the rule census (kept apart, code standard C4). The names the self-test reads are listed.
-from bloat_check_rules import (conflict_hash, git, lint, main_lint, rule_lines, rules_report,  # noqa: F401
-                               start_read)
+from bloat_check_files import is_kit, rules_report  # noqa: F401 - the full --rules report (rule census + file checks)
+from bloat_check_rules import conflict_hash, git, lint, main_lint, rule_lines, start_read  # noqa: F401
 # scripts/bloat_check_timing.py: the timed commands and the baseline comparison (kept apart, code standard C4).
 from bloat_check_timing import (SHELL_CHARS, TIMING_DIRS, compare_times, run_timings, save_timings,  # noqa: F401
                                 timing_argv)
@@ -209,7 +212,7 @@ def fleet_audit_due(root, today, every_days=14):
     Returns:
         The reason as a text, or "".
     """
-    if not bloat_check_skills.is_kit(root):
+    if not is_kit(root):
         return ""
     try:
         last = datetime.date.fromisoformat(json.loads((root / "kit.config.json").read_text(encoding="utf-8"))["fleet"]["last_audit"])
