@@ -148,6 +148,18 @@ def case_dod_patterns():
     for label, text in (("title-case banner with slashes", "Top Sec" + "ret/" + "/SI"), ("lower-case word with slashes", "sec" + "ret/" + "/rel"),
                         ("two-word banner, title case", "Top Sec" + "ret"), ("lowest level alone on a line", "UNCLASS" + "IFIED")):
         expect("dod marking: " + label, text, ["marking"], dod=True)
+    for label, text in (("short form, after FOR", "FOR\nOFFICIAL USE ONLY"), ("short form, after OFFICIAL", "FOR OFFICIAL\nUSE ONLY"),
+                        ("short form, before ONLY", "for official use\nonly"), ("blanks at the break", "For Official  \n   Use Only"),
+                        ("long form", "Controlled Unclassified\nInformation"), ("long form, after the first word", "Controlled\nUnclassified Information")):
+        expect("dod marking over two lines: " + label, text, ["marking"], dod=True)
+    split = scan_text("x\nFOR OFFICIAL\nUSE ONLY\ny", "t", [], set(), True)
+    check(f"dod marking over two lines: one finding, on the first line: {split}", [(n, k) for _, n, k, _ in split] == [(2, "marking")])
+    expect("minimum tier: a mark over two lines is not checked", "FOR OFFICIAL\nUSE ONLY", [])
+    expect("dod: a mark over two lines, allowed as read", "FOR OFFICIAL\nUSE ONLY", [], allow=["FOR OFFICIAL USE ONLY"], dod=True)
+    expect("dod: a mark over three lines is not read", "FOR OFFICIAL\nUSE\nONLY", [], dod=True)
+    expect("dod: words that only start a mark are not a mark", "FOR OFFICIAL\nBUSINESS ONLY", [], dod=True)
+    expect("dod: a mark over two lines, with words before the break", "the FOR OFFICIAL\nUSE ONLY rule", ["marking"], dod=True)
+    expect("dod: a mark inside a word is not a mark", "BEFOR OFFICIAL\nUSE ONLY", [], dod=True)
     expect("dod: a one-word heading in title case is not a mark", "# Sec" + "ret", [], dod=True)
     expect("dod: the word in a sentence, upper case, is not a banner", "THE SEC" + "RET IS OUT", [], dod=True)
     expect("minimum tier: marks not checked", "CU" + "I//SP-PRVCY", [])

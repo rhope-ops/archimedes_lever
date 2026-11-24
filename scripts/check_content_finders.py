@@ -78,11 +78,13 @@ SECRET = [re.compile(r) for r in (
 MILHOST = re.compile(
     r"(?i)(?<![A-Za-z0-9-])(?<![A-Za-z0-9-]\.)(?:(?:[a-z0-9-]+\.)+mil(?![A-Za-z0-9-]|\.[A-Za-z0-9])"   # any host under the military domain
     r"|(?:[a-z0-9-]+\.)*sharepoint-mil\.us\b|(?:[a-z0-9-]+\.)*dod\.teams\.microsoft\.us\b)")          # DoD cloud tenant hosts
+MARKING_LONG = [re.compile(r) for r in (   # the marks that are phrases: they may also stand over two lines (find_split_marking)
+    r"(?i)\bcontrolled\s+unclassified\s+" r"information\b", r"(?i)\bfor\s+official\s+use\s+" r"only\b")]
 MARKING = [re.compile(r) for r in (
-    r"\bCUI/" r"/", r"^[^A-Za-z0-9]*CU" r"I[^A-Za-z0-9]*$", r"(?i)\bcontrolled\s+unclassified\s+" r"information\b",
+    r"\bCUI/" r"/", r"^[^A-Za-z0-9]*CU" r"I[^A-Za-z0-9]*$", MARKING_LONG[0].pattern,
     r"^[^A-Za-z0-9]*(?:SEC" r"RET|CONFID" r"ENTIAL|UNCLASS" r"IFIED)[^A-Za-z0-9]*$",  # one word alone on its line, upper case
     r"(?i)^[^A-Za-z0-9]*TOP\s+SEC" r"RET[^A-Za-z0-9]*$",                               # two words alone on a line, any case
-    r"\bFO" r"UO\b", r"(?i)\bfor\s+official\s+use\s+" r"only\b", r"\bNOF" r"ORN\b",
+    r"\bFO" r"UO\b", MARKING_LONG[1].pattern, r"\bNOF" r"ORN\b",
     r"(?i)\b(?:SECRET|CONFIDENTIAL|UNCLASSIFIED)/" r"/",
 )]
 _DODID_KW = r"(?<![A-Za-z])(?:DOD[\s_-]*ID|EDIPI|CAC)(?![A-Za-z])"  # also dod_id, and DODID joined to the number
@@ -147,6 +149,23 @@ def find_marking(line):
     for rx in MARKING:
         for m in rx.finditer(line):
             yield m.start(), m.end(), m.group().strip()
+
+
+def find_split_marking(first, second):
+    """Yield (start, end, mark) for each phrase mark (MARKING_LONG) that stands over the end of `first` and the start of
+    `second`, two lines in a row. The mark is read with one space at the break; start and end are in `first` plus that
+    space plus `second` (the lines without the blanks at the break).
+
+    Args:
+        first: a line of text.
+        second: the line after it.
+    """
+    head = first.rstrip()
+    joined = head + " " + second.lstrip()
+    for rx in MARKING_LONG:
+        for m in rx.finditer(joined):
+            if m.start() < len(head) < m.end() - 1:
+                yield m.start(), m.end(), m.group()
 
 
 KIT_FINDERS = {"email": [find_email], "secret": [find_secret], "phone": [find_phone], "id": [find_id],
