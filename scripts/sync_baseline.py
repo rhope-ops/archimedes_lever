@@ -26,6 +26,10 @@ Tiers (the owner, 2026-11-13): a starter project has the core rules, hooks and c
 for one tier with lines "<!-- full -->" ... "<!-- /full -->" and "<!-- starter -->" ... "<!-- /starter -->";
 apply_tier() keeps the blocks for the project's tier and drops the marker lines.
 
+Before it writes (also in a dry run), it compares the project's kit files with the project's .check.lock. When one differs, it
+writes nothing, names the files and exits 2 (the project's change goes into a PROJECT.md beside the kit skill, or into the kit).
+A project with no .check.lock, and a kit file that is missing, are not stopped.
+
 What it changes:
     AGENTS.md              Baseline text above "## Project rules", with this project's header values.
                            Keeps this project's "## Commands" section and everything from "## Project rules" on.

@@ -100,6 +100,25 @@ def load(root):
     return data
 
 
+def changed(root):
+    """The locked kit files that are in the project now with text that differs from the lock.
+
+    Args:
+        root: the repo root (a folder path).
+
+    Returns:
+        A sorted list of paths; empty when the project has no lock, the lock is broken, or no kit file differs
+        (a missing file is not listed: a sync writes it again).
+    """
+    try:
+        data = load(root)
+    except ValueError:
+        return []
+    files = (data or {}).get("files", {})
+    got = {rel: file_hash(root, rel) for rel in files}
+    return sorted(rel for rel, want in files.items() if got[rel] not in (None, want))
+
+
 def verify(root):
     """Return (lines, failed): one FAIL line for each kit file that is missing or differs from the lock.
 
@@ -191,6 +210,7 @@ def self_test():
         (root / RULES).write_text(agents)
         (root / "scripts/a.py").write_text("print(2)\n")
         ok("a changed kit script fails", verify(root)[0][0] == "FAIL  kit file changed in this project: scripts/a.py")
+        ok("changed() lists the changed script", changed(root) == ["scripts/a.py"])
         ok("relock of an unknown file is refused", relock(root, ["scripts/zzz.py"]) == 1)
         ok("relock accepts the file", relock(root, ["scripts/a.py"]) == 0)
         lines, bad = verify(root)

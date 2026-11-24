@@ -9,6 +9,7 @@ Network: none (the baseline is this checkout, a local folder).
 Writes: temporary folders only.
 Credentials: none.
 """
+import hashlib
 import json
 import subprocess
 import sys
@@ -79,6 +80,37 @@ class SyncBaselineCli(unittest.TestCase):
         self.assertEqual(p.returncode, 0, p.stderr)
         self.assertIn("No changes", p.stdout)
         self.assertEqual((self.path / ".check.lock").read_text(), before)
+
+    def tree_hashes(self):
+        """Map each file of the project (not .git) to its hash."""
+        return {str(f.relative_to(self.path)): hashlib.sha256(f.read_bytes()).hexdigest()
+                for f in sorted(self.path.rglob("*")) if f.is_file() and ".git" not in f.relative_to(self.path).parts}
+
+    def test_clean_project_syncs_again(self):
+        """Prove: a project whose kit files match its lock is synced (exit 0)."""
+        self.assertEqual(sync(self.path).returncode, 0)
+        run(["git", "add", "-A"], self.path)
+        run(GIT + ["commit", "-q", "-m", "sync"], self.path)
+        self.assertEqual(sync(self.path).returncode, 0)
+
+    def test_edited_kit_file_stops_the_sync(self):
+        """Prove: one edited kit file stops the sync with exit 2, names the file, and writes nothing."""
+        self.assertEqual(sync(self.path).returncode, 0)
+        (self.path / "scripts/check_lock.py").write_text("# local edit\n")
+        run(["git", "add", "-A"], self.path)
+        run(GIT + ["commit", "-q", "-m", "edit"], self.path)
+        before = self.tree_hashes()
+        p = sync(self.path)
+        self.assertEqual(p.returncode, 2, p.stdout + p.stderr)
+        self.assertIn("scripts/check_lock.py", p.stdout)
+        self.assertIn("PROJECT.md", p.stdout)
+        self.assertEqual(self.tree_hashes(), before)
+
+    def test_project_without_a_lock_is_synced_as_before(self):
+        """Prove: a project with no .check.lock is not stopped (nothing to compare with): the first sync writes the lock."""
+        self.assertFalse((self.path / ".check.lock").exists())
+        self.assertEqual(sync(self.path).returncode, 0)
+        self.assertTrue((self.path / ".check.lock").is_file())
 
     def test_owner_role_replaces_the_owner_word(self):
         """Prove: owner role replaces the owner word."""

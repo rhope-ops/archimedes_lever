@@ -15,10 +15,12 @@ Writes: with --apply, the kit files of the project and its kit lock .check.lock;
 Credentials: none itself; a clone uses the credentials git already has.
 """
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
 import check_blocks  # scripts/check_blocks.py: the placeholder pattern
+import check_lock  # scripts/check_lock.py: the kit lock that a sync checks before it writes
 from sync_merge import changed_matchers, die  # scripts/sync_merge.py: the hook matchers a sync replaces; stop with a message
 
 
@@ -28,6 +30,21 @@ def check_placeholders(root):
         rel = f.relative_to(root)
         if f.is_file() and check_blocks.placeholders([f]):
             die(f"{rel} still has template placeholders; run scripts/bootstrap.sh first")
+
+
+def stop_on_changed_kit_files(root):
+    """Stop (exit 2, nothing written) when a kit file in the project differs from its hash in the kit lock .check.lock.
+
+    Args:
+        root: the project folder.
+    """
+    changed = check_lock.changed(root)
+    if changed:
+        print(f"Sync stopped, nothing written: {len(changed)} kit file(s) in this project differ from the kit lock "
+              f"{check_lock.LOCK}:\n  " + "\n  ".join(changed) + "\nA sync would overwrite them. Move this project's change into a "
+              "PROJECT.md beside the kit skill (or into AGENTS.md \"Project rules\" or .check), or make the change in the kit "
+              "and sync from there. Then run the sync again.")
+        sys.exit(2)
 
 
 def run(sb):
@@ -55,6 +72,7 @@ def run(sb):
         print(f"Kit baseline: {sb.baseline_sha(base)}. A sync writes the kit lock {sb.check_lock.LOCK} (the kit version and a "
               "hash of each kit file); the project does not keep the sync tools.")
         check_placeholders(root)
+        stop_on_changed_kit_files(root)
         new, tier = sb.planned_files(base, root, args)
         changed = sb.show_diff(root, new)
         sb.report_leftovers(root, tier)
