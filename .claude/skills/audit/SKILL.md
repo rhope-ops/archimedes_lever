@@ -38,7 +38,8 @@ When the cause is spread over many files (layers of small additions), stop and p
 - Check lanes: run the full lane 3 times; `scripts/check.sh --record` after the 3rd pass stores each step; then `python3 scripts/bloat_check.py --compare check=<median wall time> --record` sets the wall time to the median of the 3 runs.
 - One time: `python3 scripts/bloat_check.py --compare NAME=SECONDS --record` (NAME as in the table; `check:<step>` for one step). Use the median of 3 runs.
 - Commands with a `cmd`: `python3 scripts/bloat_check.py --time --record`.
-- Commit the change to `.check.state.json`, with the before and after numbers in the commit message.
+- Commit the change to `.check.state.json`, with the before and after numbers, the 3 run times and the machine (`nproc` cores) in the commit message.
+- Record only on a quiet machine: a run while other agents or lanes share the CPU is not a measurement. When a lane gains or loses a step, record its baseline again in the same pull request.
 - A new baseline after a fix, or for a new step, is routine. A slower baseline with no fix (accepting the cost) needs the Maintainer's approval: put it under Suggest, with the numbers.
 
 ### Time a new repeatable process

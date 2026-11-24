@@ -16,3 +16,5 @@ audit-instructions: README.md
 audit-instructions: docs/github/README.md
 audit-instructions: docs/MAINTAINER_RUNBOOK.md
 audit-instructions: docs/check-config-schema.md
+# The kit's own handoff: kit sessions read it, so the session load counts it (fleet audit A10, 2026-11-24); a project has no such file, so there the line does nothing.
+audit-start-read: docs/KIT_HANDOFF.md
