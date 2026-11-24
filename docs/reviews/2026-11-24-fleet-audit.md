@@ -4,6 +4,10 @@ Brief: the coordinator session "Kit · Fleet v2 coordinator 2", for the Maintain
 
 As of: kit main `6a4b727` (then `00a0102` with #158), 33-332.Z main `4f23703`, RADE main `97e7f4b`, 90-161.Z main `a1c6798`, ICF-Source main `dd5ce4bf`.
 
+## Scope of this audit
+
+This is the fleet audit of the audit skill ("Fleet audit"): every fleet repo measured (Steps 1-3 by one read-only agent each) and the clear cuts made. The per-project full audit Steps 4 and 5 did not run: no project got an `audit.last_audit` record or new time baselines, so each project's check-in still says AUDIT DUE. Whether to record these measurements as each project's audit is a question for the Maintainer (Open question 4).
+
 ## Coverage
 
 | Repo | Access | Audited | Steps 1-3 evidence |
@@ -31,15 +35,15 @@ Windows: the whole history of each clone (first commit: kit 2026-11-11, RADE 11-
 | Big files (over 500 KB) | 0 | 1 (the rule-source PDF) | 0 | 1 | 72 (113 MiB; 8 generated) |
 | Remote branches (main included) | 15 | 38 (37 besides main; 30 merged) | 15 | 19 | 14 |
 | T2 total / kit-owned / project-owned | 19,228 -> 19,123 / same / 0 | 14,155 / 13,237 / 918 | 14,686 / 13,237 / 1,449 | 17,986 / 13,237 / 4,749 | 46,882 / 13,237 / 33,645 |
-| Non-merge commits / fix commits | 535 / 126 | 225 / 48 | 511 / 72 | 1,001 / 151 | 2,011 / 333 |
+| Non-merge commits / fix commits (subject regex below) | 535 / 126 | 225 / 48 | 511 / 72 | 1,001 / 151 | 2,011 / 333 |
 | Fix-of-a-fix (share of all commits) | 116 (21.7%) | 45 (20.0%) | 67 (13.1%) | 138 (13.8%) | 283 (14.1%) |
 | Files per kit change: median / mean (n) | 2 / 4.0 (535) | 41 / 35.1 (7) | 12 / 17.8 (16) | 10 / 18.0 (16) | 22 / 25.9 (8) |
-| Defects found per check | CI: 25 of 240 runs failed (next section) | no record (pre-push only) | no record | no record | no record |
+| Defects found per check | CI: 25 of 240 runs failed (next section) | CI not read | CI not read | CI not read | CI not read |
 | Mutant kill rate | not measured (no tool) | not measured | not measured | not measured | **98.4%** (311 of 316 caught; gate only 96.5%), run 2026-11-19 on spec 3.9.0 (now 3.12.1); docs/quality/STATE.md:65 gives other counts |
 | Full lane (one run, shared 4-core box; not comparable) | 64.2 s, CHECK PASS | 104.2 s, CHECK PASS | 254-396 s | 153.9 s, CHECK PASS | 168.7 s |
 | Rule census: enforced / procedure / outcome evidence / no evidence (other) | 12 / 4 / 8 / 5 | 19 / 2 / 8 / 9 (2 model-does) | 21 / 12 / 0 / 3 (7 model-does) | 18 / 9 / 2 / 17 | 18 / 6 / 2 / 13 |
 | Key assumptions: high / medium / low | 2 / 6 / 2 | 4 / 5 / 1 | 4 / 4 / 2 | 4 / 5 / 1 | 3 / 4 / 3 |
-| Project audit due | not due (fleet: due) | due (never audited) | due (529 commits) | due (789 commits) | due (887 commits) |
+| Project audit due | not due; fleet: not due after this audit (`fleet.last_audit` 2026-11-24) | due (never audited) | due (529 commits) | due (789 commits) | due (887 commits) |
 
 Read with care:
 - Fix-of-a-fix: 116 of 126 kit fix commits touch a file another fix touched in the 7 days before; short windows and a few hot files (check.sh, DECISIONS, the handoff) put the measure near its ceiling (A4).
@@ -114,9 +118,9 @@ Which numbers of this audit an agent can move with no better code, and the propo
 | A5 | Duplicate lines | Reword or reflow one copy; the 80-character floor hides short copies | budget 20; kit 56, 33-332.Z 51, RADE 52 | Use same-body functions (the AST scan of this audit) beside the line count; report both |
 | A6 | Rule bullet count | Merge two rules into one long bullet | P1 merged 3 bullets; guide 28 | Count rules by sentence or by enforced check, not by bullet |
 | A7 | Session load tokens | Move text from AGENTS.md to a skill that every task reads anyway | 33-332.Z at 5,473 of 5,500 | Measure what a typical session reads (skill-use counts from P2 (j)), not only the start files |
-| A8 | `fleet.last_audit` and AUDIT DUE | Write the date after a partial audit: the warning goes away for 14 days | this audit first covered 3 of 5 repos; the date was written only after all 5 (the Maintainer's choice, 2026-11-24) | Write the date only when every fleet repo is covered, or store the covered repos with the date |
+| A8 | `fleet.last_audit` and AUDIT DUE | Write the date after a partial audit: the warning goes away for 14 days | this audit first covered 3 of 5 repos; the date was written only after all 5 (the Maintainer's choice "Only when all 5 done", relayed by the coordinator, 2026-11-24) | Write the date only when every fleet repo is covered, or store the covered repos with the date |
 | A9 | Defects per check, mutant kill rate | Measured in CI only (this audit); what the pre-push hook catches has no record, and kills are not measured, so a check that catches all its defects locally reads as 0 | 25 CI failures; 0 for most checks | Smallest instrument: check.sh appends one JSON line per FAIL (step, commit, date) to a file the audit reads; mutation: run `mutmut` on 1 check per audit (adds a dependency: the Maintainer chooses) |
-| A10 | Session load (kit) | Counts the wrong handoff: `bloat_check_rules.py:30` reads `docs/NEXT_PROMPT.md` (a 567 B template in the kit), not `docs/KIT_HANDOFF.md` (6,340 B) that kit sessions read; the kit passes a cap it breaks | counted ~4,657, real ~6,100 tokens (18,630 B counted - 567 B + 6,340 B = 24,403 B / 4), about 600 over the cap of 5,500 | Count the handoff that "Order of authority" names (KIT_HANDOFF.md in the kit); then trim the handoff (lane C: a check change) |
+| A10 | Session load (kit) | Counts the wrong handoff: `bloat_check_rules.py:30` reads `docs/NEXT_PROMPT.md` (a 567 B template in the kit), not `docs/KIT_HANDOFF.md` (6,340 B) that kit sessions read; the kit passes a cap it breaks | counted ~4,657, real ~6,100 tokens (18,630 B counted - 567 B + 6,340 B = 24,403 B / 4), about 600 over the cap of 5,500 | Count the handoff that "Order of authority" names (KIT_HANDOFF.md in the kit); then trim the handoff (lane C: a check change). Why it exists: `START_READ` dates from `6135a05` (2026-11-13); KIT_HANDOFF.md came on 2026-11-18 (`ee1c0af`); `fleet_harvest_parse.py:41` already reads it as the kit's handoff, so the cap missed it by omission, not by a decision (none found in DECISIONS or the changelog) |
 | A11 | Slow-run baselines | A baseline with no machine type and fewer steps than the lane makes WARN fire on every run, so people stop reading it | kit `check` 4.2 s for 14 of 36 steps; ICF 21 step baselines 2-8x low; 33-332.Z has none | Record the machine (cores) with each baseline and the median of 3; re-record when a lane gains a step |
 | A12 | Duplicate lines | Counts generated copies and is hard to reproduce | ICF 319 of 437 are a generated CSS file; 90-161.Z reproduction gave 303, not 253 | Skip files a build makes (from `.check`), and print the file pairs with the number |
 | A13 | Kit text in new projects | Not a metric: `bootstrap.sh:109` deletes only top-level `docs/reviews/20*.md`, so a review subfolder of the kit stays in each new project (found when CI failed on this report's first layout) | 2 kit subfolders today (`2026-11-18-port-notes/`, `2026-11-20-skill-tests/`) | Delete `docs/reviews/20*/` too (lane C: a guard script) |
@@ -132,11 +136,16 @@ A metric that favours real refactors: lines removed per change with tests unchan
 - **Mutant kill rate:** only ICF-Source has a mutation tool; its record is on an old spec. Other repos: a new dependency would be needed.
 - **No timing is a median of 3** (shared CPU); no slow-run finding is made.
 - **RADE measuring agent used the network:** `bloat_check.py --time` runs RADE's full `check.sh`, whose app canary reads github.com (`scripts/check.local.sh:61-68`, the repo's own fixed host). The brief said no network; reported as a deviation. Not reconnaissance (one fixed host, the repo's own check).
+- **Appendix differences:** the kit appendix gives ~6,044 tokens and 6,114 B for KIT_HANDOFF.md at `6a4b727`; the report uses 6,340 B, its size on this branch (this audit's handoff line). The 33-332.Z appendix says "31 of 37" merged branches in one place and 30 in two; 30 is used here.
+- **Fix commits:** counted with the regex in "Method"; a fresh reviewer's other match gave 119 for the kit, not 126. The rate is a weak measure either way (A4).
+- **CI of the 4 projects not read** for defects per check (only the kit's 25 failed runs).
 - **Not measured:** skill use (no session records), cross-host rule copies, Actions minutes, link checks in 3 repos.
 
 ## Method
 
 - T2: `cat scripts/*.py scripts/*.sh | wc -l`; kit-owned = the files in the project's `.check.lock`.
+- Fix commit: non-merge subject matching `\b(fix|fixes|fixed|repair|correct)\b` (case-insensitive); fix-of-a-fix: a fix commit whose files meet another fix commit's files in the 7 days before.
+- Lock: `python3 scripts/check_lock.py --verify` in each project: LOCK PASS in all 4 (69 kit files, 11.0.1).
 - Per repo numbers: a scratch script (`git log origin/main --no-merges --name-only`, `git ls-remote --heads`, `.check.lock`), run on full-history clones.
 - Caps: `python3 scripts/bloat_check.py --brief` and `--rules` in each repo; lock: `python3 scripts/check_lock.py --status`.
 - Dead code: a scratch AST scan (a def whose name occurs once in all tracked files), and the agents' code-reference scans; same-body functions: an AST dump of each function body (docstring dropped), 2+ lines, in 2+ differently named files; unused imports: `ruff check --select F401,F841,F811`.
@@ -148,3 +157,4 @@ A metric that favours real refactors: lines removed per change with tests unchan
 1. New cut proposals 5, 8 and 9 (ICF one-offs -912, 90-161.Z `measure_pdf.py` -58, RADE `Split-Sentence`): approve, keep, or decide at the next project audit? REC: next project audit of each repo (each is AUDIT DUE), because records cite item 5 and item 9 needs an engine release.
 2. Which audit-the-audit proposals (A1-A15) to turn into exact rule, skill or check text? REC: A10 first (the kit passes a cap it breaks by about 600 tokens; the handoff must lose about 2,400 bytes), then A11 and A15.
 3. Dependabot content-step failure: which fix (skip for the Dependabot actor, or a Dependabot secret)?
+4. Record these measurements as each project's audit (`audit.last_audit` in each project's `.check.state.json`, by a PR per project), or leave each project's AUDIT DUE for its own session? REC: leave it; the project audit also needs Steps 4-5 (fixes and baselines on a quiet machine).
