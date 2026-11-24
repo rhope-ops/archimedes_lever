@@ -56,7 +56,18 @@ def installed():
 
 
 def run(root, pkg, have, url, write):
-    """Check (and with write: install) the package files of a project. Returns (lines, failed)."""
+    """Check (and with write: install) the package files of a project.
+
+    Args:
+        root: the project's top folder (a Path).
+        pkg: the package folder that holds the kit scripts (a Path).
+        have: the commit of the installed package, or None.
+        url: the git URL the package was installed from, or None.
+        write: True to write the files and the exclude block (--install), False to compare only (--verify).
+
+    Returns:
+        (lines to print, True when a check failed).
+    """
     commit, files = package_files(root)
     if not files:
         return ["KIT PACKAGE: not used (each kit script in .check.lock is tracked)"], False
@@ -88,10 +99,14 @@ def run(root, pkg, have, url, write):
 
 
 def self_test():
-    """Temporary project and package folders; no network, no pip."""
+    """The self-test, in temporary project and package folders; no network, no pip.
+
+    Returns:
+        The exit code: 0 when every case passes, else 1.
+    """
     fails = []
 
-    def ok(label, good):
+    def ok(label, good):  # print one case and remember a failure
         print(("ok    " if good else "FAIL  ") + label)
         if not good:
             fails.append(label)
@@ -131,7 +146,11 @@ def self_test():
 
 
 def main():
-    """Command line: --install, --verify or --test."""
+    """The command line: --install, --verify or --test.
+
+    Returns:
+        The exit code: 0 on a pass, else 1.
+    """
     ap = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
     mode = ap.add_mutually_exclusive_group(required=True)
     for m in ("--install", "--verify", "--test"):
