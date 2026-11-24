@@ -170,7 +170,7 @@ def ratchet_report(root):
         was = None
     if isinstance(was, int) and base > was:
         rows = [plan.cells(r[1:]) for r in (brules.git(root, "diff", ref, "--", "docs/DECISIONS.md") or "").splitlines() if r.startswith("+|")]
-        if not any(len(c) > 2 and str(base) in c[1] and re.match(r"the Maintainer\b", c[2], re.I) and plan.APPROVAL_QUOTE.search(c[2])
+        if not any(len(c) > 2 and re.search(rf"(?<!\d){base}(?!\d)", c[1]) and re.match(r"the Maintainer:", c[2], re.I) and plan.APPROVAL_QUOTE.search(c[2])
                    and re.search(r"\d{4}-\d\d-\d\d", c[2]) for c in rows):
             problems.append(f"the script lines baseline rose from {was} to {base} with no new docs/DECISIONS.md row that names {base}, By the Maintainer, with the approval quoted and dated")
     return [f"scripts:     {n} lines in scripts/*.py and *.sh (baseline {base})"], problems
