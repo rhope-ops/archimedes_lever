@@ -84,6 +84,12 @@ def python_for_the_linters(cs, ROOT, g, good_py):
     assert 'vendor/v.py' not in everything and 'x/gen.py' not in everything, 'excluded and generated files: %s' % everything
     assert {'x/blk.py', 'x/bad.py'} <= set(everything), 'a block file and a bad file are parsed and sized: %s' % everything
     assert 'x/blk.py' not in lines and 'x/bad.py' in lines, 'a generated block: no line cap for that file: %s' % lines
+    (ROOT / 'vendor/v.sh').write_text('echo $1\n')
+    (ROOT / 'x/gen.sh').write_text('echo $1\n')
+    (ROOT / 'x/ok.sh').write_text('echo $1\n')
+    g('add', '-A')
+    config = config_of(ROOT, SMALL + FULL + 'code-exclude: vendor/**\ncode-generated: x/gen.sh\n')
+    assert cs.shell_files(config).split('\0')[:-1] == ['x/ok.sh'], 'shellcheck gets the covered shell files only: %r' % cs.shell_files(config)
     kept = rules.LINTERS
     for linters in (True, False):   # a file that does not parse: no traceback with `code-c2: full`
         rules.LINTERS = linters
