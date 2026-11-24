@@ -103,7 +103,7 @@ class SyncBaselineCli(unittest.TestCase):
         p = sync(self.path)
         self.assertEqual(p.returncode, 2, p.stdout + p.stderr)
         self.assertIn("scripts/check_lock.py", p.stdout)
-        self.assertIn("PROJECT.md", p.stdout)
+        self.assertIn("scripts/check.local.sh", p.stdout)
         self.assertEqual(self.tree_hashes(), before)
 
     def synced_and_committed(self, *extra):
@@ -160,18 +160,31 @@ class SyncBaselineCli(unittest.TestCase):
         self.assertIn('AGENTS.md "Project rules"', p.stdout)
         self.assertNotIn("PROJECT.md", p.stdout)
 
+    def advice_line(self, out, rel):
+        """The line of the sync output that names this file."""
+        return next(line for line in out.splitlines() if line.strip().startswith(rel))
+
     def test_each_file_gets_its_own_way_forward(self):
-        """Prove: with the kit part of AGENTS.md and scripts/check.sh both edited, the output gives both pieces of advice."""
+        """Prove: an edited kit part of AGENTS.md, kit skill and kit script each get their own way forward."""
         self.synced_and_committed()
         text = (self.path / "AGENTS.md").read_text()
         (self.path / "AGENTS.md").write_text(text.replace("## Defaults\n", "## Defaults\n\n- A local rule.\n", 1))
+        with (self.path / ".claude/skills/deliver/SKILL.md").open("a") as f:
+            f.write("# local\n")
         with (self.path / "scripts/check.sh").open("a") as f:
             f.write("# local\n")
-        self.commit_all("edit two")
+        self.commit_all("edit three")
         p = sync(self.path)
         self.assertEqual(p.returncode, 2, p.stdout + p.stderr)
-        self.assertIn('AGENTS.md "Project rules"', p.stdout)
-        self.assertIn("PROJECT.md", p.stdout)
+        rules = self.advice_line(p.stdout, "AGENTS.md (kit sections)")
+        skill = self.advice_line(p.stdout, ".claude/skills/deliver/SKILL.md")
+        script = self.advice_line(p.stdout, "scripts/check.sh")
+        self.assertIn('AGENTS.md "Project rules"', rules)
+        self.assertNotIn("PROJECT.md", rules)
+        self.assertIn("PROJECT.md", skill)
+        self.assertIn("scripts/check.local.sh", script)
+        self.assertIn(".check", script)
+        self.assertNotIn("PROJECT.md", script)
 
     def test_null_overrides_is_an_unreadable_lock(self):
         """Prove: a lock with "overrides": null is said as unreadable and does not crash the sync."""

@@ -67,11 +67,18 @@ def stop_on_changed_kit_files(root, new, kit_files):
         print(f"{check_lock.LOCK} could not be read: local edits to kit files were not checked.")
         return
     if found:
-        way = {True: "put the project's own rules in AGENTS.md \"Project rules\", or change the text in the kit",
-               False: "move the project's change into a PROJECT.md beside the kit skill, or change the file in the kit"}
+        rules_way = "put the project's own rules in AGENTS.md \"Project rules\", or change the text in the kit"
+        skill_way = "move the project's change into a PROJECT.md beside the kit skill, or change the file in the kit"
+        script_way = "move the project's change into scripts/check.local.sh or .check, or change the file in the kit"
         print(f"Sync stopped, nothing written: {len(found)} kit file(s) in this project would be overwritten:")
         for rel, why in sorted(found.items()):
-            print(f"  {rel} ({why}): {way[rel == check_lock.KIT_PART]}.")
+            if rel == check_lock.KIT_PART:
+                way = rules_way
+            elif rel.startswith(".claude/skills/"):
+                way = skill_way
+            else:
+                way = script_way
+            print(f"  {rel} ({why}): {way}.")
         print("Then run the sync again.")
         sys.exit(2)
 

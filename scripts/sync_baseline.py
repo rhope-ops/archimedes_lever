@@ -28,7 +28,7 @@ apply_tier() keeps the blocks for the project's tier and drops the marker lines.
 
 Before it writes (also in a dry run), it compares the kit files it would write with the project's .check.lock. When one differs from its lock hash, is an
 override, or is not in the lock and differs from the kit's file, it writes nothing, names the files and exits 2, with the way forward
-for each (a PROJECT.md beside the kit skill, AGENTS.md "Project rules", or the kit). With no .check.lock, an unreadable one, or a
+for each (a PROJECT.md beside a kit skill, AGENTS.md "Project rules", scripts/check.local.sh or .check, or the kit). With no .check.lock, an unreadable one, or a
 missing kit file, it does not stop.
 
 What it changes:
