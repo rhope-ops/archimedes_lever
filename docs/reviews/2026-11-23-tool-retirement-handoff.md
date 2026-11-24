@@ -112,10 +112,17 @@ Left in P2: (h) AUD-5 records for bloat_check*.py and the audit skill (docs only
 worker_guard --scan with text S8, (j) skill-use counts: each adds lines, so each rise is asked on its own. (c): no
 change (decision 10A). No cut is planned (timeline.py kept).
 
+**P2 done (2026-11-24 05:46 America/Chicago).** All P2 items are on main (c392385). Merged since 22:32: (h) PR 152
+(AUD-5 records, no lines); (g) PR 154 (shellcheck 0.9.0 as a WARN step, fleet debt list, 18844; its CI fix keeps bash
+and git on the self-test's no-linter PATH, because the runner has shellcheck in /usr/bin); (j) PR 155 (skill use per
+reply in the token log, 18982); (i) PR 156 (worker_guard --scan and text S8, 19228). The Maintainer covered the g, j
+and i rises up to 20000 lines with no further question ("just make it 20k ...", 2026-11-24; DECISIONS row), and gave
+the coordinator one merge OK for g, j and i. Main T2 is 19228 (P2 total +1086 from 18142). Next: P3 (below).
+
 ## Later phases (plan sections)
 
-- P2: the split above, with the skill-use proposals P1-P4 (audit file
-  [2026-11-23-skill-use-audit.md](2026-11-23-skill-use-audit.md)).
+- P2: done (see "P2 done" above). Skill-use proposals P1-P3 are built (j, i); P4, the fleet re-run of the audit, is due
+  14 days after PR 155 (2026-12-08) (audit file [2026-11-23-skill-use-audit.md](2026-11-23-skill-use-audit.md)).
 - P3: pilot in 33-332.Z; trim its handoff by ~50 tokens first.
 - P4-P6 as the plan says. Branch deletes need the Maintainer's OK: `claude/tr-r2a-project-tools` holds a third-party
   name in b765169; merged worker branches.
