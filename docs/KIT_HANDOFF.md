@@ -2,7 +2,7 @@
 
 The kit's own handoff (AGENTS.md "Handoff"). Kit only: first use deletes it in a project, which uses docs/NEXT_PROMPT.md. Keep it at 40 lines or fewer; evidence goes in docs/reviews/. Times are America/Chicago.
 
-Updated: 2026-11-24 09:05 by "Kit · Fleet audit · 2026-11-24 · #158": fleet audit of all 5 repos done, report [reviews/2026-11-24-fleet-audit.md](reviews/2026-11-24-fleet-audit.md) with 5 appendices; #158 merged (T2 19123); 33-332.Z PR 77 (-13) waits for "merge 77"; `fleet.last_audit` 2026-11-24; open: 3 questions in the report. P2 done: [reviews/2026-11-23-tool-retirement-handoff.md](reviews/2026-11-23-tool-retirement-handoff.md)
+Updated: 2026-11-24 08:44 by "Kit · Fleet audit · 2026-11-24 · #158": fleet audit of all 5 repos done, report [reviews/2026-11-24-fleet-audit.md](reviews/2026-11-24-fleet-audit.md) with 5 appendices; #158 merged (T2 19123); 33-332.Z PR 77 (-13) waits for "merge 77"; `fleet.last_audit` 2026-11-24; open: 3 questions in the report. P2 done: [reviews/2026-11-23-tool-retirement-handoff.md](reviews/2026-11-23-tool-retirement-handoff.md)
 
 ## State
 
