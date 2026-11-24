@@ -22,6 +22,7 @@ Credentials: none.
 import base64
 import binascii
 import codecs
+import json
 import re
 import subprocess
 import tempfile
@@ -30,7 +31,7 @@ from pathlib import Path
 import check_content_scan as scan   # scripts/check_content_scan.py: scan_text and the word lists
 import worker_guard as guard   # scripts/worker_guard.py: the block rules (reason)
 
-BUILDERS = re.compile(r"chr\(\s*\d+\s*\)|\\x[0-9A-Fa-f]{2}|\\u[0-9A-Fa-f]{4}|\\[0-7]{3}|&#\d+;|"
+BUILDERS = re.compile(r"chr\(\s*(?:0x[0-9A-Fa-f]+|\d+)\s*\)|\\x[0-9A-Fa-f]{2}|\\u[0-9A-Fa-f]{4}|\\[0-7]{3}|&#\d+;|"
                       r"b64decode|fromhex|unhexlify|rot_?13|\.join\(")
 LITERAL = re.compile(r"(['\"])((?:\\.|(?!\1).)*)\1")
 SHELL_SUFFIXES = ('.sh', '.bash')
@@ -48,7 +49,7 @@ def values(line):
         A list of candidate strings.
     """
     lits = [m.group(2) for m in LITERAL.finditer(line)]
-    out = [''.join(chr(int(n)) for n in re.findall(r"chr\(\s*(\d+)\s*\)", line) if int(n) < 0x110000)]
+    out = [''.join(chr(int(n, 0)) for n in re.findall(r"chr\(\s*(0x[0-9A-Fa-f]+|\d+)\s*\)", line) if int(n, 0) < 0x110000)]
     out.append(re.sub(r"&#(\d+);", lambda m: chr(int(m.group(1))) if int(m.group(1)) < 0x110000 else '', line))
     for lit in lits:
         try:
@@ -94,6 +95,20 @@ def wrapped(path, line):
     return bool(guard.reason(line.strip())) if line.strip() and not line.lstrip().startswith('#') else False
 
 
+def listed(line):
+    """True when a line of code holds a git command, as a list of literals (for example a subprocess call), that the
+    worker guard blocks.
+
+    Args:
+        line: one line of code.
+
+    Returns:
+        True or False.
+    """
+    lits = [m.group(2) for m in LITERAL.finditer(line)]
+    return 'git' in lits and bool(guard.reason(' '.join(lits)))
+
+
 def lines_of(target):
     """Yield (path, line number, line, is shell, is code) for a folder (every line of every text file, not the
     worktrees of .claude/worktrees) or a git range (added lines).
@@ -103,27 +118,39 @@ def lines_of(target):
     """
     root = Path(target)
     if root.is_dir():
-        for p in sorted(x for x in root.rglob('*') if x.is_file() and '.git' not in x.parts and 'worktrees' not in x.parts):
+        for p in sorted(x for x in root.rglob('*') if x.is_file() and '.git' not in x.parts and '.claude/worktrees/' not in x.as_posix()):
             try:
-                text = p.read_text(encoding='utf-8')
-            except (UnicodeDecodeError, OSError):
+                text = p.read_text(encoding='utf-8', errors='replace')
+            except OSError:
                 continue
             shell = p.suffix in SHELL_SUFFIXES or text.startswith('#!')
             for no, line in enumerate(text.split('\n'), 1):
                 yield str(p), no, line, shell, shell or p.suffix in CODE_SUFFIXES
         return
-    diff = subprocess.run(['git', 'diff', '-U0', '--no-color', target], capture_output=True, text=True, check=True).stdout
-    path, no, shell = None, 0, False
-    for line in diff.split('\n'):
-        if line.startswith('+++ '):
-            path = line[6:] if line.startswith('+++ b/') else None
-            shell = bool(path) and (path.endswith(SHELL_SUFFIXES) or Path(path).is_file() and Path(path).read_text(
-                encoding='utf-8', errors='replace').startswith('#!'))
-        elif line.startswith('@@'):
-            no = int(re.search(r"\+(\d+)", line).group(1))
-        elif line.startswith('+') and path:
-            yield path, no, line[1:], shell, shell or path.endswith(CODE_SUFFIXES)
-            no += 1
+    head = re.split(r"\.\.\.?", target)[-1] or 'HEAD'
+    names = git(['diff', '--name-only', '-z', '--diff-filter=d', target]).split('\0')
+    for path in filter(None, names):   # one diff per file: no header parsing, any file name
+        shell = path.endswith(SHELL_SUFFIXES) or git(['show', f'{head}:{path}'], check=False).startswith('#!')
+        no, body = 0, False
+        for line in git(['diff', '-U0', '--no-color', target, '--', path]).split('\n'):
+            if line.startswith('@@'):
+                no, body = int(re.search(r"\+(\d+)", line).group(1)), True
+            elif body and line.startswith('+'):
+                yield path, no, line[1:], shell, shell or path.endswith(CODE_SUFFIXES)
+                no += 1
+
+
+def git(args, check=True):
+    """The output of one git command as text (bytes that are not UTF-8 are replaced).
+
+    Args:
+        args: the git arguments.
+        check: True: a failing command raises CalledProcessError.
+
+    Returns:
+        The standard output.
+    """
+    return subprocess.run(['git', *args], capture_output=True, check=check).stdout.decode('utf-8', 'replace')
 
 
 def scan_targets(targets, deny=None, terms=None):
@@ -142,7 +169,7 @@ def scan_targets(targets, deny=None, terms=None):
     found = []
     for target in targets:
         for path, no, line, shell, code in lines_of(target):
-            if shell and wrapped(path, line):
+            if shell and wrapped(path, line) or code and listed(line):
                 found.append((path, no, 'wrapped'))
             elif code and rebuilt(line, deny, terms):
                 found.append((path, no, 'rebuilt'))
@@ -156,9 +183,13 @@ def main(targets):
         targets: folders or git ranges.
 
     Returns:
-        The exit code: 0 no finding, 1 a finding (a MAJOR finding for the review: the delegate skill, S8).
+        The exit code: 0 no finding, 1 a finding (a MAJOR finding for the review: the delegate skill, S8), 2 an error.
     """
-    found = scan_targets(targets)
+    try:
+        found = scan_targets(targets)
+    except (subprocess.CalledProcessError, OSError) as err:
+        print(f'GUARD SCAN ERROR: {err}')
+        return 2
     for path, no, kind in found:
         print(f'{kind:8}  {path}:{no}')
     print(f'GUARD SCAN {"FAIL" if found else "PASS"}: {len(found)} finding(s) in {len(targets)} target(s)')
@@ -166,26 +197,37 @@ def main(targets):
 
 
 def selftest():
-    """Prove the scan on sample files in a temporary folder (an invented blocked word, never a real one).
+    """Prove the scan on the sample files of scripts/worker_guard_scan_samples.json (in a temporary folder), and the
+    range mode on a temporary git repo (an added line that starts with "++", a file name with a space, a byte that is
+    not UTF-8). The blocked word is invented.
 
     Returns:
         A list of the failed cases (empty when all pass).
     """
-    word = 'Zorblatt'
-    cases = {'a.py': ('x = "a" + chr(64) + "b"\n', 'rebuilt'),
-             'b.py': ('x = "".join(["Zor", "blatt"])\n', 'rebuilt'),
-             'c.py': ('x = base64.b64decode("%s")\n' % base64.b64encode(word.encode()).decode(), 'rebuilt'),
-             'd.py': ('x = "\\x5a\\x6f\\x72\\x62\\x6c\\x61\\x74\\x74"\n', 'rebuilt'),
-             'e.sh': ('#!/bin/sh\ngit push --force origin claude/x\n', 'wrapped'),
-             'f.py': ('x = chr(10).join(["a", "b"])\n', None),
-             'g.sh': ('#!/bin/sh\n# git push --force is not allowed\ngit status\n', None),
-             'h.md': ('Never run git push --force, and never build chr(64) at run time.\n', None)}
-    bad = []
+    data = json.loads((Path(__file__).parent / 'worker_guard_scan_samples.json').read_text(encoding='utf-8'))
+    word, cases, bad = data['word'], data['samples'], []
     with tempfile.TemporaryDirectory() as tmp:
         for name, (text, _) in cases.items():
             (Path(tmp) / name).write_text(text)
         kinds = {Path(p).name: k for p, _, k in scan_targets([tmp], deny=[word], terms=[])}
-    for name, (_, want) in cases.items():
-        if kinds.get(name) != want:
-            bad.append(f'{name}: want {want}, got {kinds.get(name)}')
+        bad += [f'{n}: want {w}, got {kinds.get(n)}' for n, (_, w) in cases.items() if kinds.get(n) != w]
+        repo = Path(tmp) / 'repo'
+        run = lambda *a: subprocess.run(['git', '-C', str(repo), '-c', 'user.name=t', '-c', 'user.email=t@t.invalid', *a],
+                                        capture_output=True, check=True)
+        repo.mkdir()
+        run('init', '-q')
+        (repo / 's p.py').write_text('x = 1\n')
+        run('add', '-A')
+        run('commit', '-qm', 'base')
+        (repo / 's p.py').write_bytes(data['range'].encode('latin-1'))   # a byte that is not UTF-8 (0xff)
+        run('commit', '-qam', 'change')
+        old = Path.cwd()
+        try:
+            import os
+            os.chdir(repo)
+            found = scan_targets(['HEAD~1...HEAD'], deny=[word], terms=[])
+        finally:
+            os.chdir(old)
+        if found != [('s p.py', 4, 'rebuilt')]:
+            bad.append(f'range mode: want [s p.py:4 rebuilt], got {found}')
     return bad
