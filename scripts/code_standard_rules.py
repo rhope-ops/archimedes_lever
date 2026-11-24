@@ -32,7 +32,7 @@ SAFETY_LABELS = ('Network:', 'Writes:', 'Credentials:')   # C1 safety: what a re
 # The opt-in rules: the debt kind of each and its level in a config (0 = off). Only these can be adopted later.
 OPT_IN = {'docs': lambda c: int(c.get('c2') == 'full'),
           'safety': lambda c: 2 if c.get('c1_safety') == settings.STRICT else int(bool(c.get('c1_safety')))}
-PREVENTS = re.compile(r'^[ \t]*Prevents:[ \t]*\S', re.M)   # C1 Prevents: the header line that names the defect a check stops
+PREVENTS = re.compile(r'^[ \t]*Prevents:[ \t]*(?!(?:unclear|unknown|tbd|todo|none|n/?a|see|tba)\b|\?)\S+(?:[ \t]+\S+){2}', re.M | re.I)   # C1: the defect a check stops, 3+ words, no placeholder
 ENTRY_FILES = ('scripts/check.sh', '.claude/settings.json')   # plus scripts/git-hooks/* and .github/workflows/*: what runs a check
 MIN_DUP_LINES = 4          # a body this short (a one-line wrapper) is not counted as a duplicate
 

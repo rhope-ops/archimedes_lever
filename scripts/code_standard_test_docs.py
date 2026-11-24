@@ -154,9 +154,10 @@ def self_test_warns(cs, root, g, config):
     assert not [n for n in new if 'C4' in n], 'the file size never fails'
     assert not [w for w in cs.warn_lines(now, config['caps']) if 'Prevents' in w], 'the kit has no Prevents warning'
     set_levels(cs, ('file_size', 'prevents'))
-    (root / 'scripts/chk.py').write_text('"""Sample check script.\n\nPrevents: a check that runs with no stated defect to stop.\n"""\n')
+    for text in ('unclear (see report)', 'TBD', 'see the report', 'two words', 'a check that runs with no stated defect to stop.'):
+        (root / 'scripts/chk.py').write_text('"""Sample check script.\n\nPrevents: %s\n"""\n' % text)
+        assert bool(cs.measure(config)['violations']['prevents']) == (not text.startswith('a check')), 'only a defect clears it: %s' % text
     g('add', '-A')
-    assert not cs.measure(config)['violations']['prevents'], 'the Prevents: line clears it'
     cs.save(now)
     assert not {'file_size', 'prevents'} & set(settings.load_state(root)['code_standard']['debt']), 'never in the baseline'
     set_levels(cs, saved)

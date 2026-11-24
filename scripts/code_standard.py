@@ -16,8 +16,7 @@ What it measures (the rule numbers are those of docs/code-standard.md):
   C3 length      each function is at most `max_function_lines` lines long
   C4 file size   WARN only (the Maintainer, 2026-11-23): a source file over `max_file_lines` lines (a `code-paste:` file:
                  `max_file_lines_paste`) prints a WARN line with its size; it is not debt and not in the baseline
-  C1 prevents    WARN only until plan P2: a check entry point (a script that scripts/check.sh or a hook names, not a
-                 *_test file) has the header line `Prevents: <defect>`
+  C1 prevents    FAIL in the kit, WARN in a project (AUD-1): a check entry point (check.sh or a hook runs it) has `Prevents: <defect>`
   C5 duplicate   no two functions in hand-written files have the same body (a copy must be generated, with a banner)
   C6 generated   each generated file says GENERATED near its top and names its source
   C10 parse      each Python and PowerShell file parses
