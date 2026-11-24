@@ -1,4 +1,4 @@
-# Fleet audit, 2026-11-24 (5 of 5 repos; ICF-Source steps 1-3 pending)
+# Fleet audit, 2026-11-24 (5 of 5 repos)
 
 Brief: the coordinator session "Kit · Fleet v2 coordinator 2", for the Maintainer's choice "Fleet audit first" and "Also let it fix" (2026-11-24 ~05:55 America/Chicago). Procedure: `.claude/skills/audit/SKILL.md`, "Fleet audit" and "Rules for the auditor". Counts only; no personal data. Started 2026-11-24 07:32, first measures 08:06 America/Chicago.
 
@@ -12,34 +12,39 @@ As of: kit main `6a4b727` (then `00a0102` with #158), 33-332.Z main `4f23703`, R
 | rhope-ops/33-332.Z | push (attached) | yes | [2026-11-24-fleet-audit-33-332.md](2026-11-24-fleet-audit-33-332.md) |
 | rhope-ops/RADE | push (attached on the Maintainer's request, 2026-11-24); first read from a public read-only clone | yes | [2026-11-24-fleet-audit-rade.md](2026-11-24-fleet-audit-rade.md) |
 | rhope-ops/90-161.Z | push (attached on the Maintainer's request, 2026-11-24) | yes | [2026-11-24-fleet-audit-90-161.md](2026-11-24-fleet-audit-90-161.md) |
-| rhope-ops/ICF-Source | push (attached on the Maintainer's request, 2026-11-24) | yes | pending |
+| rhope-ops/ICF-Source | push (attached on the Maintainer's request, 2026-11-24) | yes | [2026-11-24-fleet-audit-icf.md](2026-11-24-fleet-audit-icf.md) |
 
 Access history: the first `add_repo` calls for RADE, 90-161.Z and ICF-Source were denied by the session's auto-mode classifier; the Maintainer then asked in the session chat to attach all 3 with push access. The coordinator agreed that this session owns measurement and fix PRs in all 5 repos. Each appendix file is the output of one read-only Sonnet measuring agent (audit skill Steps 1-3); its numbers are single runs on a shared 4-core container (see "Gaps").
 
 ## Per repo
 
-Commands (scratch scripts, not in any repo; each is listed in "Method" below). Windows: kit history on this clone starts 2026-11-11 (13 days), RADE 2026-11-14 (10 days), 33-332.Z 2026-11-20 (4 days). So "last 30 days" is the whole history of each repo.
+Windows: the whole history of each clone (first commit: kit 2026-11-11, RADE 11-14, 33-332.Z 11-20, 90-161.Z 11-10, ICF-Source 11-04), so "last 30 days" is the whole history. Method and commands: "Method" below.
 
-| Measure | kit | 33-332.Z | RADE |
-|---|---|---|---|
-| Kit version / lock | 11.0.1 (`KIT_VERSION`; release commit `9e3f6fa`); no lock | 11.0.1 (`9e3f6fa`), 69 locked files | 11.0.1 (`9e3f6fa`), 69 locked files |
-| Kit lag (kit non-merge commits after the lock commit) | 134 not released yet (P1, P2 on main after 11.0.1) | 0 releases, 134 commits (lock of 2026-11-23 = latest release 11.0.1) | 0 releases, 134 commits (same) |
-| AGENTS.md lines (cap 200) | 73 | 78 | 82 |
-| Session load, tokens (cap 5,500) | ~4,657 | ~5,473 (warning: 27 under the cap) | ~5,413 (warning) |
-| Rule bullets (guide 28) / Project rules | 28 / 1 | 31 / 9 (WARN) | 31 / 12 (WARN) |
-| Duplicate lines, 80+ chars, 2+ files (budget 20) | 56 (over) | 51 (over) | 52 (over) |
-| Big files (over 500 KB) | 0 | 1 | 0 |
-| Remote branches (main included) | 15 | 37 (36 at 07:40: one new branch in between) | 15 |
-| T2 script lines: total / kit-owned / project-owned | 19,228 / 19,228 / 0 | 14,155 / 13,237 / 918 | 14,686 / 13,237 / 1,449 |
-| Non-merge commits in window | 535 | 225 | 511 |
-| Fix commits (subject has fix, fixes, fixed, repair or correct) | 126 | 48 | 72 |
-| Fix-of-a-fix (a fix commit that touches a file a fix commit touched in the 7 days before) | 116 (21.7% of commits) | 45 (20.0%) | 67 (13.1%) |
-| Files changed per kit change: median / mean | 2 / 4.0 (each kit commit) | 41 / 35.1 (7 commits that touch `.check.lock`) | 12 / 17.8 (16 commits that touch `.check.lock`) |
-| Defects found per check (CI) | 25 failed of 240 `checks` runs, 2026-11-13 to 11-24: rule caps and pointers 17, CI content step 6 (setup error: Dependabot PRs get no denylist secret), cli_tests 1, check.sh self-test 1; every other check 0 (section "Defects per check") | not measured (the pre-push hook catches locally; no record) | not measured |
-| Mutant kill rate | not measured (no mutation tool; seeded defects in W-A and W-B stand in) | not measured | not measured |
-| AUDIT DUE (project audit) | not due; fleet: due (no `fleet.last_audit`) | due (never audited) | due (529 commits since `67f7681`) |
+| Measure | kit | 33-332.Z | RADE | 90-161.Z | ICF-Source |
+|---|---|---|---|---|---|
+| Kit version / lock | 11.0.1 (`KIT_VERSION`); no lock | 11.0.1 (`9e3f6fa`), 69 files, LOCK PASS | 11.0.1 (`9e3f6fa`), 69 files | 11.0.1 (`9e3f6fa`), 69 files, LOCK PASS | 11.0.1 (`efb9bf1`), 69 files, LOCK PASS |
+| Kit lag | 134 commits on main not released (P1, P2) | 0 releases; 134 kit commits | 0 releases; 134 | 0 releases; 134 | 0 releases; 132 |
+| AGENTS.md lines (cap 200) | 73 | 78 | 82 | 86 | 77 |
+| Session load, tokens (cap 5,500) | ~4,657 counted; **~5,525 real** (A10) | ~5,473 | ~5,413 | ~5,381 | ~5,143 |
+| Rule bullets (guide 28) / Project rules | 28 / 1 | 31 / 9 | 31 / 12 | 31 / 15 | 31 / 8 |
+| Duplicate lines (budget 20) | 56 -> 51 (#158) | 51 | 52 | 253 | 437 (319 from one generated CSS file) |
+| Big files (over 500 KB) | 0 | 1 (the rule-source PDF) | 0 | 1 | 72 (113 MiB; 8 generated) |
+| Remote branches (main included) | 15 | 37 (30 merged) | 15 | 19 | 14 |
+| T2 total / kit-owned / project-owned | 19,228 -> 19,123 / same / 0 | 14,155 / 13,237 / 918 | 14,686 / 13,237 / 1,449 | 17,986 / 13,237 / 4,749 | 46,882 / 13,237 / 33,645 |
+| Non-merge commits / fix commits | 535 / 126 | 225 / 48 | 511 / 72 | 1,001 / 151 | 2,011 / 333 |
+| Fix-of-a-fix (share of all commits) | 116 (21.7%) | 45 (20.0%) | 67 (13.1%) | 138 (13.8%) | 283 (14.1%) |
+| Files per kit change: median / mean (n) | 2 / 4.0 (535) | 41 / 35.1 (7) | 12 / 17.8 (16) | 10 / 18.0 (16) | 22 / 25.9 (8) |
+| Defects found per check | CI: 25 of 240 runs failed (next section) | no record (pre-push only) | no record | no record | no record |
+| Mutant kill rate | not measured (no tool) | not measured | not measured | not measured | **98.4%** (311 of 316 caught; gate only 96.5%), run 2026-11-19 on spec 3.9.0 (now 3.12.1); docs/quality/STATE.md:65 gives other counts |
+| Full lane (one run, shared 4-core box; not comparable) | 64.2 s, CHECK PASS | 104.2 s, CHECK PASS | 254-396 s | 153.9 s, CHECK PASS | 168.7 s |
+| Rule census: enforced / procedure / outcome evidence / no evidence (other) | 12 / 4 / 8 / 5 | 19 / 2 / 8 / 9 (2 model-does) | 21 / 12 / 0 / 3 (7 model-does) | 18 / 9 / 2 / 17 | 18 / 6 / 2 / 13 |
+| Key assumptions: high / medium / low | 2 / 6 / 2 | 4 / 5 / 1 | 4 / 4 / 2 | 4 / 5 / 1 | 6 / 0 / 4 |
+| Project audit due | not due (fleet: due) | due (never audited) | due (529 commits) | due (789 commits) | due (887 commits) |
 
-Read the fix-of-a-fix row with care: 116 of 126 kit fix commits touch a file that another fix touched in the 7 days before. With a 13-day window and a few hot files (check.sh, DECISIONS, the handoff), the measure is near its ceiling and says little about a commit that repairs a commit (Audit-the-audit, item A4).
+Read with care:
+- Fix-of-a-fix: 116 of 126 kit fix commits touch a file another fix touched in the 7 days before; short windows and a few hot files (check.sh, DECISIONS, the handoff) put the measure near its ceiling (A4).
+- Times: 5 agents shared 4 cores; RADE's 3 runs spread 254-396 s. No time here is a median of 3, so no slow-run finding is made from them (A11).
+- Rule census classes are each agent's reading; "model does it without the rule" cannot be proven with no rule-test run on record (A14).
 
 ## Defects per check
 
@@ -57,34 +62,40 @@ Read with care: the pre-push hook runs the fast lane on each push, so most defec
 
 ## T2 cuts
 
-### Made (fix PR)
+### Made (fix PRs)
 
-| PR | What | Where | Lines | Proof |
+| PR | What | Lines | Proof | State |
 |---|---|---|---|---|
-| [#158](https://github.com/rhope-ops/archimedes_lever/pull/158) | 4 word-for-word copies of the CLI test helpers (`KIT`, `GIT`, `run`, `py`, `new_repo`, `sync`) import the canonical copy in `sync_baseline_cli_test.py`; unused names removed (ruff F401) | `scripts/{bootstrap,check_lock,drift,sync_merge}_cli_test.py` | **-105** (19,228 -> 19,123) | 48 CLI tests OK before and after; full lane `CHECK PASS` 33 passed, 3 skipped on `e32dd28`; lane C (tests that check.sh runs); waits for the Maintainer's "merge 158" |
+| [archimedes_lever #158](https://github.com/rhope-ops/archimedes_lever/pull/158) | 4 word-for-word copies of the CLI test helpers import the canonical copy in `sync_baseline_cli_test.py`; unused names removed (ruff F401) | **-105** (kit 19,228 -> 19,123) | 48 CLI tests OK before and after; full lane CHECK PASS on `e32dd28`; Opus review MAJOR 0; CI green | merged on the Maintainer's "merge 158" (`00a0102`) |
+| [33-332.Z #77](https://github.com/rhope-ops/33-332.Z/pull/77) | `site_page.py` imports `contrast()` from the kit's `fulcrum_palette.py` (kit-locked there) in place of a word-for-word copy | **-13** (33-332.Z 14,155 -> 14,142) | site page tests PASS on branch and main; full lane CHECK PASS on `487d3ee`; Opus review MAJOR 0 (3 MINOR: the import relies on `build_site_local.py` putting `scripts/` on the path; a kit rename would fail loudly; the fast lane does not rerun the page test when `fulcrum_palette.py` changes) | waits for "merge 77" |
 
-Audit skill exception (d) (exact duplicates). Kit-only files: neither 33-332.Z nor RADE has them.
+Both are audit skill exception (d) (exact duplicates). Fleet T2: -118 lines.
 
 ### What is left: measured, no clear cut remains
 
-- Same-body functions in two differently named files: at 5+ lines, across kit, 33-332.Z and RADE (after #158): **0** (all 40 groups are the synced kit copies). At 2+ lines, kit only: the 4 helper groups of #158 and 2 more pairs, neither a clear cut: `ok` (5 lines, `check_lock.py:208`, `check_blocks.py:93`) is a closure over each self-test's own list (merging it is a refactor, not exception (d)); `is_kit` (3 lines, `bloat_check_files.py:55`, `code_standard_rules.py:126`): projects get `code_standard_rules.py` but not `bloat_check_files.py`, so one cannot import the other.
-- Dead functions: none found by a name scan (a `def` whose name occurs once in all tracked files of the kit; it misses a common name that occurs in docs or comments). Every hit is a unittest test or an `HTMLParser` callback, which run by name.
-- Unused imports and variables (ruff F401, F841, F811): kit 5, 33-332.Z 0, RADE 0 (project-owned files). They cut 0 to 1 line each: `scripts/timeline.py:27` (`json`, -1), `scripts/bloat_check.py:100`, `scripts/check_content.py:110`, `scripts/check_settings_test.py:24`, `scripts/token_log_test_report.py:333`. Chesterton check not done for the 2 imports of a module (they can be re-exports): next audit, or one small PR when the Maintainer wants it.
+- Same-body functions (2+ lines, AST) in two differently named files, after #158 and #77: kit 2 pairs, 90-161.Z 2 pairs (8 lines), ICF-Source 16 small groups (137 lines, mostly 3-line `read` helpers), RADE 0, 33-332.Z 0. None is a clear cut: `ok` (kit `check_lock.py:208`, `check_blocks.py:93`) is a closure over each self-test's own list; `is_kit` sits in a project-synced file and a kit-only file; the ICF groups save about 1 line each after the import line.
+- Dead code (code references only): kit 0; 33-332.Z 0 (4 Python files, 285 PowerShell functions); RADE 1 PowerShell function (`Split-Sentence`, `engine/ps/07-checks.ps1:205`; its removal needs an engine release); 90-161.Z 0 with a code caller missing only for `measure_pdf.py` (a person may run it by hand); ICF-Source 11 of 183 own files have no code reference, none dead (hand-run tools named in docs, on-demand tests, frozen one-offs).
+- Unused imports and variables (ruff F401, F841, F811): kit 5 (0 to 1 line each), project-owned code in 33-332.Z and RADE 0.
 
 ### Ranked list (proposals; each needs the Maintainer)
 
-Ranked by lines that leave the fleet. "Decided" = a dated row in docs/DECISIONS.md or the plan already chose; this audit does not re-propose it.
+Ranked by lines that leave the fleet. "Decided" = a dated decision already chose; this audit does not re-propose it.
 
 | # | Cut | Lines | Who uses it | Standard tool | State |
 |---|---|---|---|---|---|
-| 1 | Kit scripts leave each project tree (a package, plan P3) | -13,237 in 33-332.Z, -13,237 in RADE (kit-owned lines); 90-161.Z and ICF-Source not measured; kit T2 unchanged | every project (check.sh, hooks) | pip/pipx package (plan decision 3) | planned: P3, pilot 33-332.Z |
-| 2 | Content check family -> gitleaks with custom rules | up to -2,787 (kit, with tests) | all repos; the PreToolUse hook | gitleaks: 10 of 11 checks with custom rules; not `unscanned`, commit metadata, `.check` semantics, the hook (W-B) | decided keep (plan decision 9 A, "Accept all RECs", 2026-11-23 17:09); repairs in P2 (b) |
-| 3 | Token log family | -1,566 (kit only; in no project lock) | the cloud setup script, Stop hook; P2 (j) skill-use counts | Claude Code OpenTelemetry (needs a collector; no web searches) (W-C) | decided keep (plan decision 5) |
-| 4 | Code standard: Python checks to ruff + pylint | 0 left: P2 (a) moved parse, line and size; the fallback without linters stays | all repos | ruff, pylint (W-A) | done in P2 (a) (DECISIONS row of 2026-11-23) |
-| 5 | Instructions check -> Vale | -863 (with tests) | kit, 2 repos with `audit-instructions:` | Vale: 8 of 9 seeded, 54 false positives on real steps (W-B) | decided keep (plan decision 10 A, same answer) |
-| 6 | timeline.py, fulcrum_palette.py, build_site*.py | -413, -313, -712 (file lines at `6a4b727`; P2 measured cuts of 475, 314 and 481 with tests and callers) | timeline: real use; build_site: RADE and 33-332.Z | none | timeline.py: decided keep ("Keep it, no retirement", 2026-11-23); fulcrum_palette.py, build_site*.py: measured in P2, no free cut, not decided |
+| 1 | Kit scripts leave each project tree (a package, plan P3) | -13,237 in each of 4 projects (-52,948 fleet); kit T2 unchanged | every project (check.sh, hooks) | pip/pipx package (plan decision 3) | planned: P3, pilot 33-332.Z |
+| 2 | Content check family -> gitleaks with custom rules | up to -2,787 (kit, with tests) | all repos; the PreToolUse hook | gitleaks: 10 of 11 checks with custom rules (W-B) | decided keep (plan decision 9 A, "Accept all RECs", 2026-11-23 17:09) |
+| 3 | ICF-Source mutation family | -3,432 | ICF quality gates; kill rate 98.4% | mutmut (Python code only, not question content) | decided keep (ICF audit 2026-11-17, per its appendix) |
+| 4 | Token log family | -1,566 (kit only) | Stop hook; P2 (j) skill-use counts | Claude Code OpenTelemetry (W-C) | decided keep (plan decision 5) |
+| 5 | ICF-Source one-off scripts with no code caller: `apply_b3_fresh_withdrawal_2026_11_11.py` 222, `merge_split_unit.py` 220, `quality_merge_defects.py` 190, `quality_split_agreement.py` 161, `quality_golden_reserve.py` 119 | -912 | none by code; frozen records cite the first (`docs/quality/defects.json`) | none | **new proposal**: archive or delete; medium risk (records cite them; content records rule) |
+| 6 | Instructions check -> Vale | -863 (with tests) | kit and 2 repos with `audit-instructions:` (RADE and 33-332.Z read 0 files: A15) | Vale (W-B) | decided keep (plan decision 10 A) |
+| 7 | timeline.py, fulcrum_palette.py, build_site*.py | -413, -313, -712 | timeline: real use; build_site: RADE, 33-332.Z; fulcrum_palette: now also 33-332.Z `site_page.py` (#77) | none | timeline.py: decided keep; the other two measured in P2, not decided |
+| 8 | 90-161.Z `measure_pdf.py` | -58 | no code caller; a comment at `Publication.Word.ps1:258`; imports `pdfplumber`, which no requirements file lists | none | **new proposal**; medium risk (hand use) |
+| 9 | RADE `Split-Sentence` | about -20 (PowerShell, not in T2) | no caller | none | **new proposal**; needs an engine release |
 
-Conclusion: every large family has a dated keep or a plan, except fulcrum_palette.py and build_site*.py (measured, not decided). Without a reversal of a decision, the only way down for kit T2 is the free duplicates, and after #158 no clear one remains. Item 1 is the largest lever by far for the fleet, and it lowers project T2, not kit T2.
+Weight outside T2 (proposals): 90-161.Z keeps a 708 KB sample of the retired T25 task and a 1.43 MB round file twice (`.ps1` and `.txt`); ICF-Source: 319 of its 437 duplicate lines are the generated `site/dist/styles.css` against its source partials (an `audit-duplicate-ignore:` line in `.check` is a guard change).
+
+Conclusion: every large family has a dated keep or a plan. The free duplicates are taken (-118). What is left needs a decision: items 5, 8 and 9 (-990 lines with RADE's function), or a reversal of a keep. Item 1 is the largest lever by far, and it lowers project T2, not kit T2.
 
 ## docs/tools.md lines
 
@@ -103,30 +114,37 @@ Which numbers of this audit an agent can move with no better code, and the propo
 | A5 | Duplicate lines | Reword or reflow one copy; the 80-character floor hides short copies | budget 20; kit 56, 33-332.Z 51, RADE 52 | Use same-body functions (the AST scan of this audit) beside the line count; report both |
 | A6 | Rule bullet count | Merge two rules into one long bullet | P1 merged 3 bullets; guide 28 | Count rules by sentence or by enforced check, not by bullet |
 | A7 | Session load tokens | Move text from AGENTS.md to a skill that every task reads anyway | 33-332.Z at 5,473 of 5,500 | Measure what a typical session reads (skill-use counts from P2 (j)), not only the start files |
-| A8 | `fleet.last_audit` and AUDIT DUE | Write the date after a partial audit: the warning goes away for 14 days | this audit: 3 of 5 repos | Write the date only when every fleet repo is covered, or store the covered repos with the date |
+| A8 | `fleet.last_audit` and AUDIT DUE | Write the date after a partial audit: the warning goes away for 14 days | this audit first covered 3 of 5 repos; the date was written only after all 5 (the Maintainer's choice, 2026-11-24) | Write the date only when every fleet repo is covered, or store the covered repos with the date |
 | A9 | Defects per check, mutant kill rate | Measured in CI only (this audit); what the pre-push hook catches has no record, and kills are not measured, so a check that catches all its defects locally reads as 0 | 25 CI failures; 0 for most checks | Smallest instrument: check.sh appends one JSON line per FAIL (step, commit, date) to a file the audit reads; mutation: run `mutmut` on 1 check per audit (adds a dependency: the Maintainer chooses) |
+| A10 | Session load (kit) | Counts the wrong handoff: `bloat_check_rules.py:30` reads `docs/NEXT_PROMPT.md` (a 567 B template in the kit), not `docs/KIT_HANDOFF.md` (6,317 B) that kit sessions read; the kit passes a cap it breaks | counted ~4,657, real ~5,525 tokens (cap 5,500) | Count the handoff that "Order of authority" names (KIT_HANDOFF.md in the kit); then trim the handoff (lane C: a check change) |
+| A11 | Slow-run baselines | A baseline with no machine type and fewer steps than the lane makes WARN fire on every run, so people stop reading it | kit `check` 4.2 s for 14 of 36 steps; ICF 21 step baselines 2-8x low; 33-332.Z has none | Record the machine (cores) with each baseline and the median of 3; re-record when a lane gains a step |
+| A12 | Duplicate lines | Counts generated copies and is hard to reproduce | ICF 319 of 437 are a generated CSS file; 90-161.Z reproduction gave 303, not 253 | Skip files a build makes (from `.check`), and print the file pairs with the number |
+| A13 | Kit text in new projects | Not a metric: `bootstrap.sh:109` deletes only top-level `docs/reviews/20*.md`, so a review subfolder of the kit stays in each new project (found when CI failed on this report's first layout) | 2 kit subfolders today (`2026-11-18-port-notes/`, `2026-11-20-skill-tests/`) | Delete `docs/reviews/20*/` too (lane C: a guard script) |
+| A14 | Rule census "outcome evidence" | With no recorded rule-test run, "the model does it without the rule" cannot be shown, so no rule can be retired on evidence | `.claude/rule-tests.md` scenarios exist; 0 run records in any repo since 2026-11-18 | Record each rule-test run (date, scenario, result) in docs/reviews; the census reads it |
+| A15 | Instructions check | Passes when it reads 0 files: RADE and 33-332.Z have no `audit-instructions:` line, so "enforced" is on paper only | `check_instructions` SKIP or 0 files in 2 repos | WARN when a repo has a README or go.md but no `audit-instructions:` line |
 
-A metric that favours real refactors: lines removed per change with tests unchanged or more, and the time of the full lane (both fall only when work falls).
+A metric that favours real refactors: lines removed per change with tests unchanged or more, and the time of the full lane on a recorded machine (both fall only when work falls).
 
 ## Gaps (with cost and benefit)
 
-- **Defects per check: CI only.** Measured from 25 failed CI logs (section above); local pre-push catches leave no record. Cost of A9's instrument: about 15 script lines (raises T2). Benefit: a count of what each check catches before CI.
-- **Dependabot PRs always fail** the CI content step (6 of 6 runs; 2 Dependabot branches open). Fix candidate (lane C, guard file): skip the denylist need for the Dependabot actor, or give Dependabot its own secret. Proposal only.
-- **Mutant kill rate: not measured.** A mutation tool is a new dependency.
-- **2 of 5 repos not audited** (access block above).
-- **Slow-run WARN not confirmed:** the full lane on `e32dd28` printed `WARN slower than the baseline` (check 30.9 s against 4.2 s), but a reviewer agent ran tests on the same CPU at that time. The audit skill needs 3 runs; not done.
-- **Python lint SKIP** in this container: pylint is not installed, so the full lane ran with the fallback (`code_standard` parse).
+- **Defects per check: CI of the kit only.** 25 failed CI logs; local pre-push catches leave no record; the 4 projects run CI on pull requests too, not read here. Cost of A9's instrument: about 15 script lines (raises T2). Benefit: a count of what each check catches before CI.
+- **Dependabot PRs always fail** the kit's CI content step (6 of 6 runs; 2 Dependabot branches open). Fix candidate (lane C): skip the denylist need for the Dependabot actor, or give Dependabot its own secret. Proposal only.
+- **Mutant kill rate:** only ICF-Source has a mutation tool; its record is on an old spec. Other repos: a new dependency would be needed.
+- **No timing is a median of 3** (shared CPU); no slow-run finding is made.
+- **RADE measuring agent used the network:** `bloat_check.py --time` runs RADE's full `check.sh`, whose app canary reads github.com (`scripts/check.local.sh:61-68`, the repo's own fixed host). The brief said no network; reported as a deviation. Not reconnaissance (one fixed host, the repo's own check).
+- **Not measured:** skill use (no session records), cross-host rule copies, Actions minutes, link checks in 3 repos.
 
 ## Method
 
 - T2: `cat scripts/*.py scripts/*.sh | wc -l`; kit-owned = the files in the project's `.check.lock`.
 - Per repo numbers: a scratch script (`git log origin/main --no-merges --name-only`, `git ls-remote --heads`, `.check.lock`), run on full-history clones.
 - Caps: `python3 scripts/bloat_check.py --brief` and `--rules` in each repo; lock: `python3 scripts/check_lock.py --status`.
-- Dead code: a scratch AST scan (a def whose name occurs once in all tracked files); same-body functions: an AST dump of each function body (docstring dropped), 5+ lines; unused imports: `ruff check --select F401,F841,F811`.
+- Dead code: a scratch AST scan (a def whose name occurs once in all tracked files), and the agents' code-reference scans; same-body functions: an AST dump of each function body (docstring dropped), 2+ lines, in 2+ differently named files; unused imports: `ruff check --select F401,F841,F811`.
+- Steps 1-3 per repo: one read-only Sonnet measuring agent per repo; their files are the appendices (Coverage).
 - No package was installed (the install of `vulture` was refused in this session; the AST scan replaced it).
 
 ## Open questions for the Maintainer
 
-1. Access: allow `add_repo` for 90-161.Z and ICF-Source in this session, or audit them in their own sessions?
-2. `fleet.last_audit`: write 2026-11-24 now (3 of 5 repos), or only when all 5 are covered (REC, item A8)?
-3. Which audit-the-audit proposals (A1-A9) to turn into exact rule or skill text?
+1. New cut proposals 5, 8 and 9 (ICF one-offs -912, 90-161.Z `measure_pdf.py` -58, RADE `Split-Sentence`): approve, keep, or decide at the next project audit? REC: next project audit of each repo (each is AUDIT DUE), because records cite item 5 and item 9 needs an engine release.
+2. Which audit-the-audit proposals (A1-A15) to turn into exact rule, skill or check text? REC: A10 (the kit passes a cap it breaks), A11 and A15 first.
+3. Dependabot content-step failure: which fix (skip for the Dependabot actor, or a Dependabot secret)?

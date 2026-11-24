@@ -159,8 +159,8 @@ decision; the Maintainer decides each retire or shrink. Evidence and method: doc
 |---|---|---|
 | code standard (`code_standard*.py`) | keep, shrink done | P2 (a) moved Python parse, line and size to ruff + pylint; C1 safety, C6, the ratchet have no standard rule (W-A); 0 dead functions, 0 same-body duplicates |
 | content check (`check_content*.py`) | keep (decided 9A) | gitleaks with custom rules covers 10 of 11 checks, not `unscanned`, commit metadata, `.check` or the hook (W-B) |
-| instructions (`check_instructions*.py`) | keep (decided 10) | Vale 8 of 9 seeded, 54 false positives on 225 real steps (W-B) |
-| rule caps and pointers, skills well-formed (`bloat_check*.py`) | keep; change the T2 measure | 17 of 25 failed CI runs (2026-11-13 to 11-24): a changed rule line with no conflict-check record; no standard tool for a rule census; T2 counts tests and only `scripts/` (audit-the-audit A1, A2) |
+| instructions (`check_instructions*.py`) | keep (decided 10); WARN when no file is listed | Vale 8 of 9 seeded, 54 false positives on 225 real steps (W-B); reads 0 files in RADE and 33-332.Z (no `audit-instructions:` line; audit-the-audit A15) |
+| rule caps and pointers, skills well-formed (`bloat_check*.py`) | keep; change the T2 measure | 17 of 25 failed CI runs (2026-11-13 to 11-24): a changed rule line with no conflict-check record; in the kit the session load counts the template NEXT_PROMPT.md, not KIT_HANDOFF.md (~5,525 real tokens over the 5,500 cap; A10); no standard tool for a rule census; T2 counts tests and only `scripts/` (audit-the-audit A1, A2) |
 | deny rules (`check_blocks.py`) | keep | the one list of blocked git forms for the hook and settings |
 | project log, decisions approval quote, plan coverage (`log_check*.py`) | keep | the T6 and T7 checks stop a DECISIONS row with no approval quote |
 | fleet format (`fleet_harvest*.py`) | keep | the fleet page reads it; no standard reader |
@@ -169,7 +169,7 @@ decision; the Maintainer decides each retire or shrink. Evidence and method: doc
 | self-tests (each `--test`, `*_cli_test.py`) | keep; shrink in #158 (open) | #158 merges 4 copies of the CLI test helpers (-105 lines) |
 | kit lock (`check_lock.py`), drift (`drift.py`), sync (`sync_baseline*.py`, `sync_merge.py`) | keep until P3 | P3 (a package) can move 13,237 kit-owned lines out of each project; lock and sync change then |
 | token log (`token_log*.py`) | keep (decided, plan decision 5) | kit only, 1,566 lines with tests; OpenTelemetry needs a collector (W-C) |
-| site and brand (`build_site*.py`, `fulcrum_palette.py`, `timeline.py`) | keep (decided in P2) | measured real use in P2 |
+| site and brand (`build_site*.py`, `fulcrum_palette.py`, `timeline.py`) | keep (timeline.py decided; the others measured in P2) | real use; 33-332.Z `site_page.py` imports `fulcrum_palette.contrast` after its PR 77 |
 | stop, worker guard, first use, check-in (`stop_check.py`, `worker_guard*.py`, `first_use_check.py`, `session_checkin.sh`) | keep | hooks; no standard tool covers the stop and worker rules |
 | check.sh, pre-push (`scripts/check.sh`, `scripts/git-hooks/pre-push`) | keep | the one front door of the checks; the hook runs the fast lane on each push |
 | CI content step (`.github/workflows/`) | keep; fix for Dependabot | 6 of 6 Dependabot runs failed with no denylist secret (a setup error, not a defect) |
