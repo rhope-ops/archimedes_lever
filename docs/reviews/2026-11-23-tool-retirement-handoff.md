@@ -63,16 +63,16 @@ A missing linter must print a SKIP line with the install command, never pass in 
 for reading (list_repos). Briefs: the adversarial inputs, a test that fails against the old code, no line squeezing to
 meet T2 (report the net count; the Maintainer approves a higher number per PR), commit locally, no stray files.
 
-## P2 status (2026-11-23 19:35 America/Chicago)
+## P2 status (2026-11-23 20:05 America/Chicago)
 
 | Item | State | T2 baseline (the Maintainer) |
 |---|---|---|
 | T2 MINORs + downward ratchet | merged, PR 139 | 18159 ("Approve 18159") |
 | (f) ReDoS fix | merged, PR 140 | 18195 ("Approve all 5") |
-| (e) content split | PR 141, ready, waits for merge | 18215 ("Approve all 4", 18:59; "The 18:59 batch holds") |
-| (e) sync split | branch claude/tr-p2-e-sync 7624cd1, reviewed, local only | 18218 (same batch) |
-| (b) two-line marking + keyword/number | branch claude/tr-p2-b f61054a, reviewed, local only | 18303 (same batch) |
-| (d) sync stop on local edits | branch claude/tr-p2-d a66c3ab, 5 reviews, last 0 MAJOR, local only | 18660 ("Approve 18660", shortly before 19:33) |
+| (e) content split | merged, PR 141 | 18215 ("Approve all 4", 18:59; "The 18:59 batch holds") |
+| (e) sync split | merged, PR 143 | 18218 (same batch) |
+| (b) two-line marking + keyword/number | PR 144, 3 reviews 0 MAJOR, CI green, waits for merge | 18303 (same batch) |
+| (d) sync stop on local edits | branch claude/tr-p2-d3 (local only): d a66c3ab merged with the sync split into the kit-only module sync_baseline_stop.py (6e17870, join e16677f, review 0 MAJOR); +378 lines, so a worker cuts 21 by real cuts | 18660 ("Approve 18660", shortly before 19:33; "Keep 18660, cut 21", shortly after 20:02) |
 | (a), (g), (h), (i), (j) | not started | ask each rise on its own |
 
 Merge order is fixed by the numbers: 141, e-sync, b, d. The local branches cannot be pushed before their turn (T2
