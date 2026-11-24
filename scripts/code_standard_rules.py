@@ -19,11 +19,14 @@ Credentials: none.
 import fnmatch
 import hashlib
 import re
+import shutil
 from pathlib import Path
 
 import check_settings as settings   # scripts/check_settings.py: STRICT, dash, OPT_IN_CAPS
 import code_standard_docs as docs   # scripts/code_standard_docs.py: rule C2 full
 import code_standard_parse as parse   # scripts/code_standard_parse.py: the function finders
+
+LINTERS = all(shutil.which(t) for t in ('ruff', 'pylint'))   # C10 for Python: the linters when both are installed, else here
 
 
 LANGS = {'.py': 'python', '.ps1': 'powershell', '.psm1': 'powershell', '.js': 'js', '.mjs': 'js', '.cjs': 'js', '.sh': 'shell'}
@@ -65,8 +68,8 @@ def file_functions(p, text, lang, ps):
     if lang == 'python':
         try:
             return parse.python_functions(text), [], []
-        except SyntaxError as err:
-            return [], [], ['line %s: %s' % (err.lineno, err.msg)]
+        except SyntaxError as err:   # C10 for Python: ruff and pylint in scripts/check.sh; this check only without them
+            return [], [], [] if LINTERS else ['line %s: %s' % (err.lineno, err.msg)]
     pattern, mark = (parse.JS_FUNC, '//') if lang == 'js' else (parse.SH_FUNC, '#')
     return parse.brace_functions(text, pattern, mark), [], []
 

@@ -14,6 +14,7 @@
 #      own extension files when they have one (scripts/check_content_local.py and scripts/code_standard_gate.py: the
 #      file names --test; the full lane always, the fast lane when the file or a file it extends changed), and the
 #      code standard (scripts/code_standard.py, when .check.state.json holds its baseline; settings: the `code-` lines of .check),
+#   1b. the Python parse, line length and file size: ruff and pylint (ruff.toml, .pylintrc; a SKIP line when a linter is missing),
 #   2. the rule caps and the paths AGENTS.md names, the lint of changed rule lines (WARN lines), and in the full lane
 #      the conflict-check record for changed rule lines (scripts/bloat_check.py --rules [--gate]; full tier),
 #   3. the project log check (full tier),
@@ -144,6 +145,14 @@ PY
   rm "$t/r/.check.state.json"
   ok "a large baseline on the default branch, state file deleted: the code standard runs" "$(c | grep -c '^PASS  code standard$')" 1
   g checkout -q .check.state.json; g update-ref -d refs/remotes/origin/main
+  # The Python lint (ruff and pylint): no config files, no step; with them and a linter missing, a SKIP line that names the install, never a silent pass.
+  # The PATH of the case drops each folder that holds ruff or pylint; python3 comes through a link.
+  mkdir -p "$t/nolint"; ln -sf "$(command -v python3)" "$t/nolint/python3"; nolint="$t/nolint"
+  while IFS= read -r d; do [ -x "$d/ruff" ] || [ -x "$d/pylint" ] || nolint+=":$d"; done < <(tr ':' '\n' <<<"$PATH")
+  ok "no ruff.toml and .pylintrc: no Python lint step" "$(c | grep -c 'python lint')" 0
+  touch "$t/r/ruff.toml" "$t/r/.pylintrc"
+  ok "a missing linter is a SKIP line that names the install" "$(cd "$t/r" && PATH="$nolint" bash scripts/check.sh 2>&1 | grep -c '^SKIP  python lint (ruff or pylint is missing: pip install ruff==0.17.6 pylint==4.1.4)$')" 1
+  rm "$t/r/ruff.toml" "$t/r/.pylintrc"
   # A git error is not a clean tree: with a broken index, a stamp for this commit must not be used.
   c >/dev/null; ok "a stamp exists before the index breaks" "$(cut -d' ' -f2 "$t/r/.git/check-pass")" "$(g rev-parse HEAD)"
   cp "$t/r/.git/index" "$t/index.bak"; echo broken > "$t/r/.git/index"
@@ -349,6 +358,33 @@ if [ -f scripts/code_standard.py ] && { grep -qs '"code_standard"' .check.state.
   run "code standard" python3 scripts/code_standard.py
 elif [ -f scripts/code_standard.py ]; then
   skip "code standard" "no code standard baseline in .check.state.json: adopt it with python3 scripts/code_standard.py --init (docs/code-standard.md)"
+fi
+
+# Python parse, line length and file size (docs/code-standard.md C4, C10): ruff and pylint, the configs ruff.toml and .pylintrc,
+# the caps from .check. The parse and the line cap fail; the file size only warns. Never a silent pass: a missing linter is a SKIP line.
+python_lint() {
+  local caps cap max files=() long=() f rc=0
+  caps=$(python3 -c 'import sys; sys.path.insert(0, "scripts"); import check_settings as s; c = s.code_config(".")["caps"]; print(c.get("max_line_chars") or 0, c["max_file_lines"])') || return 1
+  read -r cap max <<<"$caps"
+  # The files are the ones the code standard covers (include, exclude, generated). A file with a generated block is out of the line list.
+  python3 scripts/code_standard.py --python-files all >"$tmp/lint.all" && python3 scripts/code_standard.py --python-files line >"$tmp/lint.line" || return 1
+  while IFS= read -r -d '' f; do files+=("$f"); done <"$tmp/lint.all"
+  while IFS= read -r -d '' f; do long+=("$f"); done <"$tmp/lint.line"
+  [ "${#files[@]}" -gt 0 ] || return 0
+  # An empty line list must not become "every file": ruff and pylint with no file name lint the whole folder.
+  if [ "$cap" != 0 ] && [ "${#long[@]}" -gt 0 ]; then
+    ruff check -q --config ruff.toml --select E501 --line-length "$cap" "${long[@]}" || rc=1
+    pylint -sn -j 0 --rcfile .pylintrc --disable=all --enable=line-too-long --max-line-length "$cap" "${long[@]}" || rc=1
+  fi
+  ruff check -q --config ruff.toml "${files[@]}" || rc=1
+  pylint -sn -j 0 --rcfile .pylintrc --disable=too-many-lines,line-too-long "${files[@]}" || rc=1
+  pylint -sn -j 0 --rcfile .pylintrc --disable=syntax-error,line-too-long --max-module-lines "$max" \
+    --msg-template='WARN  {path}: {msg}; a warning only (docs/code-standard.md C4)' "${files[@]}" | grep '^WARN '
+  return $rc
+}
+if [ -f ruff.toml ] && [ -f .pylintrc ]; then
+  if command -v ruff >/dev/null && command -v pylint >/dev/null; then run "python lint" python_lint
+  else skip "python lint" "ruff or pylint is missing: pip install ruff==0.17.6 pylint==4.1.4"; fi
 fi
 
 # Rule caps, paths, the lint of changed rule lines, and (full lane) the conflict-check record for changed rule lines.

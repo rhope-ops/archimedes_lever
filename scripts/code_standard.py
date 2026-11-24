@@ -19,7 +19,8 @@ What it measures (the rule numbers are those of docs/code-standard.md):
   C1 prevents    FAIL in the kit, WARN in a project (AUD-1): a check entry point (check.sh or a hook runs it) has `Prevents: <defect>`
   C5 duplicate   no two functions in hand-written files have the same body (a copy must be generated, with a banner)
   C6 generated   each generated file says GENERATED near its top and names its source
-  C10 parse      each Python and PowerShell file parses
+  C10 parse      each PowerShell file parses; each Python file too, when ruff or pylint is not installed
+  Python parse (with both installed), line length and file size: ruff and pylint (ruff.toml, .pylintrc; check.sh) on `--python-files`
 A comment that is the file header, or a divider line ("# ----", "# ===="), does not count as a function's comment.
 A script block passed as an argument ($b.Add_Click({ ... })) is measured for C3 too, named by the call it is in.
 Settings: the `code-` lines of `.check` (caps, scope, opt-in rules; read by scripts/check_settings.py, which lists
@@ -206,7 +207,7 @@ def file_rules(v, p, lines, head, config, skip):
     if config.get('c1_safety') and not all(x in head for x in SAFETY_LABELS):
         v['safety'][p] = 1
     paste = matches(p, config.get('paste', []))   # a script a person pastes into another tool: its own cap
-    if len(lines) > config['caps']['max_file_lines_paste' if paste else 'max_file_lines']:
+    if lang_of(p) != 'python' and len(lines) > config['caps']['max_file_lines_paste' if paste else 'max_file_lines']:
         v['file_size'][p] = len(lines)
     if GATE:
         GATE.file_rules(v, p, lines, head, config, skip)
@@ -237,9 +238,14 @@ def measure_file(v, p, config, ps, bodies, entries=()):
     file_rules(v, p, lines, head, config, skip)
     if p in entries and not PREVENTS.search(head):
         v['prevents'][p] = 1
-    full = config.get('c2') == 'full' and not errors
-    ctx = {'lang': lang, 'head_last': head_last, 'seen': {}, 'full': full, 'bodies': bodies,
-           'py': docs.python_docs(text) if full and lang == 'python' else None, 'cap': config['caps']['max_function_lines']}
+    full, py = config.get('c2') == 'full' and not errors, None
+    if full and lang == 'python':
+        try:
+            py = docs.python_docs(text)
+        except SyntaxError:   # the parse error is C10 (here, or ruff and pylint); no docs check on a file that does not parse
+            full = False
+    ctx = {'lang': lang, 'head_last': head_last, 'seen': {}, 'full': full, 'bodies': bodies, 'py': py,
+           'cap': config['caps']['max_function_lines']}
     for name, top, start, end, inner, body, *extra in funcs:
         if not any(a <= start <= b for a, b in skip):
             function_rules(v, entry, p, lines, (name, top, start, end, inner, body), extra[0] if extra else None, ctx)
@@ -251,6 +257,29 @@ def measure_file(v, p, config, ps, bodies, entries=()):
         if end - start + 1 > ctx['cap']:
             v['length'][key] = end - start + 1
     return entry
+
+
+def python_files(config, kind):
+    """The Python files that scripts/check.sh gives to ruff and pylint: the hand-written files this check covers
+    (include, exclude and generated as for every rule). A file with a generated block is left out of the `line` list,
+    because the linters cannot skip the lines of a block (the strict gate measures its hand-written lines); its parse
+    and size stay in the `all` list.
+
+    Args:
+        config: the code standard settings.
+        kind: 'all' or 'line'.
+
+    Returns:
+        The paths, each followed by a NUL character.
+    """
+    out = ''
+    for p in tracked_files(config):
+        if lang_of(p) != 'python' or matches(p, config.get('generated', [])):
+            continue
+        if kind == 'line' and parse.generated_blocks((ROOT / p).read_text(encoding='utf-8-sig', errors='replace').split('\n')):
+            continue
+        out += p + '\0'
+    return out
 
 
 def measure(config):
@@ -359,12 +388,18 @@ def save(debt):
 
 
 def parse_args():
-    """Return the parsed command line (the usage: the header of this file)."""
+    """Parse the command line (the usage: the header of this file).
+
+    Returns:
+        The parsed arguments.
+    """
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     ap.add_argument('--report', action='store_true', help='print every measurement as JSON')
     ap.add_argument('--update', action='store_true', help='lower the baseline to the debt that is left')
     ap.add_argument('--init', action='store_true', help='write the first baseline (only when the repo has none)')
     ap.add_argument('--adopt', action='store_true', help='add the debt of a rule the baseline does not list yet')
+    ap.add_argument('--python-files', choices=('all', 'line'), help='list the Python files that ruff and pylint check, NUL-separated '
+                    '(all: parse and size; line: also the line cap, so no file with a generated block)')
     ap.add_argument('--test', action='store_true', help='prove the check on small sample repos')
     return ap.parse_args()
 
@@ -384,6 +419,9 @@ def main():
     except ValueError as err:
         print('CODE-STANDARD fail: %s' % err)
         return 1
+    if args.python_files:
+        print(python_files(config, args.python_files), end='')
+        return 0
     existed = debt is not None
     if not existed and not args.init:
         print('CODE-STANDARD fail: no code standard baseline in %s; adopt the standard with --init '
