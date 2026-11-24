@@ -24,6 +24,8 @@ lines; check.sh steps; sync_baseline.py marker; DECISIONS rows (plan approval wi
 
 ## P1: open steps (in order)
 
+Status 2026-11-23 18:24 America/Chicago: steps 1-6 done (session "Kit · Tool retirement P1 finish · 2026-11-23"). Two fresh reviews: 2 MAJOR fixed in b56926b, then no MAJOR. Lane C PR [#137](https://github.com/rhope-ops/archimedes_lever/pull/137) waits for the Maintainer's merge; its body lists the MINOR findings for P2.
+
 1. Fix the date of the T2 18142 row in docs/DECISIONS.md on `claude/tr-p1`: it says 2026-11-24 (UTC); the Maintainer
    approved it on 2026-11-23 ~18:10 America/Chicago.
 2. Verify the T1 first-cell match (W3 item 1: T1 must match only the first cell of a docs/tools.md row). It has no
