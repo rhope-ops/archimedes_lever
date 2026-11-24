@@ -78,7 +78,7 @@ def merge_settings(base_path, proj_path):
 
 
 KIT_HOOK_COMMANDS = ("scripts/pii_guard.py", "scripts/check_content.py", "scripts/check.sh --hook",
-                     "scripts/stop_check.py", "scripts/first_use_check.py")
+                     "scripts/stop_check.py", "scripts/first_use_check.py", "scripts/check.sh --kit-install")
 REPLACED_HOOKS = []  # matchers of older kit hook entries that a sync replaced (main() prints them)
 
 
