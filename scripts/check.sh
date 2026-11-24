@@ -405,7 +405,7 @@ shell_lint() {
   python3 scripts/code_standard.py --shell-files >"$tmp/shell.all" || return 1
   while IFS= read -r -d '' f; do files+=("$f"); done <"$tmp/shell.all"
   [ "${#files[@]}" -gt 0 ] || return 0
-  out="$(shellcheck -f gcc "${files[@]}" 2>&1)"; rc=$?
+  out="$(shellcheck -f gcc -- "${files[@]}" 2>&1)"; rc=$?
   [ "$rc" -le 1 ] || echo "WARN  shellcheck stopped with exit code $rc; a warning only"
   [ -z "$out" ] || printf '%s\n' "$out" | sed 's/^/WARN  /; s/$/; a warning only (shellcheck, docs\/code-standard.md)/'
   return 0
