@@ -123,6 +123,17 @@ def git_net(cwd, *args):
         return p.returncode, out.read().strip(), err.read().strip()
 
 
+def sibling(name):
+    """Import one of the other two hook files (token_log_rows or token_log_report) from this file's folder. A copy
+    from before the plain imports (it still has the `core` slot its old loader filled) raises ImportError, so the
+    push takes the repair path: the self-update runs at once and installs the matching copy."""
+    import importlib
+    mod = importlib.import_module(name)
+    if hasattr(mod, "core"):
+        raise ImportError(f"{name}.py is an older copy than token_log.py")
+    return mod
+
+
 def push(root, sid, tpath):
     """Merge this session's rows into sessions/<sid>.csv on the log branch and push. Tries again at once only
     after a race with another push. The caller holds the session's push lock.
@@ -134,7 +145,7 @@ def push(root, sid, tpath):
     Returns:
         A short result text: "pushed ...", "up to date" or "nothing to log". Raises RuntimeError when git fails.
     """
-    import token_log_rows  # the rows file next to this one; only the background push needs it
+    token_log_rows = sibling("token_log_rows")  # only the background push needs it
     ref, path = branch_name(), f"sessions/{sid}.csv"
     for attempt in (1, 2):
         rc, heads, err = git_net(root, "ls-remote", "--heads", "origin", ref)
@@ -213,7 +224,7 @@ def push_main(args, delays=RETRY_DELAYS):
         try:
             print(stamp, args[1], locked_push(*args), flush=True)
             return True
-        except ImportError:  # a missing part: the caller repairs the install (no retries, no lost wait)
+        except ImportError:  # a missing or older rows file: the caller repairs the install (no retries, no lost wait)
             raise
         except Exception as e:
             print(stamp, args[1], f"try {i + 1} of {len(delays)} error:", e, flush=True)
@@ -317,7 +328,7 @@ def self_update(path, url=None, now=None):
                            text=True, timeout=600, env={k: v for k, v in os.environ.items() if not k.startswith("GIT_")})
         if t.returncode != 0:
             return "not updated: self-test failed " + (t.stdout + t.stderr).strip()[-200:]
-        for n in names:  # the parts first, token_log.py last: a hook that starts in between finds its parts
+        for n in names:  # the other two files first, token_log.py last: a hook that starts in between finds them
             dest = os.path.join(os.path.dirname(path), n)
             shutil.copyfile(os.path.join(src, n), dest + ".new")
             os.replace(dest + ".new", dest)
@@ -349,13 +360,16 @@ if __name__ == "__main__":
     if sys.argv[1:2] == ["--test"]:
         sys.exit(self_test())
     if sys.argv[1:2] == ["--report"] and len(sys.argv) <= 3:
-        import token_log_report  # the report file next to this one
-        sys.exit(token_log_report.report_main(sys.argv[2:]))
+        try:
+            report_file = sibling("token_log_report")
+        except ImportError as e:
+            sys.exit(f"token_log --report: {e}")
+        sys.exit(report_file.report_main(sys.argv[2:]))
     if sys.argv[1:2] == ["--push"] and len(sys.argv) == 5:
         try:
             push_main(sys.argv[2:])
-        except ImportError as e:  # an old one-file install: a part is missing; the update installs it now
-            print("token_log: part missing:", e, flush=True)
+        except ImportError as e:  # an old install: a hook file is missing or older; the update installs it now
+            print("token_log: hook file missing or old:", e, flush=True)
             stamp = os.path.join(home(), "update.stamp")
             if os.path.exists(stamp):
                 os.utime(stamp, (0, 0))  # so the self-update below runs now, not after a day
