@@ -373,3 +373,10 @@ def case_installed_hook_works(fx):
     run = subprocess.run([sys.executable, "-E", "-s", "-c", probe, hooks], text=True, capture_output=True, cwd=fx.root,
                          timeout=60)
     fx.expect("installed hook: the rows and report files load from the hooks folder", run.stdout.strip(), "True True True")
+    with open(os.path.join(hooks, "token_log_rows.py"), "w") as f:  # a rows file from before the plain imports
+        f.write("core = None\n")
+    probe = ("import sys; sys.path.insert(0, sys.argv[1]); import token_log\n"
+             "try:\n    token_log.sibling('token_log_rows')\nexcept ImportError:\n    print('repair')")
+    run = subprocess.run([sys.executable, "-E", "-s", "-c", probe, hooks], text=True, capture_output=True, cwd=fx.root,
+                         timeout=60)
+    fx.expect("installed hook: an older rows file takes the repair path (ImportError)", run.stdout.strip(), "repair")
