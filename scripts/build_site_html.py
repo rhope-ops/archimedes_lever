@@ -119,7 +119,10 @@ HARD_BREAK = r'.*(  |\\)$'
 # per line, the label bold and ending in ":"; cells hold plain text only (no tags, no Markdown), and no "&" either: in
 # raw HTML a browser reads "&copy" as a symbol even without its ";", and the site would not. A row may end with a
 # source comment (FACT_SOURCE), which GitHub and the site do not show.
-FACT_TABLE = r'<table>\n((?:<tr>.*</tr>.*\n)+)</table>(.*)'
+# One group that runs from "<tr>" over the first "</tr>" to the last line end before "</table>": every other split of the
+# rows matches the same text, and a repeated group of ".*" made the match take quadratic or worse time on a table
+# with no end tag (ReDoS). Each part is tried once, so the time is linear. Needs re.S.
+FACT_TABLE = r'<table>\n(<tr>(?:(?!</tr>).)*</tr>.*\n)</table>(.*)'
 FACT_ROW = r'<tr><td><b>([^<>*`&]+:)</b></td><td>([^<>*`&]+)</td></tr>(?: <!-- source: ([^<>]*[^<>\s-]) -->)?'
 
 

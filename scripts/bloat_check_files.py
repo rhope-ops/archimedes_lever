@@ -23,13 +23,15 @@ import re
 
 import bloat_check_rules as brules   # scripts/bloat_check_rules.py: git, the rule lines, the record readers
 import check_settings   # scripts/check_settings.py: the reader of .check.state.json
-import log_check_plan as plan   # scripts/log_check_plan.py: the DECISIONS cells and the approval quote
+import log_check_plan as plan   # scripts/log_check_plan.py: the DECISIONS table cells
 
 
 TOOL_EXT = (".py", ".sh", ".ps1", ".psm1", ".js", ".mjs", ".cjs", ".bat", ".cmd")
 TOOL_SKIP = ("node_modules/", "vendor/", "dist/")   # not the repo's own tools
 TOOLS_DOC = "docs/tools.md"
 STATE_KEY = "script_lines"   # in .check.state.json: {"baseline": N, "command": ..., "measured": ..., "commit": ...}
+# T2: the By cell of a baseline row: "the Maintainer:", then the approval in quotes, then a date after the quote
+APPROVED_BY = re.compile(r'the Maintainer:\s*(?:"[^"\S\n]*[^"\s][^"\n]*"|“[^”\S\n]*[^”\s][^”\n]*”).*?(?<!\d)\d{4}-\d\d-\d\d(?!\d)', re.I)
 ROLE_WORD = re.compile(r"\bthe owner\b|\bOwner's\b")
 DATED = re.compile(r"\(the owner, \d{4}-\d{2}-\d{2}")   # an attribution that records a past role word stays as written
 # The files that hold the check itself name the word they look for: allowed whole (re.compile(".")).
@@ -162,6 +164,9 @@ def ratchet_report(root):
     if n > base:
         problems.append(f"custom script lines {n} pass the baseline {base} (+{n - base}): a higher baseline needs a docs/DECISIONS.md "
                         f"row By the Maintainer with the number {n} (T2 ratchet)")
+    elif n < base:
+        problems.append(f"custom script lines {n} are below the baseline {base} (-{base - n}): set \"baseline\": {n} in "
+                        f"{check_settings.STATE} in this change, so the freed lines do not return with no decision (T2 ratchet)")
     ref = brules.git(root, "merge-base", "HEAD", "origin/main")
     old = brules.git(root, "show", f"{ref}:{check_settings.STATE}") if ref else None
     try:
@@ -170,9 +175,10 @@ def ratchet_report(root):
         was = None
     if isinstance(was, int) and base > was:
         rows = [plan.cells(r[1:]) for r in (brules.git(root, "diff", ref, "--", "docs/DECISIONS.md") or "").splitlines() if r.startswith("+|")]
-        if not any(len(c) > 2 and re.search(rf"(?<!\d){base}(?!\d)", c[1]) and re.match(r"the Maintainer:", c[2], re.I) and plan.APPROVAL_QUOTE.search(c[2])
-                   and re.search(r"\d{4}-\d\d-\d\d", c[2]) for c in rows):
-            problems.append(f"the script lines baseline rose from {was} to {base} with no new docs/DECISIONS.md row that names {base}, By the Maintainer, with the approval quoted and dated")
+        number = re.compile(rf"(?<![\w.,])(?:{base}|{base:,})(?![\w]|[.,]\d)")   # 18142 or 18,142; not 181420, 1.18142 or 18142.5
+        if not any(len(c) > 2 and number.search(c[1]) and APPROVED_BY.match(c[2]) for c in rows):
+            problems.append(f"the script lines baseline rose from {was} to {base} with no new docs/DECISIONS.md row that names {base}, "
+                            "By the Maintainer: the approval in quotes, then its date")
     return [f"scripts:     {n} lines in scripts/*.py and *.sh (baseline {base})"], problems
 
 

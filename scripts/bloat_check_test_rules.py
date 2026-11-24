@@ -337,10 +337,21 @@ def ratchet_cases(sk, root):
     problems = sk.ratchet_report(root)[1]
     assert len(problems) == 1 and "rose from 2 to 3" in problems[0], "a higher baseline needs a row: %s" % problems
     (root / "docs").mkdir(exist_ok=True)
-    for by in ("Agent: the Maintainer 3", "the Maintainer (2026-11-23)", 'the Maintainer: "3"', 'the Maintainer\'s agent: "3" 2026-11-23', 'the Maintainer-bot: "3" 2026-11-23', 'the Maintainer: "Approve 3" (2026-11-23 18:10)'):
-        (root / "docs/DECISIONS.md").write_text(f"| 2026-11-23 | Script lines baseline 3 \\| wc | {by} |\n")
+    good = 'the Maintainer: "Approve 3" (2026-11-23 18:10)'
+    cases = [("baseline 3 \\| wc", good, True), ("baseline 3.", good, True),
+             ("baseline 31", good, False), ("baseline 3.5", good, False), ("v3", good, False), ("1.3", good, False),
+             ("baseline 3", "Agent: the Maintainer 3", False), ("baseline 3", "the Maintainer (2026-11-23)", False),
+             ("baseline 3", 'the Maintainer: "3"', False), ("baseline 3", 'the Maintainer\'s agent: "3" 2026-11-23', False),
+             ("baseline 3", 'the Maintainer-bot: "3" 2026-11-23', False), ("baseline 3", 'the Maintainer: agent wrote "3" 2026-11-23', False),
+             ("baseline 3", 'the Maintainer: "2026-11-23"', False), ("baseline 3", '“Approve 3” 2026-11-23', False),
+             ("baseline 3", 'The Maintainer: “Approve 3” 2026-11-23', True)]
+    for decision, by, ok in cases:
+        (root / "docs/DECISIONS.md").write_text(f"| 2026-11-23 | Script lines {decision} | {by} |\n")
         git_in(root, "add", "-A")
-        assert bool(sk.ratchet_report(root)[1]) != by.endswith("18:10)"), "only a row By the Maintainer, quoted and dated, passes: %s" % by
+        assert (not sk.ratchet_report(root)[1]) == ok, f"T2 row ({decision} | {by}) should {'pass' if ok else 'fail'}"
+    (root / check_settings.STATE).write_text(json.dumps({"script_lines": {"baseline": 4}}))
+    problems = sk.ratchet_report(root)[1]
+    assert any("below the baseline 4 (-1)" in x and '"baseline": 3' in x for x in problems), "freed lines lower the baseline: %s" % problems
 
 
 def role_cases(sk, root):
