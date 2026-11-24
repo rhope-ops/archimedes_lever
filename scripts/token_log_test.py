@@ -5,8 +5,9 @@ case stays under the 60-line cap of docs/code-standard.md C3).
 It builds a bare origin and clones in a temporary folder (no network) and runs the Stop hook on sample session logs:
 one row per API call, turns, subagent rows, a second session, a blocking pre-push hook, a lost local folder, a shallow
 clone, retries, coalescing, FETCH_HEAD, a push with no answer, a push that waits for the lock, bad input and
-TOKEN_LOG=off. The cases of the rows, the report and the self-update are in scripts/token_log_test_parts.py; this
-file holds the fixture and the sample log lines that both files use.
+TOKEN_LOG=off. The cases of the rows, the report and the self-update are in scripts/token_log_test_parts.py, the
+cases of the /cost and /usage records in scripts/token_log_test_costs.py; this file holds the fixture and the sample
+log lines that all three files use.
 Input: the token_log module. Output: one PASS or FAIL line per case and a "TOKEN LOG SELF-TEST" total line; returns
 the exit code (0 pass, 1 fail). Needs git.
 Network: none.
@@ -361,6 +362,7 @@ def run(tl):
         The exit code: 0 when every case passes, else 1.
     """
     import token_log_test_parts as parts  # the cases of the rows, report and self-update (imports this file's samples)
+    import token_log_test_costs as costs  # the cases of the /cost and /usage records (imports this file's samples)
     fx = Fixture(tl)
     fx.real_push = tl.push
     saved = {k: os.environ.get(k) for k in ("TOKEN_LOG_HOME", "TOKEN_LOG_NET_TIMEOUT")}  # restored at the end
@@ -368,7 +370,7 @@ def run(tl):
         for case in (case_first_turn, case_second_turn, case_blocked_and_shallow, case_retry, case_coalesce,
                      case_fetch_head_and_timeout, case_waiting_push, case_bad_input_and_off, parts.case_agent_type,
                      parts.case_skill_use, parts.case_agent_type_bad_input, parts.case_report, parts.case_prices,
-                     parts.case_self_update):
+                     parts.case_self_update, costs.case_cost_files, costs.case_bad_records, costs.case_limit_split):
             case(fx)
     finally:
         tl.push = fx.real_push

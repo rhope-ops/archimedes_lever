@@ -380,3 +380,9 @@ def case_installed_hook_works(fx):
     run = subprocess.run([sys.executable, "-E", "-s", "-c", probe, hooks], text=True, capture_output=True, cwd=fx.root,
                          timeout=60)
     fx.expect("installed hook: an older rows file takes the repair path (ImportError)", run.stdout.strip(), "repair")
+    with open(os.path.join(hooks, "token_log_rows.py"), "w") as f:  # no core slot, but older than token_log.py
+        f.write("FIELDS = []\n")
+    run = subprocess.run([sys.executable, "-E", "-s", "-c", probe.replace("'token_log_rows'",
+                          "'token_log_rows', 'read_cost_record'"), hooks], text=True, capture_output=True, cwd=fx.root,
+                         timeout=60)
+    fx.expect("installed hook: a rows file without a needed name takes the repair path", run.stdout.strip(), "repair")
