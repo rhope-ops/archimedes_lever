@@ -1,20 +1,20 @@
-# Fleet audit, 2026-11-24 (partial: 3 of 5 repos)
+# Fleet audit, 2026-11-24 (5 of 5 repos; ICF-Source steps 1-3 pending)
 
-Brief: the coordinator session "Kit · Fleet v2 coordinator 2", for the Maintainer's choice "Fleet audit first" and "Also let it fix" (2026-11-24 ~05:55 America/Chicago). Procedure: `.claude/skills/audit/SKILL.md`, "Fleet audit" and "Rules for the auditor". Counts only; no personal data. Started 2026-11-24 07:32, measured 08:06 America/Chicago.
+Brief: the coordinator session "Kit · Fleet v2 coordinator 2", for the Maintainer's choice "Fleet audit first" and "Also let it fix" (2026-11-24 ~05:55 America/Chicago). Procedure: `.claude/skills/audit/SKILL.md`, "Fleet audit" and "Rules for the auditor". Counts only; no personal data. Started 2026-11-24 07:32, first measures 08:06 America/Chicago.
 
-As of: kit main `6a4b727`, 33-332.Z main `4f23703`, RADE main `97e7f4b`.
+As of: kit main `6a4b727` (then `00a0102` with #158), 33-332.Z main `4f23703`, RADE main `97e7f4b`, 90-161.Z main `a1c6798`, ICF-Source main `dd5ce4bf`.
 
-## Coverage and blocks
+## Coverage
 
-| Repo | Access | Audited |
-|---|---|---|
-| rhope-ops/archimedes_lever (kit) | session source, push | yes |
-| rhope-ops/33-332.Z | `add_repo` push: attached | yes |
-| rhope-ops/RADE | `add_repo` push: denied by the auto-mode classifier; `add_repo` read: public, anonymous read clone | yes (read only; no fix PR possible) |
-| rhope-ops/90-161.Z | `add_repo` push and read: denied by the auto-mode classifier | **no** |
-| rhope-ops/ICF-Source | `add_repo` push and read: denied by the auto-mode classifier | **no** |
+| Repo | Access | Audited | Steps 1-3 evidence |
+|---|---|---|---|
+| rhope-ops/archimedes_lever (kit) | session source, push | yes | [kit.md](2026-11-24-fleet-audit/kit.md) |
+| rhope-ops/33-332.Z | push (attached) | yes | [33-332.md](2026-11-24-fleet-audit/33-332.md) |
+| rhope-ops/RADE | push (attached on the Maintainer's request, 2026-11-24); first read from a public read-only clone | yes | [rade.md](2026-11-24-fleet-audit/rade.md) |
+| rhope-ops/90-161.Z | push (attached on the Maintainer's request, 2026-11-24) | yes | [90-161.md](2026-11-24-fleet-audit/90-161.md) |
+| rhope-ops/ICF-Source | push (attached on the Maintainer's request, 2026-11-24) | yes | pending |
 
-Unblock: the Maintainer allows `add_repo` for this session (approve the prompt, or add a permission rule for `mcp__claude-code-remote__add_repo`), or runs the 2 repos in a session that has them. Because 2 of 5 repos are not read, a whole-file retirement of a kit tool is not a "clear cut" here (audit skill: "Nothing in the repo calls it" does not prove a thing is unused; P2 found `build_site.py` in use by other repos).
+Access history: the first `add_repo` calls for RADE, 90-161.Z and ICF-Source were denied by the session's auto-mode classifier; the Maintainer then asked in the session chat to attach all 3 with push access. The coordinator agreed that this session owns measurement and fix PRs in all 5 repos. Each appendix file is the output of one read-only Sonnet measuring agent (audit skill Steps 1-3); its numbers are single runs on a shared 4-core container (see "Gaps").
 
 ## Per repo
 
