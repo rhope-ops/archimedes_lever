@@ -92,7 +92,7 @@ def run(root, pkg, have, url, write):
         exclude.parent.mkdir(parents=True, exist_ok=True)
         exclude.write_text(before + "\n".join([BEGIN, *("/" + f for f in files), END]) + "\n"
                            + (rest.partition(END)[2].lstrip("\n") if END in rest  # no end line: keep every line that is not ours
-                              else "".join(ln for ln in rest.splitlines(True) if not ln.startswith("/scripts/")).lstrip("\n")), encoding="utf-8")
+                              else "".join(ln for ln in rest.splitlines(True) if ln.strip() not in {"/" + f for f in files}).lstrip("\n")), encoding="utf-8")
     bad = any(ln.startswith("FAIL") for ln in out)
     out.append(f"KIT PACKAGE {'FAIL' if bad else 'PASS'}: {len(files)} kit scripts from the package at {commit[:7]}"
                + (" (written)" if write and not bad else ""))
