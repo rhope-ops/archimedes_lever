@@ -23,6 +23,7 @@ import unittest
 from pathlib import Path
 
 import check_settings as settings   # scripts/check_settings.py: the reader of .check and .check.state.json
+import code_standard_rules as rules   # scripts/code_standard_rules.py: LINTERS
 # scripts/code_standard_test_gate.py and scripts/code_standard_test_docs.py: more case groups (kept apart, rule C4).
 from code_standard_test_gate import (FULL, PS, SAMPLE_GATE, SMALL, commit, config_of, fails, main,  # noqa: F401
                                      self_test_gate, self_test_gate_ratchet, write)
@@ -83,7 +84,11 @@ def python_for_the_linters(cs, ROOT, g, good_py):
     assert 'vendor/v.py' not in everything and 'x/gen.py' not in everything, 'excluded and generated files: %s' % everything
     assert {'x/blk.py', 'x/bad.py'} <= set(everything), 'a block file and a bad file are parsed and sized: %s' % everything
     assert 'x/blk.py' not in lines and 'x/bad.py' in lines, 'a generated block: no line cap for that file: %s' % lines
-    cs.measure(config)   # a file that does not parse: no traceback with `code-c2: full`
+    kept = rules.LINTERS
+    for linters in (True, False):   # a file that does not parse: no traceback with `code-c2: full`
+        rules.LINTERS = linters
+        assert bool(cs.measure(config)['violations']['parse'].get('x/bad.py')) != linters, 'C10 here only without linters'
+    rules.LINTERS = kept
     g('rm', '-rqf', 'vendor', 'x')
 
 
@@ -276,7 +281,7 @@ def self_test_forms(cs, root, g, config):
     assert 'j.py::lead' not in v['comment'], 'a Python lead comment counts: %s' % v['comment']
     assert {'j.py::p', 'j.py::q'} <= set(v['duplicate']), 'docstring-only difference is a duplicate: %s' % v['duplicate']
     assert not any(k.startswith('k.js::') for k in v['comment'].keys() | v['length'].keys()), 'arrow: %s' % v['length']
-    assert not v['parse'].get('l.py'), 'a Python parse error is for ruff and pylint: %s' % v['parse']
+    assert bool(v['parse'].get('l.py')) != rules.LINTERS, 'a Python parse error: ruff and pylint, or here without them: %s' % v['parse']
     self_test_edges(cs, root, g, config)
     for f in ('h.sh', 'i.ps1', 'j.py', 'k.js', 'l.py'):
         (root / f).unlink(missing_ok=True)
