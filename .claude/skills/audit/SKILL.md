@@ -64,7 +64,7 @@ At each kit release, or 14 days after the last fleet audit (AUDIT DUE (fleet) at
 
 Item 16 in Step 2 finds the candidates; this step archives them. Run it when the check-in says ARCHIVE DUE and the Maintainer says yes. ARCHIVE DUE prints when the archivable files reach 20 files or 200 KB, or when docs/reviews/ passes 200 files or 1 MB (decimal KB; code: `archive_due` in `scripts/bloat_check_files.py`).
 
-The retention schedule (the Maintainer, 2026-11-25; source: `docs/reviews/2026-11-25-archival-inventory-kit.md`):
+The retention schedule (the Maintainer, 2026-11-25; source: the kit's archival inventory report of 2026-11-25 in its docs/reviews folder):
 
 | File class | Archive when | Test |
 |---|---|---|
@@ -82,7 +82,7 @@ The script (`archivable` in `scripts/bloat_check_files.py`) makes these tests: t
 
 1. Make the list: the units that pass every test, with path, bytes and reason. This is the dry run: change no file. Send the list and the totals (files, bytes) to the Maintainer.
 2. For each file, record the last commit on main before you delete it: `git log -1 --format=%H origin/main -- <path>`.
-3. Add one row for each file to `docs/reviews/archive-index.md`: path, the link `https://github.com/<owner>/<repo>/blob/<sha>/<path>`, the date, the reason. Make the file if it is not there.
+3. Add one row for each file to the archive index, docs/reviews/archive-index.md: path, the link `https://github.com/<owner>/<repo>/blob/<sha>/<path>`, the date, the reason. Make the file if it is not there.
 4. Delete the files with `git rm`. In each kept file that links a deleted file, change the link to its row in the index.
 5. Prove it in the pull request: `scripts/check.sh` passes, 0 broken links, `git cat-file -e <sha>:<path>` passes for each row, the files and bytes before and after, and one restore: `git show <sha>:<path> > <path>`, then delete that file again.
 
