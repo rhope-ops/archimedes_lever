@@ -333,8 +333,14 @@ def file_report(root):
 
 
 def last_changes(root):
-    """{path: YYYY-MM-DD of its last commit} for the files of docs/reviews/; None in a shallow clone or with no git history
-    (the dates of a cut history are not the real dates, so the age test is not made)."""
+    """The date of the last commit of each file of docs/reviews/ (the dates of a cut history are not the real dates).
+
+    Args:
+        root: the repo root (a Path).
+
+    Returns:
+        {path: "YYYY-MM-DD"}; None in a shallow clone or with no git history (no age test is made).
+    """
     if brules.git(root, "rev-parse", "--is-shallow-repository") != "false":
         return None
     dates, day = {}, ""
