@@ -189,7 +189,10 @@ def check_lines(cs, root, g):
         a = 'a' * 45   # whole files, as ruff 0.17.6 sees them at a cap of 40 (2026-11-25): True = over the cap
         for text, want in (('x = "# noqa %s"' % a, True), ("x = '''\n%s # noqa\n'''" % a, True), ('x = "%s"' % ('\u65e5' * 22), True),
                            ('if x:\n\ty = "%s"' % ('a' * 33), True), ('x = "%s"' % ('e\u0301' * 20), False),
-                           ('x = 1  # type: int  # %s' % a, False), ('x = "%s"  # noqa' % a, False)):
+                           ('x = 1  # type: int  # %s' % a, False), ('x = "%s"  # noqa' % a, False),
+                           ('x = "%s✅️"' % ('a' * 32), False), ('x = 1  # flake8: %s' % a, False),
+                           ('x = 1  # mypy: %s' % a, True), ('x = """\n%s\n"""  # noqa: E501' % ('a b ' * 12), False),
+                           ('# ruff: noqa\nx = "%s"' % a, False), ('# SPDX-License-Identifier: %s' % ('a b ' * 12), False)):
             assert (gate.longest_line(text.split('\n'), [], 40) > 40) == want, 'longest_line(%r...) over the cap: %s' % (text[:20], want)
     finally:
         rules.LINTERS = linters

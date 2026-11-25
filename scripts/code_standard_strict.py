@@ -41,8 +41,12 @@ import check_settings as settings   # noqa: E402 - scripts/check_settings.py: th
 import code_standard_rules as rules   # noqa: E402 - scripts/code_standard_rules.py: LINTERS (ruff and pylint installed)
 
 PRAGMA = re.compile(r'\s*(?:#\s*(?:noqa|type:|pylint:|pyright:|mypy:|nosec|isort:|ruff:|fmt:)[^#]*)+$', re.I)   # ruff E501 skips it
-PRAGMA_START = re.compile(r'#\s*(?:noqa|type:|pylint:|pyright:|mypy:|nosec|isort:|ruff:|fmt:)', re.I)   # a comment ruff strips whole
+# A comment that starts with one of ruff's pragmas is stripped whole (ruff 0.17.6: case-sensitive, except noqa).
+PRAGMA_START = re.compile(r'#\s*(?:(?i:noqa)|type:|pyright:|pylint:|nosec|isort:|ruff:|flake8:)')
 NOQA = re.compile(r'#\s*noqa(?::[^#]*\bE501\b|(?![:\w]))', re.I)
+FILE_NOQA = re.compile(r'#\s*(?:ruff|flake8):\s*(?i:noqa)(?::[^#]*\bE501\b|(?![:\w]))')   # on its own line: the whole file
+SPDX = re.compile(r'\s*#\s*SPDX-')   # a license comment line: ruff skips it
+ZERO_WIDTH = ('Mn', 'Me', 'Cf', 'Cc')   # unicode categories ruff counts as width 0 (combining marks, joiners, controls)
 SAFETY_LABELS = ('Network:', 'Writes:', 'Credentials:')   # C1 safety: what a reviewer must find before a run
 # A By cell with one of these marks a script or an agent, not the Maintainer (the Maintainer, 2026-11-17: only the Maintainer decides).
 NOT_OWNER = ('scripts/', '.py', 'agent', 'delegation')
@@ -68,49 +72,89 @@ def safety_ok(head):
 
 
 def longest_line(lines, skip, cap=0):
-    """Return the width of the longest line outside the generated blocks `skip` (1-based first, last); with `cap`
-    (a Python file), the width as ruff counts it, and a line that ruff's E501 also lets pass does not count (ruff_ok)."""
-    cols = comment_columns(lines) if cap else {}
-    return max([width(x.rstrip('\r')) if cap else len(x.rstrip('\r')) for i, x in enumerate(lines, 1)
-                if not any(a <= i <= b for a, b in skip) and not (cap and ruff_ok(x.rstrip('\r'), cap, cols.get(i, -1) if cols is not None else None))]
-               or [0])
+    """Return the width of the longest line outside the generated blocks; for a Python file, as ruff's E501 counts it.
+
+    Args:
+        lines: the lines of the file.
+        skip: the (first, last) line numbers of the generated blocks (1-based).
+        cap: 0 for a non-Python file (the length in characters); else the cap: the width as ruff counts it, and a
+            line that ruff's E501 also lets pass does not count (ruff_ok).
+
+    Returns:
+        The width of the longest counted line, 0 for none.
+    """
+    info = python_comments(lines) if cap else None
+    if info and info[2]:
+        return 0   # a file-level `# ruff: noqa` (or flake8), blanket or for E501
+    keep = []
+    for i, x in enumerate(lines, 1):
+        x = x.rstrip('\r')
+        if any(a <= i <= b for a, b in skip):
+            continue
+        if not cap:
+            keep.append(len(x))
+        elif info is None:
+            keep += [] if ruff_ok(x, cap) else [width(x)]
+        else:
+            cols, owner = info[0], info[1].get(i, i)   # the noqa of a multi-line string or continuation: on its end line
+            noqa = lines[owner - 1][cols[owner]:] if owner in cols else ''
+            keep += [] if ruff_ok(x, cap, cols.get(i, -1), noqa) else [width(x)]
+    return max(keep or [0])
 
 
-def comment_columns(lines):
-    """Return {line number: column of its comment} of a Python text (tokenize), so that `# noqa` in a string is no
-    comment, as for ruff; None when the text does not tokenize (then each line is read whole)."""
+def python_comments(lines):
+    """Read the comments of a Python text with tokenize, so that `# noqa` in a string is no comment, as for ruff.
+
+    Args:
+        lines: the lines of the file.
+
+    Returns:
+        ({line: column of its comment}, {line: the line whose comment can hold its noqa}, True for a file-level noqa),
+        or None when the text does not tokenize (then each line is read whole). A multi-line string and a backslash
+        continuation take the noqa of the line where they end, as in ruff.
+    """
     try:
-        return {t.start[0]: t.start[1] for t in tokenize.generate_tokens(io.StringIO('\n'.join(lines)).readline)
-                if t.type == tokenize.COMMENT}
+        tokens = list(tokenize.generate_tokens(io.StringIO('\n'.join(lines)).readline))
     except (tokenize.TokenError, SyntaxError):
         return None
+    cols = {t.start[0]: t.start[1] for t in tokens if t.type == tokenize.COMMENT}
+    owner = {r: t.end[0] for t in tokens if t.end[0] > t.start[0] and t.type != tokenize.COMMENT
+             for r in range(t.start[0], t.end[0])}
+    for i in range(len(lines) - 1, 0, -1):   # a backslash at the end of a code line joins it to the next line
+        if i not in owner and i not in cols and lines[i - 1].rstrip('\r').endswith('\\'):
+            owner[i] = owner.get(i + 1, i + 1)
+    whole = any(FILE_NOQA.match(lines[r - 1], c) and not lines[r - 1][:c].strip() for r, c in cols.items())
+    return cols, owner, whole
 
 
 def width(text):
-    """The width of a line as ruff counts it: a wide or full-width character counts 2, a combining mark 0, and a tab
-    moves to the next multiple of 4 (ruff's default indent-width)."""
+    """The width of a line as ruff counts it: a wide or full-width character counts 2, a combining mark, joiner or
+    control character 0, and a tab moves to the next multiple of 4 (ruff's default indent-width)."""
     n = 0
     for ch in text:
-        n += 4 - n % 4 if ch == '\t' else 0 if unicodedata.combining(ch) else 2 if unicodedata.east_asian_width(ch) in 'WF' else 1
+        n += 4 - n % 4 if ch == '\t' else 0 if unicodedata.category(ch) in ZERO_WIDTH else 2 if unicodedata.east_asian_width(ch) in 'WF' else 1
     return n
 
 
-def ruff_ok(line, cap, comment=None):
+def ruff_ok(line, cap, comment=None, noqa=None):
     """True for a long Python line that ruff's E501 lets pass: a `# noqa` for all codes or for E501 (any case); a line
-    that is long only by a comment that starts with a pragma (`# noqa: ...`, `# type:`, `# pylint:`, `# nosec` and the
-    like); one word with no space; or a last word that holds :// and starts at or before the cap (the line ends with a URL).
+    that is long only by a comment that starts with one of ruff's pragmas (`# noqa: ...`, `# type:`, `# pylint:`,
+    `# nosec` and the like); a `# SPDX-` comment line; one word with no space; or a last word that holds :// and starts
+    at or before the cap (the line ends with a URL).
 
     Args:
         line: the line, without its line end.
         cap: the line cap.
-        comment: the column of the line's real comment (comment_columns), -1 for none; None reads the whole line,
+        comment: the column of the line's real comment (python_comments), -1 for none; None reads the whole line,
             with a trailing run of pragma comments as the pragma.
+        noqa: the comment that can hold the line's noqa (the end line of a multi-line string or a continuation);
+            None: the line's own comment.
 
     Returns:
         True when ruff's E501 does not fail the line.
     """
     tail = line if comment is None else line[comment:] if comment >= 0 else ''
-    if NOQA.search(tail):
+    if NOQA.search(tail if noqa is None else noqa) or SPDX.match(line):
         return True
     body = PRAGMA.sub('', line) if comment is None else line[:comment].rstrip() if PRAGMA_START.match(tail) else line
     if width(body) <= cap:
