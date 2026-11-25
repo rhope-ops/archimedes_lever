@@ -50,5 +50,12 @@ Done: schedule approved, kit pilot merged with the proofs, fleet release planned
   retention schedule and ARCHIVE DUE thresholds as written. Also approved the same day: phase 3 adds measured
   context-trim proposals (each rule text needs the Maintainer's approval of its text), and close-out lists for the
   tool-retirement plan and the fleet audit (nothing closes without the Maintainer's approval).
-  [x] Phase 3 (PRs 214, 217). [ ] Phase 4 kit pilot (from 2026-12-02: 0 files are archivable on 2026-11-25). [ ] Fleet release plan approved.
+  [x] Phase 3 (PRs 214, 217). [~] Phase 4 kit pilot: the Maintainer, 2026-11-25 ~15:00 CST, own message "do it now
+  and audit the entire fleet since it keeps whining": the age waits are waived for this run (all other exceptions
+  stay); session "Kit · Archive run now (pilot)" (session_01PyXpdV79gVD4nA6ayeYn3k).
+  [x] Fleet release plan approved (the Maintainer, 2026-11-25, dialogs "Approve, Sonnet" and "You make it
+  (Recommended)"): [ ] kit 13.0.0 (MAJOR: R1-R3 rule text; the coordinator makes the tag v13.0.0); [ ] one Sonnet
+  session per fleet repo (33-332.Z, 90-161.Z, RADE, ICF-Source, SEC-Source, SPAR, TA, no-more-beyond, 36-3003.Z,
+  65-601.Z): kit sync, full audit (`.claude/skills/audit/SKILL.md`), the archive step with the same waiver; lane C
+  sync merges after green checks and a fresh review with 0 MAJOR. About 12 agent-hours, 2-3 h wall.
 - Left out: a scheduled monthly run (replaced by the dynamic trigger); condensing DECISIONS rows (changes the record).
