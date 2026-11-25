@@ -14,6 +14,8 @@ America/Chicago** (coordinator 3 chat, "Approve as written"), with the answers b
   small; show the running total at each merge; a plan total past about +400 lines is drift: tell the Maintainer.
 - Step 7: all 4 projects ("Yes, all 4 projects").
 - ICF-Source name item: leave it as is; `.check` allows it on purpose ("Leave it as is"). Item closed.
+- DEC 5 (later, same chat): item 3: "Close it, keep the scan" (PR 181 closed: every safe rule fixed 1 of 11 lines).
+- DEC 6 (later, same chat): "Yes, release 11.1.0" (KIT_VERSION, CHANGELOG row, tag v11.1.0; step 7 locks to the tag).
 
 ## Source items
 
@@ -23,7 +25,7 @@ Mark: in (this plan), out, later, ask (the Maintainer decides before the step).
 |---|---|---|---|---|
 | 1 | `code_standard.py --update` drops Python line debt that ruff/pylint still fail on | Not reproduced yet. `check()` saves the measurement as the new baseline; the kit itself has no debt (`.check.state.json`), so the case is in a project baseline | in | 1 |
 | 2 | Approval-quote marker: the check says a sync adds it, no sync does | `sync_baseline.py:183-204` adds it only below a `## Decisions` heading; with no heading it adds nothing and prints nothing | in | 2 |
-| 3 | worker_guard_scan flags PowerShell `@(` as an at sign | `worker_guard_scan.py:70`; a first fix weakened the scan and was dropped | in | 3 |
+| 3 | worker_guard_scan flags PowerShell `@(` as an at sign | `worker_guard_scan.py:70`; a first fix weakened the scan and was dropped | out (DEC 5) | 3 |
 | 4 | `--kit-install` runs pip outside a venv (PEP 668) | `check.sh:272` installs into the system Python; this container does not enforce PEP 668 (pip prints a WARNING only), so the test needs an EXTERNALLY-MANAGED marker | in | 1 |
 | 5 | Delegate skill does not name the reviewer delete block (kit #174) | `.claude/skills/delegate/SKILL.md:18` names the worker blocks only | in | 4 |
 | 6 | kit-update SKILL.md and the check.sh comment disagree about the setup script; "fail closed" is not STE | SKILL.md:44 (the setup script may not run again) against check.sh:268 (the setup script uses it); `.claude/settings.json:109` | in | 4 |

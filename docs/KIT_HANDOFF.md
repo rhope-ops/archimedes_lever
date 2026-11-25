@@ -6,7 +6,7 @@ Updated: 2026-11-24 19:30 by "Kit · Fleet coordinator 3 · 2026-11-24": approve
 
 ## State
 
-- Kit 11.0.1 (tags v11.0.0 dedc3b3, v11.0.1 9e3f6fa); main adds P1, P2 and the fleet audit, not released. All 5 fleet repos lock 11.0.1 (LOCK PASS, 2026-11-24). Script lines (T2) 20,023.
+- Kit 11.1.0 (tag v11.1.0; v11.0.1 9e3f6fa): P1-P3, the fleet audit, follow-ups 1-8 (plan in docs/reviews). All 5 fleet repos lock 11.0.1 (LOCK PASS, 2026-11-24). Script lines (T2) 20,023.
 
 ## Approved plan (the Maintainer, 2026-11-23 17:12): custom tool retirement
 
