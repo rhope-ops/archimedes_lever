@@ -193,3 +193,31 @@ approval for anything. if you have a doubt, go with your top recommendation ever
   fleet audit and the SEC-Source inventory; P6 exports and the branch-delete list.
 - Known limits: strict gate without linters is a little looser than ruff (CI catches it); worker scan @( false finding
   stays (DEC 5).
+
+### Coordinator 3: night run (2026-11-24 21:40-22:20 America/Chicago)
+
+- P4c 33-332.Z: #118 merged (fae3916; paste check in Ion; CI 4/4, review 0 MAJOR). Open: 3 MINOR text items (one
+  follow-up PR after the PAM's ISE test, expect "Paste check: OK", build 240bf873); #61 paused, rebuild after.
+- P4a RADE: #179 merged (f5b4687, paste guard in build(); check.local.sh:73 runs tests/paste_guard_test.py), release
+  engine-v38 tagged at f5b4687 (run 45544195036); #180 merged (2c7bedd, 175 % window run, green on Windows PS 5.1).
+  Correction (23:50): no person rejected the SBOM call; the coordinator's own interrupt (04:02:20Z) cancelled it. The
+  block is the ask rule `Bash(*--output*)`. Later: #182 CodeQL Python merged (c5ba723; one run on main); the 7 hashed
+  pins go in a lane B PR (#183) without the SBOM.
+- P4b 90-161.Z: waits for R42 #231 (it moves its lock to engine-v38 before its merge).
+- P6: full-history .7z exports made for 9 repos (all but the kit and 90-161.Z, which still change); branch list:
+  [2026-11-24-p6-branch-list.md](2026-11-24-p6-branch-list.md) (112 CONTAINED, safe; 41 NOT-CONTAINED, keep).
+- P4b 90-161.Z (child session_01PyXpdVDEYZPZFcjAMJBotW): R42 #231 locked engine-v38; #233 CodeQL (Python, JS) merged
+  (fa1e1bb; one run on main for a baseline); #234 decision 7 merged (000a286); #232 CSP `connect-src` one source merged
+  (57e2d44). #235 go.md build-time HTML: OPEN on purpose, preview https://claude.ai/artifact/6Vnt7CpTNoMcH9YKAPYuK9 (the
+  PFM runs R42 from go.md; the Maintainer looks first). Before #235 merges: the environment setup script needs
+  markdown-it-py==4.3.0; the round skill should say to run scripts/build_go_page.py after a go.md change (guard file).
+- SBOM (RADE and 90-161.Z): blocked by the project ask rule `*--output*` in .claude/settings.json (only a person can approve
+  a command with --output). Nothing pushed; hashed-requirements work stays local in the child sessions.
+- P6: 10 exports sent in chat (no-more-beyond in 6 volumes of 200 MB: the upload limit refused larger files); the kit
+  export follows this commit.
+- New kit follow-ups: build_site_html.py ReDoS (CodeQL, seen in 90-161.Z #232); the `*--output*` ask rule blocks
+  cyclonedx-py and pip-compile (an SBOM step needs a named allow or a person); RADE Start-SignInSize needs a
+  no-state verb or an opt-in before 90-161.Z can copy it (R42 note).
+- Sessions ready to archive (all PRs merged, nothing pending; the Maintainer archives): SEC2 P5, 65-601.Z sync,
+  36-3003.Z sync, SPAR sync, TA sync, no-more-beyond sync, ICF P4d, 33-332.Z P4c. Keep open until their PRs settle:
+  RADE P4a (#183), 90-161.Z P4b (#235 preview), 90-161.Z R42 (the PFM's round), this coordinator.
