@@ -2,11 +2,11 @@
 
 The kit's own handoff (AGENTS.md "Handoff"). Kit only: first use deletes it in a project, which uses docs/NEXT_PROMPT.md. Keep it at 40 lines or fewer and inside the session-load cap (`.check` counts it); evidence and older items go in docs/reviews/. Times are America/Chicago.
 
-Updated: 2026-11-25 08:41 ("Kit · Token cost and log fixes"): PRs 200, 201 merged; 11.2.0 prepared, not tagged.
+Updated: 2026-11-25 08:41 (token log session): PRs 200, 201 merged; 11.2.0 not tagged. Older items: [archive file](reviews/2026-11-24-kit-handoff-archive.md); fleet audit [report](reviews/2026-11-24-fleet-audit.md).
 
 ## State
 
-- Kit 11.1.0 = a6295509 (tag v11.1.0, made by the Maintainer 2026-11-25). P1-P3, the fleet audit, follow-ups 1-8 and follow-ups 2 (kit PRs 187, 193-198). 10 fleet repos on 11.1.0. Script lines (T2) 20,389.
+- Kit 11.1.0 = a6295509 (tag v11.1.0, made by the Maintainer 2026-11-25). P1-P3, the fleet audit, follow-ups 1-8. 10 fleet repos on 11.1.0. Kit PRs 184-201 go in 11.2.0. T2 20,608.
 
 ## Approved plan (the Maintainer, 2026-11-23 17:12): custom tool retirement
 
@@ -16,13 +16,13 @@ Plan and decisions 1-10: [reviews/2026-11-23-tool-retirement-plan.md](reviews/20
 
 ## Open
 
-- Follow-ups 2: 11 of 13 done (item 2 dropped, item 12 blocked by a cap); 90-161.Z PR 239 held for the Maintainer: [state](reviews/2026-11-23-fleet-v2-coordinator-state.md) last section.
+- Follow-ups 2: 11 of 13 done ([plan](reviews/2026-11-25-followups-2-plan.md), [state](reviews/2026-11-23-fleet-v2-coordinator-state.md)); 90-161.Z PR 239 held for the Maintainer (state, last section).
 - Fleet audit (report, "Open questions"): A10, A11, A15 in PR 160; the other audit-the-audit items (A1-A9, A12-A14) open. Cut proposals 5, 8, 9 and each project's AUDIT DUE wait for that project's own audit (the Maintainer, 2026-11-24). Skill-use audit due 2026-12-08.
 - Kit PATCH fixes (a)-(f) and Step 5: archive file, "Open".
 
 ## Needs the owner
-- Tag v11.2.0, then a `v*` tag and branch ruleset, then the setup script on that tag (never before the tag): [plan](reviews/2026-11-25-token-log-followups-plan.md).
 
+- Tag v11.2.0; then a `v*` tag and branch ruleset; then the setup script on it, never before: [plan](reviews/2026-11-25-token-log-followups-plan.md).
 - Tags, branch deletes, account skills, the 2026-11-21 items: archive file, "Needs the owner".
 - Add the Dependabot secret `PII_GUARD_DENYLIST` (steps: archive file, "Dependabot secret"), then re-run the checks of PRs 115 and 116.
 - Delete the merged branches `claude/fleet-audit-cli-helpers`, `claude/fleet-audit-report` (kit) and `claude/fleet-audit-site-page-dedup` (33-332.Z).
