@@ -2,7 +2,7 @@
 
 The kit's own handoff (AGENTS.md "Handoff"). Kit only: first use deletes it in a project, which uses docs/NEXT_PROMPT.md. Keep it at 40 lines or fewer and inside the session-load cap (`.check` counts it); evidence and older items go in docs/reviews/. Times are America/Chicago.
 
-Updated: 2026-11-25 06:20 by "Kit · Fleet coordinator 3 · 2026-11-24": follow-ups 2 done (11 of 13; item 2 dropped, item 12 blocked by a cap); 90-161.Z PR 239 held for the Maintainer: [state](reviews/2026-11-23-fleet-v2-coordinator-state.md) last section; plan [reviews/2026-11-25-followups-2-plan.md](reviews/2026-11-25-followups-2-plan.md). Older items: [reviews/2026-11-24-kit-handoff-archive.md](reviews/2026-11-24-kit-handoff-archive.md); fleet audit report: [reviews/2026-11-24-fleet-audit.md](reviews/2026-11-24-fleet-audit.md).
+Updated: 2026-11-25 08:41 ("Kit · Token cost and log fixes"): PRs 200, 201 merged; 11.2.0 prepared, not tagged.
 
 ## State
 
@@ -16,10 +16,12 @@ Plan and decisions 1-10: [reviews/2026-11-23-tool-retirement-plan.md](reviews/20
 
 ## Open
 
+- Follow-ups 2: 11 of 13 done (item 2 dropped, item 12 blocked by a cap); 90-161.Z PR 239 held for the Maintainer: [state](reviews/2026-11-23-fleet-v2-coordinator-state.md) last section.
 - Fleet audit (report, "Open questions"): A10, A11, A15 in PR 160; the other audit-the-audit items (A1-A9, A12-A14) open. Cut proposals 5, 8, 9 and each project's AUDIT DUE wait for that project's own audit (the Maintainer, 2026-11-24). Skill-use audit due 2026-12-08.
 - Kit PATCH fixes (a)-(f) and Step 5: archive file, "Open".
 
 ## Needs the owner
+- Tag v11.2.0, then a `v*` tag and branch ruleset, then the setup script on that tag (never before the tag): [plan](reviews/2026-11-25-token-log-followups-plan.md).
 
 - Tags, branch deletes, account skills, the 2026-11-21 items: archive file, "Needs the owner".
 - Add the Dependabot secret `PII_GUARD_DENYLIST` (steps: archive file, "Dependabot secret"), then re-run the checks of PRs 115 and 116.
