@@ -77,12 +77,13 @@ def week_of(ts, tz="America/Chicago"):
 
 
 def fill_1h(rows):
-    """Give each row from before the cache_write_1h_tokens column an estimate: its cache writes x the 1-hour share of
-    the newer rows of the same source (0 when there are none).
+    """Give each row from before the cache_write_1h_tokens column an estimate of it: its cache writes times the 1-hour
+    share of the cache writes in the newer rows of the same source (main or subagent; 0 when there are none).
 
     Args:
         rows: a list of rows (dicts with the token_log_rows.FIELDS).
-    Returns: (the rows, old ones replaced by copies with the estimate; {source: share}; the number of old rows).
+    Returns:
+        (the rows, old ones replaced by copies with the estimate; {source: share}; the number of old rows).
     """
     write, hour = {}, {}
     for r in rows:
@@ -166,8 +167,9 @@ def report_rows(hook, root, ref, folder="sessions"):
 
 
 def sources(core, root):
-    """The other repos whose log branch --report reads (fetch only): TOKEN_LOG_SOURCES (URLs split by spaces, e.g.
-    private repos), then "token_log_sources" of the kit.config.json next to the hook file, else of the repo's root.
+    """The other repos whose log branch --report also reads: TOKEN_LOG_SOURCES (URLs separated by spaces; for repos
+    whose names stay out of the kit, such as private ones), then "token_log_sources" of the kit.config.json next to the
+    hook file, else of the repo's root. Read only: a fetch into a local ref, never a push.
 
     Args:
         core: the token_log module.
@@ -188,8 +190,9 @@ def sources(core, root):
 
 
 def fetch_refs(core, root):
-    """Fetch the log branch of origin, the private log repo (core.log_repo()) and each of sources() into its own ref.
-    One that cannot be fetched is left out with a note on stderr; a last line counts the branches read (no silent gap).
+    """Fetch the log branch from the repo's origin, the private log repo (core.log_repo()) and each of sources(),
+    each into its own ref. One that cannot be fetched (no branch there, or no access) is left out with a note on
+    stderr, and a last stderr line counts the branches read, so a gap in the report is never silent.
 
     Args:
         core: the token_log module (its git helpers and settings).
@@ -209,7 +212,7 @@ def fetch_refs(core, root):
         if rc == 0:
             refs.append(ref)
         else:
-            name, why = remote.rstrip("/").rsplit("/", 1)[-1], re.sub(r"\S+://\S+", "<url>", err)  # a URL can hold a token
+            name, why = remote.rstrip("/").rsplit("/", 1)[-1], re.sub(r"\S+://\S+", "<url>", err)  # a URL: a token?
             print(f"token_log --report: not read: {name}: " + " / ".join(why.splitlines()[-3:]), file=sys.stderr)
     print(f"token_log --report: log branches read: {len(refs)} of {sum(map(bool, remotes))}", file=sys.stderr)
     return refs
