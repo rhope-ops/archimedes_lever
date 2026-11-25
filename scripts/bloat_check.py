@@ -65,6 +65,8 @@ It measures:
                   KIT_CAPS cap need a docs/reviews/*-debt.md file with the line "debt-check: <hash>" (the hash as the conflict gate)
     fleet audit   (kit, R3) AUDIT DUE (fleet): kit.config.json "fleet": {"last_audit": "YYYY-MM-DD"} missing, over 14 days old,
                   or older than a v* release tag at HEAD
+    archive due   ARCHIVE DUE: the archivable files of docs/reviews/ reach 20 files or 200 KB, or docs/reviews/ passes 200
+                  files or 1 MB (the tests and limits: archive_due in scripts/bloat_check_files.py)
     timings       (--time) wall time of each named command against its recorded baseline; (--compare) times that
                   a script measured itself: NAME is a timings key, NAME:STEP one of its "steps". Slower means over
                   max_slowdown (default +25%) and over min_slowdown_seconds (default 0.5 s), so noise on a small step
@@ -307,7 +309,7 @@ def report(root, args, today=None):
         return 1 if args.strict else 0
     b = cfg["budgets"]
     files = scan_files(root, cfg)
-    s_lines, s_bytes, s_tok, s_files = start_read(root, cfg)
+    _, s_bytes, s_tok, s_files = start_read(root, cfg)
     hp = root / "docs/NEXT_PROMPT.md"
     h_lines = hp.read_bytes().count(b"\n") if hp.exists() else 0
     dups = duplicates(root, dup_files(files, cfg))
@@ -334,6 +336,10 @@ def report(root, args, today=None):
     if fleet:
         tail += (f" · AUDIT DUE (fleet: {fleet}): tell the Maintainer and ask whether to run the fleet audit "
                  "(.claude/skills/audit/SKILL.md, section Fleet audit); never start it unasked")
+    archive = bloat_check_files.archive_due(root, (git(root, "ls-files") or "").splitlines(), today)
+    if archive:
+        tail += (f" · ARCHIVE DUE ({archive}): tell the Maintainer and ask whether to run the archive step "
+                 "(.claude/skills/audit/SKILL.md, section The archive step); never start it unasked")
     if args.brief:
         print(f"bloat:       {r_rows[0][13:]} · duplicate lines "
               f"{len(dups)} · big files {len(big)} · over: {', '.join(over) or 'none'}{' · ' + warn if warn else ''} · {tail}")

@@ -18,7 +18,7 @@ import shutil
 import subprocess
 import sys
 
-from token_log_test import append, msg, prompt, tool_result
+from token_log_test import append, msg, prompt
 
 
 def case_agent_type(fx):
@@ -343,7 +343,7 @@ def case_kit_url(fx, kit, target):
         kit: the test kit repo of case_self_update.
         target: the installed token_log.py of case_self_update.
     """
-    tl, root = fx.tl, fx.root
+    tl = fx.tl
     with open(os.path.join(kit, "kit.config.json"), "w") as f:  # kit 11.0.0: the kit address lives in kit.config.json
         f.write('{"kit_url": "https://example.invalid/sample-org/sample-kit"}')
     fx.sh(kit, "git", "add", ".")
