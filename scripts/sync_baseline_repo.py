@@ -136,16 +136,37 @@ def show_diff(root, new):
 
 
 def dod_files(base, root, rels):
-    """The DoD group a sync adds (fleet v2 DEC 4): each file of rels the project lacks, when its .check has
-    `dod-security: on` (read by scripts/build_site_html.py dod_security, the one reader of that key).
+    """The DoD group a sync writes (fleet v2 DEC 4), when the project's .check has `dod-security: on` (read by
+    scripts/build_site_html.py dod_security, the one reader of that key): each file of rels the project lacks, and each
+    copy that is byte-identical to an earlier kit version of that file (so a kit fix reaches it). A copy the project
+    changed is kept, with a note that names it.
 
     Args:
         base: the baseline folder.
         root: the project folder.
         rels: the DoD file paths (sync_baseline.DOD_FILES).
     Returns:
-        A dict of project path to the kit's text: empty when the key is off or missing, or the project has every file.
+        (new, notes): new maps each path to write to the kit's text (empty when the key is off or missing); notes has
+        one line for each copy that is replaced or kept although it differs.
     """
+    new, notes = {}, []
     if not dod_security(root):
-        return {}
-    return {rel: (base / rel).read_text() for rel in rels if (base / rel).exists() and not (root / rel).exists()}
+        return new, notes
+    for rel in rels:
+        if not (base / rel).exists():
+            continue
+        text, path = (base / rel).read_text(), root / rel
+        if not path.exists():
+            new[rel] = text
+            continue
+        mine = path.read_bytes()
+        if mine == text.encode():
+            continue
+        old = kit_history(base, rel)
+        if old and mine in old:
+            new[rel] = text
+            notes.append(f"{rel}: the project's copy is an earlier kit version that was never changed here; it is replaced.")
+        else:
+            why = "this project changed it" if old is not None else "the baseline folder has no git history to tell"
+            notes.append(f"{rel}: kept; it differs from the kit's file ({why}). Compare it with the kit's {rel}.")
+    return new, notes

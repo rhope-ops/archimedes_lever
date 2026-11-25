@@ -170,6 +170,7 @@ decision; the Maintainer decides each retire or shrink. Evidence and method: doc
 | fleet format (`fleet_harvest*.py`) | keep | the fleet page reads it; no standard reader |
 | python lint (ruff, pylint) | keep | the standard tools that replaced custom Python checks (P2 (a)) |
 | shellcheck (WARN) | keep | standard tool (P2 (g)) |
+| bandit, gitleaks (full lane; a SKIP line when one is missing) | keep | standard tools; the local run of the scans of `.github/workflows/security.yml`, which skips pull requests in a private repo (2026-11-25) |
 | self-tests (each `--test`, `*_cli_test.py`) | keep; shrink done | #158 (merged, 00a0102) merged 4 copies of the CLI test helpers (-105 lines) |
 | kit lock (`check_lock.py`), drift (`drift.py`), sync (`sync_baseline*.py`, `sync_merge.py`) | keep until P3 | P3 (a package) can move 13,237 kit-owned lines out of each project; lock and sync change then |
 | token log (`token_log*.py`) | keep (decided, plan decision 5) | kit only, 1,566 lines with tests; OpenTelemetry needs a collector (W-C) |
