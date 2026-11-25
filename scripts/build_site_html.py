@@ -241,8 +241,8 @@ def build_key_facts(markdown, indent, need_source=False):
 
 
 # A README section and a generated block on the page; NAME is lower-case letters, digits and "-". Each end mark starts
-# its own line (after the indent), so no old text can stay in front of it; the body may be empty. A body and a mark stop
-# at the next open mark or "<", so an open mark with no end mark is scanned to the next open mark, not to the end (linear).
+# its own line (after the indent), so no old text can stay in front of it; the body may be empty. A body stops at
+# the next open mark and a mark stops at "<", so an open mark with no end mark is scanned only that far (linear).
 SECTION = re.compile(r'<!-- site:([a-z0-9-]+) -->\n(?:((?:(?!<!-- site:).)*?)\n)?<!-- /site:\1 -->', re.S)
 BLOCK = re.compile(r'^([ \t]*)<!-- >>> site:([a-z0-9-]+): generated from README\.md by scripts/build_site\.py --write '
                    r'\(do not edit\) -->\n(?:((?:(?!<!-- >>> site:).)*?)\n)?[ \t]*<!-- <<< site:\2 -->', re.S | re.M)

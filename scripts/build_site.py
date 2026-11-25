@@ -357,7 +357,7 @@ HOSTILE_TEXT = (('a long word', 'a' * 100000), ('letters and digits', 'a1' * 500
                 ('letters and plus signs', 'a+' * 50000), ('letters and dashes', 'a-' * 50000))
 # Hostile marks (SECTION, BLOCK, README_MARK, SITE_MARK): 50,000 open marks with no end mark took quadratic time.
 HOSTILE_MARKS = ((SECTION, '<!-- site:a -->\n' * 50000), (BLOCK, '<!-- >>> site:a: generated from README.md by scripts/build_site.py '
-                 '--write (do not edit) -->\n' * 50000), (README_MARK, '<!-- site:' * 50000), (SITE_MARK, '<!-- >>> site:' * 50000))
+                 '--write (do not edit) -->\n' * 50000), (README_MARK, '<!-- site:' * 50000), (SITE_MARK, '<!-- <<< site:' * 50000))
 OLD_SCHEME = r'[A-Za-z][A-Za-z0-9+.-]*://'   # the scheme form before the ReDoS fix (quadratic): address_test compares with it
 
 
