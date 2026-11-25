@@ -22,7 +22,8 @@ Checks (each failure prints FILE:LINE: message):
   "I approve the plan" (own message, date time). Rows from the row named in the marker line `<!-- approval-quote-exempt-from: TEXT -->`
   (above the table; TEXT starts that row's Decision cell) down to the end are older rows and exempt; the table is
   newest first. With no marker line, every row is checked. A table with the columns Date | Scope | Decision has no By
-  cell: its By cell is the Decision cell from its first "By:" (or the whole cell), and the marker names the Decision cell.
+  cell: a role word from the Decision cell on needs its quoted approval right after it (By: the Maintainer: "I approve"),
+  and the marker names the Decision cell.
 --coverage (T7): a plan coverage list. Every row of each table with a Mark column has the mark in, out, later or ask
   (first word of the cell; "in (added)" is in). A row marked ask or with no mark fails. The "Group | Rows | in | out |
   later | ask" table must equal the rows counted per group (the letter of the nearest "## A." or "### B2." heading)
