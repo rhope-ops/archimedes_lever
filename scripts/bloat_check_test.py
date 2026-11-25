@@ -319,7 +319,7 @@ def archive_cases(bloat, d):
     texts = {"old.md": "x", "linked.md": "x", "record.md": "rule-conflict-check: abc", "list-coverage.md": "x",
              "open-plan.md": "- [ ] step; evidence: ev.md", "ev.md": "x", "nobox-plan.md": "Status: approved",
              "wip-plan.md": "- [x] a\n- [~] b", "done-plan.md": "- [x] step; see old.md", "fix/a.md": "x", "fix/b.md": "x",
-             "README.md": "x"}
+             "README.md": "x", "archive-index.md": "x"}
     for rel, text in texts.items():
         (rev / rel).write_text(text)
     (root / "README.md").write_text("See docs/reviews/linked.md.")
@@ -337,7 +337,7 @@ def archive_cases(bloat, d):
     assert names("2026-01-08") == ["docs/reviews/done-plan.md"], "7 days: the closed plan only: %s" % names("2026-01-08")
     assert names("2026-01-15") == ["docs/reviews/done-plan.md", "docs/reviews/old.md"], "the folder is 10 days old: %s" % names("2026-01-15")
     assert names("2026-01-19") == ["docs/reviews/done-plan.md", "docs/reviews/fix/a.md", "docs/reviews/fix/b.md",
-                                   "docs/reviews/old.md"], "never: a live link, a record, a coverage list, README.md, an open plan or its evidence"
+                                   "docs/reviews/old.md"], "never: a live link, a record, a coverage list, README.md, archive-index.md, an open plan or its evidence"
     archive_due_cases(bloat, root, files)
     (root / "docs/KIT_HANDOFF.md").write_text("Open: other work.")   # the plan closed long ago; the handoff changes later
     commit("2026-01-20")
@@ -356,7 +356,7 @@ def archive_cases(bloat, d):
 
 
 def archive_due_cases(bloat, root, files):
-    """ARCHIVE DUE on the sample repo of archive_cases (4 files archivable on 2026-01-19, 12 files in docs/reviews/):
+    """ARCHIVE DUE on the sample repo of archive_cases (4 files archivable on 2026-01-19, 13 files in docs/reviews/):
     the archivable count and bytes "reach" their limits (>=), the count and bytes of docs/reviews/ "pass" theirs (>),
     and the --brief line carries the line. The limits are put back after the cases.
 
@@ -374,16 +374,16 @@ def archive_due_cases(bloat, root, files):
     f.ARCHIVE_SET = (10**9, found)
     assert f.archive_due(root, files, day).startswith("4 files"), "the bytes reach it"
     size = sum((root / r).stat().st_size for r in files if r.startswith("docs/reviews/"))
-    f.ARCHIVE_SET, f.ARCHIVE_ALL = (10**9, found + 1), (12, size)
-    assert f.archive_due(root, files, day) == "", "the bytes do not reach found + 1; 12 files and %d bytes do not pass themselves" % size
-    f.ARCHIVE_ALL = (12, size - 1)
-    assert "docs/reviews/ 12 files" in f.archive_due(root, files, day), "the bytes pass"
-    f.ARCHIVE_ALL = (11, 10**9)
-    assert "docs/reviews/ 12 files" in f.archive_due(root, files, day), "12 files pass 11"
+    f.ARCHIVE_SET, f.ARCHIVE_ALL = (10**9, found + 1), (13, size)
+    assert f.archive_due(root, files, day) == "", "the bytes do not reach found + 1; 13 files and %d bytes do not pass themselves" % size
+    f.ARCHIVE_ALL = (13, size - 1)
+    assert "docs/reviews/ 13 files" in f.archive_due(root, files, day), "the bytes pass"
+    f.ARCHIVE_ALL = (12, 10**9)
+    assert "docs/reviews/ 13 files" in f.archive_due(root, files, day), "13 files pass 12"
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):
         bloat.report(root, argparse.Namespace(brief=True, time=False, record=False, strict=False))
-    assert "ARCHIVE DUE (docs/reviews/ 12 files" in buf.getvalue(), "the brief line says so: %s" % buf.getvalue()
+    assert "ARCHIVE DUE (docs/reviews/ 13 files" in buf.getvalue(), "the brief line says so: %s" % buf.getvalue()
     f.ARCHIVE_SET, f.ARCHIVE_ALL = old
 
 
