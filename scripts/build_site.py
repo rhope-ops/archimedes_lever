@@ -28,14 +28,16 @@ Credentials: none.
 
 import argparse
 import importlib.util
+import itertools
+import re
 import sys
 import tempfile
 import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from build_site_html import (BLOCK, BOLD, README, README_MARK, SECTION, SITE, SITE_MARK, build_intro, build_key_facts,  # noqa
-                             fact_rows, inline, paragraphs, readme_sections, refuse_marks, stray_marks, unquote)
+from build_site_html import (BLOCK, BOLD, CHECK, README, README_MARK, SCHEME, SECTION, SITE, SITE_MARK, build_intro,  # noqa
+                             build_key_facts, dod_security, fact_rows, inline, paragraphs, readme_sections, refuse_marks, stray_marks, unquote)
 
 ROOT = Path(__file__).resolve().parent.parent
 LOCAL = 'scripts/build_site_local.py'
@@ -266,6 +268,9 @@ TEST_CASES = (
     ('an entity with digits fails', ('Ask & learn.', 'Ask &frac12;.'), TEST_PAGE, None, [UNSUPPORTED], True),
     ('an emoji code fails', ('Ask & learn.', 'Ask :warning:'), TEST_PAGE, None, [UNSUPPORTED], True),
     ('a web address of another scheme fails', ('Ask & learn.', 'See ftp://x.example'), TEST_PAGE, None, [UNSUPPORTED], True),
+    ('a scheme after digits fails', ('Ask & learn.', 'See 1ftp://x.example'), TEST_PAGE, None, [UNSUPPORTED], True),
+    ('a scheme with dots and dashes fails', ('Ask & learn.', 'See a.b-c://x.example'), TEST_PAGE, None, [UNSUPPORTED], True),
+    ('a scheme of digits only passes (no letter)', ('Ask & learn.', 'Ask 1.2://3 now.'), TEST_PAGE, None, [], True),
     ('plain times, ratios and bold in brackets or quotes pass',
      ('A safe_tool & more.', 'A safe_tool (**Microsoft Purview**), "**Stop**", **PII**-free, 09:00-17:00, 10:30:45, 1:2:3,\n'
       '2026. That year.'), TEST_PAGE, None, [], True),
@@ -346,6 +351,26 @@ HOSTILE_TABLES = (
     ('many row starts, no row end', '<table>\n' + '<tr>' * 20000 + '\n</table>'),
     ('many tables', '<table>\n<tr></tr>\n' * 5000),
 )
+# Hostile plain text for refuse_marks: a long run of scheme characters with no "://" (a scheme search tried at each
+# letter took quadratic time).
+HOSTILE_TEXT = (('a long word', 'a' * 100000), ('letters and digits', 'a1' * 50000), ('letters and dots', 'a.' * 50000),
+                ('letters and plus signs', 'a+' * 50000), ('letters and dashes', 'a-' * 50000))
+OLD_SCHEME = r'[A-Za-z][A-Za-z0-9+.-]*://'   # the scheme form before the ReDoS fix (quadratic): address_test compares with it
+
+
+def address_test():
+    """Check that SCHEME finds a scheme in the same strings as the old form, on every string of up to 6 characters made
+    of a, 1, +, ., -, : and / (137,256 strings); print one line.
+
+    Returns:
+        0 when the two agree on every string, else 1.
+    """
+    new, old = re.compile(SCHEME), re.compile(OLD_SCHEME)
+    differ = [s for n in range(7) for s in map(''.join, itertools.product('a1+.-:/', repeat=n))
+              if bool(new.search(s)) != bool(old.search(s))]
+    print(('ok   ' if not differ else 'FAIL ') + f'the scheme regex finds the same strings as before the fix ({len(differ)} differ'
+          + (f', first {differ[0]!r})' if differ else ')'))
+    return 1 if differ else 0
 
 
 def hostile_test():
@@ -364,6 +389,22 @@ def hostile_test():
         seconds = time.monotonic() - start
         slow += seconds >= HOSTILE_SECONDS
         print(('ok   ' if seconds < HOSTILE_SECONDS else 'FAIL ') + f'a hostile key-facts table is read in under {HOSTILE_SECONDS} s: {label} ({seconds:.2f} s)')
+    for label, text in HOSTILE_TEXT:
+        start = time.monotonic()
+        refuse_marks(text)   # plain letters: no finding
+        seconds = time.monotonic() - start
+        slow += seconds >= HOSTILE_SECONDS
+        print(('ok   ' if seconds < HOSTILE_SECONDS else 'FAIL ') + f'hostile plain text is checked in under {HOSTILE_SECONDS} s: {label} ({seconds:.2f} s)')
+    with tempfile.TemporaryDirectory() as d:   # a .check line with a long run of inner spaces (a lazy group took quadratic time)
+        Path(d, CHECK).write_text('dod-security: a' + ' ' * 100000 + 'a\n', encoding='utf-8')
+        start = time.monotonic()
+        try:
+            dod_security(d)
+        except ValueError:
+            pass  # refused: not on or off
+        seconds = time.monotonic() - start
+    slow += seconds >= HOSTILE_SECONDS
+    print(('ok   ' if seconds < HOSTILE_SECONDS else 'FAIL ') + f'a hostile dod-security line is read in under {HOSTILE_SECONDS} s ({seconds:.2f} s)')
     return slow
 
 
@@ -378,7 +419,7 @@ def self_test():
         ok, found = test_case(edit, page, local, expect, write)
         failed += not ok
         print(('ok   ' if ok else 'FAIL ') + label + ('' if ok else f': {found}'))
-    failed += hostile_test()
+    failed += hostile_test() + address_test()
     print('SITE TEST PASS' if not failed else 'SITE TEST FAIL')
     return 1 if failed else 0
 
