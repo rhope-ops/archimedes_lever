@@ -18,7 +18,7 @@ import re
 
 
 STEP_WORDS = 60       # a step: up to MAX_ACTIONS actions on one screen and the thing on the screen (kit, 2026-11-21)
-MAX_ACTIONS = 3       # actions in one step, all on one screen (the Maintainer, 2026-11-25: "80% of the current setup")
+MAX_ACTIONS = 3       # actions in one step, all on one screen (AGENTS.md "Instructions people follow")
 SENTENCE_WORDS = 20   # ASD-STE100 rule 5.1: a sentence in a procedure has at most 20 words
 
 
@@ -48,8 +48,7 @@ WAIT_WORDS = re.compile(r"\b(?:wait|waiting|loading|takes|for (?:about )?(?:\d+|
                         r"(?:secs?|seconds?|mins?|minutes?|hrs?|hours?)\b|for (?:about )?(?:a minute|an hour)\b|restarts?|restarting|reboots?|processing|"
                         r"syncing|in progress|spinner|progress bar)\b")
 WAIT_STATE = re.compile(r"\bwait until\b|\bwait for\b[^.]*\b(?:to|until)\b|\bdo not [^.]*\buntil\b|\buntil you see\b")
-# A filler cue: a sentence that is only "Go on." (or "Continue.") tells the reader nothing (the Maintainer, 2026-11-25).
-FILLER = re.compile(r"(?:^|[.!?:]\s+)(?:go on|continue)\s*[.!]?\s*(?=$|\n)|(?:^|[.!?:]\s+)(?:go on|continue)\s*[.!](?=\s)")
+FILLER = re.compile(r"(?:^|[.!?:]\s+)(?:go on|continue)\s*(?:[.!](?=\s|$)|$)")  # a sentence that is only "Go on." or "Continue.": filler
 ITEM = re.compile(r"^(\s*)(\d+)[.)]\s+(.*)$")
 FENCE = re.compile(r"^\s*(?:```|~~~)")
 WORD = re.compile(r"[A-Za-z0-9][A-Za-z0-9'’-]*")
@@ -59,7 +58,7 @@ SENTENCES = re.compile(r"(?<=[.!?])\s+")
 # so it is not read for pointers or wait words; the rest of the sentence is.
 SEEN = re.compile(r"\byou (?:now |will )?see\b.*?(?=\s+(?:and|then)\s+|[,;:.!?]|$)")
 TOKEN = " X "  # what code, bold and quoted text become: one word, no verb, no vague word
-LEAD_SEP = "\n\x1e\n"  # between a lead-in's own text and the text of its actions (procedure_steps)
+LEAD_SEP = "\n\x1e\n"  # between a lead-in's own text and the text of its actions, which " \x1f " separates
 
 
 def plain(raw):
@@ -234,7 +233,7 @@ def procedure_steps(items, verbs=ACTION_VERBS):
         kind = "lead" if item["kids"] else ("action" if item["parent"] in in_procedure else "step")
         text = " ".join(item["parts"])
         if kind == "lead":  # the next state and the cue can follow the actions: read them with the lead-in
-            text += LEAD_SEP + " ".join(" ".join(items[k]["parts"]) for k in range(len(items)) if items[k]["parent"] == i)
+            text += LEAD_SEP + " \x1f ".join(" ".join(items[k]["parts"]) for k in range(len(items)) if items[k]["parent"] == i)
         out.append((item["line"], text, kind))
     return out
 
@@ -260,6 +259,8 @@ def step_findings(raw, kind, rules):
         if len(WORD.findall(s)) > rules["sentence_words"]:
             out.append(f"long: a sentence has {len(WORD.findall(s))} words (at most {rules['sentence_words']}): \"{s.strip()[:60]}\"")
     acts = sum(count_actions(s, rules["verbs"]) for s in sentences)
+    if kind == "lead":  # a lead-in: its numbered actions are its actions ("do these actions" is none)
+        acts = max(acts - 1, 0) + raw.split(LEAD_SEP, 1)[1].count("\x1f") + 1
     if acts > MAX_ACTIONS:
         out.append(f"actions: {acts} actions in one step (at most {MAX_ACTIONS}, all on one screen): split the step")
     told = SEEN.sub(" ", own)

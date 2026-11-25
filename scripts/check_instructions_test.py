@@ -102,6 +102,7 @@ def case_steps():
     bad_lead = "1. Open the app and click **Help**; click **About** and click **Settings**, then do these actions:\n   1. Type `a` in **A**.\n" \
                "   2. Type `b` in **B**.\n   You see **Saved**.\n2. Click **D**. You see E.\n"
     assert kinds(bad_lead) == ["actions"], findings(bad_lead)
+    assert kinds("1. On **A**, do these actions:\n   1. Type `a`.\n   2. Type `b`.\n   3. Type `c`.\n   4. Type `d`.\n2. Click **D**.\n") == ["actions"]
     tabbed = lead.replace("   1.", "\t1.").replace("   2.", "\t2.").replace("   You", "\tYou")
     assert findings(tabbed) == [], findings(tabbed)
 

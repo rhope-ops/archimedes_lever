@@ -9,11 +9,11 @@ What a step is: an item of a numbered list (Markdown `1.` or `1)`, HTML `<ol><li
          with its own numbered list is a lead-in: its sub-items are the actions on one screen.
 Findings (FILE:LINE: message; each one fails the check):
     long       a step over STEP_WORDS words, or a sentence over SENTENCE_WORDS words (ASD-STE100: 20 in a procedure)
-    actions    more than MAX_ACTIONS (3) actions in one step (a lead-in with numbered actions on one screen is allowed)
+    actions    more than MAX_ACTIONS (3) actions in one step; the numbered actions of a lead-in count as its actions
     pointer    a pointer to another file, step or section ("see step 3", "as above", a link to a local file)
     vague      a vague word ("appropriate", "as needed", "should", "some", ...)
     wait       the step names a wait but not the state to wait for ("Wait until <what the person sees>")
-    filler     a filler cue: a sentence that is only "Go on." or "Continue." (the Maintainer, 2026-11-25)
+    filler     a filler cue: a sentence that is only "Go on." or "Continue."
 Text in `code`, **bold** or "quotes" (the exact thing on the screen, or the exact text to type) counts as one word
 and is not read for verbs, vague words or pointers.
 A project's own module (optional; a module that cannot be loaded fails the check) can define:

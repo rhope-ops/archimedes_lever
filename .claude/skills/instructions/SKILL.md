@@ -31,17 +31,17 @@ AGENTS.md "Instructions people follow" holds the rule; this file holds the steps
 
 ## The step form
 
-Write for a competent adult (the Maintainer, 2026-11-25: "80% of the current setup"). Each step has these parts, in this order:
+AGENTS.md "Instructions people follow" sets what a step holds. The parts, in this order:
 
 1. Where: the screen or window, by its name on the screen ("In the window **Backup**,"), when it is not plain from the step before. A step in chat names the screen where the action happens ("On GitHub, on the page **Settings**,").
 2. The action: one verb and the exact thing ("click **Restore**"), or up to three short actions on one screen ("Click **File** > **New**, press `Ctrl+V`, then press `F5`."). Text to type in `code`, exactly as it must be typed.
 3. What the person sees, only when the screen changes in a way they must check (a new window, a code, an error): "The card **Restore code** opens."
 4. A cue, only when one is needed:
-   - "Wait until <what the person sees>." only when acting early breaks something (a run, a download). Add "Do not <action> until then." when that helps.
+   - "Wait until <what the person sees>." for a run or a download. Add "Do not <action> until then." when that helps.
    - "Write down <the value>." Then show the value again in the step that uses it: the page or card shows it there, or the step names the value and where it is on the screen at that time.
-   - Never "Go on.": the next step is the cue. No reminders the person does not need (what not to send, whom to tell, "the task is complete" in the middle of a list).
+   - The next step is the cue in every other case ("Go on." fails the check).
 
-More than three actions on one screen: write a lead-in step ("On the screen **Sign in**, do these actions:") with numbered actions below it.
+A lead-in step ("On the screen **Sign in**, do these actions:") with up to three numbered actions below it is one step; more actions go in more steps.
 
 Example:
 
@@ -59,7 +59,7 @@ Before you write, and again before a release, answer for each step:
 - Which screen or window is the person on? When two windows are open, the step names the window.
 - What does the person see right before this step? The step starts from that state.
 - When does the step show? Show it on the screen where the action happens, at the time it is needed: on the card, page or dialog of that moment, not in a list that the person reads before.
-- What goes wrong if the person acts too early, or in the other window? Add a wait cue or a "Do not ..." sentence for it.
+- What breaks if the person acts too early? Add a wait cue. What goes wrong in the other window? Add a "Do not ..." sentence.
 - Which values go from one screen to the next? Show each one again on the screen where the person uses it.
 
 ## Fresh-reader test
