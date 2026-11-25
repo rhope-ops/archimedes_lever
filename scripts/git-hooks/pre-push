@@ -83,9 +83,19 @@ lane_of() {  # lane_of [BRANCH...]: reads the same lines; prints "full" when a p
 }
 
 log_only() {  # log_only: reads the same lines; true when every pushed ref is the token log branch claude/token-usage
-             # (scripts/token_log.py commits only log files to it, never work-tree files; a TOKEN_LOG_BRANCH override
+             # and every pushed commit (merges too) changes only sessions/, costs/ or limits/ CSV files, as
+             # scripts/token_log.py writes them; a commit git cannot list fails closed (a TOKEN_LOG_BRANCH override
              # runs the normal checks)
-  awk 'NF>=4 {n++; if ($3 != "refs/heads/claude/token-usage") o=1} END {exit !(n && !o)}'
+  local n=0 lref lsha rref rsha range out
+  while read -r lref lsha rref rsha; do
+    [ -z "${rref:-}" ] && continue
+    [ "$rref" = refs/heads/claude/token-usage ] || return 1
+    n=1; is_zero "$lsha" && continue
+    range=$lsha; is_zero "$rsha" || range="$rsha..$lsha"
+    out=$(git log -m --format= --name-only "$range" -- 2>/dev/null) || return 1
+    printf '%s\n' "$out" | grep -qvE '^((sessions|costs|limits)/[^/]+\.csv)?$' && return 1
+  done
+  [ "$n" = 1 ]
 }
 
 # default_branches REMOTE: the names this clone knows for a default branch, on one line
@@ -154,6 +164,12 @@ refs/heads/main $b refs/heads/main $a"
 refs/heads/y $c refs/heads/y $zero"
   logs "another branch: not"               no  "refs/heads/x $c refs/heads/claude/token-usagex $zero"
   logs "no lines: not"                     no  ""
+  git checkout -q -b logb "$a"; mkdir -p sessions; echo x > sessions/s.csv; git add sessions/s.csv; cm log; l=$(git rev-parse HEAD)
+  logs "log branch, a log file: log-only"  yes "refs/heads/x $l refs/heads/claude/token-usage $a"
+  echo y > code.py; git add code.py; cm code; k=$(git rev-parse HEAD)
+  logs "log branch with a code file: not"  no  "refs/heads/x $k refs/heads/claude/token-usage $a"
+  logs "a commit git does not know: not"   no  "refs/heads/x 1234567890123456789012345678901234567890 refs/heads/claude/token-usage $a"
+  git checkout -q side; git branch -q -D logb
   # eq NAME GOT WANT: print ok or FAIL, and remember a failure
   eq() { if [ "$2" = "$3" ]; then echo "ok   $1"; else echo "FAIL $1 (got '$2', want '$3')"; fails=1; fi; }
   eq "no origin/HEAD, no config: no extra default branch" "$(default_branches origin)" ""

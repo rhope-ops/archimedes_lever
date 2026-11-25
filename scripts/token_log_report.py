@@ -201,19 +201,19 @@ def fetch_refs(core, root):
     """
     named = ["refs/token-log/report", "refs/token-log/report-private"]
     remotes = ["origin", core.log_repo(core.__file__), *sources(core, root)]
-    refs, tried = [], 0
+    refs = []
     for i, remote in enumerate(remotes):
         if not remote:
             continue
-        tried += 1
         ref = named[i] if i < len(named) else f"refs/token-log/report-source-{i - len(named)}"
         rc, _, err = core.git_net(root, "fetch", "-q", "--no-write-fetch-head", remote,
                                   f"+refs/heads/{core.branch_name()}:{ref}")
         if rc == 0:
             refs.append(ref)
         else:
-            print(f"token_log --report: not read: {remote}: " + " / ".join(err.splitlines()[-3:]), file=sys.stderr)
-    print(f"token_log --report: log branches read: {len(refs)} of {tried}", file=sys.stderr)
+            name = remote.rstrip("/").rsplit("/", 1)[-1]  # the repo name only: a URL can hold a token
+            print(f"token_log --report: not read: {name}: " + " / ".join(err.splitlines()[-3:]), file=sys.stderr)
+    print(f"token_log --report: log branches read: {len(refs)} of {sum(map(bool, remotes))}", file=sys.stderr)
     return refs
 
 
@@ -398,8 +398,8 @@ def cost_by_week(rows, costs):
     out += [f"{k:<14} {v[0]:>8} {v[1]:>10} {v[2]:>13.2f} {v[3]:>8.2f} {v[4]:>19.2f}" for k, v in sorted(week.items())]
     ratios = sorted(cc[sid] / est[sid] for sid in est if cc.get(sid) is not None and est[sid] > 0)
     if ratios:  # /cost also counts calls that are not in the session logs (seen 2026-11-25: up to 56 % more)
-        k = ratios[len(ratios) // 2]
-        best = sum(cc[sid] if cc.get(sid) is not None else est[sid] * k for sid in est)
+        k = (ratios[(len(ratios) - 1) // 2] + ratios[len(ratios) // 2]) / 2  # the median
+        best = sum(v for v in cc.values() if v is not None) + sum(est[s] * k for s in est if cc.get(s) is None)
         out.append(f"best estimate, all weeks: {best:.2f} $ (/cost where recorded, else the hook's $ x {k:.2f}, "
                    f"the median /cost ratio of {len(ratios)} sessions)")
     missing = sorted(sid for sid in est if cc.get(sid) is None)
