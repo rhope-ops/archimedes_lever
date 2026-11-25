@@ -1,9 +1,0 @@
-schema_version: "1.1"
-name: fleet-format
-expected_outcome: |
-  docs/NEXT_PROMPT.md follows the fleet format: a 'Next update: 2026-11-22, ...' line under Updated, a
-  '## Timeline' section after State with dated lines, and each 'Needs the owner' line as '- D<n> · ...
-  · Options: ... · REC: ...' with the next free IDs D4 and D5; scripts/fleet_harvest.py --check
-  passes.
-context:
-  scaffold_script: place-files.sh

@@ -14,11 +14,11 @@ This is the fleet audit of the audit skill ("Fleet audit"): every fleet repo mea
 
 | Repo | Access | Audited | Steps 1-3 evidence |
 |---|---|---|---|
-| rhope-ops/archimedes_lever (kit) | session source, push | yes | [2026-11-24-fleet-audit-kit.md](2026-11-24-fleet-audit-kit.md) |
-| rhope-ops/33-332.Z | push (attached) | yes | [2026-11-24-fleet-audit-33-332.md](2026-11-24-fleet-audit-33-332.md) |
-| rhope-ops/RADE | push (attached on the Maintainer's request, 2026-11-24); first read from a public read-only clone | yes | [2026-11-24-fleet-audit-rade.md](2026-11-24-fleet-audit-rade.md) |
-| rhope-ops/90-161.Z | push (attached on the Maintainer's request, 2026-11-24) | yes | [2026-11-24-fleet-audit-90-161.md](2026-11-24-fleet-audit-90-161.md) |
-| rhope-ops/ICF-Source | push (attached on the Maintainer's request, 2026-11-24) | yes | [2026-11-24-fleet-audit-icf.md](2026-11-24-fleet-audit-icf.md) |
+| rhope-ops/archimedes_lever (kit) | session source, push | yes | [2026-11-24-fleet-audit-kit.md](archive-index.md#2026-11-24-fleet-audit-kit-md) |
+| rhope-ops/33-332.Z | push (attached) | yes | [2026-11-24-fleet-audit-33-332.md](archive-index.md#2026-11-24-fleet-audit-33-332-md) |
+| rhope-ops/RADE | push (attached on the Maintainer's request, 2026-11-24); first read from a public read-only clone | yes | [2026-11-24-fleet-audit-rade.md](archive-index.md#2026-11-24-fleet-audit-rade-md) |
+| rhope-ops/90-161.Z | push (attached on the Maintainer's request, 2026-11-24) | yes | [2026-11-24-fleet-audit-90-161.md](archive-index.md#2026-11-24-fleet-audit-90-161-md) |
+| rhope-ops/ICF-Source | push (attached on the Maintainer's request, 2026-11-24) | yes | [2026-11-24-fleet-audit-icf.md](archive-index.md#2026-11-24-fleet-audit-icf-md) |
 
 Access history: the first `add_repo` calls for RADE, 90-161.Z and ICF-Source were denied by the session's auto-mode classifier; the Maintainer then asked in the session chat to attach all 3 with push access. The coordinator agreed that this session owns measurement and fix PRs in all 5 repos. Each appendix file is the output of one read-only Sonnet measuring agent (audit skill Steps 1-3); its numbers are single runs on a shared 4-core container (see "Gaps").
 

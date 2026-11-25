@@ -1,9 +1,0 @@
-schema_version: "1.1"
-name: write-handoff-open-work
-expected_outcome: |
-  docs/NEXT_PROMPT.md is updated within 40 lines (Updated line, State with the branch, plan step
-  state, Open, Needs the owner), the handoff is committed and pushed, and the final message has a
-  resume prompt in one code block of at most 100 words whose first line is a session title of the form
-  'DEMO · <task>' with no date.
-context:
-  scaffold_script: place-files.sh

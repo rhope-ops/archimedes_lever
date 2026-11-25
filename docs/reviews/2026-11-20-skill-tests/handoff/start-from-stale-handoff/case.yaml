@@ -1,9 +1,0 @@
-schema_version: "1.1"
-name: start-from-stale-handoff
-expected_outcome: |
-  The session checks the handoff's claims against the repo, finds that R31 step 1 is not on main
-  (commit 4f2a9c1 and pull request 15 do not exist on origin/main; the work is on the unmerged branch
-  claude/r31), reports that as drift, and does not build step 2 on main as if step 1 were merged
-  without saying so.
-context:
-  scaffold_script: place-files.sh

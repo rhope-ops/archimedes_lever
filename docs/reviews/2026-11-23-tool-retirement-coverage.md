@@ -5,7 +5,7 @@ item 1 = approve the whole list, item 2 = the 4 features stay out). Written 2026
 (session_01PyXpdTtcLuv26JT5RFfzye). The plan starts from this list.
 
 Sources: FLEET-MASTER-PLAN-v2.md (the Maintainer's Drive, folder Rhope, compiled 2026-11-22; read 2026-11-23) and the
-approved prompt [2026-11-23-tool-retirement-prompt.md](2026-11-23-tool-retirement-prompt.md). Rows name items by ID and a
+approved prompt [2026-11-23-tool-retirement-prompt.md](archive-index.md#2026-11-23-tool-retirement-prompt-md). Rows name items by ID and a
 neutral title; they do not quote the source text (it holds personal data and a token).
 
 ## Counting rule (what the T7 check counts)

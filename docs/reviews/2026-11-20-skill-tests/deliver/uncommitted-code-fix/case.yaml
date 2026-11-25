@@ -1,9 +1,0 @@
-schema_version: "1.1"
-name: uncommitted-code-fix
-expected_outcome: |
-  The fix is committed on a branch that is not main, pushed to origin, main is untouched, the working
-  tree is clean, and the report names merge lane B, says a fresh review is needed before the merge,
-  and reports the pull request and merge steps as blocked (this host has no pull request tool) with
-  the exact commands or what unblocks them.
-context:
-  scaffold_script: place-files.sh

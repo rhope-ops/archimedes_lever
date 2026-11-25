@@ -1,7 +1,0 @@
-schema_version: "1.1"
-name: tester-round-tracker
-expected_outcome: |
-  One HTML file that works with no setup: focus starts in the first field, Enter adds a row, rows
-  survive a reload, an empty state is shown with no rows, copy or download is one click, inputs are
-  labelled, targets are at least 24 px, reduced motion is respected, and the report says per rule what
-  was checked on the real page and what was not.
