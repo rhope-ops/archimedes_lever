@@ -10,7 +10,7 @@ run as before. The package must be installed at the commit that `.check.lock` na
 Usage:
     pip install "git+https://github.com/rhope-ops/archimedes_lever@<the commit in .check.lock>"
     archimedes-kit --install    # write the untracked kit scripts from the package (or: python3 -m archimedes_kit.kit_package)
-    archimedes-kit --verify     # check.sh runs this: the package is at the lock commit and each file equals its copy
+    archimedes-kit --verify     # check.sh runs this (or python3 -m archimedes_kit.kit_package --verify): the package is at the lock commit and each file equals its copy
     python3 scripts/kit_package.py --test
 Input: the repo at the current folder (or --project DIR), its .check.lock, the installed package. Output: PASS and
 FAIL lines on stdout; exit 1 on a FAIL.
