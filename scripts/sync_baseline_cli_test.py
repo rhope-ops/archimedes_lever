@@ -339,6 +339,34 @@ class SyncBaselineCli(unittest.TestCase):
         lock = json.loads((self.path / ".check.lock").read_text())
         for rel in ("SECURITY.md", ".github/dependabot.yml", ".github/workflows/security.yml"):
             self.assertNotIn(rel, lock["files"])
+        self.assertIn(".github/workflows/security.yml: kept; it differs from the kit's file", p.stdout)
+
+    def test_dod_copy_of_an_earlier_kit_version_is_replaced(self):
+        """Prove: a DoD copy equal to an earlier kit version is replaced; an edited copy is kept with a note."""
+        sys.path.insert(0, str(KIT / "scripts"))
+        from sync_baseline_repo import dod_files
+        base = self.path / "kit"
+        base.mkdir()
+        new_repo(base)
+        for text in ("v1\n", "v2\n"):
+            (base / "a.yml").write_text(text)
+            (base / "b.yml").write_text(text)
+            run(["git", "add", "-A"], base)
+            run(GIT + ["commit", "-q", "-m", text], base)
+        root = self.path / "proj"
+        root.mkdir()
+        (root / ".check").write_text("dod-security: on\n")
+        (root / "a.yml").write_text("v1\n")
+        (root / "b.yml").write_text("v1 tuned\n")
+        new, notes = dod_files(base, root, ["a.yml", "b.yml", "c.yml"])
+        self.assertEqual(new, {"a.yml": "v2\n"})
+        self.assertEqual(len(notes), 2, notes)
+        self.assertIn("a.yml: the project's copy is an earlier kit version", notes[0])
+        self.assertIn("b.yml: kept; it differs from the kit's file (this project changed it)", notes[1])
+        (root / "a.yml").write_text("v2\n")
+        self.assertEqual(dod_files(base, root, ["a.yml"]), ({}, []), "the kit's own text: no change, no note")
+        (root / ".check").write_text("dod-security: off\n")
+        self.assertEqual(dod_files(base, root, ["a.yml", "c.yml"]), ({}, []), "the key off: nothing")
 
 
 class ApplyOwner(unittest.TestCase):
