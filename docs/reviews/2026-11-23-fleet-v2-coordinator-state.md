@@ -244,3 +244,14 @@ Plan and approval: [2026-11-25-followups-2-plan.md](2026-11-25-followups-2-plan.
 - New follow-ups: build_site.py README_MARK and SECTION regexes are quadratic; bump_lock.py leaves the old .txt round
   copy; SEC-Source security.yml fails in a private repo until its next kit sync; SEC-Source old DECISIONS rows hold a
   credential and years of experience (personal data review for the Maintainer).
+
+## Coordinator 4 (2026-11-25 12:45- America/Chicago)
+
+- 90-161.Z #239: already merged 10:56 as 70c72e3 (actor: the rhope-ops account; head acc5e99 from session
+  session_01PyXpdUJqcNcQ7sG2o4dEwz), before "r42 is done" (12:45). Post-merge fresh review of fdc828d..acc5e99: MAJOR 0,
+  MINOR 2 (go.md:79 heading still "R42 r1"; 90-161.Z NEXT_PROMPT still r1), sent to the R42 intake session. Lock on main:
+  engine-v39 serial 27 (git fetch). The lock check CI on main: not verified (add_repo was denied).
+- Follow-ups 3 (approved 2026-11-25): build_site regexes (kit worker; T2 baseline 20,621 -> 20,631 approved);
+  bump_lock .txt copy (session_01PyXpdVP2QtCp9RgdmoMSrK); SEC-Source bandit and gitleaks on main
+  (session_01PyXpdUxYkeFEnwdfWF2sRQ; its kit 12.0.0 sync PR #32 closed the security.yml item).
+- Archival: [plan](2026-11-25-archival-plan.md), approved.
