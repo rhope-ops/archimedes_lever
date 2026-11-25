@@ -25,9 +25,15 @@ DECISIONS_HEAD = re.compile(r"^\s*\|\s*date\s*\|\s*decision\s*\|\s*by\s*\|", re.
 
 
 def decisions_table(text):
-    """The Decisions table: the first table under '## Decisions'; in a file with no such heading, the first table whose
-    columns start Date, Decision, By (a project file can hold it under its title). Returns (header line number, header
-    cells, rows) or None."""
+    """Find the Decisions table: the first table under '## Decisions'; in a file with no such heading, the first table
+    whose columns start Date, Decision, By (a project file can hold it under its title).
+
+    Args:
+        text: the text of docs/DECISIONS.md.
+
+    Returns:
+        (header line number, header cells, [(line number, cells)]) as tables() gives them, or None.
+    """
     lines = text.splitlines()
     if any(re.match(r"##\s+Decisions\s*$", line) for line in lines):
         return tables(text).get("Decisions")
