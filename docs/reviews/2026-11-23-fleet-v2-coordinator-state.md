@@ -169,3 +169,27 @@ block; kit-update SKILL.md and the check.sh comment disagree about the setup scr
 line cap moving to ruff/pylint; RADE and ICF-Source lack kit #174 until their next sync; session loads near the cap
 (RADE 5,475, 33-332.Z 5,484, 90-161.Z 5,462 of 5,500). For the Maintainer: a first name in ICF-Source
 docs/reviews/HANDOFF-HISTORY.md:58 (on main before this work).
+
+## Coordinator 3: kit follow-ups, 11.1.0, master plan P4-P6 (2026-11-24 21:18 America/Chicago)
+
+Session "Kit · Fleet coordinator 3 · 2026-11-24" (session_01PyXpdUk7tSsbCmQXyLSzEZ). Plan: [2026-11-24-kit-followups-plan.md](2026-11-24-kit-followups-plan.md)
+(DEC 3-6 there). The Maintainer, 2026-11-24 ~20:40: "push forward and finish the master plan without stopping to seek my
+approval for anything. if you have a doubt, go with your top recommendation every time."
+
+- Kit merged: #175, #176 (plan), #178 (items 1, 4), #179 (item 2), #180 (items 5, 6), #182 (11.1.0 release files), #183
+  (gate skips what ruff E501 skips), #184 (speed test 10 s). #181 (item 3) closed by DEC 5. T2 20025 -> 20132 (+107).
+- Kit 11.1.0 = a6295509. Tag v11.1.0: NOT made; the git proxy refuses tag pushes (HTTP 403). The Maintainer's step:
+  https://github.com/rhope-ops/archimedes_lever/releases/new?tag=v11.1.0&target=a6295509a846e955550f1ab238fb76514c302cad
+- Step 7 lock bumps to a6295509, all merged: 90-161.Z #230 (b77bdd2), ICF-Source #270 (489cf4e), RADE #178 (49bc202),
+  33-332.Z #116 (0210855); drift 0 (ICF 1: FIRST_USE.md kept); T6 now runs in all 4. 90-161.Z #229 (docs "Work").
+- Decisions: ICF name item closed, left as is (.check allows it). The shared pip package moves with each repo's
+  --kit-install; run it again before a full lane when you switch repos in one container.
+- Child sessions (each opens PRs; lane C PRs come to the coordinator to merge):
+  P4a RADE session_01PyXpdVfw9jpFCReAUi1PYG; P4c 33-332.Z session_01PyXpdV3io8vBJPYeu9RznR; P4d ICF
+  session_01PyXpdVWpiRDJgfTk7BNFAM; P5 kit 11.1.0 syncs: no-more-beyond session_01PyXpdURZvfgWsTwcw48S6m,
+  transcription_assistant session_01PyXpdW1pEpCSe6jQ1u1wdd, SPAR session_01PyXpdTpQKmTxMrwFYEHUzA, 36-3003.Z
+  session_01PyXpdScRUVW4B2tH7maZfR, 65-601.Z session_01PyXpdVti6gRLzAojGiRaDD.
+- Next: P4b 90-161.Z after R42 (session_01PyXpdSTSEFZnDJfY86PNqg, same go.md) and the P4a engine release; then the P5
+  fleet audit and the SEC-Source inventory; P6 exports and the branch-delete list.
+- Known limits: strict gate without linters is a little looser than ruff (CI catches it); worker scan @( false finding
+  stays (DEC 5).
