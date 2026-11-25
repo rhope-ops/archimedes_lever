@@ -45,6 +45,10 @@ Done: schedule approved, kit pilot merged with the proofs, fleet release planned
 
 ## Steps
 
-- [ ] Phase 1 kit inventory (child session, Opus, read only). [ ] Phase 1 fleet. [ ] Phase 2 schedule approved.
+- [x] Phase 1 kit inventory ([report](2026-11-25-archival-inventory-kit.md), PR 210). [ ] Phase 1 fleet.
+  [x] Phase 2 schedule approved (the Maintainer, 2026-11-25, dialog "Approve (Recommended)"): the report's DRAFT
+  retention schedule and ARCHIVE DUE thresholds as written. Also approved the same day: phase 3 adds measured
+  context-trim proposals (each rule text needs the Maintainer's approval of its text), and close-out lists for the
+  tool-retirement plan and the fleet audit (nothing closes without the Maintainer's approval).
   [ ] Phase 3. [ ] Phase 4 kit pilot. [ ] Fleet release plan approved.
 - Left out: a scheduled monthly run (replaced by the dynamic trigger); condensing DECISIONS rows (changes the record).
