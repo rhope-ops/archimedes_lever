@@ -50,5 +50,5 @@ Done: schedule approved, kit pilot merged with the proofs, fleet release planned
   retention schedule and ARCHIVE DUE thresholds as written. Also approved the same day: phase 3 adds measured
   context-trim proposals (each rule text needs the Maintainer's approval of its text), and close-out lists for the
   tool-retirement plan and the fleet audit (nothing closes without the Maintainer's approval).
-  [ ] Phase 3. [ ] Phase 4 kit pilot. [ ] Fleet release plan approved.
+  [x] Phase 3 (PRs 214, 217). [ ] Phase 4 kit pilot (from 2026-12-02: 0 files are archivable on 2026-11-25). [ ] Fleet release plan approved.
 - Left out: a scheduled monthly run (replaced by the dynamic trigger); condensing DECISIONS rows (changes the record).

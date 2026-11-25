@@ -335,7 +335,7 @@ def archive_cases(bloat, d):
     names = lambda today: sorted(p for p, _ in f.archivable(root, files, datetime.date.fromisoformat(today)))
     assert names("2026-01-07") == [], "6 days: nothing"
     assert names("2026-01-08") == ["docs/reviews/done-plan.md"], "7 days: the closed plan only: %s" % names("2026-01-08")
-    assert names("2026-01-15") == ["docs/reviews/done-plan.md", "docs/reviews/old.md"], "the folder is 10 days old: %s" % names("2026-01-15")
+    assert names("2026-01-15") == ["docs/reviews/done-plan.md", "docs/reviews/old.md"], "the folder is 10 days old; archive-index.md is kept: %s" % names("2026-01-15")
     assert names("2026-01-19") == ["docs/reviews/done-plan.md", "docs/reviews/fix/a.md", "docs/reviews/fix/b.md",
                                    "docs/reviews/old.md"], "never: a live link, a record, a coverage list, README.md, archive-index.md, an open plan or its evidence"
     archive_due_cases(bloat, root, files)
