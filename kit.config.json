@@ -5,5 +5,14 @@
  "fleet_page": "https://claude.ai/artifact/AWtpGxEqCWrjrPa1Afe7qW",
  "fleet": {
   "last_audit": "2026-11-24"
- }
+ },
+ "token_log_sources": [
+  "https://github.com/rhope-ops/90-161.Z",
+  "https://github.com/rhope-ops/RADE",
+  "https://github.com/rhope-ops/33-332.Z",
+  "https://github.com/rhope-ops/SPAR",
+  "https://github.com/rhope-ops/65-601.Z",
+  "https://github.com/rhope-ops/36-3003.Z",
+  "https://github.com/rhope-ops/archimedes_plugins"
+ ]
 }

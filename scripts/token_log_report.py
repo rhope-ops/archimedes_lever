@@ -4,18 +4,21 @@ token_log_rows.py (the rows), this file.
 
 token_log.py imports this file only for --report: the Stop hook path never imports it, so an installed copy that has
 only token_log.py keeps working, and its self-update fetches this file.
-Inputs:  the files sessions/, costs/ and limits/ of the log branch (from token_log.py), a git ref for --report.
+Inputs:  the files sessions/, costs/ and limits/ of the log branch (from token_log.py) of every repo it can read
+         (origin, the private log repo, sources()), or a git ref for --report.
 Outputs: the report text on stdout.
 Prevents: a rise in estimated cost by week, model or agent that no one sees until the usage limit stops work
-Network: --report fetches the log branch from origin and from the private log repo through token_log.git_net; none in
+Network: --report fetches the log branch from origin, the private log repo and sources() through token_log.git_net; none in
          the self-test.
 Writes: none.
-Credentials: none (git uses its own credentials for origin and the private log repo).
+Credentials: none (git uses its own credentials for each repo it fetches).
 Run:     python3 scripts/token_log.py --report [REF]
 """
 import csv
 import io
+import json
 import os
+import re
 import sys
 from datetime import date, datetime, timezone
 
@@ -73,23 +76,50 @@ def week_of(ts, tz="America/Chicago"):
     return date.fromordinal(d.toordinal() - d.weekday()).isoformat()
 
 
+def fill_1h(rows):
+    """Give each row from before the cache_write_1h_tokens column an estimate: its cache writes x the 1-hour share of
+    the newer rows of the same source (0 when there are none).
+
+    Args:
+        rows: a list of rows (dicts with the token_log_rows.FIELDS).
+    Returns: (the rows, old ones replaced by copies with the estimate; {source: share}; the number of old rows).
+    """
+    write, hour = {}, {}
+    for r in rows:
+        if r.get("cache_write_1h_tokens") not in (None, ""):
+            s = r.get("source") or ""
+            write[s] = write.get(s, 0) + tokens(r.get("cache_creation_input_tokens"))
+            hour[s] = hour.get(s, 0) + tokens(r.get("cache_write_1h_tokens"))
+    share = {s: min(hour[s] / w, 1.0) for s, w in write.items() if w > 0}
+    out, old = [], 0
+    for r in rows:
+        if r.get("cache_write_1h_tokens") in (None, ""):
+            old += 1
+            r = {**r, "cache_write_1h_tokens": str(int(tokens(r.get("cache_creation_input_tokens"))
+                                                        * share.get(r.get("source") or "", 0.0)))}
+        out.append(r)
+    return out, share, old
+
+
 def report(rows):
-    """The report text: estimated cost by week, by source, agent and model, and per subagent task.
+    """The report text: estimated cost by week, by repo, by source, agent and model, and per subagent task.
 
     Args:
         rows: a list of rows (dicts with the token_log_rows.FIELDS).
     Returns:
         The report as text, one table per part.
     """
-    week, group, task, unpriced, old = {}, {}, {}, set(), 0
+    rows, share, old = fill_1h(rows)
+    week, repo, group, task, unpriced = {}, {}, {}, {}, set()
     for r in rows:
         if row_cost({**r, "web_search_requests": 0}) is None:  # no token price; its web searches still count
             unpriced.add(r.get("model") or "unknown")
-        old += r.get("cache_write_1h_tokens") in (None, "")  # a row from before the column
         c = row_cost(r) or 0.0
         w = week.setdefault(week_of(r.get("timestamp")), [0, 0.0, 0.0])
         w[0] += 1
         w[1 if r.get("source") == "main" else 2] += c
+        p = repo.setdefault((r.get("repo") or "unknown").lower(), [0, 0.0])  # one repo, whatever its letter case
+        p[0], p[1] = p[0] + 1, p[1] + c
         g = group.setdefault((r.get("source") or "", r.get("agent") or "", r.get("model") or ""), [0, 0, 0, 0, 0, 0.0])
         for i, x in enumerate([1, *(tokens(r.get(k)) for k in USAGE_KEYS), c]):  # calls, the 4 token counts, cost
             g[i] += x
@@ -99,6 +129,8 @@ def report(rows):
     out = [f"Estimated cost in USD (prices as of {PRICES_AS_OF}; a proxy for the weekly usage limit)", "",
            "week (America/Chicago, Monday)  calls  main $  subagent $  total $"]
     out += [f"{k:<31} {v[0]:>5} {v[1]:>7.2f} {v[2]:>11.2f} {v[1] + v[2]:>8.2f}" for k, v in sorted(week.items())]
+    out += ["", "repo (letter case ignored)       calls  total $"]
+    out += [f"{k:<31} {v[0]:>5} {v[1]:>8.2f}" for k, v in sorted(repo.items(), key=lambda kv: -kv[1][1])]
     out += ["", "source    agent              model                  calls       input  cache write   cache read"
                 "      output   cost $"]
     out += [f"{s:<9} {a:<18} {m:<22} {v[0]:>5} {v[1]:>11} {v[2]:>12} {v[3]:>12} {v[4]:>11} {v[5]:>8.2f}"
@@ -109,7 +141,9 @@ def report(rows):
         out.append(f"{a:<22} {n:>6} {calls / n:>11.1f} {cost / n:>7.3f} {cost:>8.2f}")
     if unpriced:
         out += ["", "no token price (tokens counted as 0, web searches counted): " + ", ".join(sorted(unpriced))]
-    out += ["", f"Rows from before the cache_write_1h_tokens column ({old}): cache writes priced as 5-minute."] if old else []
+    est = ", ".join(f"{k} {v:.0%}" for k, v in sorted(share.items())) or "none: priced as 5-minute"
+    out += ["", f"Rows from before the cache_write_1h_tokens column ({old}): 1-hour share of their cache writes "
+            f"estimated from the newer rows of the same source: {est}."] if old else []
     return "\n".join(out)
 
 
@@ -131,27 +165,53 @@ def report_rows(hook, root, ref, folder="sessions"):
     return rows
 
 
+def sources(core, root):
+    """The other repos whose log branch --report reads (fetch only): TOKEN_LOG_SOURCES (URLs split by spaces, e.g.
+    private repos), then "token_log_sources" of the kit.config.json next to the hook file, else of the repo's root.
+
+    Args:
+        core: the token_log module.
+        root: the repo folder.
+    Returns:
+        The URLs, without repeats; a value that starts with "-" (a git option) is left out.
+    """
+    got = os.environ.get("TOKEN_LOG_SOURCES", "").split()
+    for folder in (os.path.dirname(os.path.abspath(core.__file__)), root):
+        try:
+            with open(os.path.join(folder, core.KIT_CONFIG), encoding="utf-8") as f:
+                listed = json.load(f).get("token_log_sources")
+        except (OSError, ValueError, AttributeError):
+            continue
+        got += listed if isinstance(listed, list) else []
+        break
+    return list(dict.fromkeys(u for u in got if isinstance(u, str) and u.strip() and not u.startswith("-")))
+
+
 def fetch_refs(core, root):
-    """Fetch the log branch from the repo's origin and from the private log repo (core.log_repo()), each into its own
-    ref. One that cannot be fetched (no branch there, or no access) is left out with a note on stderr.
+    """Fetch the log branch of origin, the private log repo (core.log_repo()) and each of sources() into its own ref.
+    One that cannot be fetched is left out with a note on stderr; a last line counts the branches read (no silent gap).
 
     Args:
         core: the token_log module (its git helpers and settings).
         root: the repo folder.
     Returns:
-        The refs that were fetched (none, one or two).
+        The refs that were fetched.
     """
+    named = ["refs/token-log/report", "refs/token-log/report-private"]
+    remotes = ["origin", core.log_repo(core.__file__), *sources(core, root)]
     refs = []
-    for remote, ref in (("origin", "refs/token-log/report"), (core.log_repo(core.__file__), "refs/token-log/report-private")):
+    for i, remote in enumerate(remotes):
         if not remote:
             continue
+        ref = named[i] if i < len(named) else f"refs/token-log/report-source-{i - len(named)}"
         rc, _, err = core.git_net(root, "fetch", "-q", "--no-write-fetch-head", remote,
                                   f"+refs/heads/{core.branch_name()}:{ref}")
         if rc == 0:
             refs.append(ref)
         else:
-            print(f"token_log --report: not read: {'origin' if remote == 'origin' else 'the private log repo'}: "
-                  + " / ".join(err.splitlines()[-3:]), file=sys.stderr)
+            name, why = remote.rstrip("/").rsplit("/", 1)[-1], re.sub(r"\S+://\S+", "<url>", err)  # a URL can hold a token
+            print(f"token_log --report: not read: {name}: " + " / ".join(why.splitlines()[-3:]), file=sys.stderr)
+    print(f"token_log --report: log branches read: {len(refs)} of {sum(map(bool, remotes))}", file=sys.stderr)
     return refs
 
 
@@ -181,7 +241,7 @@ def report_main(args):
     rows = list({r.get("message_id"): r for r in got["sessions"]}.values())  # a row in both places counts once
     newest = sorted(got["costs"], key=lambda r: r.get("written_at") or "")  # the newest snapshot of a session wins
     costs = list({(r.get("session_id"), r.get("source"), r.get("agent_id")): r for r in newest}.values())
-    print(report(rows) + "\n\n" + limits_report(rows, costs, got["limits"]))
+    print(report(rows) + "\n\n" + limits_report(fill_1h(rows)[0], costs, got["limits"]))
     return 0
 
 
@@ -334,6 +394,12 @@ def cost_by_week(rows, costs):
     out = ["Claude Code /cost by week (sessions with a record: /cost $ next to the hook's estimate for the same sessions)",
            "week (Monday)  sessions  with /cost  hook $ (same)  /cost $  hook $ (no record)"]
     out += [f"{k:<14} {v[0]:>8} {v[1]:>10} {v[2]:>13.2f} {v[3]:>8.2f} {v[4]:>19.2f}" for k, v in sorted(week.items())]
+    ratios = sorted(cc[sid] / est[sid] for sid in est if cc.get(sid) is not None and est[sid] > 0)
+    if ratios:  # /cost also counts calls that are not in the session logs (seen 2026-11-25: up to 56 % more)
+        k = (ratios[(len(ratios) - 1) // 2] + ratios[len(ratios) // 2]) / 2  # the median
+        best = sum(v for v in cc.values() if v is not None) + sum(est[s] * k for s in est if cc.get(s) is None)
+        out.append(f"best estimate, all weeks: {best:.2f} $ (/cost where recorded, else the hook's $ x {k:.2f}, "
+                   f"the median /cost ratio of {len(ratios)} sessions)")
     missing = sorted(sid for sid in est if cc.get(sid) is None)
     if missing:
         out.append(f"no /cost record ({len(missing)}): " + ", ".join(m[:8] for m in missing[:20])

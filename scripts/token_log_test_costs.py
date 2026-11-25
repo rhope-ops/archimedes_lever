@@ -17,6 +17,8 @@ import io
 import json
 import os
 import subprocess
+import tempfile
+import types
 from datetime import datetime, timezone
 
 from token_log_test import append, msg, prompt
@@ -187,3 +189,37 @@ def case_limit_split(fx):
     fx.expect("report: /cost by week next to the estimate", [ln.split() for ln in text if ln.startswith("2025-12-29")],
               [["2025-12-29", "2", "1", "2.00", "2.50", "1.00"]])
     fx.expect("report: sessions with no /cost record", text[-1], "no /cost record (1): sessB")
+
+
+def case_best_and_sources(fx):
+    """The best estimate (/cost where recorded, else the hook's $ x the median /cost ratio) and the --report sources.
+
+    Args:
+        fx: the shared test fixture (Fixture).
+    """
+    rep = fx.rep
+    rows = [{"session_id": "sessA", "timestamp": "2026-01-01T09:00:00Z", "model": "claude-opus-5-5",
+             "output_tokens": "100000"}, {"session_id": "sessB", "timestamp": "2026-01-01T09:30:00Z",
+                                         "model": "claude-opus-5-5", "output_tokens": "50000"}]
+    rows.append({**rows[1], "session_id": "sessD", "output_tokens": "40000"})  # $0.80, no /cost record
+    costs = [{"session_id": s, "source": "main", "usd": "", "session_usd": u} for s, u in
+             (("sessA", "2.5"), ("sessB", "1.5"), ("sessC", "0.5"))]  # ratios 1.25 and 1.5; sessC has no rows
+    text = rep.limits_report(rows, costs, []).splitlines()
+    fx.expect("report: best estimate: /cost where recorded (also with no rows), else $ x the median of an even count",
+              [ln for ln in text if ln.startswith("best estimate")],
+              ["best estimate, all weeks: 5.60 $ (/cost where recorded, else the hook's $ x 1.38, the median /cost "
+               "ratio of 2 sessions)"])
+    with tempfile.TemporaryDirectory() as d:
+        core = types.SimpleNamespace(  # a stand-in for the token_log module
+            __file__=os.path.join(d, "hooks", "token_log.py"), KIT_CONFIG="kit.config.json")
+        with open(os.path.join(d, "kit.config.json"), "w", encoding="utf-8") as f:
+            json.dump({"token_log_sources": ["https://h/a", "-x", 3, "https://h/b"]}, f)
+        old_env = os.environ.pop("TOKEN_LOG_SOURCES", None)
+        os.environ["TOKEN_LOG_SOURCES"] = "https://h/p https://h/a"
+        try:
+            fx.expect("sources: the variable first, then the repo's config; no repeats, no option, no non-text",
+                      rep.sources(core, d), ["https://h/p", "https://h/a", "https://h/b"])
+        finally:
+            os.environ.pop("TOKEN_LOG_SOURCES")
+            if old_env is not None:
+                os.environ["TOKEN_LOG_SOURCES"] = old_env
