@@ -48,7 +48,8 @@ WAIT_WORDS = re.compile(r"\b(?:wait|waiting|loading|takes|for (?:about )?(?:\d+|
                         r"(?:secs?|seconds?|mins?|minutes?|hrs?|hours?)\b|for (?:about )?(?:a minute|an hour)\b|restarts?|restarting|reboots?|processing|"
                         r"syncing|in progress|spinner|progress bar)\b")
 WAIT_STATE = re.compile(r"\bwait until\b|\bwait for\b[^.]*\b(?:to|until)\b|\bdo not [^.]*\buntil\b|\buntil you see\b")
-FILLER = re.compile(r"(?:^|[.!?;]\s*)(?!\s*(?:if|when|once|after|unless)\b)[^.!?;:]*?(?:^|,\s+|\s+)(?:then\s+|now\s+|and\s+)?(?:go on|continue)\s*(?:[.!;]|$)")  # "Go on." as a clause of its own
+FILLER = re.compile(r"(?:then |now |and )?(?:go on|continue)")  # a clause that is only "Go on." or "Continue." (fullmatch)
+COND = {"if", "when", "after", "before", "once", "while", "unless", "otherwise"}  # a sentence that starts so is a branch
 ITEM = re.compile(r"^(\s*)(\d+)[.)]\s+(.*)$")
 FENCE = re.compile(r"^\s*(?:```|~~~)")
 WORD = re.compile(r"[A-Za-z0-9][A-Za-z0-9'’-]*")
@@ -270,7 +271,7 @@ def step_findings(raw, kind, rules):
     vague = sorted({m.group(0) for p in rules["vague"] for m in re.finditer(p, own)})
     if vague:
         out.append(f"vague: {', '.join(vague)}: name the exact thing, number or condition")
-    if FILLER.search(own.strip()):
+    if any(FILLER.fullmatch(c.strip(" ,.!")) for s in SENTENCES.split(own) if (WORD.findall(s) or [""])[0] not in COND for c in CLAUSES.split(s.strip())):
         out.append("filler: \"Go on.\" tells the reader nothing: delete it (the next step is the cue)")
     if kind == "action":
         return out

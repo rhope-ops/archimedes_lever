@@ -13,7 +13,7 @@ Findings (FILE:LINE: message; each one fails the check):
     pointer    a pointer to another file, step or section ("see step 3", "as above", a link to a local file)
     vague      a vague word ("appropriate", "as needed", "should", "some", ...)
     wait       the step names a wait but not the state to wait for ("Wait until <what the person sees>")
-    filler     a filler cue: a sentence that is only "Go on." or "Continue."
+    filler     a filler cue: a clause that is only "Go on." or "Continue." (not in a sentence that starts with a condition)
 Text in `code`, **bold** or "quotes" (the exact thing on the screen, or the exact text to type) counts as one word
 and is not read for verbs, vague words or pointers.
 A project's own module (optional; a module that cannot be loaded fails the check) can define:
