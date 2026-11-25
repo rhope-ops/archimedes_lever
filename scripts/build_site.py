@@ -28,13 +28,15 @@ Credentials: none.
 
 import argparse
 import importlib.util
+import itertools
+import re
 import sys
 import tempfile
 import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from build_site_html import (BLOCK, BOLD, CHECK, README, README_MARK, SECTION, SITE, SITE_MARK, build_intro,  # noqa
+from build_site_html import (BLOCK, BOLD, CHECK, README, README_MARK, SCHEME, SECTION, SITE, SITE_MARK, build_intro,  # noqa
                              build_key_facts, dod_security, fact_rows, inline, paragraphs, readme_sections, refuse_marks, stray_marks, unquote)
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -351,7 +353,24 @@ HOSTILE_TABLES = (
 )
 # Hostile plain text for refuse_marks: a long run of scheme characters with no "://" (a scheme search tried at each
 # letter took quadratic time).
-HOSTILE_TEXT = (('a long word', 'a' * 100000), ('letters and digits', 'a1' * 50000), ('letters and dots', 'a.' * 50000))
+HOSTILE_TEXT = (('a long word', 'a' * 100000), ('letters and digits', 'a1' * 50000), ('letters and dots', 'a.' * 50000),
+                ('letters and plus signs', 'a+' * 50000), ('letters and dashes', 'a-' * 50000))
+OLD_SCHEME = r'[A-Za-z][A-Za-z0-9+.-]*://'   # the scheme form before the ReDoS fix (quadratic): address_test compares with it
+
+
+def address_test():
+    """Check that SCHEME finds a scheme in the same strings as the old form, on every string of up to 6 characters made
+    of a, 1, +, ., -, : and / (137,256 strings); print one line.
+
+    Returns:
+        0 when the two agree on every string, else 1.
+    """
+    new, old = re.compile(SCHEME), re.compile(OLD_SCHEME)
+    differ = [s for n in range(7) for s in map(''.join, itertools.product('a1+.-:/', repeat=n))
+              if bool(new.search(s)) != bool(old.search(s))]
+    print(('ok   ' if not differ else 'FAIL ') + f'the scheme regex finds the same strings as before the fix ({len(differ)} differ'
+          + (f', first {differ[0]!r})' if differ else ')'))
+    return 1 if differ else 0
 
 
 def hostile_test():
@@ -400,7 +419,7 @@ def self_test():
         ok, found = test_case(edit, page, local, expect, write)
         failed += not ok
         print(('ok   ' if ok else 'FAIL ') + label + ('' if ok else f': {found}'))
-    failed += hostile_test()
+    failed += hostile_test() + address_test()
     print('SITE TEST PASS' if not failed else 'SITE TEST FAIL')
     return 1 if failed else 0
 
