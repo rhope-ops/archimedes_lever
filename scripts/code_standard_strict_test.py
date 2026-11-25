@@ -30,6 +30,20 @@ from code_standard_test_gate import SAMPLE_GATE, commit, config_of, write   # no
 STRICT_FILE = Path(__file__).resolve().parent / 'code_standard_strict.py'
 
 
+A45 = 'a' * 45
+# Whole files, as ruff 0.17.6 sees them at a cap of 40 (2026-11-25): True = over the cap (check_lines).
+RUFF_CASES = (('x = "# noqa %s"' % A45, True), ("x = '''\n%s # noqa\n'''" % A45, True), ('x = "%s"' % ('\u65e5' * 22), True),
+              ('if x:\n\ty = "%s"' % ('a' * 33), True), ('x = "%s"' % ('e\u0301' * 20), False),
+              ('x = 1  # type: int  # %s' % A45, False), ('x = "%s"  # noqa' % A45, False),
+              ('x = "%s\u2705\ufe0f"' % ('a' * 32), False), ('x = 1  # flake8: %s' % A45, False),
+              ('x = 1  # mypy: %s' % A45, True), ('x = """\n%s\n"""  # noqa: E501' % ('a b ' * 12), False),
+              ('# ruff: noqa\nx = "%s"' % A45, False), ('# SPDX-License-Identifier: %s' % ('a b ' * 12), False),
+              ("x = ('''\n%s\n''', '''\n%s\n''')  # noqa" % (('w ' * 25,) * 2), False),
+              ('# note # ruff: noqa\nx = "%s"' % A45, False), (' ' * 60, False),
+              ('x = "%s\u3164"' % ('a' * 33), False), ('#  SPDX-License-Identifier: %s' % ('a b ' * 12), False),
+              ('# ruff : noqa\nx = "%s"' % A45, False))
+
+
 def row_text(text, by='the Keeper'):
     """Return one DECISIONS table row (four cells) whose decision cell is `text` and names the settings file, and whose
     By cell is `by`."""
@@ -186,15 +200,7 @@ def check_lines(cs, root, g):
         start = time.monotonic()   # no backtracking blow-up; about 0.3 s, 10 s leaves room for a busy machine
         gate.ruff_ok('x = 1  ' + '# type: a ' * 1000 + '# end', 200)
         assert time.monotonic() - start < 10, 'ruff_ok is slow on a run of pragma comments (the old regex took over 120 s)'
-        a = 'a' * 45   # whole files, as ruff 0.17.6 sees them at a cap of 40 (2026-11-25): True = over the cap
-        for text, want in (('x = "# noqa %s"' % a, True), ("x = '''\n%s # noqa\n'''" % a, True), ('x = "%s"' % ('\u65e5' * 22), True),
-                           ('if x:\n\ty = "%s"' % ('a' * 33), True), ('x = "%s"' % ('e\u0301' * 20), False),
-                           ('x = 1  # type: int  # %s' % a, False), ('x = "%s"  # noqa' % a, False),
-                           ('x = "%s✅️"' % ('a' * 32), False), ('x = 1  # flake8: %s' % a, False),
-                           ('x = 1  # mypy: %s' % a, True), ('x = """\n%s\n"""  # noqa: E501' % ('a b ' * 12), False),
-                           ('# ruff: noqa\nx = "%s"' % a, False), ('# SPDX-License-Identifier: %s' % ('a b ' * 12), False),
-                           ("x = ('''\n%s\n''', '''\n%s\n''')  # noqa" % (('w ' * 25,) * 2), False),
-                           ('# note # ruff: noqa\nx = "%s"' % a, False), (' ' * 60, False)):
+        for text, want in RUFF_CASES:
             assert (gate.longest_line(text.split('\n'), [], 40) > 40) == want, 'longest_line(%r...) over the cap: %s' % (text[:20], want)
     finally:
         rules.LINTERS = linters
