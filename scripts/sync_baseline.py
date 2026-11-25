@@ -124,10 +124,10 @@ COPY_FILES = ["scripts/session_checkin.sh", "scripts/stop_check.py", "scripts/ch
 # (copy_state). (The kit's agent files are kit files since 2026-11-18: an old copy can restate a rule; a project adds
 # an agent of its own under its own name.)
 COPY_IF_MISSING = ["docs/FIRST_USE.md"]
-# The DoD group (fleet v2 DEC 4): added only when the project's .check has `dod-security: on`, and only when the project
-# has no copy (never replaced, never in the kit lock: a project tunes its own scan paths). ICF-Source has it off.
+# The DoD group (fleet v2 DEC 4): only when the project's .check has `dod-security: on`; added when missing, replaced when
+# the copy is an earlier kit version, else kept (never in the kit lock: a project tunes its own scan paths). ICF-Source has it off.
 DOD_FILES = ["SECURITY.md", ".github/dependabot.yml", ".github/workflows/security.yml"]
-COPY_NOTES = []  # one line for each COPY_IF_MISSING file that a sync replaces or keeps (main() prints them)
+COPY_NOTES = []  # one line for each COPY_IF_MISSING or DOD_FILES file that a sync replaces or keeps (main() prints them)
 BASELINE_OWNER = "the Maintainer"  # role word in baseline text; no real name lives in the baseline
 # Never rename the owner inside this script: it holds BASELINE_OWNER as a literal.
 # first_use_check.py and docs/FIRST_USE.md use "the owner" as an answer option and a role: keep them as written
@@ -429,10 +429,11 @@ def planned_files(base, root, args):
         if (base / rel).exists():
             text = (base / rel).read_text()
             new[rel] = text if rel in NO_OWNER_RENAME else apply_owner(text, owner)
-    new.update(dod_files(base, root, DOD_FILES))
+    dod, dod_notes = dod_files(base, root, DOD_FILES)
+    new.update(dod)
     tuned, notes = plan_if_missing(base, root, copy_if_missing, owner, args.baseline)
     new.update(tuned)
-    COPY_NOTES[:] = notes
+    COPY_NOTES[:] = notes + dod_notes
     decisions = root / "docs/DECISIONS.md"
     if "scripts/log_check_plan.py" in copy_files and decisions.is_file():
         marked = decisions_marker(decisions.read_text())
