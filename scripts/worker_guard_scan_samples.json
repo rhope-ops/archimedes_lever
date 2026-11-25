@@ -53,6 +53,26 @@
   "ps_and_at.py": [
    "x = ' = @(' + ''.join(['us', '@', 'er'])\n",
    "rebuilt"
+  ],
+  "ps_index.py": [
+   "x = ''.join(['user', '@('[0], 'example.com'])\n",
+   "rebuilt"
+  ],
+  "ps_fstring.py": [
+   "x = f\"{chr(106)}ohn@{'example'}.com\"\n",
+   "rebuilt"
+  ],
+  "ps_format.py": [
+   "x = '{}@{}'.format(''.join(['us','er']), 'example.com')\n",
+   "rebuilt"
+  ],
+  "ps_replace.py": [
+   "x = ''.join(['user', '@(', 'example.com']).replace('(', '')\n",
+   "rebuilt"
+  ],
+  "ps_escape.py": [
+   "x = ('user' + '\\x40(' + 'example.com').replace('(', '')\n",
+   "rebuilt"
   ]
  },
  "range": "x = 1\n++ 1\ny = \"\u00ff\"\nz = \"a\" + chr(64)\n"

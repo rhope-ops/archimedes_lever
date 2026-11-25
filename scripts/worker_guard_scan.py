@@ -7,7 +7,7 @@ Usage:
 
 Finds two kinds, one line per finding, and exits 1 when there is any (0 when there is none):
   rebuilt   a line of code (a script or source file; prose is not code) that builds a string at run time from pieces (chr(N), a byte or unicode escape, a join of literals,
-            a base64, hex or rot13 decode) whose value holds the at sign (not one that starts a PowerShell @( or @{) or a word the content check blocks.
+            a base64, hex or rot13 decode) whose value holds the at sign or a word the content check blocks; on a plain line (plain()), an at sign that starts a PowerShell @( or @{ does not count.
   wrapped   a line of a shell script (a .sh or .bash file, or a file that starts with #!) that holds a git command
             the worker guard blocks: a command put in a file runs where the guard cannot see it.
 For a folder every line of every text file is read; for a git range only the added lines. The output names the file,
@@ -34,7 +34,14 @@ import worker_guard as guard   # scripts/worker_guard.py: the block rules (reaso
 BUILDERS = re.compile(r"chr\(\s*(?:0x[0-9A-Fa-f]+|\d+)\s*\)|\\x[0-9A-Fa-f]{2}|\\u[0-9A-Fa-f]{4}|\\[0-7]{3}|&#\d+;|"
                       r"b64decode|fromhex|unhexlify|rot_?13|\.join\(")
 LITERAL = re.compile(r"(['\"])((?:\\.|(?!\1).)*)\1")
-AT_SIGN = re.compile(r"@(?![({])")   # each at sign counts, except one that starts a PowerShell @( or @{
+AT_SIGN = re.compile(r"@(?![({])")   # each at sign, except one that starts a PowerShell @( or @{ (plain lines only)
+
+
+def plain(line):
+    """True when a line only joins its pieces: literals, names, + += = , ( ) and .join( (no index, no other call, no
+    f-string, no % or .format). Such a line cannot remove a character, so an @( in it stays @( and is not an address."""
+    s = LITERAL.sub('\0', line).replace('.join(', '\1(')
+    return bool(re.fullmatch(r'[\w\s=+,()\0\1]*', s)) and not re.search(r'\w\0|[\w)]\s*\(', s)
 SHELL_SUFFIXES = ('.sh', '.bash')
 CODE_SUFFIXES = SHELL_SUFFIXES + ('.py', '.js', '.mjs', '.cjs', '.ps1', '.psm1')
 
@@ -68,7 +75,8 @@ def values(line):
 
 
 def rebuilt(line, deny, terms):
-    """True when a line builds a string at run time whose value holds the at sign or a word the content check blocks.
+    """True when a line builds a string at run time whose value holds the at sign (on a plain line, not one that starts
+    a PowerShell @( or @{) or a word the content check blocks.
 
     Args:
         line: one line of text.
@@ -80,8 +88,9 @@ def rebuilt(line, deny, terms):
     """
     if not BUILDERS.search(line):
         return False
-    # An at sign right before ( or { is PowerShell array or hash syntax (code that writes PowerShell), not an address.
-    return any(AT_SIGN.search(v) or scan.scan_text(v, 'built', deny, [], terms=terms) for v in values(line))
+    # On a plain line, an at sign right before ( or { is PowerShell array or hash syntax (code that writes PowerShell).
+    at = AT_SIGN.search if plain(line) else (lambda v: '@' in v)
+    return any(at(v) or scan.scan_text(v, 'built', deny, [], terms=terms) for v in values(line))
 
 
 def wrapped(path, line):
