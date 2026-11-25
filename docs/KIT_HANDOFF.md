@@ -2,7 +2,7 @@
 
 The kit's own handoff (AGENTS.md "Handoff"). Kit only: first use deletes it in a project, which uses docs/NEXT_PROMPT.md. Keep it at 40 lines or fewer and inside the session-load cap (`.check` counts it); evidence and older items go in docs/reviews/. Times are America/Chicago.
 
-Updated: 2026-11-24 15:58 by "Kit · Tool retirement P3 pilot · 2026-11-24 · #164": P3 done (kit 164, 168, 169; 33-332.Z 104). Older items: [reviews/2026-11-24-kit-handoff-archive.md](reviews/2026-11-24-kit-handoff-archive.md); fleet audit report: [reviews/2026-11-24-fleet-audit.md](reviews/2026-11-24-fleet-audit.md).
+Updated: 2026-11-24 19:30 by "Kit · Fleet coordinator 3 · 2026-11-24": approved plan for kit follow-ups 1-8: [reviews/2026-11-24-kit-followups-plan.md](reviews/2026-11-24-kit-followups-plan.md). Older items: [reviews/2026-11-24-kit-handoff-archive.md](reviews/2026-11-24-kit-handoff-archive.md); fleet audit report: [reviews/2026-11-24-fleet-audit.md](reviews/2026-11-24-fleet-audit.md).
 
 ## State
 
