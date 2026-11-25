@@ -18,6 +18,8 @@ Method: a bare clone of each repo; `git merge-tree --write-tree <default> <branc
 | transcription_assistant | 0 | 1 |
 | Total | 112 | 41 |
 
+Delete list with each branch's SHA (the Maintainer approved the deletes, 2026-11-25): [2026-11-24-p6-delete.tsv](2026-11-24-p6-delete.tsv); a branch whose SHA changed is skipped.
+
 REC: delete every CONTAINED branch (includes `claude/tr-r2a-project-tools`, named in the plan). Keep the NOT-CONTAINED branches; each is listed below with its last commit date and a note.
 
 ## NOT-CONTAINED (keep unless you decide otherwise)
