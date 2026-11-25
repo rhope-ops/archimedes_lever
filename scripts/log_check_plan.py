@@ -172,66 +172,67 @@ COVERAGE_GOOD = """# List
 """
 
 
+def expect(name, func, text, want):
+    """Run func on text as a file and print one result line: want None = no findings, else a finding that contains want.
+
+    Args:
+        name: the name of the case, for its result line.
+        func: check_decisions or check_coverage.
+        text: the text of the sample file.
+        want: None for no findings, else a text one finding must contain.
+
+    Returns:
+        True when the case behaved as expected.
+    """
+    with tempfile.TemporaryDirectory() as d:
+        f = pathlib.Path(d, "F.md")
+        f.write_text(text, encoding="utf-8")
+        _, found = func(f)
+    good = (not found) if want is None else (want in "\n".join(found))
+    print(("ok   " if good else "FAIL ") + name + ("" if good else f"\n     got: {found}"))
+    return good
+
+
 def self_test_t6_t7():
     """Check the T6 (DECISIONS approval quote) and T7 (coverage list) cases; prints one line per case.
 
     Returns:
         True when every case behaved as expected.
     """
-    ok = True
-
-    def expect(name, func, text, want):
-        """Run func on text as a file: want None = no findings, else a finding that contains want.
-
-        Args:
-            name: the name of the case, for its result line.
-            func: check_decisions or check_coverage.
-            text: the text of the sample file.
-            want: None for no findings, else a text one finding must contain.
-        """
-        nonlocal ok
-        with tempfile.TemporaryDirectory() as d:
-            f = pathlib.Path(d, "F.md")
-            f.write_text(text, encoding="utf-8")
-            _, found = func(f)
-        joined = "\n".join(found)
-        good = (not found) if want is None else (want in joined)
-        print(("ok   " if good else "FAIL ") + name + ("" if good else f"\n     got: {found}"))
-        ok = ok and good
-
     row = '| 2026-11-24 | New row | the Maintainer: "I approve the plan" (own message, 2026-11-24 10:00) | - |'
-    expect("T6 new row with a quoted approval passes", check_decisions, DECISIONS_TABLE, None)
-    expect("T6 new row without a quote fails", check_decisions, DECISIONS_TABLE.replace(row, "| 2026-11-24 | New row | the Maintainer | - |"),
-           "quotes no approval")
-    expect("T6 empty quote fails", check_decisions, DECISIONS_TABLE.replace('"I approve the plan"', '" "'), "quotes no approval")
-    expect("T6 a row by Agent needs no quote", check_decisions, DECISIONS_TABLE.replace("the Maintainer:", "Agent:").replace('"I approve the plan"', "x"), None)
-    expect("T6 no marker: the older row is checked", check_decisions, DECISIONS_TABLE.replace("<!-- approval-quote-exempt-from: Old row -->", ""),
-           "quotes no approval")
     untitled = DECISIONS_TABLE.replace("## Decisions\n", "# Decisions: a project\n")
-    expect("T6 a table under the title (no '## Decisions') is checked", check_decisions,
-           untitled.replace('"I approve the plan"', "x"), "quotes no approval")
-    expect("T6 no Decisions table fails", check_decisions, "# Decisions\n\nNo table.\n", "no Decisions table")
-    expect("T6 '## Decisions' with no table under it fails (no fallback)", check_decisions,
-           untitled + "\n## Decisions\n\nText.\n", "no Decisions table")
     scope = ('# Decisions\n\n<!-- approval-quote-exempt-from: Old text -->\n\n| Date | Scope | Decision | Replaces |\n|---|---|---|---|\n'
              '| 2026-11-25 | Kit sync | By: the Maintainer: "I approve the sync" (own message). Sync to 11.1.0. | - |\n'
              '| 2026-11-24 | Kit sync | Old text. By: the Maintainer. | - |\n')
-    expect("T6 a Date | Scope | Decision table: a quoted By part passes", check_decisions, scope, None)
-    expect("T6 a Date | Scope | Decision table: a By part with no quote fails", check_decisions,
-           scope.replace(': "I approve the sync" (own message)', ""), "quotes no approval")
-    expect("T6 a Date | Scope | Decision table: the marker names the Decision cell", check_decisions,
-           scope.replace("Old text -->", "Kit sync -->"), "matches no Decisions row")
-    expect("T6 a By cell with the old role word Administrator needs a quote", check_decisions,
-           DECISIONS_TABLE.replace(row, "| 2026-11-24 | New row | the Administrator | - |"), "quotes no approval")
-    expect("T6 marker that matches no row fails", check_decisions, DECISIONS_TABLE.replace("exempt-from: Old row", "exempt-from: Gone"), "matches no Decisions row")
-    expect("T7 clean coverage list passes", check_coverage, COVERAGE_GOOD, None)
-    expect("T7 ask row fails", check_coverage, COVERAGE_GOOD.replace("| A-2 | Two | out |", "| A-2 | Two | ask |"), "is marked ask")
-    expect("T7 unmarked row fails", check_coverage, COVERAGE_GOOD.replace("| A-2 | Two | out |", "| A-2 | Two | |"), "has no mark")
-    expect("T7 unknown mark fails", check_coverage, COVERAGE_GOOD.replace("| A-2 | Two | out |", "| A-2 | Two | maybe |"), "has no mark")
-    expect("T7 count mismatch fails", check_coverage, COVERAGE_GOOD.replace("| A. Items | 2 | 1 | 1 |", "| A. Items | 2 | 2 | 0 |"), "counts table row A")
-    expect("T7 total mismatch fails", check_coverage, COVERAGE_GOOD.replace("**3** | **1** | **1** | **1**", "**4** | **1** | **1** | **2**"),
-           "counts table row TOTAL")
-    expect("T7 group missing from the counts fails", check_coverage, COVERAGE_GOOD.replace("| B2. Extra | 1 | 0 | 0 | 1 | 0 |\n", ""),
-           "group B2 has marked rows")
-    expect("T7 no counts table fails", check_coverage, COVERAGE_GOOD.split("## F.")[0], "no 'Group | Rows")
-    return ok
+    cases = [
+        ("T6 new row with a quoted approval passes", DECISIONS_TABLE, None),
+        ("T6 new row without a quote fails", DECISIONS_TABLE.replace(row, "| 2026-11-24 | New row | the Maintainer | - |"), "quotes no approval"),
+        ("T6 empty quote fails", DECISIONS_TABLE.replace('"I approve the plan"', '" "'), "quotes no approval"),
+        ("T6 a row by Agent needs no quote", DECISIONS_TABLE.replace("the Maintainer:", "Agent:").replace('"I approve the plan"', "x"), None),
+        ("T6 no marker: the older row is checked", DECISIONS_TABLE.replace("<!-- approval-quote-exempt-from: Old row -->", ""),
+         "quotes no approval"),
+        ("T6 a table under the title (no '## Decisions') is checked", untitled.replace('"I approve the plan"', "x"), "quotes no approval"),
+        ("T6 no Decisions table fails", "# Decisions\n\nNo table.\n", "no Decisions table"),
+        ("T6 '## Decisions' with no table under it fails (no fallback)", untitled + "\n## Decisions\n\nText.\n", "no Decisions table"),
+        ("T6 marker that matches no row fails", DECISIONS_TABLE.replace("exempt-from: Old row", "exempt-from: Gone"), "matches no Decisions row"),
+        ("T6 a Date | Scope | Decision table: a quoted By part passes", scope, None),
+        ("T6 a Date | Scope | Decision table: a By part with no quote fails", scope.replace(': "I approve the sync" (own message)', ""),
+         "quotes no approval"),
+        ("T6 a Date | Scope | Decision table: the marker names the Decision cell", scope.replace("Old text -->", "Kit sync -->"),
+         "matches no Decisions row"),
+        ("T6 a By cell with the old role word Administrator needs a quote",
+         DECISIONS_TABLE.replace(row, "| 2026-11-24 | New row | the Administrator | - |"), "quotes no approval"),
+    ]
+    t7 = [
+        ("T7 clean coverage list passes", COVERAGE_GOOD, None),
+        ("T7 ask row fails", COVERAGE_GOOD.replace("| A-2 | Two | out |", "| A-2 | Two | ask |"), "is marked ask"),
+        ("T7 unmarked row fails", COVERAGE_GOOD.replace("| A-2 | Two | out |", "| A-2 | Two | |"), "has no mark"),
+        ("T7 unknown mark fails", COVERAGE_GOOD.replace("| A-2 | Two | out |", "| A-2 | Two | maybe |"), "has no mark"),
+        ("T7 count mismatch fails", COVERAGE_GOOD.replace("| A. Items | 2 | 1 | 1 |", "| A. Items | 2 | 2 | 0 |"), "counts table row A"),
+        ("T7 total mismatch fails", COVERAGE_GOOD.replace("**3** | **1** | **1** | **1**", "**4** | **1** | **1** | **2**"),
+         "counts table row TOTAL"),
+        ("T7 group missing from the counts fails", COVERAGE_GOOD.replace("| B2. Extra | 1 | 0 | 0 | 1 | 0 |\n", ""), "group B2 has marked rows"),
+        ("T7 no counts table fails", COVERAGE_GOOD.split("## F.")[0], "no 'Group | Rows"),
+    ]
+    return all([expect(name, check_decisions, text, want) for name, text, want in cases]
+               + [expect(name, check_coverage, text, want) for name, text, want in t7])
