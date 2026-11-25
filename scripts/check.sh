@@ -230,6 +230,13 @@ rc=1"
   printf '%s\n' '{"commit": "c0ffee", "files": {"scripts/gone.py": "x"}}' > "$t/r/.check.lock"
   mkdir -p "$t/pkgbin"; printf '#!/bin/sh\necho "KIT PACKAGE PASS: $*"\n' > "$t/pkgbin/archimedes-kit"; chmod +x "$t/pkgbin/archimedes-kit"
   ok "package mode runs the package's verify" "$(cd "$t/r" && PATH="$t/pkgbin:$PATH" bash scripts/check.sh 2>&1 | grep -c '^PASS  kit package')" 1
+  # --kit-install under PEP 668: a fake python3 whose pip refuses the system Python (or fails with $PIPERR).
+  mkdir -p "$t/pep668"; printf '#!/bin/sh\ncase "$*" in *"-m pip install"*) echo "$*" >>"%s/pip.log"; case "$*" in *--user*) exit 0;; esac; echo "error: ${PIPERR:-externally-managed-environment}" >&2; exit 1;; esac\nexec %s "$@"\n' "$t" "$(command -v python3)" >"$t/pep668/python3"; chmod +x "$t/pep668/python3"
+  out="$(cd "$t/r" && PATH="$t/pep668:$t/pkgbin:$PATH" bash scripts/check.sh --kit-install 2>&1)"
+  ok "--kit-install: pip refused by PEP 668 makes a user install" "$(grep -c -- '--user --break-system-packages' "$t/pip.log")" 1
+  ok "--kit-install: the package then writes the scripts" "$(printf '%s\n' "$out" | grep -c '^KIT PACKAGE PASS: --install$')" 1
+  rm "$t/pip.log"; out="$(cd "$t/r" && PIPERR="no network" PATH="$t/pep668:$t/pkgbin:$PATH" bash scripts/check.sh --kit-install 2>&1; echo "rc=$?")"
+  ok "--kit-install: another pip error fails, shows it and makes no user install" "$(printf '%s\n' "$out" | grep -c -e '^error: no network$' -e '^rc=1$')$(grep -c -- '--user' "$t/pip.log")" 20
   g add -f .check.lock; printf 'x\n' > "$t/r/scripts/gone.py"; g add -f scripts/gone.py
   ok "with each locked script tracked there is no package step" "$(c | grep -c 'kit package')" 0
   ok "with each locked script tracked --kit-install does nothing" "$(c --kit-install; echo "rc=$?")" "KIT PACKAGE: not used (each kit script in .check.lock is tracked)
@@ -269,7 +276,15 @@ sys.exit(0 if set(f) - set(subprocess.run(["git", "ls-files", "-z", "--"] + f, c
 if [ "$kitinstall" = 1 ]; then
   pkg_mode || { echo "KIT PACKAGE: not used (each kit script in .check.lock is tracked)"; exit 0; }
   c="$(python3 -c 'import json; print(json.load(open(".check.lock"))["commit"])')" || exit 1
-  python3 -m pip install -q --force-reinstall "git+https://github.com/rhope-ops/archimedes_lever@$c" && archimedes-kit --install
+  u="git+https://github.com/rhope-ops/archimedes_lever@$c"
+  if ! o="$(python3 -m pip install -q --force-reinstall "$u" 2>&1)"; then
+    # PEP 668: a system Python that refuses pip outside a venv gets a user install (many such systems have no venv module).
+    grep -q 'externally-managed-environment' <<<"$o" || { printf '%s\n' "$o"; exit 1; }
+    echo "KIT PACKAGE: pip refuses the system Python (PEP 668); a user install"
+    python3 -m pip install -q --user --break-system-packages --force-reinstall "$u" || exit 1
+    PATH="$PATH:$(python3 -m site --user-base)/bin"
+  fi
+  archimedes-kit --install
   exit $?
 fi
 if [ "$cached" = 1 ] && [ -f "$stamp" ] && clean && ! pkg_mode; then

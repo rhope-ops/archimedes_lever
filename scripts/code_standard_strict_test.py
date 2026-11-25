@@ -22,6 +22,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import check_settings as settings   # noqa: E402 - scripts/check_settings.py: the reader of .check and .check.state.json
 import code_standard as cs   # noqa: E402 - the kit check (scripts/code_standard.py)
+import code_standard_rules as rules   # noqa: E402 - LINTERS, set both ways in check_lines
 from code_standard_test_gate import SAMPLE_GATE, commit, config_of, write   # noqa: E402 - the kit's sample-repo helpers
 
 STRICT_FILE = Path(__file__).resolve().parent / 'code_standard_strict.py'
@@ -165,8 +166,16 @@ def check_lines(cs, root, g):
     (root / 'blk.py').write_text(head + '# >>> s: generated from src/s.py by b.py\nx = "%s"\n# <<< s\n' % ('a' * 250))
     (root / 'blk2.py').write_text(head + '# >>> s: generated from src/s.py by b.py\nx = 1\n# <<< s\nx = "%s"\n' % ('a' * 250))
     g('add', '.')
-    now = cs.measure(config)['violations']['line']
-    assert now == {'long.sh': 256, 'blk2.py': 256}, 'a non-Python file, and a .py with a generated block (the linters skip it), fail on hand-written lines: %s' % now
+    linters = rules.LINTERS
+    try:
+        rules.LINTERS = True
+        now = cs.measure(config)['violations']['line']
+        assert now == {'long.sh': 256, 'blk2.py': 256}, 'a non-Python file, and a .py with a generated block (the linters skip it), fail on hand-written lines: %s' % now
+        rules.LINTERS = False
+        now = cs.measure(config)['violations']['line']
+        assert now == {'long.py': 256, 'long.sh': 256, 'blk2.py': 256}, 'without ruff and pylint a long .py line is measured here: %s' % now
+    finally:
+        rules.LINTERS = linters
     off = dict(config, caps={k: v for k, v in caps.items() if k != 'max_line_chars'})
     assert cs.measure(off)['violations']['line'] == {}, 'a config with no cap measures nothing'
     assert config_of(root, 'code-max-line-chars: 200\n')['caps'] == dict(settings.CODE_DEFAULTS['caps'], max_line_chars=200), 'the cap is read from its .check line'
