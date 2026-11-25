@@ -136,3 +136,36 @@ own merge message in the coordinator chat; the coordinator checked CI on the hea
   (i) worker_guard --scan + S8 +246. All three would put the baseline at 19,220.
 - Ion (33-332.Z, session_01PyXpdRW1VbtvtPjBsVLfRe): paused at the Maintainer's request; PR #60 (013ca82) newest fixes not
   reviewed; PR #61 (fd64a8e) 1 open MAJOR (non-ASCII digits after "passport"). Nothing merged or released.
+
+## Coordinator 2: P3 package-mode rollout closed (2026-11-24 ~19:10 America/Chicago)
+
+The Maintainer approved all lane C merges of this plan in advance ("I want to approve all Lane C merges in advance ...
+just finish the plan", coordinator chat, 2026-11-24). Every merge below had a last fresh review with 0 MAJOR and green
+CI on its head (ICF-Source is private: the full lane on the head instead); the coordinator checked each CI run's head SHA.
+
+| Repo | PRs merged | Tracked script lines before -> after |
+|---|---|---|
+| Kit | #171 (DoD test samples built at run time), #173 (kit install at session start), #174 (reviewer blocks deletes; T2 20,025) | 18,303 -> 20,025 |
+| 33-332.Z | #99, #102-#104 (P3 pilot), #77, #108 (hook sync; 2 `.check` workaround lines removed) | 14,155 -> 7,896 |
+| 90-161.Z | #226 (sync), #227 (package mode), #228 (hook sync) | 17,986 -> 14,849 |
+| RADE | #174 (9 long lines; ENGINE_RELEASE 37), #175 (sync), #176 (package mode; release.yml split into a read-only checks job and a release job), #177 (handoff) | 14,686 -> 11,535 |
+| ICF-Source | #265 (sync), #266 (package mode) | 46,895 -> 43,743 |
+| Fleet | | 112,025 -> 98,049 (-12 %) |
+
+The cut removes copies of kit scripts from projects; the code kept in one place (the kit) grew by 1,722 lines.
+
+- RADE engine-v37 released (run 45516273420; tag on b645019). Checked by the coordinator: both asset sha256 values, the
+  42 listed files against the tag, the lock's 42 hashes. Not checked: the attestation chain (Sigstore host blocked).
+- Startup hook proven in a fresh RADE session: "SessionStart:startup hook success: KIT PACKAGE PASS: 17 kit scripts from
+  the package at f38ec20 (written)", package at the lock commit, check.sh "PASS kit package".
+- New cloud sessions can start from a saved container copy, so the environment setup script is not where the kit
+  install happens (90-161.Z proof session, setup step 13 ms); kit #173 moved it to a SessionStart hook.
+
+Kit follow-ups (not done): `code_standard.py --update` drops Python line debt that ruff/pylint still fail; the
+approval-quote marker text says a sync adds it (no sync does; no `## Decisions` heading in some projects);
+worker_guard_scan flags PowerShell `@(` (a fix must apply only to the joined value; a first try weakened the scan and
+was dropped); `--kit-install` runs pip outside a venv (PEP 668); the delegate skill does not name the reviewer delete
+block; kit-update SKILL.md and the check.sh comment disagree about the setup script; no CHANGELOG row for the Python
+line cap moving to ruff/pylint; RADE and ICF-Source lack kit #174 until their next sync; session loads near the cap
+(RADE 5,475, 33-332.Z 5,484, 90-161.Z 5,462 of 5,500). For the Maintainer: a first name in ICF-Source
+docs/reviews/HANDOFF-HISTORY.md:58 (on main before this work).
