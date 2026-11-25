@@ -45,7 +45,7 @@ PRAGMA = re.compile(r'\s*(?:#\s*(?:noqa|type:|pylint:|pyright:|mypy:|nosec|isort
 PRAGMA_START = re.compile(r'#\s*(?:(?i:noqa)|type:|pyright:|pylint:|nosec|isort:|ruff:|flake8:)')
 NOQA = re.compile(r'#\s*noqa(?::[^#]*\bE501\b|(?![:\w]))', re.I)
 FILE_NOQA = re.compile(r'#\s*(?:ruff|flake8)\s*:\s*(?i:noqa)(?::[^#]*\bE501\b|(?![:\w]))')   # on its own line: the whole file
-SPDX = re.compile(r'\s*#\s*SPDX-(?:License-Identifier|FileCopyrightText)')   # a license comment line: ruff skips it
+SPDX = re.compile(r'\s*#\s+SPDX-(?:License-Identifier|FileCopyrightText):')   # a license comment line: ruff skips it
 ZERO_WIDTH = ('Mn', 'Me', 'Cf', 'Cc')   # unicode categories ruff counts as width 0 (combining marks, joiners, controls)
 # Code points that ruff also counts 0: Hangul vowel and final jamo (the parts of a decomposed syllable), fillers and tone marks.
 ZERO_CODES = (range(0x1160, 0x1200), range(0xD7B0, 0xD800), (0x3164, 0x302E, 0x302F, 0x16FF0, 0x16FF1))
@@ -133,12 +133,23 @@ def python_comments(lines):
 
 def width(text):
     """The width of a line as ruff counts it: a wide or full-width character counts 2, a combining mark, joiner or
-    control character 0, Hangul vowel and final jamo 0, and a tab moves to the next multiple of 4 (ruff's default
-    indent-width). Known limit (ruff 0.17.6, 2026-11-25): of 149,504 code points, 67 rare signs count 1 here and 0 in
-    ruff (as before this rule), and 219 count less than in ruff."""
-    n = 0
+    control character 0, Hangul vowel and final jamo 0, and a tab adds the step to the next tab stop of 4 (ruff's default
+    indent-width) of a column that counts characters. Known limit (ruff 0.17.6, 2026-11-25): of 149,504 code points,
+    67 rare signs count 1 here and 0 in ruff (as before this rule), and 219 count less than in ruff.
+
+    Args:
+        text: the line, without its line end.
+
+    Returns:
+        The width in columns.
+    """
+    n = col = 0   # ruff: the column counts characters and goes to the next tab stop at a tab; the width adds that step
     for ch in text:
-        n += 4 - n % 4 if ch == '\t' else 0 if unicodedata.category(ch) in ZERO_WIDTH or any(ord(ch) in z for z in ZERO_CODES) else 2 if unicodedata.east_asian_width(ch) in 'WF' else 1
+        if ch == '\t':
+            n, col = n + 4 - col % 4, col + 4 - col % 4
+        else:
+            n += 0 if unicodedata.category(ch) in ZERO_WIDTH or any(ord(ch) in z for z in ZERO_CODES) else 2 if unicodedata.east_asian_width(ch) in 'WF' else 1
+            col += 1
     return n
 
 

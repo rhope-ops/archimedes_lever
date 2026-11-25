@@ -41,7 +41,8 @@ RUFF_CASES = (('x = "# noqa %s"' % A45, True), ("x = '''\n%s # noqa\n'''" % A45,
               ("x = ('''\n%s\n''', '''\n%s\n''')  # noqa" % (('w ' * 25,) * 2), False),
               ('# note # ruff: noqa\nx = "%s"' % A45, False), (' ' * 60, False),
               ('x = "%s\u3164"' % ('a' * 33), False), ('#  SPDX-License-Identifier: %s' % ('a b ' * 12), False),
-              ('# ruff : noqa\nx = "%s"' % A45, False))
+              ('# ruff : noqa\nx = "%s"' % A45, False), ('x = "abć\t%s"' % ('a' * 28), False),
+              ('x = "\t\t%s"' % ('a' * 28), True))
 
 
 def row_text(text, by='the Keeper'):
