@@ -192,7 +192,9 @@ def check_lines(cs, root, g):
                            ('x = 1  # type: int  # %s' % a, False), ('x = "%s"  # noqa' % a, False),
                            ('x = "%s✅️"' % ('a' * 32), False), ('x = 1  # flake8: %s' % a, False),
                            ('x = 1  # mypy: %s' % a, True), ('x = """\n%s\n"""  # noqa: E501' % ('a b ' * 12), False),
-                           ('# ruff: noqa\nx = "%s"' % a, False), ('# SPDX-License-Identifier: %s' % ('a b ' * 12), False)):
+                           ('# ruff: noqa\nx = "%s"' % a, False), ('# SPDX-License-Identifier: %s' % ('a b ' * 12), False),
+                           ("x = ('''\n%s\n''', '''\n%s\n''')  # noqa" % (('w ' * 25,) * 2), False),
+                           ('# note # ruff: noqa\nx = "%s"' % a, False), (' ' * 60, False)):
             assert (gate.longest_line(text.split('\n'), [], 40) > 40) == want, 'longest_line(%r...) over the cap: %s' % (text[:20], want)
     finally:
         rules.LINTERS = linters

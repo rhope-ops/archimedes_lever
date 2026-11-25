@@ -45,7 +45,7 @@ PRAGMA = re.compile(r'\s*(?:#\s*(?:noqa|type:|pylint:|pyright:|mypy:|nosec|isort
 PRAGMA_START = re.compile(r'#\s*(?:(?i:noqa)|type:|pyright:|pylint:|nosec|isort:|ruff:|flake8:)')
 NOQA = re.compile(r'#\s*noqa(?::[^#]*\bE501\b|(?![:\w]))', re.I)
 FILE_NOQA = re.compile(r'#\s*(?:ruff|flake8):\s*(?i:noqa)(?::[^#]*\bE501\b|(?![:\w]))')   # on its own line: the whole file
-SPDX = re.compile(r'\s*#\s*SPDX-')   # a license comment line: ruff skips it
+SPDX = re.compile(r'\s*# SPDX-(?:License-Identifier|FileCopyrightText)')   # a license comment line: ruff skips it
 ZERO_WIDTH = ('Mn', 'Me', 'Cf', 'Cc')   # unicode categories ruff counts as width 0 (combining marks, joiners, controls)
 SAFETY_LABELS = ('Network:', 'Writes:', 'Credentials:')   # C1 safety: what a reviewer must find before a run
 # A By cell with one of these marks a script or an agent, not the Maintainer (the Maintainer, 2026-11-17: only the Maintainer decides).
@@ -123,13 +123,16 @@ def python_comments(lines):
     for i in range(len(lines) - 1, 0, -1):   # a backslash at the end of a code line joins it to the next line
         if i not in owner and i not in cols and lines[i - 1].rstrip('\r').endswith('\\'):
             owner[i] = owner.get(i + 1, i + 1)
-    whole = any(FILE_NOQA.match(lines[r - 1], c) and not lines[r - 1][:c].strip() for r, c in cols.items())
+    for r in sorted(owner, reverse=True):   # chains: a string that ends on a line where another one or a continuation starts
+        owner[r] = owner.get(owner[r], owner[r])
+    whole = any(FILE_NOQA.search(lines[r - 1], c) and not lines[r - 1][:c].strip() for r, c in cols.items())
     return cols, owner, whole
 
 
 def width(text):
     """The width of a line as ruff counts it: a wide or full-width character counts 2, a combining mark, joiner or
-    control character 0, and a tab moves to the next multiple of 4 (ruff's default indent-width)."""
+    control character 0, and a tab moves to the next multiple of 4 (ruff's default indent-width). Known limit: Python's
+    Unicode tables differ from ruff's for about 300 rare code points (for example Hangul jamo, some Indic signs)."""
     n = 0
     for ch in text:
         n += 4 - n % 4 if ch == '\t' else 0 if unicodedata.category(ch) in ZERO_WIDTH else 2 if unicodedata.east_asian_width(ch) in 'WF' else 1
@@ -160,7 +163,7 @@ def ruff_ok(line, cap, comment=None, noqa=None):
     if width(body) <= cap:
         return True
     words = body.split()
-    return len(words) == 1 or (len(words) > 1 and '://' in words[-1] and width(body) - width(words[-1]) <= cap)
+    return len(words) <= 1 or ('://' in words[-1] and width(body) - width(words[-1]) <= cap)
 
 
 def file_rules(v, p, lines, head, config, skip):
