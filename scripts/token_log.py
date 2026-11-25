@@ -22,11 +22,11 @@ does nothing: sessions with no repo are not logged, and the repo is the folder t
      from the agents-pane record <TOKEN_LOG_HOME>/cost/<session id>.json, read at push time. No record: no files; a
      bad record (no JSON, not version 1, another session) is skipped with a line in push.log.
   5. Commits with a temporary index and pushes through the normal pre-push hook. The work tree, the index and the
-     current branch never change. In a full clone a push of only this branch skips the check lanes (log_only);
-     a block by its content check holds the push back, and the rows wait in the session log. A failed push is
-     tried again after 1 and 5 minutes, so the last turn of a session is not lost to one failure (only while the container still runs);
-     a race is tried again at once. Pushes are coalesced: at most one runs and one waits per session. A fetch or
-     push with no answer in time (TOKEN_LOG_NET_TIMEOUT) is killed with its pre-push hook.
+     current branch never change. In a full clone a push of only this branch skips the check lanes (log_only); a
+     block by its content check holds the push back, and the rows wait in the session log. A failed push is tried
+     again after 1 and 5 minutes, so the last turn of a session is not lost to one failure (only while the
+     container still runs); a race is tried again at once. Pushes are coalesced: at most one runs and one waits
+     per session. A fetch or push with no answer in time (TOKEN_LOG_NET_TIMEOUT) is killed with its pre-push hook.
 
 One row per API call. Columns: message_id, timestamp (UTC, of the reply), turn (prompts up to that time: user messages
 and system wake-ups such as task notifications, not tool results or interrupt markers; total by turn for a chart),
@@ -227,8 +227,7 @@ def push(root, sid, tpath):
 
 
 def has_replies(tpath):
-    """True when the session log holds at least one assistant reply with token use (a log of 0 rows then means its
-    format changed)."""
+    """True when the session log holds an assistant reply with token use (0 rows then means a changed format)."""
     try:
         with open(tpath, encoding="utf-8", errors="replace") as f:
             return any('"assistant"' in ln and '"usage"' in ln for ln in f)
