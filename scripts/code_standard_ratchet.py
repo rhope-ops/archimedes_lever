@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
-"""The comparison of the code standard baseline with main: the Maintainer's decision test, the check of the settings and
-the debt against the merge base with origin/main, and --adopt (docs/code-standard.md "The ratchet").
-
-Part of scripts/code_standard.py (split out to keep each file under the line cap of docs/code-standard.md C4).
-code_standard.py keeps decided_at, against_main and adopt with their old signatures; each passes the check module
-itself as `cs`, so the repo root, the gate and the helpers that a self-test sets on that module are the ones in force.
+"""The code standard ratchet (docs/code-standard.md "The ratchet"): the debt against the baseline, the Maintainer's decision
+test, the settings and the debt against the merge base with origin/main, --adopt, and the result lines of a check.
+Part of scripts/code_standard.py (kept apart for the line cap of docs/code-standard.md C4). code_standard.py keeps
+compare, against_main and adopt with their old signatures; each passes the check module itself as `cs`, so the repo
+root, the gate and the helpers that a self-test sets on that module are the ones in force.
 Inputs:  the settings and debt list of the working tree, and those at the merge base (git; scripts/check_settings.py).
-Outputs: problem lines and notes; adopt prints its result line.
+Outputs: problem lines and notes; check and adopt print their result lines.
 Usage:   imported by scripts/code_standard.py; it has no command line.
 Prevents: code-standard debt rises, or a cap or rule in `.check` changes without the Maintainer's decision, so the ratchet is quietly loosened
 Network: none (it runs local git read commands).
@@ -110,3 +109,69 @@ def adopt(cs, config, debt, now):
     print('CODE-STANDARD adopted: %s (add a docs/DECISIONS.md row that names %s)' % (
         ', '.join('%s %d' % (k, len(now[k])) for k in kinds), settings.CHECK))
     return 0
+
+
+def compare(cs, now, debt, caps):
+    """Compare the measured violations with the debt list.
+
+    Args:
+        cs: the check module (scripts/code_standard.py): its rules() and the gate in force.
+        now: the violations measured now {kind: {key: value}}.
+        debt: the baseline's debt list, in the same shape.
+        caps: the caps of the settings.
+
+    Returns:
+        (new problems, fixed items). New: a violation not in the debt, or a debt value that grew. Fixed: a debt item
+        that is gone or smaller (the baseline must be lowered in the same change).
+    """
+    new, fixed = [], []
+    table = cs.rules()
+    for kind, items in now.items():
+        if kind in cs.WARN_KINDS:   # a warning: no FAIL, no baseline (warn_lines)
+            continue
+        text, cap = table[kind]
+        label = text % caps.get(cap, 0) if cap else text
+        old = debt.get(kind, {})
+        for key, value in sorted(items.items()):
+            if key not in old:
+                new.append('FAIL  %s: %s%s' % (label, key, '' if value == 1 else ' (%d)' % value))
+            elif value > old[key] and cap:
+                new.append('FAIL  %s: %s grew from %d to %d' % (label, key, old[key], value))
+        for key, value in sorted(old.items()):
+            if key not in items or (cap and items[key] < value):
+                fixed.append('FIXED %s: %s' % (label, key))
+    return new, fixed
+
+
+def check(cs, args, config, debt, m):
+    """Compare the measurement with the baseline and with main, print each problem and the result line; with
+    --update, lower the baseline when there is no new debt.
+
+    Args:
+        cs: the check module (scripts/code_standard.py): its helpers, save() and GATE.
+        args: the parsed command line.
+        config: the code standard settings.
+        debt: the baseline's debt list.
+        m: the result of measure().
+
+    Returns:
+        The exit code: 0 pass, 1 fail.
+    """
+    new, fixed = cs.compare(m['violations'], debt, config['caps'])
+    hand, note = cs.against_main(config, debt)
+    new += hand
+    for line in cs.warn_lines(m['violations'], config['caps']) + new + fixed + ([note] if note else []):
+        print(line)
+    if args.update:
+        if new:
+            print('CODE-STANDARD fail: new debt cannot go into the baseline; fix it (docs/code-standard.md)')
+            return 1
+        cs.save(m['violations'])
+        print('CODE-STANDARD baseline lowered: %s' % cs.summary(m['violations']))
+        return 0
+    if fixed and not new:
+        print('Debt was fixed: run python3 scripts/code_standard.py --update and commit the lower baseline.')
+    gate = ', gate %s active' % os.path.basename(cs.GATE.__file__) if cs.GATE else ''
+    print('CODE-STANDARD %s (files=%d, debt: %s%s)' % ('fail' if new or fixed else 'pass', len(m['files']),
+                                                      cs.summary(m['violations']), gate))
+    return 1 if new or fixed else 0
