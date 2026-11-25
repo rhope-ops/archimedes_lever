@@ -206,3 +206,15 @@ approval for anything. if you have a doubt, go with your top recommendation ever
 - P4b 90-161.Z: waits for R42 #231 (it moves its lock to engine-v38 before its merge).
 - P6: full-history .7z exports made for 9 repos (all but the kit and 90-161.Z, which still change); branch list:
   [2026-11-24-p6-branch-list.md](2026-11-24-p6-branch-list.md) (112 CONTAINED, safe; 41 NOT-CONTAINED, keep).
+- P4b 90-161.Z (child session_01PyXpdVDEYZPZFcjAMJBotW): R42 #231 locked engine-v38; #233 CodeQL (Python, JS) merged
+  (fa1e1bb; one run on main for a baseline); #234 decision 7 merged (000a286); #232 CSP `connect-src` one source merged
+  (57e2d44). #235 go.md build-time HTML: OPEN on purpose, preview https://claude.ai/artifact/6Vnt7CpTNoMcH9YKAPYuK9 (the
+  PFM runs R42 from go.md; the Maintainer looks first). Before #235 merges: the environment setup script needs
+  markdown-it-py==4.3.0; the round skill should say to run scripts/build_go_page.py after a go.md change (guard file).
+- SBOM (RADE and 90-161.Z): blocked by the project ask rule `*--output*` in .claude/settings.json (a person must answer
+  a command with --output). Nothing pushed; hashed-requirements work stays local in the child sessions.
+- P6: 10 exports sent in chat (no-more-beyond in 6 volumes of 200 MB: the upload limit refused larger files); the kit
+  export follows this commit.
+- New kit follow-ups: build_site_html.py ReDoS (CodeQL, seen in 90-161.Z #232); the `*--output*` ask rule blocks
+  cyclonedx-py and pip-compile (an SBOM step needs a named allow or a person); RADE Start-SignInSize needs a
+  no-state verb or an opt-in before 90-161.Z can copy it (R42 note).

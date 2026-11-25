@@ -2,7 +2,7 @@
 
 The kit's own handoff (AGENTS.md "Handoff"). Kit only: first use deletes it in a project, which uses docs/NEXT_PROMPT.md. Keep it at 40 lines or fewer and inside the session-load cap (`.check` counts it); evidence and older items go in docs/reviews/. Times are America/Chicago.
 
-Updated: 2026-11-24 22:20 by "Kit · Fleet coordinator 3 · 2026-11-24": P4a, P4c done (engine-v38), P4b waits for R42, P6 branch list made: [state](reviews/2026-11-23-fleet-v2-coordinator-state.md) last section. Older items: [reviews/2026-11-24-kit-handoff-archive.md](reviews/2026-11-24-kit-handoff-archive.md); fleet audit report: [reviews/2026-11-24-fleet-audit.md](reviews/2026-11-24-fleet-audit.md).
+Updated: 2026-11-24 23:25 by "Kit · Fleet coordinator 3 · 2026-11-24": P4 done except 90-161.Z PR 235 (preview) and the SBOMs (blocked), P6 exports sent: [state](reviews/2026-11-23-fleet-v2-coordinator-state.md) last section. Older items: [reviews/2026-11-24-kit-handoff-archive.md](reviews/2026-11-24-kit-handoff-archive.md); fleet audit report: [reviews/2026-11-24-fleet-audit.md](reviews/2026-11-24-fleet-audit.md).
 
 ## State
 
@@ -12,7 +12,7 @@ Updated: 2026-11-24 22:20 by "Kit · Fleet coordinator 3 · 2026-11-24": P4a, P4
 
 Plan and decisions 1-10: [reviews/2026-11-23-tool-retirement-plan.md](reviews/2026-11-23-tool-retirement-plan.md); P2 record: [reviews/2026-11-23-tool-retirement-handoff.md](reviews/2026-11-23-tool-retirement-handoff.md).
 
-- [x] Research and plan. [x] P1 (PR 137). [x] P2. [x] Fleet audit (PRs 158, 159). [x] P3: kit package (kit PRs 164, 168, 169); 33-332.Z pilot in package mode (its PRs 99, 102, 103, 104; 27 of 53 kit scripts from the package). Follow-ups: --kit-install after a branch switch (S7 text), check-in KIT line when the package is missing, MAINTAINER_GUIDE step, bandit in security.yml, 4 MINOR of PR 168. [~] P4: RADE engine-v38 and 33-332.Z done, ICF runbook done; RADE SBOM/CodeQL blocked; 90-161.Z after R42. [x] P5. [~] P6: exports, [branch list](reviews/2026-11-24-p6-branch-list.md); deletes need the Maintainer's OK.
+- [x] Research and plan. [x] P1 (PR 137). [x] P2. [x] Fleet audit (PRs 158, 159). [x] P3: kit package (kit PRs 164, 168, 169); 33-332.Z pilot in package mode (its PRs 99, 102, 103, 104; 27 of 53 kit scripts from the package). Follow-ups: --kit-install after a branch switch (S7 text), check-in KIT line when the package is missing, MAINTAINER_GUIDE step, bandit in security.yml, 4 MINOR of PR 168. [~] P4: done, except 90-161.Z PR 235 (open for your look) and the SBOM steps (ask rule `*--output*`); RADE CodeQL not started. [x] P5. [~] P6: exports, [branch list](reviews/2026-11-24-p6-branch-list.md); deletes need the Maintainer's OK.
 
 ## Open
 
