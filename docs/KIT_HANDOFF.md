@@ -2,7 +2,7 @@
 
 The kit's own handoff (AGENTS.md "Handoff"). Kit only: first use deletes it in a project, which uses docs/NEXT_PROMPT.md. Keep it at 40 lines or fewer and inside the session-load cap (`.check` counts it); evidence and older items go in docs/reviews/. Times are America/Chicago.
 
-Updated: 2026-11-25 08:41 (token log session): PRs 200, 201 merged; 11.2.0 not tagged. Older items: [archive file](reviews/2026-11-24-kit-handoff-archive.md); fleet audit [report](reviews/2026-11-24-fleet-audit.md).
+Updated: 2026-11-25 08:41 (token log session): PRs 200-204 merged; v11.2.0 tagged; setup script on the tag. No tag ruleset: one admin (the Maintainer, 2026-11-25). Older items: [archive file](reviews/2026-11-24-kit-handoff-archive.md); fleet audit [report](reviews/2026-11-24-fleet-audit.md).
 
 ## State
 
@@ -22,7 +22,6 @@ Plan and decisions 1-10: [reviews/2026-11-23-tool-retirement-plan.md](reviews/20
 
 ## Needs the owner
 
-- Tag v11.2.0; then a `v*` tag and branch ruleset; then the setup script on it, never before: [plan](reviews/2026-11-25-token-log-followups-plan.md).
 - Tags, branch deletes, account skills, the 2026-11-21 items: archive file, "Needs the owner".
 - Add the Dependabot secret `PII_GUARD_DENYLIST` (steps: archive file, "Dependabot secret"), then re-run the checks of PRs 115 and 116.
 - Delete the merged branches `claude/fleet-audit-cli-helpers`, `claude/fleet-audit-report` (kit) and `claude/fleet-audit-site-page-dedup` (33-332.Z).
