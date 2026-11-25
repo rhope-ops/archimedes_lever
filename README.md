@@ -187,27 +187,23 @@ Your name list holds your names, your user name variants and your employer. It n
 8. In the editor, type the names of your list, one on each line. You see the names in the editor.
 9. If you use **nano**, press **Ctrl+X**, **Y** and **Enter**. This saves the file and closes **nano**. You see the prompt again.
 10. If you use **Notepad**, press **Ctrl+S**. This saves the file. You see no mark of unsaved changes in the title bar.
-11. If you use Claude Code on the web, in the session, do these actions:
-    1. Open the environment menu at the top of the session, then click **Edit**.
-    2. In the box **Environment variables**, type `PII_GUARD_DENYLIST=Name1,Name2`, with your names in place of `Name1,Name2`.
-    3. Click **Save**.
-
-    You see the session again. A new session reads the list; this session does not.
-12. In your browser, open `https://github.com/` with your GitHub user name and the repository name after it, for example `https://github.com/YOUR_USER/NEW_NAME`. You see the tab **Code** of the repository.
-13. On the page of your repository, click **Settings**. You see the page **General**.
-14. In the menu on the left, click **Secrets and variables**, then **Actions**. You see the page **Actions secrets and variables**.
-15. Click **New repository secret**. You see the page **New secret**.
-16. On the page **New secret**, do these actions:
+11. If you use Claude Code on the web, open the environment menu, then click **Edit**.
+12. If you use Claude Code on the web, type `PII_GUARD_DENYLIST=Name1,Name2` in **Environment variables**, with your names in place of `Name1,Name2`. Click **Save**. A new session reads the list; this session does not.
+13. In your browser, open `https://github.com/` with your GitHub user name and the repository name after it, for example `https://github.com/YOUR_USER/NEW_NAME`. You see the tab **Code** of the repository.
+14. On the page of your repository, click **Settings**. You see the page **General**.
+15. In the menu on the left, click **Secrets and variables**, then **Actions**. You see the page **Actions secrets and variables**.
+16. Click **New repository secret**. You see the page **New secret**.
+17. On the page **New secret**, do these actions:
     1. In the box **Name**, type `PII_GUARD_DENYLIST`.
     2. In the box **Secret**, type your names, with a comma between two names.
     3. Click **Add secret**.
 
     You see `PII_GUARD_DENYLIST` in the list of secrets.
-17. On your computer, in a terminal, run `cd` with the path of the project folder. You see the project folder name in the prompt.
-18. Run `python3 scripts/check_content.py --status`. On Windows, the command starts with `py`, not `python3`. You see where the list comes from and the number of entries, never the names.
-19. Run `python3 scripts/check_content.py --all`. You see `CONTENT CHECK PASS`, or each finding with its value masked. If you see `CONTENT CHECK PASS`, the task is complete.
-20. For each finding, open the file at the line that the finding names. Remove the personal data on that line. You see the line without it. If the value must stay, ask the project's Maintainer: only the Maintainer adds an allowed value to `.check`.
-21. Run `python3 scripts/check_content.py --all` again. You see `CONTENT CHECK PASS`. The task is complete.
+18. On your computer, in a terminal, run `cd` with the path of the project folder. You see the project folder name in the prompt.
+19. Run `python3 scripts/check_content.py --status`. On Windows, the command starts with `py`, not `python3`. You see where the list comes from and the number of entries, never the names.
+20. Run `python3 scripts/check_content.py --all`. You see `CONTENT CHECK PASS`, or each finding with its value masked. If you see `CONTENT CHECK PASS`, the task is complete.
+21. For each finding, open the file at the line that the finding names. Remove the personal data on that line. You see the line without it. If the value must stay, ask the project's Maintainer: only the Maintainer adds an allowed value to `.check`.
+22. Run `python3 scripts/check_content.py --all` again. You see `CONTENT CHECK PASS`. The task is complete.
 
 An optional second list holds your own blocked terms (words that are not personal data), as `CHECK_TERMS` in the same three places. The steps for agents, the fingerprint check and one master copy of the list: [docs/FIRST_USE.md](docs/FIRST_USE.md), step 4.
 

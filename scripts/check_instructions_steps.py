@@ -48,7 +48,7 @@ WAIT_WORDS = re.compile(r"\b(?:wait|waiting|loading|takes|for (?:about )?(?:\d+|
                         r"(?:secs?|seconds?|mins?|minutes?|hrs?|hours?)\b|for (?:about )?(?:a minute|an hour)\b|restarts?|restarting|reboots?|processing|"
                         r"syncing|in progress|spinner|progress bar)\b")
 WAIT_STATE = re.compile(r"\bwait until\b|\bwait for\b[^.]*\b(?:to|until)\b|\bdo not [^.]*\buntil\b|\buntil you see\b")
-FILLER = re.compile(r"(?:^|[.!?:]\s+)(?:go on|continue)\s*(?:[.!](?=\s|$)|$)")  # a sentence that is only "Go on." or "Continue.": filler
+FILLER = re.compile(r"(?:^|[.!?]\s+)(?:then )?(?:go on|continue)\s*(?:[.!](?=\s|$)|$)")  # a sentence that is only "Go on." or "Continue.": filler
 ITEM = re.compile(r"^(\s*)(\d+)[.)]\s+(.*)$")
 FENCE = re.compile(r"^\s*(?:```|~~~)")
 WORD = re.compile(r"[A-Za-z0-9][A-Za-z0-9'’-]*")
@@ -259,8 +259,8 @@ def step_findings(raw, kind, rules):
         if len(WORD.findall(s)) > rules["sentence_words"]:
             out.append(f"long: a sentence has {len(WORD.findall(s))} words (at most {rules['sentence_words']}): \"{s.strip()[:60]}\"")
     acts = sum(count_actions(s, rules["verbs"]) for s in sentences)
-    if kind == "lead":  # a lead-in: its numbered actions are its actions ("do these actions" is none)
-        acts = max(acts - 1, 0) + raw.split(LEAD_SEP, 1)[1].count("\x1f") + 1
+    if kind == "lead":  # a lead-in: each numbered action counts with the actions in it (at least 1)
+        acts += sum(max(1, count_actions(plain(a), rules["verbs"])) for a in raw.split(LEAD_SEP, 1)[1].split("\x1f"))
     if acts > MAX_ACTIONS:
         out.append(f"actions: {acts} actions in one step (at most {MAX_ACTIONS}, all on one screen): split the step")
     told = SEEN.sub(" ", own)
@@ -270,10 +270,10 @@ def step_findings(raw, kind, rules):
     vague = sorted({m.group(0) for p in rules["vague"] for m in re.finditer(p, own)})
     if vague:
         out.append(f"vague: {', '.join(vague)}: name the exact thing, number or condition")
+    if FILLER.search(own.strip()):
+        out.append("filler: \"Go on.\" tells the reader nothing: delete it (the next step is the cue)")
     if kind == "action":
         return out
     if WAIT_WORDS.search(SEEN.sub(" ", text)) and not WAIT_STATE.search(text):
         out.append("wait: the step names a wait but not the state to wait for: write \"Wait until <what the person sees>.\"")
-    if FILLER.search(own.strip()):
-        out.append("filler: \"Go on.\" tells the reader nothing: delete it (the next step is the cue)")
     return out

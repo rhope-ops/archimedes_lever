@@ -1,6 +1,6 @@
 ---
 name: instructions
-description: Use before you write or change text a person acts on: steps, pages, READMEs, go.md, window cards or messages.
+description: Use before you write or change text a person acts on: steps, pages, READMEs, go.md, window cards, hand steps or messages.
 ---
 
 # Write instructions that people follow
@@ -17,7 +17,7 @@ AGENTS.md "Instructions people follow" holds the rule; this file holds the steps
 
 ## STE (ASD-STE100)
 
-- Write one instruction in one sentence. Up to three short actions on one screen can share one sentence ("Click **File** > **New**, then press `Ctrl+V`.").
+- Write each instruction as one sentence; it can hold up to three short actions on one screen ("Click **File** > **New**, then press `Ctrl+V`.").
 - Write at most 20 words in a sentence of a procedure, and at most 25 words in a description.
 - Start each instruction with the verb, in the imperative: "Click", "Type", "Open", "Press".
 - Use the active voice and the simple tenses (present, past, future). Do not use an -ing form as a verb.
