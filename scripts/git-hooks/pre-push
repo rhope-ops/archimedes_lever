@@ -85,10 +85,12 @@ lane_of() {  # lane_of [BRANCH...]: reads the same lines; prints "full" when a p
 log_only() {  # log_only: reads the same lines; true when every pushed ref is the token log branch claude/token-usage
              # and every pushed commit changes, against each parent (a root commit: the empty tree), only regular
              # sessions/, costs/ or limits/ CSV files, as scripts/token_log.py writes them. Plumbing only (rev-list,
-             # diff-tree: no porcelain config such as log.diffMerges or diff.ignoreSubmodules), no replace refs; an
-             # object that is not a commit, or one git cannot list, fails closed. A TOKEN_LOG_BRANCH override runs the
+             # diff-tree: no porcelain config such as log.diffMerges or diff.ignoreSubmodules), no replace refs, no
+             # commit-graph; grafts, an object that is not a commit, or one git cannot list, fail closed. A TOKEN_LOG_BRANCH override runs the
              # normal checks.
   local n=0 lref lsha rref rsha range list c ps p out e
+  # grafts (GIT_GRAFT_FILE, info/grafts) can fake parents: fail closed; the commit-graph file is not read either
+  [ -z "${GIT_GRAFT_FILE:-}" ] && [ ! -e "$(git rev-parse --git-path info/grafts)" ] || return 1
   e=$(git hash-object -t tree /dev/null) || return 1
   while read -r lref lsha rref rsha; do
     [ -z "${rref:-}" ] && continue
@@ -96,7 +98,7 @@ log_only() {  # log_only: reads the same lines; true when every pushed ref is th
     n=1; is_zero "$lsha" && continue
     [ "$(git --no-replace-objects cat-file -t "$lsha" 2>/dev/null)" = commit ] || return 1
     range=$lsha; is_zero "$rsha" || range="$rsha..$lsha"
-    list=$(git --no-replace-objects rev-list --parents "$range" -- 2>/dev/null) || return 1
+    list=$(git --no-replace-objects -c core.commitGraph=false rev-list --parents "$range" -- 2>/dev/null) || return 1
     while read -r c ps; do
       [ -z "$c" ] && continue
       for p in ${ps:-$e}; do
@@ -191,7 +193,7 @@ refs/heads/y $c refs/heads/y $zero"
   git checkout -q logb
   # a merge whose first parent already has the code: compared with each parent, so not log-only
   ct() { git -c user.email=t@t -c user.name=t commit-tree "$@" -m t; }
-  git checkout -q -b mx "$a"; echo y > code.py; git add code.py; cm x; x=$(git rev-parse HEAD)
+  git checkout -q -b mx "$l"; echo y > code.py; git add code.py; cm x; x=$(git rev-parse HEAD)  # r..m is m alone
   git rm -q code.py; echo r > sessions/r.csv; git add sessions/r.csv; cm r; r=$(git rev-parse HEAD)
   echo y > code.py; git add code.py; w=$(git write-tree); git rm -q --cached code.py; rm -f code.py
   m=$(ct "$w" -p "$x" -p "$r"); git config log.diffMerges first-parent
@@ -200,6 +202,11 @@ refs/heads/y $c refs/heads/y $zero"
   git update-index --add --cacheinfo "160000,$a,sessions/g.csv"; w=$(git write-tree); g=$(ct "$w" -p "$r")
   logs "a gitlink, diff.ignoreSubmodules=all: not" no "refs/heads/x $g refs/heads/claude/token-usage $r"
   git config --unset diff.ignoreSubmodules; git rm -q --cached sessions/g.csv
+  logs "log push, the control case: log-only" yes "refs/heads/x $l refs/heads/claude/token-usage $a"
+  echo "$l $a" > "$(git rev-parse --git-path info/grafts)"
+  logs "info/grafts present: not"          no  "refs/heads/x $l refs/heads/claude/token-usage $a"
+  rm -f "$(git rev-parse --git-path info/grafts)"
+  GIT_GRAFT_FILE=/dev/null logs "GIT_GRAFT_FILE set: not" no "refs/heads/x $l refs/heads/claude/token-usage $a"
   logs "a tree, not a commit: not"         no  "refs/heads/x $(git rev-parse "$r^{tree}") refs/heads/claude/token-usage $zero"
   git checkout -q -f logb
   git checkout -q side; git branch -q -D logb
