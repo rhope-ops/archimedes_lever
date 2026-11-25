@@ -45,7 +45,7 @@ PRAGMA = re.compile(r'\s*(?:#\s*(?:noqa|type:|pylint:|pyright:|mypy:|nosec|isort
 PRAGMA_START = re.compile(r'#\s*(?:(?i:noqa)|type:|pyright:|pylint:|nosec|isort:|ruff:|flake8:)')
 NOQA = re.compile(r'#\s*noqa(?::[^#]*\bE501\b|(?![:\w]))', re.I)
 FILE_NOQA = re.compile(r'#\s*(?:ruff|flake8)\s*:\s*(?i:noqa)(?::[^#]*\bE501\b|(?![:\w]))')   # on its own line: the whole file
-SPDX = re.compile(r'\s*#\s+SPDX-(?:License-Identifier|FileCopyrightText):')   # a license comment line: ruff skips it
+SPDX = re.compile(r'\s*#\s+SPDX-(?:License-Identifier|FileCopyrightText):\s')   # a license comment line: ruff skips it
 ZERO_WIDTH = ('Mn', 'Me', 'Cf', 'Cc')   # unicode categories ruff counts as width 0 (combining marks, joiners, controls)
 # Code points that ruff also counts 0: Hangul vowel and final jamo (the parts of a decomposed syllable), fillers and tone marks.
 ZERO_CODES = (range(0x1160, 0x1200), range(0xD7B0, 0xD800), (0x3164, 0x302E, 0x302F, 0x16FF0, 0x16FF1))
@@ -88,7 +88,7 @@ def longest_line(lines, skip, cap=0):
     info = python_comments(lines) if cap else None
     if info and info[2]:
         return 0   # a file-level ruff or flake8 noqa directive, blanket or for E501
-    keep = []
+    keep, seen = [], {}
     for i, x in enumerate(lines, 1):
         x = x.rstrip('\r')
         if any(a <= i <= b for a, b in skip):
@@ -99,8 +99,9 @@ def longest_line(lines, skip, cap=0):
             keep += [] if ruff_ok(x, cap) else [width(x)]
         else:
             cols, owner = info[0], info[1].get(i, i)   # the noqa of a multi-line string or continuation: on its end line
-            noqa = lines[owner - 1][cols[owner]:] if owner in cols else ''
-            keep += [] if ruff_ok(x, cap, cols.get(i, -1), noqa) else [width(x)]
+            if owner not in seen:   # each end line's comment is read once (no N lines x L comment work)
+                seen[owner] = '# noqa' if owner in cols and NOQA.search(lines[owner - 1], cols[owner]) else ''
+            keep += [] if ruff_ok(x, cap, cols.get(i, -1), seen[owner]) else [width(x)]
     return max(keep or [0])
 
 
