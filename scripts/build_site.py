@@ -266,6 +266,9 @@ TEST_CASES = (
     ('an entity with digits fails', ('Ask & learn.', 'Ask &frac12;.'), TEST_PAGE, None, [UNSUPPORTED], True),
     ('an emoji code fails', ('Ask & learn.', 'Ask :warning:'), TEST_PAGE, None, [UNSUPPORTED], True),
     ('a web address of another scheme fails', ('Ask & learn.', 'See ftp://x.example'), TEST_PAGE, None, [UNSUPPORTED], True),
+    ('a scheme after digits fails', ('Ask & learn.', 'See 1ftp://x.example'), TEST_PAGE, None, [UNSUPPORTED], True),
+    ('a scheme with dots and dashes fails', ('Ask & learn.', 'See a.b-c://x.example'), TEST_PAGE, None, [UNSUPPORTED], True),
+    ('a scheme of digits only passes (no letter)', ('Ask & learn.', 'Ask 1.2://3 now.'), TEST_PAGE, None, [], True),
     ('plain times, ratios and bold in brackets or quotes pass',
      ('A safe_tool & more.', 'A safe_tool (**Microsoft Purview**), "**Stop**", **PII**-free, 09:00-17:00, 10:30:45, 1:2:3,\n'
       '2026. That year.'), TEST_PAGE, None, [], True),

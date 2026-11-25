@@ -10,7 +10,7 @@
   "debt": {}
  },
  "script_lines": {
-  "baseline": 20180,
+  "baseline": 20183,
   "command": "cat scripts/*.py scripts/*.sh | wc -l",
   "commit": "f38ec20",
   "files": 72,
