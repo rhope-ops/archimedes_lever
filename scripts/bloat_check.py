@@ -65,8 +65,8 @@ It measures:
                   KIT_CAPS cap need a docs/reviews/*-debt.md file with the line "debt-check: <hash>" (the hash as the conflict gate)
     fleet audit   (kit, R3) AUDIT DUE (fleet): kit.config.json "fleet": {"last_audit": "YYYY-MM-DD"} missing, over 14 days old,
                   or older than a v* release tag at HEAD
-    archive due   ARCHIVE DUE: the archivable files of docs/reviews/ reach 20 files or 200 KB, or docs/reviews/ passes 200
-                  files or 1 MB (the tests and limits: archive_due in scripts/bloat_check_files.py)
+    archive due   ARCHIVE DUE: the archivable files of docs/reviews/ reach 20 files or 200 KB; the folder's total size
+                  does not count (the tests and limits: archive_due in scripts/bloat_check_files.py)
     timings       (--time) wall time of each named command against its recorded baseline; (--compare) times that
                   a script measured itself: NAME is a timings key, NAME:STEP one of its "steps". Slower means over
                   max_slowdown (default +25%) and over min_slowdown_seconds (default 0.5 s), so noise on a small step

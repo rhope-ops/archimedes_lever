@@ -13,6 +13,8 @@ Maintainer, 2026-11-25** (coordinator 4 chat, dialog answers: "Run deeper-versio
 - Trigger: dynamic, not monthly. The check-in prints `ARCHIVE DUE` at a volume threshold (example: 20 closed review
   files or 200 KB since the last archive); closing a plan marks its review files. Thresholds are set in the phase 2
   schedule.
+- Trigger change (the Maintainer, 2026-11-25 ~15:40 CST, kit 13.1.0): ARCHIVE DUE counts only the archivable set
+  (20 files or 200 KB); the folder-total trigger (200 files or 1 MB) is removed.
 - Pace that sets the trigger: 160 review files added in the 14 days to 2026-11-25 (`git log --diff-filter=A`), 212 commits.
 
 ## Why the tool-retirement plan removed little
