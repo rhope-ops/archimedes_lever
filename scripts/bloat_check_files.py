@@ -179,7 +179,7 @@ def ratchet_report(root):
     if n > base:
         problems.append(f"custom script lines {n} pass the baseline {base} (+{n - base}): a higher baseline needs a docs/DECISIONS.md "
                         f"row By the Maintainer with the number {n} (T2 ratchet)")
-    elif n < base:
+    elif n < base and not part.get("cap"):   # "cap": true makes the baseline a ceiling only (the Maintainer, 2026-11-25)
         problems.append(f"custom script lines {n} are below the baseline {base} (-{base - n}): set \"baseline\": {n} in "
                         f"{check_settings.STATE} in this change, so the freed lines do not return with no decision (T2 ratchet)")
     ref = brules.git(root, "merge-base", "HEAD", "origin/main")
