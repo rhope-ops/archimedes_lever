@@ -318,11 +318,13 @@ def archive_cases(bloat, d):
     (rev / "fix").mkdir(parents=True)
     texts = {"old.md": "x", "linked.md": "x", "record.md": "rule-conflict-check: abc", "list-coverage.md": "x",
              "open-plan.md": "- [ ] step; evidence: ev.md", "ev.md": "x", "nobox-plan.md": "Status: approved",
-             "wip-plan.md": "- [x] a\n- [~] b", "done-plan.md": "- [x] step", "fix/a.md": "x", "fix/b.md": "x"}
+             "wip-plan.md": "- [x] a\n- [~] b", "done-plan.md": "- [x] step; see old.md", "fix/a.md": "x", "fix/b.md": "x",
+             "README.md": "x"}
     for rel, text in texts.items():
         (rev / rel).write_text(text)
     (root / "README.md").write_text("See docs/reviews/linked.md.")
     (root / "docs/LOG.md").write_text("History: old.md.")
+    (root / "docs/KIT_HANDOFF.md").write_text("Open: none.")
     commit = lambda day: subprocess.run(["git", "-C", root, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qam", day],
                                         check=True, env={**os.environ, "GIT_COMMITTER_DATE": day + "T12:00:00"})
     git_in(root, "add", "-A")
@@ -335,22 +337,34 @@ def archive_cases(bloat, d):
     assert names("2026-01-08") == ["docs/reviews/done-plan.md"], "7 days: the closed plan only: %s" % names("2026-01-08")
     assert names("2026-01-15") == ["docs/reviews/done-plan.md", "docs/reviews/old.md"], "the folder is 10 days old: %s" % names("2026-01-15")
     assert names("2026-01-19") == ["docs/reviews/done-plan.md", "docs/reviews/fix/a.md", "docs/reviews/fix/b.md",
-                                   "docs/reviews/old.md"], "never: a live link, a record, a coverage list, an open plan or its evidence"
+                                   "docs/reviews/old.md"], "never: a live link, a record, a coverage list, README.md, an open plan or its evidence"
     day = datetime.date(2026, 1, 19)
-    assert f.archive_due(root, files, day) == "", "4 files and 14 bytes: not due"
+    found = sum(b for _, b in f.archivable(root, files, day))
+    assert f.archive_due(root, files, day) == "", "4 files and %d bytes: not due" % found
     old = (f.ARCHIVE_SET, f.ARCHIVE_ALL)
     f.ARCHIVE_SET = (4, 10**9)
     assert f.archive_due(root, files, day).startswith("4 files, 0 KB archivable"), "the count reaches it"
-    f.ARCHIVE_SET = (10**9, 14)
+    f.ARCHIVE_SET = (10**9, found)
     assert f.archive_due(root, files, day).startswith("4 files"), "the bytes reach it"
-    f.ARCHIVE_SET, f.ARCHIVE_ALL = (10**9, 15), (11, 10**9)
-    assert f.archive_due(root, files, day) == "", "14 bytes do not reach 15; 11 files do not pass 11"
-    f.ARCHIVE_ALL = (10, 10**9)
-    assert "docs/reviews/ 11 files" in f.archive_due(root, files, day), "11 files pass 10"
+    size = sum((root / r).stat().st_size for r in files if r.startswith("docs/reviews/"))
+    f.ARCHIVE_SET, f.ARCHIVE_ALL = (10**9, found + 1), (12, size)
+    assert f.archive_due(root, files, day) == "", "the bytes do not reach found + 1; 12 files and %d bytes do not pass themselves" % size
+    f.ARCHIVE_ALL = (12, size - 1)
+    assert "docs/reviews/ 12 files" in f.archive_due(root, files, day), "the bytes pass"
+    f.ARCHIVE_ALL = (11, 10**9)
+    assert "docs/reviews/ 12 files" in f.archive_due(root, files, day), "12 files pass 11"
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):
         bloat.report(root, argparse.Namespace(brief=True, time=False, record=False, strict=False))
-    assert "ARCHIVE DUE (docs/reviews/ 11 files" in buf.getvalue(), "the brief line says so: %s" % buf.getvalue()
+    assert "ARCHIVE DUE (docs/reviews/ 12 files" in buf.getvalue(), "the brief line says so: %s" % buf.getvalue()
+    (root / "docs/KIT_HANDOFF.md").write_text("Open: other work.")   # the plan closed long ago; the handoff changes later
+    commit("2026-01-20")
+    assert "docs/reviews/done-plan.md" not in names("2026-01-26"), "6 days after the handoff change: the plan stays"
+    assert "docs/reviews/done-plan.md" in names("2026-01-27"), "7 days after it: archivable"
+    (rev / "new.md").write_text("x")
+    git_in(root, "add", "docs/reviews/new.md")
+    files = git_in_out(root, "ls-files").splitlines()
+    assert "docs/reviews/new.md" not in names("2027-01-01"), "a file with no commit: no age, not archivable"
     (root / ".git/shallow").write_text(git_in_out(root, "rev-parse", "HEAD") + "\n")
     assert f.archivable(root, files, day) is None, "a shallow clone: age unknown"
     assert f.archive_due(root, files, day).endswith("age unknown: shallow clone"), "it says so"
