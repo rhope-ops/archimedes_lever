@@ -16,6 +16,7 @@ Run:     python3 scripts/code_standard_strict.py --test (Python 3.8+, git).
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -182,6 +183,9 @@ def check_lines(cs, root, g):
               ('x = "%s"  # type: ignore  # noqa: F401' % ('a b ' * 48), True)]
         for line, want in ok:   # the lines that ruff E501 lets pass (checked against ruff 0.17.6, 2026-11-24)
             assert gate.ruff_ok(line, 200) == want, 'ruff_ok(%r...) should be %s' % (line[:30], want)
+        start = time.monotonic()   # no backtracking blow-up on a run of pragma-like comments
+        gate.ruff_ok('x = 1  ' + '# type: a ' * 1000 + '# end', 200)
+        assert time.monotonic() - start < 2, 'ruff_ok is slow on a run of pragma comments'
     finally:
         rules.LINTERS = linters
     off = dict(config, caps={k: v for k, v in caps.items() if k != 'max_line_chars'})
