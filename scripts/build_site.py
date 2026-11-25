@@ -34,8 +34,8 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from build_site_html import (BLOCK, BOLD, README, README_MARK, SECTION, SITE, SITE_MARK, build_intro, build_key_facts,  # noqa
-                             fact_rows, inline, paragraphs, readme_sections, refuse_marks, stray_marks, unquote)
+from build_site_html import (BLOCK, BOLD, CHECK, README, README_MARK, SECTION, SITE, SITE_MARK, build_intro,  # noqa
+                             build_key_facts, dod_security, fact_rows, inline, paragraphs, readme_sections, refuse_marks, stray_marks, unquote)
 
 ROOT = Path(__file__).resolve().parent.parent
 LOCAL = 'scripts/build_site_local.py'
@@ -346,6 +346,9 @@ HOSTILE_TABLES = (
     ('many row starts, no row end', '<table>\n' + '<tr>' * 20000 + '\n</table>'),
     ('many tables', '<table>\n<tr></tr>\n' * 5000),
 )
+# Hostile plain text for refuse_marks: a long run of scheme characters with no "://" (a scheme search tried at each
+# letter took quadratic time).
+HOSTILE_TEXT = (('a long word', 'a' * 100000), ('letters and digits', 'a1' * 50000), ('letters and dots', 'a.' * 50000))
 
 
 def hostile_test():
@@ -364,6 +367,22 @@ def hostile_test():
         seconds = time.monotonic() - start
         slow += seconds >= HOSTILE_SECONDS
         print(('ok   ' if seconds < HOSTILE_SECONDS else 'FAIL ') + f'a hostile key-facts table is read in under {HOSTILE_SECONDS} s: {label} ({seconds:.2f} s)')
+    for label, text in HOSTILE_TEXT:
+        start = time.monotonic()
+        refuse_marks(text)   # plain letters: no finding
+        seconds = time.monotonic() - start
+        slow += seconds >= HOSTILE_SECONDS
+        print(('ok   ' if seconds < HOSTILE_SECONDS else 'FAIL ') + f'hostile plain text is checked in under {HOSTILE_SECONDS} s: {label} ({seconds:.2f} s)')
+    with tempfile.TemporaryDirectory() as d:   # a .check line with a long run of inner spaces (a lazy group took quadratic time)
+        Path(d, CHECK).write_text('dod-security: a' + ' ' * 100000 + 'a\n', encoding='utf-8')
+        start = time.monotonic()
+        try:
+            dod_security(d)
+        except ValueError:
+            pass  # refused: not on or off
+        seconds = time.monotonic() - start
+    slow += seconds >= HOSTILE_SECONDS
+    print(('ok   ' if seconds < HOSTILE_SECONDS else 'FAIL ') + f'a hostile dod-security line is read in under {HOSTILE_SECONDS} s ({seconds:.2f} s)')
     return slow
 
 
