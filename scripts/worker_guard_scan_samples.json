@@ -45,7 +45,11 @@
   "l.py": [
    "subprocess.run([\"git\", \"status\"])\n",
    null
+  ],
+  "q.py": [
+   "x = ', '.join(['$a = @(', 'b'])\n",
+   null
   ]
  },
- "range": "x = 1\n++ 1\ny = \"\u00ff\"\nz = \"a\" + chr(64)\n"
+ "range": "x = 1\n++ 1\ny = \"ÿ\"\nz = \"a\" + chr(64)\n"
 }

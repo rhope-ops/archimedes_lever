@@ -67,7 +67,7 @@ def values(line):
 
 
 def rebuilt(line, deny, terms):
-    """True when a line builds a string at run time whose value holds the at sign or a word the content check blocks.
+    """True when a line builds a string at run time whose value holds an at sign (not PowerShell @( or @{) or a blocked word.
 
     Args:
         line: one line of text.
@@ -79,7 +79,7 @@ def rebuilt(line, deny, terms):
     """
     if not BUILDERS.search(line):
         return False
-    return any('@' in v or scan.scan_text(v, 'built', deny, [], terms=terms) for v in values(line))
+    return any(re.search(r'@(?![({])', v) or scan.scan_text(v, 'built', deny, [], terms=terms) for v in values(line))
 
 
 def wrapped(path, line):
