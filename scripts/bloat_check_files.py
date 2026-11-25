@@ -62,6 +62,7 @@ ARCHIVE_DAYS = {True: 7, False: 14}   # days since the newest change: a plan (cl
 HISTORY_DOCS = ("docs/DECISIONS.md", "docs/LOG.md", "docs/CHANGELOG.md")   # a link from these is history, not live
 CHECK_READ = re.compile(r"(?:rule-conflict-check|debt-check): ")   # bloat_check_rules.conflict_recorded reads these
 OPEN_BOX = re.compile(r"\[ \]|\[~")
+DONE_BOX = re.compile(r"\[[xX]\]")
 
 
 def is_kit(root):
@@ -355,14 +356,16 @@ def last_changes(root):
 def archivable(root, files, today):
     """The files of docs/reviews/ that the approved retention schedule lets a script archive (plan 2026-11-25-archival-plan.md).
 
-    A unit is a file or a folder directly under docs/reviews/. It is archivable when no tracked file outside docs/reviews/,
-    DECISIONS.md, LOG.md and CHANGELOG.md names it (a live link), no check reads it (a `rule-conflict-check:` or
-    `debt-check:` line, a `*-coverage.md` list), no plan in it has an open box (`[ ]`, `[~`), and its newest change is
-    ARCHIVE_DAYS old (7 for a plan, 14 for the rest). A person decides the tests a script cannot (audit skill, item 16).
+    A unit is a file or a folder directly under docs/reviews/. It is archivable when no live text names it, no check reads it
+    (a `rule-conflict-check:` or `debt-check:` line, a `*-coverage.md` list), each plan in it is closed, and its newest
+    change is ARCHIVE_DAYS old (7 for a plan, 14 for the rest). Live text: the tracked files outside docs/reviews/,
+    DECISIONS.md, LOG.md and CHANGELOG.md, and the open plans in docs/reviews/. A plan (`*-plan.md`) is closed when it has
+    a checked box (`[x]`) and no open box (`[ ]`, `[~`); a plan with no box is open. A person decides the tests a script
+    cannot (audit skill, section "The archive step").
 
     Args:
         root: the repo root (a Path).
-        files: the tracked files (paths from the root).
+        files: the tracked files that exist (paths from the root).
         today: the date to count from (a datetime.date).
 
     Returns:
@@ -371,19 +374,18 @@ def archivable(root, files, today):
     dates = last_changes(root)
     if dates is None:
         return None
-    units, live = {}, []
-    for rel in files:
-        if rel.startswith(brules.REVIEWS + "/"):
-            units.setdefault(rel.split("/")[2], []).append(rel)
-        elif rel not in HISTORY_DOCS:
-            live.append((root / rel).read_text(encoding="utf-8", errors="replace"))
-    live = "\n".join(live)
-    out = []
+    read = lambda rel: (root / rel).read_text(encoding="utf-8", errors="replace")
+    texts = {rel: read(rel) for rel in files if rel.startswith(brules.REVIEWS + "/")}
+    closed = {rel for rel, t in texts.items() if rel.endswith("-plan.md") and DONE_BOX.search(t) and not OPEN_BOX.search(t)}
+    live = "\n".join([read(rel) for rel in files if rel not in texts and rel not in HISTORY_DOCS]
+                     + [t for rel, t in texts.items() if rel.endswith("-plan.md") and rel not in closed])
+    units, out = {}, []
+    for rel in texts:
+        units.setdefault(rel.split("/")[2], []).append(rel)
     for name, rels in units.items():
-        texts = [(root / r).read_text(encoding="utf-8", errors="replace") for r in rels]
         plan = any(r.endswith("-plan.md") for r in rels)
-        if (name in live or any(CHECK_READ.search(t) for t in texts) or any(r.endswith("-coverage.md") for r in rels)
-                or (plan and any(OPEN_BOX.search(t) for t in texts)) or any(r not in dates for r in rels)):
+        if (name in live or any(CHECK_READ.search(texts[r]) or r.endswith("-coverage.md") for r in rels)
+                or any(r.endswith("-plan.md") and r not in closed for r in rels) or any(r not in dates for r in rels)):
             continue
         age = (today - max(datetime.date.fromisoformat(dates[r]) for r in rels)).days
         if age >= ARCHIVE_DAYS[plan]:
@@ -396,12 +398,13 @@ def archive_due(root, files, today):
 
     Args:
         root: the repo root (a Path).
-        files: the tracked files (paths from the root).
+        files: every tracked file (`git ls-files`, with no `audit-ignore:` glob: an ignored file can hold a live link).
         today: the date to count from (a datetime.date).
 
     Returns:
         The reason as a text, or "".
     """
+    files = [r for r in files if (root / r).is_file()]
     allrev = [(r, (root / r).stat().st_size) for r in files if r.startswith(brules.REVIEWS + "/")]
     found, reasons = archivable(root, files, today), []
     if found and (len(found) >= ARCHIVE_SET[0] or sum(b for _, b in found) >= ARCHIVE_SET[1]):

@@ -336,10 +336,10 @@ def report(root, args, today=None):
     if fleet:
         tail += (f" · AUDIT DUE (fleet: {fleet}): tell the Maintainer and ask whether to run the fleet audit "
                  "(.claude/skills/audit/SKILL.md, section Fleet audit); never start it unasked")
-    archive = bloat_check_files.archive_due(root, files, today)
+    archive = bloat_check_files.archive_due(root, (git(root, "ls-files") or "").splitlines(), today)
     if archive:
         tail += (f" · ARCHIVE DUE ({archive}): tell the Maintainer and ask whether to run the archive step "
-                 "(.claude/skills/audit/SKILL.md, item 16); never start it unasked")
+                 "(.claude/skills/audit/SKILL.md, section The archive step); never start it unasked")
     if args.brief:
         print(f"bloat:       {r_rows[0][13:]} · duplicate lines "
               f"{len(dups)} · big files {len(big)} · over: {', '.join(over) or 'none'}{' · ' + warn if warn else ''} · {tail}")

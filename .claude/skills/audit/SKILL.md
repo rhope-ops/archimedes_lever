@@ -68,14 +68,17 @@ The retention schedule (the Maintainer, 2026-11-25; source: `docs/reviews/2026-1
 
 | File class | Archive when | Test |
 |---|---|---|
-| Plan (`*-plan.md`) | 7 days after it closes (a release row in CHANGELOG, or every box checked and the handoff does not name it) | script: age, open box, live link; person: the close |
+| Plan (`*-plan.md`) | 7 days after it closes (a release row in CHANGELOG, or every box checked and the handoff does not name it) | script: the boxes, age, live link; person: a release row in CHANGELOG |
 | Plan evidence (worker reports, coverage list, briefs, prompts, plan handoff) | with its plan; a coverage list stays while check.sh runs it | person |
 | Audit reports (per repo and parent) | when the open questions of the parent close, or at the next audit of the same scope; keep the last audit in `.check.state.json` "audit" | person |
 | Test fixtures and one-off notes (folders) | 14 days after they are added, if no live file links them | script |
 | Handoff archives (`*-kit-handoff-archive.md`) | the older ones; keep the newest | script (the handoff links the newest) |
-| Conflict and debt records, DECISIONS, LOG, CHANGELOG, scripts, skills, instruction files, docs outside docs/reviews/ | never | script (records) |
+| Conflict and debt records | keep until phase 3 of the archival plan decides whether the gate needs records for merged hashes | script |
+| DECISIONS, LOG, CHANGELOG, scripts, skills, instruction files, docs outside docs/reviews/ | never | script (not in docs/reviews/) |
 
-Exceptions, always kept: a plan that is open and approved, a file that a check reads (a `rule-conflict-check:` or `debt-check:` line, a `*-coverage.md` list, the fixed paths of the checks), and a conflict or debt record. A live link is a link from a tracked file outside docs/reviews/, DECISIONS.md, LOG.md and CHANGELOG.md. The script makes the age, live-link, open-box and check-read tests; it counts a shallow clone as age unknown. A person makes the tests marked "person" and the link from an open plan inside docs/reviews/.
+Exceptions, always kept: a plan that is open and approved, a file that a check reads (a `rule-conflict-check:` or `debt-check:` line, a `*-coverage.md` list, the fixed paths of the checks), and a conflict or debt record. A live link is a link from a tracked file outside docs/reviews/, DECISIONS.md, LOG.md and CHANGELOG.md, or from an open plan in docs/reviews/.
+
+The script (`archivable` in `scripts/bloat_check_files.py`) makes these tests: the age, a live link, a check reads the file, and a plan with a checked box and no open box (`[ ]`, `[~`) is closed. It counts a plan with no box as open, and a shallow clone as age unknown. A person makes these tests: a plan closed by a release row in CHANGELOG, the evidence of a closed plan, the close of an audit report, and a coverage list that check.sh no longer runs.
 
 1. Make the list: the units that pass every test, with path, bytes and reason. This is the dry run: change no file. Send the list and the totals (files, bytes) to the Maintainer.
 2. For each file, record the last commit on main before you delete it: `git log -1 --format=%H origin/main -- <path>`.
