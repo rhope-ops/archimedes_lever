@@ -359,6 +359,9 @@ class ApplyOwner(unittest.TestCase):
                       sb.decisions_marker(untitled), "no '## Decisions': the Date | Decision | By table gets the marker")
         self.assertEqual(sb.decisions_marker("# D\n\n| Name | Value |\n|---|---|\n| a | b |\n"), "# D\n\n| Name | Value |\n|---|---|\n| a | b |\n",
                          "another table: no marker")
+        scope = "# D\n\n| Date | Scope | Decision | Replaces |\n|---|---|---|---|\n| 2026-11-25 | Kit sync | By: the Maintainer. New text. | - |\n"
+        self.assertIn("\n<!-- approval-quote-exempt-from: By: the Maintainer. New text. -->\n\n| Date | Scope |", sb.decisions_marker(scope),
+                      "a Date | Scope | Decision table: the marker names the Decision cell")
         empty = "# D\n\n| Date | Decision | By |\n|---|---|---|\n\n| Name | Value |\n|---|---|\n| a | b |\n"
         self.assertEqual(sb.decisions_marker(empty), empty, "an empty Decisions table: no marker from a later table")
 

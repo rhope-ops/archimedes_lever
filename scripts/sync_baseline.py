@@ -63,7 +63,7 @@ What it changes:
                            (--owner NAME); a public repo uses a role. Owner: letters, digits, space . _ , ( ) -
     docs/DECISIONS.md      In a full project: the line `<!-- approval-quote-exempt-from: TEXT -->` above the Decisions table when it
                            is missing (TEXT: the Decision cell of the newest row), so the T6 check reads only new rows; with no '## Decisions'
-                           heading, above the first table whose columns start Date | Decision | By. Nothing else.
+                           heading, above the first table whose columns start Date | Decision | By or Date | Scope | Decision. Nothing else.
 What it never changes: README.md, docs/ (except docs/FIRST_USE.md and docs/DECISIONS.md as said above, docs/code-standard.md and the kit
 license), .check and all other files. A project's own code lives in its own files (scripts/check.local.sh,
 scripts/check_content_local.py, scripts/check_instructions_local.py, scripts/code_standard_gate.py), which a sync
@@ -182,7 +182,7 @@ def apply_owner(text, owner):
 
 
 def decisions_marker(text):
-    """Add the line `<!-- approval-quote-exempt-from: <newest row's first text cell> -->` above the Decisions table when it is missing.
+    """Add the line `<!-- approval-quote-exempt-from: <newest row's Decision cell> -->` above the Decisions table when it is missing.
     Rows from the one it names down are older than the T6 check and are not checked (scripts/log_check_plan.py).
 
     Args:
@@ -196,13 +196,15 @@ def decisions_marker(text):
     lines = text.split("\n")
     head = next((i + 1 for i, l in enumerate(lines) if re.match(r"##\s+Decisions\s*$", l)), None)
     table = next((i for i in range(head or len(lines), len(lines)) if lines[i].lstrip().startswith("|")), None)
-    if head is None:   # no '## Decisions': the first table whose columns start Date | Decision | By (log_check_plan.py: the same)
-        table = next((i for i, l in enumerate(lines) if re.match(r"^\s*\|\s*date\s*\|\s*decision\s*\|\s*by\s*\|", l, re.I)), None)
+    if head is None:   # no '## Decisions': the first Date | Decision | By or Date | Scope | Decision table (log_check_plan.py)
+        table = next((i for i, l in enumerate(lines) if re.match(r"^\s*\|\s*date\s*\|\s*(?:decision\s*\|\s*by|scope\s*\|\s*decision)\s*\|",
+                                                                 l, re.I)), None)
     if table is None:
         return text
+    dec = 2 if re.match(r"^\s*\|\s*date\s*\|\s*scope\s*\|", lines[table], re.I) else 1   # the Decision cell: the marker names it
     rows = list(itertools.takewhile(lambda l: l.lstrip().startswith("|"), lines[table + 2:]))   # table + 1: the separator row
     row = re.split(r"(?<!\\)\|", rows[0].strip().strip("|")) if rows else []
-    first = row[1].strip().replace("\\|", "|") if len(row) > 1 else ""
+    first = row[dec].strip().replace("\\|", "|") if len(row) > dec else ""
     if not first or "-->" in first:
         return text
     return "\n".join(lines[:table] + [f"<!-- approval-quote-exempt-from: {first} -->", ""] + lines[table:])
