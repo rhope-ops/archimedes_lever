@@ -112,52 +112,52 @@ def run_cases(cs, ROOT):
               '# Returns the text in capitals.\nfunction Get-Upper([string]$T) {\n  return $T.ToUpper()\n}\n' \
               '# >>> shared: generated from src/shared.ps1 by build.py (do not edit)\n' \
               'function Get-Copy { return 1 }\n# <<< shared\n'
-    if True:   # one sample repo for every case group
-        ROOT.mkdir()
-        cs.ROOT, d = ROOT, str(ROOT)
-        g = lambda *c: subprocess.run(['git', '-C', d, *c], check=True, capture_output=True)
-        g('init', '-q')
-        (ROOT / 'a.py').write_text(good_py)
-        PS and (ROOT / 'b.ps1').write_text(good_ps)
-        config = config_of(ROOT, SMALL)
-        assert config['caps'] == {'max_function_lines': 5, 'max_file_lines': 50, 'max_file_lines_paste': 600}, \
-            'the caps come from .check: %s' % config
-        g('add', '.')
-        m = cs.measure(config)
-        assert not any(m['violations'].values()), 'clean files pass: %s' % m['violations']
-        assert not PS or [f['name'] for f in m['files']['b.ps1']['functions']] == ['Get-Upper'], 'generated block skipped'
-        (ROOT / 'p.sh').write_text('# Sample shell file: it is over the file cap, for the check self-test only.\n' + '#\n' * 55)   # 57 lines: over the file cap 50 of SMALL
-        g('add', 'p.sh')
-        sizes = [cs.measure(config_of(ROOT, SMALL + extra))['violations']['file_size'] for extra in
-                 ('', 'code-paste: p.sh\n', 'code-paste: p.sh\ncode-max-file-lines-paste: 52\n')]
-        assert sizes == [{'p.sh': 57}, {}, {'p.sh': 57}], 'a `code-paste:` file has its own cap: %s' % sizes
-        g('rm', '-qf', 'p.sh')
-        python_is_not_sized(cs, ROOT, g, good_py)
-        config = config_of(ROOT, SMALL)
-        (ROOT / 'a.py').write_text(good_py + '\n\ndef bare(x):\n    return x\n')
-        new, fixed = cs.compare(cs.measure(config)['violations'], {}, config['caps'])
-        assert len(new) == 1 and 'C2' in new[0] and 'a.py::bare' in new[0], 'a function without a comment fails: %s' % new
-        long_fn = '\n\ndef long(x):\n    """Long."""\n' + '    x += 1\n' * 6 + '    return x\n'
-        (ROOT / 'a.py').write_text(good_py + long_fn)
-        debt = cs.measure(config)['violations']
-        assert debt['length'] == {'a.py::long': 9}, 'a long function is debt: %s' % debt['length']
-        (ROOT / 'a.py').write_text(good_py + long_fn.replace('    return x', '    x += 1\n    return x'))
-        new, fixed = cs.compare(cs.measure(config)['violations'], debt, config['caps'])
-        assert len(new) == 1 and 'grew from 9 to 10' in new[0], 'a listed function that grew fails: %s' % new
-        (ROOT / 'a.py').write_text(good_py)
-        new, fixed = cs.compare(cs.measure(config)['violations'], debt, config['caps'])
-        assert not new and len(fixed) == 1, 'a fixed item is reported (and fails until the baseline is lowered)'
-        (ROOT / 'c.sh').write_text('echo hi\n')
-        g('add', '.')
-        new, _ = cs.compare(cs.measure(config)['violations'], {}, config['caps'])
-        assert any('C1' in x and 'c.sh' in x for x in new), 'a file without a header fails: %s' % new
-        self_test_kinds(cs, ROOT, g, config)
-        self_test_forms(cs, ROOT, g, config)
-        self_test_main(cs, ROOT, g)
-        self_test_init(cs, ROOT)
-        self_test_docs(cs, ROOT, g, config)
-        self_test_gate(cs, ROOT, g)
-        self_test_warns(cs, ROOT, g, config)
+    # one sample repo for every case group
+    ROOT.mkdir()
+    cs.ROOT, d = ROOT, str(ROOT)
+    g = lambda *c: subprocess.run(['git', '-C', d, *c], check=True, capture_output=True)
+    g('init', '-q')
+    (ROOT / 'a.py').write_text(good_py)
+    PS and (ROOT / 'b.ps1').write_text(good_ps)
+    config = config_of(ROOT, SMALL)
+    assert config['caps'] == {'max_function_lines': 5, 'max_file_lines': 50, 'max_file_lines_paste': 600}, \
+        'the caps come from .check: %s' % config
+    g('add', '.')
+    m = cs.measure(config)
+    assert not any(m['violations'].values()), 'clean files pass: %s' % m['violations']
+    assert not PS or [f['name'] for f in m['files']['b.ps1']['functions']] == ['Get-Upper'], 'generated block skipped'
+    (ROOT / 'p.sh').write_text('# Sample shell file: it is over the file cap, for the check self-test only.\n' + '#\n' * 55)   # 57 lines: over the file cap 50 of SMALL
+    g('add', 'p.sh')
+    sizes = [cs.measure(config_of(ROOT, SMALL + extra))['violations']['file_size'] for extra in
+             ('', 'code-paste: p.sh\n', 'code-paste: p.sh\ncode-max-file-lines-paste: 52\n')]
+    assert sizes == [{'p.sh': 57}, {}, {'p.sh': 57}], 'a `code-paste:` file has its own cap: %s' % sizes
+    g('rm', '-qf', 'p.sh')
+    python_is_not_sized(cs, ROOT, g, good_py)
+    config = config_of(ROOT, SMALL)
+    (ROOT / 'a.py').write_text(good_py + '\n\ndef bare(x):\n    return x\n')
+    new, fixed = cs.compare(cs.measure(config)['violations'], {}, config['caps'])
+    assert len(new) == 1 and 'C2' in new[0] and 'a.py::bare' in new[0], 'a function without a comment fails: %s' % new
+    long_fn = '\n\ndef long(x):\n    """Long."""\n' + '    x += 1\n' * 6 + '    return x\n'
+    (ROOT / 'a.py').write_text(good_py + long_fn)
+    debt = cs.measure(config)['violations']
+    assert debt['length'] == {'a.py::long': 9}, 'a long function is debt: %s' % debt['length']
+    (ROOT / 'a.py').write_text(good_py + long_fn.replace('    return x', '    x += 1\n    return x'))
+    new, fixed = cs.compare(cs.measure(config)['violations'], debt, config['caps'])
+    assert len(new) == 1 and 'grew from 9 to 10' in new[0], 'a listed function that grew fails: %s' % new
+    (ROOT / 'a.py').write_text(good_py)
+    new, fixed = cs.compare(cs.measure(config)['violations'], debt, config['caps'])
+    assert not new and len(fixed) == 1, 'a fixed item is reported (and fails until the baseline is lowered)'
+    (ROOT / 'c.sh').write_text('echo hi\n')
+    g('add', '.')
+    new, _ = cs.compare(cs.measure(config)['violations'], {}, config['caps'])
+    assert any('C1' in x and 'c.sh' in x for x in new), 'a file without a header fails: %s' % new
+    self_test_kinds(cs, ROOT, g, config)
+    self_test_forms(cs, ROOT, g, config)
+    self_test_main(cs, ROOT, g)
+    self_test_init(cs, ROOT)
+    self_test_docs(cs, ROOT, g, config)
+    self_test_gate(cs, ROOT, g)
+    self_test_warns(cs, ROOT, g, config)
 
 
 def self_test_kinds(cs, root, g, config):

@@ -117,7 +117,7 @@ The 30-day window cannot be observed: the history starts 2026-11-11 (14 days). S
 No rule or skill is a removal candidate on this data: a skill with 0 loads in 2 samples (handoff, data-change) also
 has rules that name it. The 2026-11-23 audit's P4 already plans the measured re-run (due 2026-12-08, KIT_HANDOFF).
 
-## DRAFT retention schedule (for phase 2 approval)
+## Retention schedule (approved by the Maintainer, 2026-11-25, as written)
 
 | File class | Rule | Reason | Exceptions |
 |---|---|---|---|
@@ -129,7 +129,7 @@ has rules that name it. The 2026-11-23 audit's P4 already plans the measured re-
 | Handoff archives (`*-kit-handoff-archive.md`) | Keep the newest; archive the older ones | KIT_HANDOFF links the newest | - |
 | DECISIONS, LOG, CHANGELOG, scripts, skills, instruction files, docs outside reviews | Keep | live or read by checks | - |
 
-## DRAFT ARCHIVE DUE thresholds
+## ARCHIVE DUE thresholds (approved by the Maintainer, 2026-11-25, as written)
 
 From the pace (162 review files in 14 days, about 12 a day; 960 KB of reviews):
 
