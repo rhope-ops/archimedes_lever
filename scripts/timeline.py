@@ -24,7 +24,6 @@ Credentials: none.
 import argparse
 import datetime as dt
 import html
-import json
 import pathlib
 import re
 import sys

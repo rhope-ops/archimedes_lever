@@ -302,6 +302,56 @@ def fleet_cases(bloat, d):
     assert due("2026-11-23") == "", "a project: never"
 
 
+def archive_cases(bloat, d):
+    """ARCHIVE DUE: a unit of docs/reviews/ is archivable when it is old enough (14 days; 7 for a closed plan), has no live
+    link and no check reads it; a folder is one unit; the line prints at 20 archivable files or 200 KB (reached), or when
+    docs/reviews/ passes 200 files or 1 MB; a shallow clone makes no age test; the --brief line carries it.
+
+    Args:
+        bloat: the module under test.
+        d: an empty temporary folder (a Path).
+    """
+    root, f = sample_kit(d, {"AGENTS.md": "## A\n\n- r.\n"}), bloat.bloat_check_files
+    rev = root / "docs/reviews"
+    (rev / "fix").mkdir(parents=True)
+    texts = {"old.md": "x", "linked.md": "x", "record.md": "rule-conflict-check: abc", "list-coverage.md": "x",
+             "open-plan.md": "- [ ] step", "done-plan.md": "- [x] step", "fix/a.md": "x", "fix/b.md": "x"}
+    for rel, text in texts.items():
+        (rev / rel).write_text(text)
+    (root / "README.md").write_text("See docs/reviews/linked.md.")
+    (root / "docs/LOG.md").write_text("History: old.md.")   # a link from a history doc is not live
+    git_in(root, "add", "-A")
+    subprocess.run(["git", "-C", root, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "r"], check=True,
+                   env={**os.environ, "GIT_COMMITTER_DATE": "2026-01-01T12:00:00"})
+    files = git_in_out(root, "ls-files").splitlines()
+    names = lambda today: sorted(p for p, _ in f.archivable(root, files, datetime.date.fromisoformat(today)))
+    assert names("2026-01-07") == [], "6 days: nothing"
+    assert names("2026-01-08") == ["docs/reviews/done-plan.md"], "7 days: the closed plan only: %s" % names("2026-01-08")
+    assert names("2026-01-15") == ["docs/reviews/done-plan.md", "docs/reviews/fix/a.md", "docs/reviews/fix/b.md",
+                                   "docs/reviews/old.md"], "14 days: no live link, record, coverage list or open plan"
+    assert f.archive_due(root, files, datetime.date(2026, 1, 15)) == "", "4 files and 4 bytes: not due"
+    old = (f.ARCHIVE_SET, f.ARCHIVE_ALL)
+    f.ARCHIVE_SET = (4, 10**9)
+    assert f.archive_due(root, files, datetime.date(2026, 1, 15)).startswith("4 files, 0 KB archivable"), "the set reaches it"
+    f.ARCHIVE_SET, f.ARCHIVE_ALL = (5, 10**9), (8, 10**9)
+    assert f.archive_due(root, files, datetime.date(2026, 1, 15)) == "", "8 files do not pass 8"
+    f.ARCHIVE_ALL = (7, 10**9)
+    assert "docs/reviews/ 8 files" in f.archive_due(root, files, datetime.date(2026, 1, 15)), "8 files pass 7"
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        bloat.report(root, argparse.Namespace(brief=True, time=False, record=False, strict=False))
+    assert "ARCHIVE DUE (docs/reviews/ 8 files" in buf.getvalue(), "the brief line says so: %s" % buf.getvalue()
+    (root / ".git/shallow").write_text(git_in_out(root, "rev-parse", "HEAD") + "\n")
+    assert f.archivable(root, files, datetime.date(2026, 1, 15)) is None, "a shallow clone: age unknown"
+    assert f.archive_due(root, files, datetime.date(2026, 1, 15)).endswith("age unknown: shallow clone"), "it says so"
+    f.ARCHIVE_SET, f.ARCHIVE_ALL = old
+
+
+def git_in_out(folder, *args):
+    """The output of one git command in folder, stripped."""
+    return subprocess.run(["git", "-C", folder, *args], check=True, capture_output=True, text=True).stdout.strip()
+
+
 def run(bloat):
     """Run every case against the module bloat in temporary repos; print BLOAT TEST PASS (an assert stops on a failure).
 
@@ -329,7 +379,8 @@ def run(bloat):
             caps_and_paths_cases(bloat, Path(o), caps)
             conflict_gate_cases(bloat, Path(o), caps)
             lint_cases(bloat, Path(o))
-        for name, cases in (("files", file_check_cases), ("debt", debt_gate_cases), ("fleet", fleet_cases)):
+        for name, cases in (("files", file_check_cases), ("debt", debt_gate_cases), ("fleet", fleet_cases),
+                            ("archive", archive_cases)):
             with tempfile.TemporaryDirectory() as o:
                 cases(bloat, Path(o), *([caps] if name == "debt" else []))
         report_cases(bloat, root, cfg, strict)

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """The repo's own files in the bloat check (`python3 scripts/bloat_check.py --rules`): the tool rows of docs/tools.md (T1), the
-script lines ratchet (T2), the old role word in kit-synced text (T6) and the triggers of the fleet debt record (T5).
+script lines ratchet (T2), the old role word in kit-synced text (T6), the triggers of the fleet debt record (T5) and the
+ARCHIVE DUE test of docs/reviews/ (scripts/bloat_check.py prints it in the check-in line).
 The rule lines of AGENTS.md are read by scripts/bloat_check_rules.py and the skills by scripts/bloat_check_skills.py; this
 file reads every other file. Plan: docs/reviews/2026-11-23-tool-retirement-plan.md.
 
@@ -9,7 +10,7 @@ kit text that writes the role word of one project (T6), and a check or rule chan
 fails in the fleet (T5).
 
 Inputs:  the repo root, docs/tools.md, .check.state.json, scripts/sync_baseline.py (read as text, never run), the files it
-         lists, docs/DECISIONS.md and docs/reviews/ here and on origin/main.
+         lists, docs/DECISIONS.md and docs/reviews/ here and on origin/main, the git log of docs/reviews/.
 Outputs: lists of lines and problems for the caller (scripts/bloat_check.py prints them); rules_report is the full `--rules`
          report (scripts/bloat_check_rules.py plus these checks). The levels: FAIL in the kit, WARN or SKIP in a project.
 Run:     imported by scripts/bloat_check.py; proved by `python3 scripts/bloat_check.py --test`.
@@ -18,6 +19,7 @@ Writes: none.
 Credentials: none.
 """
 import ast
+import datetime
 import json
 import re
 
@@ -52,6 +54,14 @@ ROLE_ALLOW = {
 }
 ENTRY = re.compile(r"(?:python3|bash)\s+(scripts/[\w.-]+\.(?:py|sh))|^[ \t]*(?:selftest|extension)\s+\S+\s+(scripts/[\w.-]+\.(?:py|sh))", re.M)
 CAPS_FILE = "scripts/check_settings_read.py"
+# The archive step (.claude/skills/audit/SKILL.md, item 16): the thresholds the Maintainer approved on 2026-11-25
+# (docs/reviews/2026-11-25-archival-inventory-kit.md), in decimal KB. The set "reaches" (>=); docs/reviews/ "passes" (>).
+ARCHIVE_SET = (20, 200_000)       # the archivable files: count, bytes
+ARCHIVE_ALL = (200, 1_000_000)    # every file of docs/reviews/: count, bytes
+ARCHIVE_DAYS = {True: 7, False: 14}   # days since the newest change: a plan (closed), the rest
+HISTORY_DOCS = ("docs/DECISIONS.md", "docs/LOG.md", "docs/CHANGELOG.md")   # a link from these is history, not live
+CHECK_READ = re.compile(r"(?:rule-conflict-check|debt-check): ")   # bloat_check_rules.conflict_recorded reads these
+OPEN_BOX = re.compile(r"\[ \]|\[~")
 
 
 def is_kit(root):
@@ -320,6 +330,79 @@ def file_report(root):
     rows, found = ratchet_report(root)
     more, role = role_report(root)
     return rows + warns + more, problems + found + role
+
+
+def last_changes(root):
+    """{path: YYYY-MM-DD of its last commit} for the files of docs/reviews/; None in a shallow clone or with no git history
+    (the dates of a cut history are not the real dates, so the age test is not made)."""
+    if brules.git(root, "rev-parse", "--is-shallow-repository") != "false":
+        return None
+    dates, day = {}, ""
+    for line in (brules.git(root, "log", "--name-only", "--format=@%cs", "--", brules.REVIEWS) or "").splitlines():
+        if line.startswith("@"):
+            day = line[1:]
+        elif line:
+            dates.setdefault(line, day)   # newest commit first: the first date seen is the last change
+    return dates
+
+
+def archivable(root, files, today):
+    """The files of docs/reviews/ that the approved retention schedule lets a script archive (plan 2026-11-25-archival-plan.md).
+
+    A unit is a file or a folder directly under docs/reviews/. It is archivable when no tracked file outside docs/reviews/,
+    DECISIONS.md, LOG.md and CHANGELOG.md names it (a live link), no check reads it (a `rule-conflict-check:` or
+    `debt-check:` line, a `*-coverage.md` list), no plan in it has an open box (`[ ]`, `[~`), and its newest change is
+    ARCHIVE_DAYS old (7 for a plan, 14 for the rest). A person decides the tests a script cannot (audit skill, item 16).
+
+    Args:
+        root: the repo root (a Path).
+        files: the tracked files (paths from the root).
+        today: the date to count from (a datetime.date).
+
+    Returns:
+        [(path, bytes)] of the archivable files; None when the age is unknown (a shallow clone).
+    """
+    dates = last_changes(root)
+    if dates is None:
+        return None
+    units, live = {}, []
+    for rel in files:
+        if rel.startswith(brules.REVIEWS + "/"):
+            units.setdefault(rel.split("/")[2], []).append(rel)
+        elif rel not in HISTORY_DOCS:
+            live.append((root / rel).read_text(encoding="utf-8", errors="replace"))
+    live = "\n".join(live)
+    out = []
+    for name, rels in units.items():
+        texts = [(root / r).read_text(encoding="utf-8", errors="replace") for r in rels]
+        plan = any(r.endswith("-plan.md") for r in rels)
+        if (name in live or any(CHECK_READ.search(t) for t in texts) or any(r.endswith("-coverage.md") for r in rels)
+                or (plan and any(OPEN_BOX.search(t) for t in texts)) or any(r not in dates for r in rels)):
+            continue
+        age = (today - max(datetime.date.fromisoformat(dates[r]) for r in rels)).days
+        if age >= ARCHIVE_DAYS[plan]:
+            out += [(r, (root / r).stat().st_size) for r in rels]
+    return out
+
+
+def archive_due(root, files, today):
+    """Why the archive step is due, or "": the archivable set reaches ARCHIVE_SET, or docs/reviews/ passes ARCHIVE_ALL.
+
+    Args:
+        root: the repo root (a Path).
+        files: the tracked files (paths from the root).
+        today: the date to count from (a datetime.date).
+
+    Returns:
+        The reason as a text, or "".
+    """
+    allrev = [(r, (root / r).stat().st_size) for r in files if r.startswith(brules.REVIEWS + "/")]
+    found, reasons = archivable(root, files, today), []
+    if found and (len(found) >= ARCHIVE_SET[0] or sum(b for _, b in found) >= ARCHIVE_SET[1]):
+        reasons.append(f"{len(found)} files, {sum(b for _, b in found) // 1000} KB archivable")
+    if len(allrev) > ARCHIVE_ALL[0] or sum(b for _, b in allrev) > ARCHIVE_ALL[1]:
+        reasons.append(f"{brules.REVIEWS}/ {len(allrev)} files, {sum(b for _, b in allrev) // 1000} KB")
+    return "; ".join(reasons + (["age unknown: shallow clone"] if reasons and found is None else []))
 
 
 def rules_report(root, cfg, gate=False):
