@@ -201,12 +201,14 @@ def case_best_and_sources(fx):
     rows = [{"session_id": "sessA", "timestamp": "2026-01-01T09:00:00Z", "model": "claude-opus-5-5",
              "output_tokens": "100000"}, {"session_id": "sessB", "timestamp": "2026-01-01T09:30:00Z",
                                          "model": "claude-opus-5-5", "output_tokens": "50000"}]
-    costs = [{"session_id": "sessA", "source": "main", "usd": "1.0", "session_usd": "2.5"}]
+    rows.append({**rows[1], "session_id": "sessD", "output_tokens": "40000"})  # $0.80, no /cost record
+    costs = [{"session_id": s, "source": "main", "usd": "", "session_usd": u} for s, u in
+             (("sessA", "2.5"), ("sessB", "1.5"), ("sessC", "0.5"))]  # ratios 1.25 and 1.5; sessC has no rows
     text = rep.limits_report(rows, costs, []).splitlines()
-    fx.expect("report: best estimate: /cost where recorded, else the hook's $ x the median ratio (2.50 + 1.00 x 1.25)",
+    fx.expect("report: best estimate: /cost where recorded (also with no rows), else $ x the median of an even count",
               [ln for ln in text if ln.startswith("best estimate")],
-              ["best estimate, all weeks: 3.75 $ (/cost where recorded, else the hook's $ x 1.25, the median /cost "
-               "ratio of 1 sessions)"])
+              ["best estimate, all weeks: 5.60 $ (/cost where recorded, else the hook's $ x 1.38, the median /cost "
+               "ratio of 2 sessions)"])
     with tempfile.TemporaryDirectory() as d:
         core = types.SimpleNamespace(  # a stand-in for the token_log module
             __file__=os.path.join(d, "hooks", "token_log.py"), KIT_CONFIG="kit.config.json")

@@ -83,7 +83,7 @@ lane_of() {  # lane_of [BRANCH...]: reads the same lines; prints "full" when a p
 }
 
 log_only() {  # log_only: reads the same lines; true when every pushed ref is the token log branch claude/token-usage
-             # and every pushed commit (merges too) changes only sessions/, costs/ or limits/ CSV files, as
+             # and every pushed commit (merges and the root too) changes only regular sessions/, costs/ or limits/ CSV files, as
              # scripts/token_log.py writes them; a commit git cannot list fails closed (a TOKEN_LOG_BRANCH override
              # runs the normal checks)
   local n=0 lref lsha rref rsha range out
@@ -92,8 +92,10 @@ log_only() {  # log_only: reads the same lines; true when every pushed ref is th
     [ "$rref" = refs/heads/claude/token-usage ] || return 1
     n=1; is_zero "$lsha" && continue
     range=$lsha; is_zero "$rsha" || range="$rsha..$lsha"
-    out=$(git log -m --format= --name-only "$range" -- 2>/dev/null) || return 1
-    printf '%s\n' "$out" | grep -qvE '^((sessions|costs|limits)/[^/]+\.csv)?$' && return 1
+    # the real objects (no replace refs), the root commit too, no rename pairs; --raw for the file mode of each path
+    out=$(git --no-replace-objects log -m --root --no-renames --format= --raw "$range" -- 2>/dev/null) || return 1
+    printf '%s\n' "$out" | grep -qvE \
+      '^(:[0-7]{6} (100644|000000) [0-9a-f]+ [0-9a-f]+ [AMD]'$'\t''(sessions|costs|limits)/[^/]+\.csv)?$' && return 1
   done
   [ "$n" = 1 ]
 }
@@ -169,6 +171,14 @@ refs/heads/y $c refs/heads/y $zero"
   echo y > code.py; git add code.py; cm code; k=$(git rev-parse HEAD)
   logs "log branch with a code file: not"  no  "refs/heads/x $k refs/heads/claude/token-usage $a"
   logs "a commit git does not know: not"   no  "refs/heads/x 1234567890123456789012345678901234567890 refs/heads/claude/token-usage $a"
+  git checkout -q "$l"; git replace "$k" "$l"
+  logs "a replace ref cannot hide code: not" no "refs/heads/x $k refs/heads/claude/token-usage $a"
+  git replace -d "$k" >/dev/null; git checkout -q --orphan r0; git rm -rqf .; echo z > c.py; git add c.py; cm root
+  r=$(git rev-parse HEAD); git config log.showRoot false
+  logs "new branch, root commit with code: not" no "refs/heads/x $r refs/heads/claude/token-usage $zero"
+  git config --unset log.showRoot; git checkout -q -f logb; git rm -q code.py; ln -s ../x sessions/p.csv; git add sessions/p.csv; cm sym; y=$(git rev-parse HEAD)
+  logs "a symlink named .csv: not"         no  "refs/heads/x $y refs/heads/claude/token-usage $k"
+  git checkout -q logb
   git checkout -q side; git branch -q -D logb
   # eq NAME GOT WANT: print ok or FAIL, and remember a failure
   eq() { if [ "$2" = "$3" ]; then echo "ok   $1"; else echo "FAIL $1 (got '$2', want '$3')"; fails=1; fi; }
