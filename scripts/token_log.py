@@ -37,7 +37,8 @@ call, per skill: skill_tool (Skill-tool calls), read (Reads of its SKILL.md) and
 head, tail, cat or awk on its SKILL.md); a count of 0 is left out, e.g. {"deliver":{"skill_tool":1,"slice":2}}. Add the
 rows of a session for its counts. An old row has no skill_use: it reads as empty.
 
-Settings (environment): TOKEN_LOG=off turns it off; TOKEN_LOG_BRANCH (default claude/token-usage); TOKEN_LOG_SYNC=1
+Settings (environment): TOKEN_LOG=off turns it off; TOKEN_LOG_BRANCH (default claude/token-usage); TOKEN_LOG_REPO (a git URL for the log branch, e.g. the private log
+repo rhope-ops/token-logs; default: "origin" of the session's repo); TOKEN_LOG_SYNC=1
 pushes in the foreground; TOKEN_LOG_HOME (default ~/.claude/token-log) holds push.log, the lock files and cost/ (the agents-pane records);
 TOKEN_LOG_NET_TIMEOUT (seconds, default 600) limits each ls-remote, fetch and push; TOKEN_LOG_UPDATE=off turns the
 self-update off; TOKEN_LOG_KIT_URL is the repo the self-update clones (default: "kit_url" of kit.config.json, see kit_url()).
@@ -53,7 +54,7 @@ Self-update: after each background push, the installed copy (token_log.py in ~/.
   turns it off). The setup script installs it only when a container is built, so a resumed container kept an old copy.
 Self-test (temporary repos, no network):  python3 scripts/token_log.py --test.  Standard library only.
 Prevents: token use and cost per session that no one can see (no log, or a log lost with the container)
-Network: the git remote "origin" of the repo (fetch and push of the branch claude/token-usage); the self-update: a
+Network: TOKEN_LOG_REPO, else the git remote "origin" of the repo (fetch and push of the branch claude/token-usage); the self-update: a
 shallow clone of the kit (kit_url()) at most once a day; none in the self-test.
 Writes: the branch claude/token-usage (sessions/, costs/ and limits/: one CSV file each for each session), through a temporary index; push.log, lock
 files and update.stamp in TOKEN_LOG_HOME; the installed hook file (self-update); never the work tree.
@@ -95,6 +96,11 @@ def home():
 def branch_name():
     """The log branch: TOKEN_LOG_BRANCH, else claude/token-usage."""
     return os.environ.get("TOKEN_LOG_BRANCH") or "claude/token-usage"
+
+
+def remote():
+    """Where the log branch lives: TOKEN_LOG_REPO (a git URL, e.g. the private log repo), else the repo's "origin"."""
+    return os.environ.get("TOKEN_LOG_REPO") or "origin"
 
 
 def git(cwd, *args, env=None, check=True, timeout=None):
@@ -206,14 +212,14 @@ def push(root, sid, tpath):
     token_log_rows = sibling("token_log_rows", "read_cost_record")  # only the background push needs it
     ref, path = branch_name(), f"sessions/{sid}.csv"
     for attempt in (1, 2):
-        rc, heads, err = git_net(root, "ls-remote", "--heads", "origin", ref)
+        rc, heads, err = git_net(root, "ls-remote", "--heads", remote(), ref)
         if rc != 0:
             raise RuntimeError("ls-remote: " + err)
         parent, rows = [], {}
         if heads:
             shallow = git(root, "rev-parse", "--is-shallow-repository") == "true"
             rc, _, err = git_net(root, "fetch", "-q", "--no-write-fetch-head",
-                                 *(["--depth", "1"] if shallow else []), "origin", f"+refs/heads/{ref}:{PRIVATE_REF}")
+                                 *(["--depth", "1"] if shallow else []), remote(), f"+refs/heads/{ref}:{PRIVATE_REF}")
             if rc != 0:
                 raise RuntimeError("fetch: " + err)
             parent = [git(root, "rev-parse", PRIVATE_REF)]
@@ -227,7 +233,7 @@ def push(root, sid, tpath):
             return "up to date"
         args = sum((["-p", p] for p in parent), [])
         commit = git(root, "commit-tree", tree, *args, "-m", f"token log: session {sid}")
-        rc, out, err = git_net(root, "push", "-q", "origin", f"{commit}:refs/heads/{ref}")
+        rc, out, err = git_net(root, "push", "-q", remote(), f"{commit}:refs/heads/{ref}")
         if rc == 0:
             git(root, "update-ref", PRIVATE_REF, commit)
             return f"pushed {commit[:7]} ({len(rows)} rows)"

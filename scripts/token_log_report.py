@@ -145,7 +145,7 @@ def report_main(args):
         return 1
     ref = args[0] if args else "refs/token-log/report"
     if not args:
-        rc, _, err = core.git_net(root, "fetch", "-q", "--no-write-fetch-head", "origin",
+        rc, _, err = core.git_net(root, "fetch", "-q", "--no-write-fetch-head", core.remote(),
                                   f"+refs/heads/{core.branch_name()}:{ref}")
         if rc != 0:
             print("token_log --report: fetch: " + err, file=sys.stderr)

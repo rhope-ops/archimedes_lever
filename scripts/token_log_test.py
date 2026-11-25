@@ -353,6 +353,24 @@ def case_bad_input_and_off(fx):
     fx.expect("TOKEN_LOG=off: nothing pushed", len(fx.remote_rows("s1") or []), count)
 
 
+def case_log_repo(fx):
+    """TOKEN_LOG_REPO sends the log branch to another repo: origin gets no new commit, the report reads from it.
+
+    Args:
+        fx: the shared test fixture (Fixture).
+    """
+    root, work, t1, logs = fx.root, fx.work, fx.t1, fx.logs
+    private = os.path.join(root, "private.git")
+    fx.sh(root, "git", "init", "-q", "--bare", "-b", "main", private)
+    tip = fx.sh(root, "git", "--git-dir", fx.origin, "rev-parse", "claude/token-usage")
+    append(t1, msg("m10", "2026-01-01T03:00:10Z"))
+    fx.hook(work, "s1", t1, logs, extra={"TOKEN_LOG_REPO": private})
+    got = fx.sh(root, "git", "--git-dir", private, "show", "claude/token-usage:sessions/s1.csv")
+    fx.expect("TOKEN_LOG_REPO: rows go to that repo", "m10" in got, True)
+    fx.expect("TOKEN_LOG_REPO: origin gets no new commit",
+              fx.sh(root, "git", "--git-dir", fx.origin, "rev-parse", "claude/token-usage"), tip)
+
+
 def run(tl):
     """Run every case in order on one fixture; print the total line and return the exit code.
 
@@ -368,7 +386,7 @@ def run(tl):
     saved = {k: os.environ.get(k) for k in ("TOKEN_LOG_HOME", "TOKEN_LOG_NET_TIMEOUT")}  # restored at the end
     try:
         for case in (case_first_turn, case_second_turn, case_blocked_and_shallow, case_retry, case_coalesce,
-                     case_fetch_head_and_timeout, case_waiting_push, case_bad_input_and_off, parts.case_agent_type,
+                     case_fetch_head_and_timeout, case_waiting_push, case_bad_input_and_off, case_log_repo, parts.case_agent_type,
                      parts.case_skill_use, parts.case_agent_type_bad_input, parts.case_report, parts.case_prices,
                      parts.case_self_update, costs.case_cost_files, costs.case_bad_records, costs.case_limit_split):
             case(fx)
