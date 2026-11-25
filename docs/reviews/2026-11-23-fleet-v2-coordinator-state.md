@@ -150,7 +150,7 @@ CI on its head (ICF-Source is private: the full lane on the head instead); the c
 | 90-161.Z | #226 (sync), #227 (package mode), #228 (hook sync) | 17,986 -> 14,849 |
 | RADE | #174 (9 long lines; ENGINE_RELEASE 37), #175 (sync), #176 (package mode; release.yml split into a read-only checks job and a release job), #177 (handoff) | 14,686 -> 11,535 |
 | ICF-Source | #265 (sync), #266 (package mode) | 46,895 -> 43,743 |
-| Fleet | | 112,025 -> 98,049 (-12 %) |
+| Fleet | | 112,025 -> 98,048 (-12 %) |
 
 The cut removes copies of kit scripts from projects; the code kept in one place (the kit) grew by 1,722 lines.
 
