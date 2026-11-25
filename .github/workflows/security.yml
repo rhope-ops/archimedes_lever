@@ -1,5 +1,7 @@
 name: security
-# Static security scans: bandit on scripts/ (in package mode after --kit-install writes the kit scripts) and gitleaks on the working tree. Pull requests and manual runs only, never on push (Actions minutes).
+# Static security scans: bandit on scripts/ (in package mode after --kit-install writes the kit scripts) and gitleaks on the working tree.
+# Pull requests and manual runs only, never on push (Actions minutes). A private repo skips the pull-request run, as check.yml does: the content
+# check covers secrets on each push, and bandit runs only on a manual run there.
 on:
   pull_request:
   workflow_dispatch:
@@ -8,6 +10,7 @@ permissions:
 jobs:
   bandit:
     name: bandit
+    if: github.event_name != 'pull_request' || github.event.repository.private == false
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -25,6 +28,7 @@ jobs:
         run: bandit -r scripts/ -ll
   gitleaks:
     name: gitleaks
+    if: github.event_name != 'pull_request' || github.event.repository.private == false
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
