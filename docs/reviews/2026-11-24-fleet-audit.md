@@ -1,5 +1,7 @@
 # Fleet audit, 2026-11-24 (5 of 5 repos)
 
+CLOSED 2026-11-25 (the Maintainer, coordinator 4 chat): the open items moved to their homes in the [close-out list](2026-11-25-closeout-and-trim-proposals.md) (section "Outcome").
+
 Brief: the coordinator session "Kit · Fleet v2 coordinator 2", for the Maintainer's choice "Fleet audit first" and "Also let it fix" (2026-11-24 ~05:55 America/Chicago). Procedure: `.claude/skills/audit/SKILL.md`, "Fleet audit" and "Rules for the auditor". Counts only; no personal data. Started 2026-11-24 07:32, first measures 08:06 America/Chicago.
 
 As of: kit main `6a4b727` (then `00a0102` with #158), 33-332.Z main `4f23703`, RADE main `97e7f4b`, 90-161.Z main `a1c6798`, ICF-Source main `dd5ce4bf`.

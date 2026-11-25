@@ -19,8 +19,35 @@ Items moved word for word from docs/KIT_HANDOFF.md on 2026-11-24, when the kit's
 0. Kit fixes for the next PATCH (found by the 3.2.0 reviews; none blocks a repo): (a) the sync swaps "the owner" for each repo's role inside `scripts/check_settings.py`, so `OLD_HEADER_LINES` misses the old "the owner's request" line: exclude that file from the swap or match any role (5 repos got a hand fix in their sync PR); (b) `new_header` stops at a blank line; (c) NITs: the `audit-duplicate-ignore` wording in `bloat_check.py`, the CHANGELOG 3.2.0 row does not name `sync_merge.py`; (d) `fix_hooks` in session_checkin.sh keeps any non-kit hooks path, so a converted repo with an old `tools/git-hooks` path skipped the content check (NMB and TA fixed it in their project layer; the kit should repoint known old paths or warn); (f) first use keeps the kit's own "Project rules" lines (the Fleet choices line, 4.1.0) in a new project: empty that section at first use (docs/reviews/2026-11-19-rule-conflict-fleet.md finding 4); (e) 90-161.Z commit 50421f2 (DECISIONS "By" Agent to PFM, NIT) is unpushed: its pre-push needs pwsh, which the cloud sandbox lacks.
 1. Step 5 (rulesets, secret scanning: the owner's clicks, docs/github/README.md).
 
+Moved 2026-11-25 from the tool-retirement plan and the fleet audit at their close ([close-out list](2026-11-25-closeout-and-trim-proposals.md), Part A; decisions: its section "Outcome"). Text and evidence of each row: that list.
+
+- Audit the audit (kit): A1 (T2 counts test files with code), A3 (a "seam" question for file splits; evidence [R4f](2026-11-23-tr-r4f-split-audit.md)), A4 (fix-of-a-fix rate by `git blame`), A5 (duplicate functions, low priority), A7 (session load as a typical session reads it; after the skill-use re-run of 2026-12-08), A8 (`fleet.last_audit` after a partial audit), A9 (defects per check from local runs; mutation kills), A12 kit part (the duplicate count includes generated files), A14 (no rule-test run records).
+- PATCH item (g), A13: `scripts/bootstrap.sh:109` leaves the kit's review subfolders in a new project (lane C: a guard script).
+- O1 (not approved, 2026-11-25): the kit counts the docs/NEXT_PROMPT.md template (141 tokens) in its session load, but kit sessions read KIT_HANDOFF.md. A change is lane C (`scripts/bloat_check_rules.py` or `.check`) and needs a fresh review that it corrects the measure.
+
+### For the next 33-332.Z session
+
+- T3: the "MAINTAINER_GUIDE step" of the P3 follow-ups: 33-332.Z has docs/MAINTAINER_GUIDE.md, and its kit-12 sync session recommended a fix there.
+- T10: the 3 MINOR texts of its PR 118, after the PAM's ISE test. Its session load was 5,504 > 5,500 with that line; kit R1-R3 (2026-11-25) free about 116 tokens at the next sync.
+
+### For the next ICF-Source session
+
+- F1: cut 5, the one-off scripts (about -912 lines), at its own audit (the Maintainer, 2026-11-24).
+- A12, ICF part: the `audit-duplicate-ignore:` glob for generated files in its `.check` (a guard change).
+
+### For the next 90-161.Z session
+
+- F2: cut 8, `measure_pdf.py` (-58 lines), at its own audit (the Maintainer, 2026-11-24).
+
+### For the next RADE session
+
+- F3: cut 9, `Split-Sentence` (about -20 lines; needs an engine release), at its own audit (the Maintainer, 2026-11-24).
+- Verify T7, RADE part: SBOM PR #184 merged (kit records conflict; not verified).
+- Verify T8: CodeQL Python PR #182 merged (c5ba723 per the coordinator state; not verified).
+
 ## Needs the owner
 
+- T14 (2026-11-25): the session archive list of the tool-retirement P6, in [the coordinator state](2026-11-23-fleet-v2-coordinator-state.md) lines 219-223; which sessions are archived is not verified.
 - Fleet v2: tags v11.0.0 (dedc3b3) and v11.0.1 (9e3f6fa) exist (checked 2026-11-23 15:13). The open fleet decisions and the Default setup script: coordinator state file, "Needs the Maintainer".
 - 2026-11-21 items (decide in order): (a) fix the non-text timestamp crash in a separate PR, REC yes; (b) approve or change the five MINOR Delegation wording items, REC: approve 1, 3, 5; delete the skill sentence in 2; reword 4 to "Exception to size, files and done criteria"; (c) confirm or remove the DECISIONS claim of an earlier MAJOR check (no record file); (d) docstring of tokens(): "text that is not an integer" (with a).
 
