@@ -354,8 +354,8 @@ def case_bad_input_and_off(fx):
 
 
 def case_private_repo(fx):
-    """The private log repo: rows go there when it can be reached, else to origin (with a push.log line); --report
-    reads both places.
+    """The private log repo: rows go there when it can be reached; only when it cannot, to origin without costs/ and
+    limits/ (with a push.log line); a refused push does not fall back; --report reads both places.
 
     Args:
         fx: the shared test fixture (Fixture).
@@ -371,9 +371,12 @@ def case_private_repo(fx):
     fx.expect("private log repo reachable: the rows go there, not to origin",
               ("v1" in shown, fx.remote_rows("pv1")), (True, None))
     append(t2, prompt("2026-01-06T01:00:00Z"), msg("v2", "2026-01-06T01:00:01Z"))
+    import token_log_test_costs as costs  # a /cost record, so the fallback has costs/ and limits/ to leave out
+    costs.write_record(fx, "pv2", costs.record("pv2"))
     r = fx.hook(fx.work, "pv2", t2, fx.logs, extra={"TOKEN_LOG_REPO": "file://" + os.path.join(fx.root, "none.git")})
-    fx.expect("private log repo not reachable: the rows go to origin, with a log line",
-              ("private log repo not reachable" in r.stdout, len(fx.remote_rows("pv2") or [])), (True, 1))
+    fx.expect("private log repo not reachable: the rows go to origin, with a log line, without costs/ and limits/",
+              ("private log repo not reachable" in r.stdout, len(fx.remote_rows("pv2") or []),
+               costs.remote(fx, "costs/pv2.csv"), costs.remote(fx, "limits/pv2.csv")), (True, 1, None, None))
     ro = os.path.join(fx.root, "readonly.git")  # can be read, refuses every push (as with read-only access)
     fx.sh(fx.root, "git", "init", "-q", "--bare", "-b", "main", ro)
     with open(os.path.join(ro, "hooks", "pre-receive"), "w") as f:
@@ -382,8 +385,24 @@ def case_private_repo(fx):
     t3 = os.path.join(fx.root, "proj", "pv3.jsonl")
     append(t3, prompt("2026-01-06T02:00:00Z"), msg("v3", "2026-01-06T02:00:01Z"))
     r = fx.hook(fx.work, "pv3", t3, fx.logs, extra={"TOKEN_LOG_REPO": "file://" + ro})
-    fx.expect("private log repo refuses the push: the rows go to origin in the same try, with a log line",
-              ("private log repo push failed" in r.stdout, len(fx.remote_rows("pv3") or [])), (True, 1))
+    fx.expect("private log repo refuses the push: no fallback to origin (only not reachable falls back)",
+              ("read only" in r.stdout, fx.remote_rows("pv3")), (True, None))
+    odd = os.path.join(fx.root, "odd.git")  # only x/claude/token-usage there: an exact match finds no log branch
+    fx.sh(fx.root, "git", "init", "-q", "--bare", "-b", "main", odd)
+    empty = subprocess.run(["git", "--git-dir", odd, "mktree"], input="", capture_output=True, text=True).stdout.strip()
+    tip = fx.sh(fx.root, "git", "--git-dir", odd, "-c", "user.name=t", "-c", "user.email=t@t", "commit-tree", empty,
+                "-m", "x")
+    fx.sh(fx.root, "git", "--git-dir", odd, "update-ref", "refs/heads/x/claude/token-usage", tip)
+    t4 = os.path.join(fx.root, "proj", "pv4.jsonl")
+    append(t4, prompt("2026-01-06T03:00:00Z"), msg("v4", "2026-01-06T03:00:01Z"))
+    fx.hook(fx.work, "pv4", t4, fx.logs, extra={"TOKEN_LOG_REPO": "file://" + odd})
+    fx.expect("a branch that only ends with the log branch name is not taken for it: the push makes the branch",
+              "v4" in subprocess.run(["git", "--git-dir", odd, "show", "claude/token-usage:sessions/pv4.csv"],
+                                     capture_output=True, text=True).stdout, True)
+    t5 = os.path.join(fx.root, "proj", "pv5.jsonl")
+    append(t5, '{"type": "assistant", "message": {"usage": {"input_tokens": 1}}}')  # a reply in an unknown form
+    r = fx.hook(fx.work, "pv5", t5, fx.logs)
+    fx.expect("a session log with replies that gives 0 rows: an ALARM line", "ALARM" in r.stdout, True)
     os.environ["TOKEN_LOG_REPO"] = "--upload-pack=touch x"
     fx.expect("an address that starts with '-' (a git option) is not used", fx.tl.log_repo(fx.tl.__file__), None)
     os.environ.pop("TOKEN_LOG_REPO")
@@ -391,7 +410,7 @@ def case_private_repo(fx):
                          capture_output=True, env={**fx.env, **on}, timeout=120)
     missing = [ln for ln in rep.stdout.splitlines() if ln.startswith("no /cost record")]
     fx.expect("--report: reads origin and the private log repo",
-              (rep.returncode, bool(missing) and all(x in missing[0] for x in ("pv1", "pv2", "pv3"))), (0, True))
+              (rep.returncode, bool(missing) and all(x in missing[0] for x in ("pv1", "pv2"))), (0, True))
 
 
 def run(tl):

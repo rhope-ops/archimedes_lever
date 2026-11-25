@@ -2,8 +2,8 @@
 """Claude Code Stop hook: log the token use of each API call to the branch claude/token-usage of the private log repo
 (else of the session's repo).
 
-Kit only: projects do not get a copy. A cloud environment's setup script installs it from the kit's main branch
-as a user-level Stop hook, so every repo session is logged (the owner, 2026-11-17). Three files, installed side by
+Kit only: projects do not get a copy. A cloud environment's setup script installs it from the kit's newest release
+tag as a user-level Stop hook, so every repo session is logged (the owner, 2026-11-17). Three files, installed side by
 side: this one (the hook: push, lock, retries, self-update), token_log_rows.py (the rows and the CSV columns) and
 token_log_report.py (the prices and --report).
 
@@ -22,9 +22,9 @@ does nothing: sessions with no repo are not logged, and the repo is the folder t
      from the agents-pane record <TOKEN_LOG_HOME>/cost/<session id>.json, read at push time. No record: no files; a
      bad record (no JSON, not version 1, another session) is skipped with a line in push.log.
   5. Commits with a temporary index and pushes through the normal pre-push hook. The work tree, the index and the
-     current branch never change. That hook runs the check lanes on the current work tree, so a failing work tree
-     holds back the log push until it passes; the rows wait in the session log. A failed push is tried again after
-     1 and 5 minutes, so the last turn of a session is not lost to one failure (only while the container still runs);
+     current branch never change. A push of only this branch skips the check lanes there (log_only in the hook);
+     a block by its content check holds the push back, and the rows wait in the session log. A failed push is
+     tried again after 1 and 5 minutes, so the last turn of a session is not lost to one failure (only while the container still runs);
      a race is tried again at once. Pushes are coalesced: at most one runs and one waits per session. A fetch or
      push with no answer in time (TOKEN_LOG_NET_TIMEOUT) is killed with its pre-push hook.
 
@@ -40,8 +40,9 @@ head, tail, cat or awk on its SKILL.md); a count of 0 is left out, e.g. {"delive
 rows of a session for its counts. An old row has no skill_use: it reads as empty.
 
 Where: the private log repo ("token_log_repo" of the kit.config.json next to the installed file, or TOKEN_LOG_REPO)
-when this session can reach it (a cloud session gets git credentials only for its attached repos), else the repo's
-own origin; a push.log line says so. Both hold the same branch and layout; --report reads both.
+when one is set; only when it cannot be reached (a cloud session gets git credentials only for its attached repos)
+the rows go to the repo's own origin, without costs/ and limits/, with a push.log line; any other error retries the
+private repo. A session log with replies that gives 0 rows writes an ALARM line in push.log. --report reads both.
 Settings (environment): TOKEN_LOG=off turns it off; TOKEN_LOG_BRANCH (default claude/token-usage); TOKEN_LOG_REPO; TOKEN_LOG_SYNC=1
 pushes in the foreground; TOKEN_LOG_HOME (default ~/.claude/token-log) holds push.log, the lock files and cost/ (the agents-pane records);
 TOKEN_LOG_NET_TIMEOUT (seconds, default 600) limits each ls-remote, fetch and push; TOKEN_LOG_UPDATE=off turns the
@@ -52,8 +53,8 @@ Report:  python3 scripts/token_log.py --report [REF]  (in a repo: fetches the lo
   estimated cost by week in America/Chicago, by source, agent and model, and per subagent task, from PRICES; the
   highest percent of each 7-day plan limit, the limit used per session (an estimate: each rise split by estimated $
   among the sessions logged on the branch), and Claude Code's /cost by week next to the estimate)
-Self-update: after each background push, the installed copy (token_log.py in ~/.claude/hooks) checks the kit's main
-  branch at most once a day and replaces its files (UPDATE_FILES) with newer copies whose self-test passes; an old
+Self-update: after each background push, the installed copy (token_log.py in ~/.claude/hooks) checks the kit's newest
+  release tag (vN.N.N, never main) at most once a day and replaces its files (UPDATE_FILES) with newer copies whose self-test passes; an old
   one-file install fetches the other two files the same way (the Stop path never needs them) (TOKEN_LOG_UPDATE=off
   turns it off). The setup script installs it only when a container is built, so a resumed container kept an old copy.
 Self-test (temporary repos, no network):  python3 scripts/token_log.py --test.  Standard library only.
@@ -71,6 +72,7 @@ import fcntl
 import io
 import json
 import os
+import re
 import shutil
 import signal
 import subprocess
@@ -199,30 +201,11 @@ def sibling(name, *needs):
     return mod
 
 
-def log_target(root, sid):
-    """Where the log goes: the private log repo (log_repo()) when this session can reach it, else the repo's own
-    origin. A session gets git credentials only for the repos attached to it, so the fallback keeps every row.
-
-    Args:
-        root: the repo folder.
-        sid: the session id (for the push.log line).
-    Returns:
-        (the git remote or URL to fetch from and push to, the private ref that holds its log branch).
-    """
-    url = log_repo(os.path.abspath(__file__))
-    if url:
-        rc, _, err = git_net(root, "ls-remote", "--heads", url, branch_name())
-        if rc == 0:
-            return url, PRIVATE_REF + "-private"
-        print(datetime.now(timezone.utc).isoformat(timespec="seconds"), sid,
-              "private log repo not reachable, pushing to origin:", " / ".join(err.splitlines()[-3:])[-300:], flush=True)
-    return "origin", PRIVATE_REF
-
-
 def push(root, sid, tpath):
-    """Push the log to the private log repo when this session can reach it, else to origin (log_target()). A push
-    to the private log repo that fails (for example read-only access) goes to origin in the same try, so no row is
-    lost. The caller holds the session's push lock.
+    """Push the log to the private log repo (log_repo()) when one is set, else to origin. Only when the private repo
+    cannot be reached (its ls-remote fails: no access or not found; a timeout is not this) do the rows go to origin,
+    with a push.log line, and then without costs/ and limits/: the account-wide figures stay off a repo that may be
+    public. Any other error is raised, so the retries try the private repo again. The caller holds the push lock.
 
     Args:
         root: the repo folder.
@@ -231,17 +214,29 @@ def push(root, sid, tpath):
     Returns:
         The result text of push_to(). Raises RuntimeError when git fails.
     """
-    remote, private_ref = log_target(root, sid)
-    if remote != "origin":
+    url = log_repo(os.path.abspath(__file__))
+    if url:
         try:
-            return push_to(root, sid, tpath, remote, private_ref)
+            return push_to(root, sid, tpath, url, PRIVATE_REF + "-private")
         except RuntimeError as e:
-            print(datetime.now(timezone.utc).isoformat(timespec="seconds"), sid,
-                  "private log repo push failed, pushing to origin:", str(e)[-300:], flush=True)
-    return push_to(root, sid, tpath, "origin", PRIVATE_REF)
+            if not str(e).startswith("ls-remote: "):
+                raise
+            print(datetime.now(timezone.utc).isoformat(timespec="seconds"), sid, "private log repo not reachable, "
+                  "pushing the rows (no costs/ or limits/) to origin:", str(e)[-300:], flush=True)
+    return push_to(root, sid, tpath, "origin", PRIVATE_REF, costs=not url)
 
 
-def push_to(root, sid, tpath, remote, private_ref):
+def has_replies(tpath):
+    """True when the session log holds at least one assistant reply with token use (a log of 0 rows then means its
+    format changed)."""
+    try:
+        with open(tpath, encoding="utf-8", errors="replace") as f:
+            return any('"assistant"' in ln and '"usage"' in ln for ln in f)
+    except OSError:
+        return False
+
+
+def push_to(root, sid, tpath, remote, private_ref, costs=True):
     """Merge this session's rows into sessions/<sid>.csv on the log branch of one remote, add the /cost and /usage
     files of cost_files(), and push them in one commit. Tries again at once only
     after a race with another push.
@@ -252,6 +247,7 @@ def push_to(root, sid, tpath, remote, private_ref):
         tpath: the path of the session's log file.
         remote: "origin" or the private log repo's URL.
         private_ref: the local ref that holds that remote's log branch.
+        costs: False to leave out costs/ and limits/ (a fallback push to origin).
     Returns:
         A short result text: "pushed ...", "up to date" or "nothing to log". Raises RuntimeError when git fails.
     """
@@ -261,6 +257,7 @@ def push_to(root, sid, tpath, remote, private_ref):
         rc, heads, err = git_net(root, "ls-remote", "--heads", remote, ref)
         if rc != 0:
             raise RuntimeError("ls-remote: " + err)
+        heads = [ln for ln in heads.splitlines() if ln.endswith("\trefs/heads/" + ref)]  # exact: not x/<ref>
         parent, rows = [], {}
         if heads:
             shallow = git(root, "rev-parse", "--is-shallow-repository") == "true"
@@ -271,10 +268,15 @@ def push_to(root, sid, tpath, remote, private_ref):
             parent = [git(root, "rev-parse", private_ref)]
             old = git(root, "show", f"{parent[0]}:{path}", check=False)
             rows = {r["message_id"]: r for r in csv.DictReader(io.StringIO(old)) if r.get("message_id")}
-        rows.update(token_log_rows.log_rows(sid, tpath, os.path.basename(root)))
+        got = token_log_rows.log_rows(sid, tpath, os.path.basename(root))
+        if not got and has_replies(tpath):
+            print(datetime.now(timezone.utc).isoformat(timespec="seconds"), sid, "ALARM: the session log has replies "
+                  "but gave 0 rows (did its format change?)", flush=True)
+        rows.update(got)
         if not rows:
             return "nothing to log"
-        tree = write_tree(root, parent, {path: token_log_rows.to_csv(rows), **cost_files(root, parent, sid)})
+        extra = cost_files(root, parent, sid) if costs else {}
+        tree = write_tree(root, parent, {path: token_log_rows.to_csv(rows), **extra})
         if parent and git(root, "rev-parse", parent[0] + "^{tree}") == tree:
             return "up to date"
         args = sum((["-p", p] for p in parent), [])
@@ -404,9 +406,22 @@ def same_file(a, b):
         return f.read() == g.read()
 
 
+def release_tag(url):
+    """The kit's newest release tag (vMAJOR.MINOR.PATCH, highest by number), or None (none, or no answer)."""
+    try:
+        r = subprocess.run(["git", "ls-remote", "--tags", "--refs", url, "v*"], capture_output=True, text=True,
+                           timeout=net_timeout(), env={**os.environ, "GIT_TERMINAL_PROMPT": "0"})
+    except subprocess.TimeoutExpired:
+        return None
+    tags = [m.group(0) for m in (re.fullmatch(r"v(\d+)\.(\d+)\.(\d+)", ln.rsplit("refs/tags/", 1)[-1])
+                                 for ln in r.stdout.splitlines() if r.returncode == 0) if m]
+    return max(tags, key=lambda t: tuple(int(x) for x in t[1:].split(".")), default=None)
+
+
 def self_update(path, url=None, now=None):
-    """Replace the installed hook file with the kit's main copy when it differs and its self-test passes; at most
-    once a day.
+    """Replace the installed hook file with the copy of the kit's newest release tag (release_tag()) when it differs
+    and its self-test passes; at most once a day. Never main: only a release the Release Manager tagged reaches every
+    session (token log audit, 2026-11-25).
 
     Args:
         path: the installed token_log.py to replace.
@@ -425,8 +440,11 @@ def self_update(path, url=None, now=None):
     url = url or kit_url(path)
     if not url:
         return "not updated: no kit address (TOKEN_LOG_KIT_URL or kit.config.json)"
+    tag = release_tag(url)
+    if not tag:
+        return "not updated: no release tag (vN.N.N) at the kit"
     with tempfile.TemporaryDirectory() as tmp:
-        r = subprocess.run(["git", "clone", "-q", "--depth", "1", "--branch", "main", url,
+        r = subprocess.run(["git", "clone", "-q", "--depth", "1", "--branch", tag, url,
                             os.path.join(tmp, "k")], capture_output=True, text=True, timeout=net_timeout(),
                            env={**os.environ, "GIT_TERMINAL_PROMPT": "0"})
         src = os.path.join(tmp, "k", "scripts")
