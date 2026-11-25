@@ -62,7 +62,8 @@ What it changes:
                            first letter). Project text is never renamed. A private repo may keep a real name
                            (--owner NAME); a public repo uses a role. Owner: letters, digits, space . _ , ( ) -
     docs/DECISIONS.md      In a full project: the line `<!-- approval-quote-exempt-from: TEXT -->` above the Decisions table when it
-                           is missing (TEXT: the Decision cell of the newest row), so the T6 check reads only new rows. Nothing else.
+                           is missing (TEXT: the Decision cell of the newest row), so the T6 check reads only new rows; with no '## Decisions'
+                           heading, above the first table whose columns start Date | Decision | By. Nothing else.
 What it never changes: README.md, docs/ (except docs/FIRST_USE.md and docs/DECISIONS.md as said above, docs/code-standard.md and the kit
 license), .check and all other files. A project's own code lives in its own files (scripts/check.local.sh,
 scripts/check_content_local.py, scripts/check_instructions_local.py, scripts/code_standard_gate.py), which a sync
@@ -194,6 +195,8 @@ def decisions_marker(text):
     lines = text.split("\n")
     head = next((i + 1 for i, l in enumerate(lines) if re.match(r"##\s+Decisions\s*$", l)), None)
     table = next((i for i in range(head or len(lines), len(lines)) if lines[i].lstrip().startswith("|")), None)
+    if head is None:   # no '## Decisions': the first table whose columns start Date | Decision | By (log_check_plan.py: the same)
+        table = next((i for i, l in enumerate(lines) if re.match(r"^\s*\|\s*date\s*\|\s*decision\s*\|\s*by\s*\|", l, re.I)), None)
     if table is None:
         return text
     rows = [l for l in lines[table + 2:] if l.lstrip().startswith("|")]   # table + 1 is the separator row

@@ -21,6 +21,19 @@ EXEMPT_MARK = re.compile(r"<!--\s*approval-quote-exempt-from:\s*(.+?)\s*-->")
 MARKS = ("in", "out", "later", "ask")
 GROUP_HEADING = re.compile(r"^#{2,3}\s+([A-Z][0-9]?)\.")
 GROUP_CELL = re.compile(r"^\W*([A-Z][0-9]?)\.")
+DECISIONS_HEAD = re.compile(r"^\s*\|\s*date\s*\|\s*decision\s*\|\s*by\s*\|", re.I)   # scripts/sync_baseline.py: the same
+
+
+def decisions_table(text):
+    """The Decisions table: the first table under '## Decisions', else the first table whose columns start Date | Decision
+    | By (a project file can hold it under its title). Returns (header line number, header cells, rows) or None."""
+    table = tables(text).get("Decisions")
+    lines = text.splitlines()
+    i = next((n for n, line in enumerate(lines) if DECISIONS_HEAD.match(line)), None)
+    if table or i is None:
+        return table
+    no, head, rows = tables("## Decisions\n" + "\n".join(lines[i:]))["Decisions"]
+    return no + i - 1, head, [(n + i - 1, c) for n, c in rows]
 
 
 def check_decisions(path):
@@ -35,9 +48,9 @@ def check_decisions(path):
     p = pathlib.Path(path)
     text = p.read_text(encoding="utf-8")
     found = []
-    table = tables(text).get("Decisions")
+    table = decisions_table(text)
     if not table:
-        return 0, [f"{p}:1: no table under '## Decisions'"]
+        return 0, [f"{p}:1: no Decisions table (under '## Decisions', or with the columns Date | Decision | By)"]
     _, header, rows = table
     if [c.lower() for c in header[:3]] != ["date", "decision", "by"]:
         return 0, [f"{p}: Decisions columns must start with Date | Decision | By"]
@@ -180,6 +193,10 @@ def self_test_t6_t7():
     expect("T6 a row by Agent needs no quote", check_decisions, DECISIONS_TABLE.replace("the Maintainer:", "Agent:").replace('"I approve the plan"', "x"), None)
     expect("T6 no marker: the older row is checked", check_decisions, DECISIONS_TABLE.replace("<!-- approval-quote-exempt-from: Old row -->", ""),
            "quotes no approval")
+    untitled = DECISIONS_TABLE.replace("## Decisions\n", "# Decisions: a project\n")
+    expect("T6 a table under the title (no '## Decisions') is checked", check_decisions,
+           untitled.replace('"I approve the plan"', "x"), "quotes no approval")
+    expect("T6 no Decisions table fails", check_decisions, "# Decisions\n\nNo table.\n", "no Decisions table")
     expect("T6 marker that matches no row fails", check_decisions, DECISIONS_TABLE.replace("exempt-from: Old row", "exempt-from: Gone"), "matches no Decisions row")
     expect("T7 clean coverage list passes", check_coverage, COVERAGE_GOOD, None)
     expect("T7 ask row fails", check_coverage, COVERAGE_GOOD.replace("| A-2 | Two | out |", "| A-2 | Two | ask |"), "is marked ask")
