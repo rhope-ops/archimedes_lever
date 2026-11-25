@@ -251,7 +251,7 @@ def self_test_t6_t7():
         ("T6 a Date | Scope | Decision table: a lower-case by: is read",
          SCOPE_TABLE.replace('By: the Maintainer: "I approve the sync" (own message).', "by: the Maintainer."), "no approval"),
         ("T6 a Date | Scope | Decision table: a later quote is no approval", SCOPE_TABLE.replace(
-            'By: the Maintainer: "I approve the sync" (own message).', 'By: the Maintainer. Replaces "the owner" with "x".'), "no approval"),
+            'By: the Maintainer: "I approve the sync" (own message).', 'By: the Maintainer. Replaces "the plan" with "x".'), "no approval"),
         ("T6 a Date | Scope | Decision table: a cell that does not start with By: fails",
          SCOPE_TABLE.replace('By: the Maintainer: "I approve the sync" (own message).', 'Sync. By: the Maintainer: "Yes".'),
          "must start with By:"),
