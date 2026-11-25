@@ -35,6 +35,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))   # the check loads this file by path, not by import
 import check_settings as settings   # noqa: E402 - scripts/check_settings.py: the settings file name and its name test
+import code_standard_rules as rules   # noqa: E402 - scripts/code_standard_rules.py: LINTERS (ruff and pylint installed)
 
 SAFETY_LABELS = ('Network:', 'Writes:', 'Credentials:')   # C1 safety: what a reviewer must find before a run
 # A By cell with one of these marks a script or an agent, not the Maintainer (the Maintainer, 2026-11-17: only the Maintainer decides).
@@ -84,7 +85,9 @@ def file_rules(v, p, lines, head, config, skip):
         v['safety'][p] = 1
     cap = config['caps'].get('max_line_chars')
     longest = longest_line(lines, skip) if cap else 0
-    if cap and longest > cap and not (p.endswith('.py') and not skip):   # a .py with no generated block: ruff and pylint
+    # A .py with no generated block: ruff and pylint (scripts/check.sh) when both are installed, else measured here, so a
+    # run without them neither passes a long line nor reports a Python line debt as fixed.
+    if cap and longest > cap and not (p.endswith('.py') and not skip and rules.LINTERS):
         v['line'][p] = longest
 
 
