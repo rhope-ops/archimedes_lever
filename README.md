@@ -60,29 +60,29 @@ You don't need to know git: the agent handles it. Pick one way.
 
 **A. In your browser, with nothing to install** (Claude Code on the web)
 
-1. On this GitHub page, click **Use this template**. You see a menu. Go on.
-2. In the menu, click **Create a new repository**. You see the page **Create a new repository**. Go on.
+1. On this GitHub page, click **Use this template**. You see a menu.
+2. In the menu, click **Create a new repository**. You see the page **Create a new repository**.
 3. On the page **Create a new repository**, do these actions:
    1. In the box **Repository name**, type a name for your project, with no spaces.
    2. Select **Private**.
    3. Click **Create repository**.
 
    You see your new repository, with its name at the top. Write down the name.
-4. In a new browser tab, open [claude.ai/code](https://claude.ai/code). You see the page **Claude Code**, or a sign-in page. Go on.
+4. In a new browser tab, open [claude.ai/code](https://claude.ai/code). You see the page **Claude Code**, or a sign-in page.
 5. If you see a sign-in page, sign in to claude.ai. Wait until you see the page **Claude Code**.
-6. If the page asks for access to GitHub, click the button that connects GitHub. You see a GitHub page. Go on.
+6. If the page asks for access to GitHub, click the button that connects GitHub. You see a GitHub page.
 7. On the GitHub page, give access to your new repository. Wait until you see the page **Claude Code** again.
-8. On the page **Claude Code**, select the repository with the name that you wrote down. You see that name in the repository list. Go on.
-9. In the message box, type `Please read the repo and initiate.` You see the text in the box. Go on.
+8. On the page **Claude Code**, select the repository with the name that you wrote down. You see that name in the repository list.
+9. In the message box, type `Please read the repo and initiate.` You see the text in the box.
 10. Press **Enter**. You see the agent start its work. Wait until the agent asks its first question.
 
 **B. With Claude Code on your computer**
 
-1. If you use the Claude desktop app, open its tab **Code**. You see Claude Code. Go on.
-2. In the desktop app, in the tab **Code**, choose the folder where you keep your projects (for example **Documents**). You see the folder name. Go on.
-3. If you use a terminal, run `cd ~/Documents`, or the path of the folder where you keep your projects. You see the folder name in the prompt. Go on.
-4. If you use a terminal, run `claude`. You see Claude Code start in the terminal. If it asks to trust the folder, answer yes. Go on.
-5. In the message box of Claude Code, type this text. You see the text in the box. Go on.
+1. If you use the Claude desktop app, open its tab **Code**. You see Claude Code.
+2. In the desktop app, in the tab **Code**, choose the folder where you keep your projects (for example **Documents**). You see the folder name.
+3. If you use a terminal, run `cd ~/Documents`, or the path of the folder where you keep your projects. You see the folder name in the prompt.
+4. If you use a terminal, run `claude`. You see Claude Code start in the terminal. If it asks to trust the folder, answer yes.
+5. In the message box of Claude Code, type this text. You see the text in the box.
    ```
    Please set up a new project from https://github.com/rhope-ops/archimedes_lever: get the repo, read it, and initiate.
    ```
@@ -128,40 +128,40 @@ Bootstrap moves the kit's MIT license to `docs/archimedes_lever-LICENSE.txt`. Ke
 You need git, Python 3.9 or later, bash, perl and [gh](https://cli.github.com). If you make the repository on GitHub with **Use this template**, use `git clone` with its address in place of the `gh repo create` command. On Windows, run each command in Git Bash, not in PowerShell.
 
 1. In a terminal, run `gh auth login`. You see questions from gh. Answer each question, and wait until you see `Logged in as` and your GitHub user name.
-2. In your browser, open [github.com/settings/emails](https://github.com/settings/emails). You see the GitHub page **Emails**. Go on.
+2. In your browser, open [github.com/settings/emails](https://github.com/settings/emails). You see the GitHub page **Emails**.
 3. On the page **Emails**, do these actions:
    1. Select **Keep my email addresses private**.
    2. Select **Block command line pushes that expose my email**.
 
-   You see your noreply address on the page. It ends in `@users.noreply.github.com`. Keep the page open. Go on.
-4. In the terminal, run this command, with the noreply address from the page **Emails** in place of `ID+USER@users.noreply.github.com`. You see no output. Go on.
+   You see your noreply address on the page. It ends in `@users.noreply.github.com`. Keep the page open.
+4. In the terminal, run this command, with the noreply address from the page **Emails** in place of `ID+USER@users.noreply.github.com`.
    ```
    git config --global user.email "ID+USER@users.noreply.github.com"
    ```
-5. Run `git config --global user.name "YOUR_USER"`, with your GitHub user name in place of `YOUR_USER`. Your real name then stays out of the commit history. You see no output. Go on.
+5. Run `git config --global user.name "YOUR_USER"`, with your GitHub user name in place of `YOUR_USER`. Your real name then stays out of the commit history.
 6. Choose a repository name with no spaces. You see no output: you do it on paper. Write down the name. You type it in place of `NEW_NAME`.
-7. Run this command. In it, `YOUR_USER` is your GitHub user name and `NEW_NAME` is the name that you wrote down. You see a line that starts with `✓ Created repository`. Go on.
+7. Run this command. In it, `YOUR_USER` is your GitHub user name and `NEW_NAME` is the name that you wrote down. You see a line that starts with `✓ Created repository`.
    ```
    gh repo create YOUR_USER/NEW_NAME --private --template rhope-ops/archimedes_lever --clone
    ```
-8. Run `cd NEW_NAME`, with the name that you wrote down. You see the name in the prompt. Go on.
-9. Run the bootstrap command, with your 6 values from the table in place of the examples. You see the line `Done. Next: review with 'git diff', then commit and push.` Go on.
+8. Run `cd NEW_NAME`, with the name that you wrote down. You see the name in the prompt.
+9. Run the bootstrap command, with your 6 values from the table in place of the examples. You see the line `Done. Next: review with 'git diff', then commit and push.`
    ```
    scripts/bootstrap.sh "Project Name" YOUR_USER/NEW_NAME "One-line purpose" "the Maintainer" "Europe/Berlin" starter
    ```
-10. Run `mkdir -p ~/.config/pii-guard && nano ~/.config/pii-guard/denylist.txt`. You see the editor **nano**. Go on.
-11. In **nano**, type your names, your user name variants and your employer, one on each line. You see the names in **nano**. Go on.
-12. In **nano**, press **Ctrl+X**, **Y** and **Enter**. This saves the file and closes **nano**. You see the prompt again. Go on.
-13. Run `python3 scripts/check_content.py --status`. On Windows, the command starts with `py`, not `python3`. You see the number of entries in your list, never the names. Go on.
-14. Run `scripts/session_checkin.sh`. It installs the git hooks. You see the line `hooks:` with the hooks folder. Go on.
-15. Run `git add -A`. You see no output. Go on.
-16. Run `git commit -m "First use"`. You see the commit summary. Go on.
+10. Run `mkdir -p ~/.config/pii-guard && nano ~/.config/pii-guard/denylist.txt`. You see the editor **nano**.
+11. In **nano**, type your names, your user name variants and your employer, one on each line. You see the names in **nano**.
+12. In **nano**, press **Ctrl+X**, **Y** and **Enter**. This saves the file and closes **nano**. You see the prompt again.
+13. Run `python3 scripts/check_content.py --status`. On Windows, the command starts with `py`, not `python3`. You see the number of entries in your list, never the names.
+14. Run `scripts/session_checkin.sh`. It installs the git hooks. You see the line `hooks:` with the hooks folder.
+15. Run `git add -A`.
+16. Run `git commit -m "First use"`. You see the commit summary.
 17. Run `git push -u origin main`. You see the pre-push check. Wait until you see `CHECK PASS` and the push ends. If you see `CHECK FAIL`, the lines above it name the failed check. Correct that fault before you push again. If you do not use a claude.ai Project, the task is complete.
-18. If you use a claude.ai Project, run `cat docs/host-prompts.md`. You see the text for the Project in the terminal. Go on.
-19. In the terminal, select the text with the mouse. You see the text selected. Go on.
-20. Copy the text with the copy key of your terminal. The text goes to the clipboard. You see no change. Go on.
-21. In claude.ai, in your Project, open the Project instructions. You see the box for the instructions. Go on.
-22. Paste the text into the box. You see the text in the box. Go on.
+18. If you use a claude.ai Project, run `cat docs/host-prompts.md`. You see the text for the Project in the terminal.
+19. In the terminal, select the text with the mouse. You see the text selected.
+20. Copy the text with the copy key of your terminal. The text goes to the clipboard. You see no change.
+21. In claude.ai, in your Project, open the Project instructions. You see the box for the instructions.
+22. Paste the text into the box. You see the text in the box.
 23. Click **Save**. You see the Project page with the new instructions. The task is complete.
 
 ## Keep personal data out
@@ -170,44 +170,44 @@ With the guard on in the full kit, every push fails until your name list exists,
 
 Your name list holds your names, your user name variants and your employer. It never goes into a repo. You add it in each place where you work: your computer, each Claude cloud environment, and the GitHub pull-request check.
 
-1. In your browser, open [github.com/settings/emails](https://github.com/settings/emails). You see the GitHub page **Emails**. Go on.
+1. In your browser, open [github.com/settings/emails](https://github.com/settings/emails). You see the GitHub page **Emails**.
 2. On the page **Emails**, do these actions:
    1. Select **Keep my email addresses private**.
    2. Select **Block command line pushes that expose my email**.
 
-   You see your noreply address on the page. It ends in `@users.noreply.github.com`. Keep the page open. Go on.
-3. In a terminal, run this command, with the noreply address from the page **Emails** in place of `ID+USER@users.noreply.github.com`. You see no output. Go on.
+   You see your noreply address on the page. It ends in `@users.noreply.github.com`. Keep the page open.
+3. In a terminal, run this command, with the noreply address from the page **Emails** in place of `ID+USER@users.noreply.github.com`.
    ```
    git config --global user.email "ID+USER@users.noreply.github.com"
    ```
-4. Run `git config --global user.name "YOUR_USER"`, with your GitHub user name in place of `YOUR_USER`. You see no output. Go on.
-5. If your computer has macOS or Linux, run `mkdir -p ~/.config/pii-guard && nano ~/.config/pii-guard/denylist.txt`. You see the editor **nano**. Go on.
-6. If your computer has Windows, in PowerShell, run `mkdir -Force $HOME\.config\pii-guard; notepad $HOME\.config\pii-guard\denylist.txt`. You see a question from **Notepad** about a new file. Go on.
-7. If **Notepad** asks to make a new file, click **Yes**. You see an empty **Notepad** window. Go on.
-8. In the editor, type the names of your list, one on each line. You see the names in the editor. Go on.
-9. If you use **nano**, press **Ctrl+X**, **Y** and **Enter**. This saves the file and closes **nano**. You see the prompt again. Go on.
-10. If you use **Notepad**, press **Ctrl+S**. This saves the file. You see no mark of unsaved changes in the title bar. Go on.
+4. Run `git config --global user.name "YOUR_USER"`, with your GitHub user name in place of `YOUR_USER`.
+5. If your computer has macOS or Linux, run `mkdir -p ~/.config/pii-guard && nano ~/.config/pii-guard/denylist.txt`. You see the editor **nano**.
+6. If your computer has Windows, in PowerShell, run `mkdir -Force $HOME\.config\pii-guard; notepad $HOME\.config\pii-guard\denylist.txt`. You see a question from **Notepad** about a new file.
+7. If **Notepad** asks to make a new file, click **Yes**. You see an empty **Notepad** window.
+8. In the editor, type the names of your list, one on each line. You see the names in the editor.
+9. If you use **nano**, press **Ctrl+X**, **Y** and **Enter**. This saves the file and closes **nano**. You see the prompt again.
+10. If you use **Notepad**, press **Ctrl+S**. This saves the file. You see no mark of unsaved changes in the title bar.
 11. If you use Claude Code on the web, in the session, do these actions:
     1. Open the environment menu at the top of the session.
     2. Click **Edit**.
     3. In the box **Environment variables**, type `PII_GUARD_DENYLIST=Name1,Name2`, with your names in place of `Name1,Name2`.
     4. Click **Save**.
 
-    You see the session again. A new session reads the list; this session does not. Go on.
-12. In your browser, open `https://github.com/` with your GitHub user name and the repository name after it, for example `https://github.com/YOUR_USER/NEW_NAME`. You see the tab **Code** of the repository. Go on.
-13. On the page of your repository, click **Settings**. You see the page **General**. Go on.
-14. In the menu on the left, click **Secrets and variables**, then **Actions**. You see the page **Actions secrets and variables**. Go on.
-15. Click **New repository secret**. You see the page **New secret**. Go on.
+    You see the session again. A new session reads the list; this session does not.
+12. In your browser, open `https://github.com/` with your GitHub user name and the repository name after it, for example `https://github.com/YOUR_USER/NEW_NAME`. You see the tab **Code** of the repository.
+13. On the page of your repository, click **Settings**. You see the page **General**.
+14. In the menu on the left, click **Secrets and variables**, then **Actions**. You see the page **Actions secrets and variables**.
+15. Click **New repository secret**. You see the page **New secret**.
 16. On the page **New secret**, do these actions:
     1. In the box **Name**, type `PII_GUARD_DENYLIST`.
     2. In the box **Secret**, type your names, with a comma between two names.
     3. Click **Add secret**.
 
-    You see `PII_GUARD_DENYLIST` in the list of secrets. Go on.
-17. On your computer, in a terminal, run `cd` with the path of the project folder. You see the project folder name in the prompt. Go on.
-18. Run `python3 scripts/check_content.py --status`. On Windows, the command starts with `py`, not `python3`. You see where the list comes from and the number of entries, never the names. Go on.
-19. Run `python3 scripts/check_content.py --all`. You see `CONTENT CHECK PASS`, or each finding with its value masked. If you see `CONTENT CHECK PASS`, the task is complete. Go on only for a finding.
-20. For each finding, open the file at the line that the finding names. Remove the personal data on that line. You see the line without it. If the value must stay, ask the project's Maintainer: only the Maintainer adds an allowed value to `.check`. Go on.
+    You see `PII_GUARD_DENYLIST` in the list of secrets.
+17. On your computer, in a terminal, run `cd` with the path of the project folder. You see the project folder name in the prompt.
+18. Run `python3 scripts/check_content.py --status`. On Windows, the command starts with `py`, not `python3`. You see where the list comes from and the number of entries, never the names.
+19. Run `python3 scripts/check_content.py --all`. You see `CONTENT CHECK PASS`, or each finding with its value masked. If you see `CONTENT CHECK PASS`, the task is complete.
+20. For each finding, open the file at the line that the finding names. Remove the personal data on that line. You see the line without it. If the value must stay, ask the project's Maintainer: only the Maintainer adds an allowed value to `.check`.
 21. Run `python3 scripts/check_content.py --all` again. You see `CONTENT CHECK PASS`. The task is complete.
 
 An optional second list holds your own blocked terms (words that are not personal data), as `CHECK_TERMS` in the same three places. The steps for agents, the fingerprint check and one master copy of the list: [docs/FIRST_USE.md](docs/FIRST_USE.md), step 4.
@@ -225,26 +225,26 @@ The sync command takes these options:
 | `--owner NAME` | AGENTS.md has no `- Owner:` line, or you change the role word. For kit 11.0.0, type `--owner "the Maintainer"`. The sync then writes that word in the `- Owner:` line and in the kit text. |
 | `--timezone ZONE` | AGENTS.md has no `- Time zone:` line (ZONE is an IANA name). |
 
-1. In an editor, open the file `AGENTS.md` of the project. You see its header lines at the top. Go on.
-2. In the header, look for the title line and the lines `- Repo:`, `- Purpose:`, `- Owner:` and `- Time zone:`. You see which lines are there. Write down the option from the table for each line that is not there. Also write down its value. For the title line, the option is `--name`. Go on.
-3. In a terminal, run `cd` with the path of the folder that holds the project folder, for example `cd ~/Documents`. You see its name in the prompt. Go on.
+1. In an editor, open the file `AGENTS.md` of the project. You see its header lines at the top.
+2. In the header, look for the title line and the lines `- Repo:`, `- Purpose:`, `- Owner:` and `- Time zone:`. You see which lines are there. Write down the option from the table for each line that is not there. Also write down its value. For the title line, the option is `--name`.
+3. In a terminal, run `cd` with the path of the folder that holds the project folder, for example `cd ~/Documents`. You see its name in the prompt.
 4. If there is no folder `archimedes_lever` there, run `git clone https://github.com/rhope-ops/archimedes_lever`. You see `Cloning into 'archimedes_lever'`. Wait until the prompt shows again.
-5. If the folder `archimedes_lever` is there, run `git -C archimedes_lever pull`. You see the kit's changes, or `Already up to date.` Go on.
-6. Run `cd` with the project folder name. You see the project folder name in the prompt. Go on.
-7. Run `git switch main`. You see `Switched to branch 'main'`, or `Already on 'main'`. Go on.
-8. Run `git pull`. You see the new commits, or `Already up to date.` Go on.
-9. Run `git switch -c kit-sync-$(cat ../archimedes_lever/KIT_VERSION)`. You see `Switched to a new branch 'kit-sync-` and the kit version. Go on.
-10. Run this command, with the options that you wrote down. You see the diff of each file that the sync changes. Nothing is written yet. Go on.
+5. If the folder `archimedes_lever` is there, run `git -C archimedes_lever pull`. You see the kit's changes, or `Already up to date.`
+6. Run `cd` with the project folder name. You see the project folder name in the prompt.
+7. Run `git switch main`. You see `Switched to branch 'main'`, or `Already on 'main'`.
+8. Run `git pull`. You see the new commits, or `Already up to date.`
+9. Run `git switch -c kit-sync-$(cat ../archimedes_lever/KIT_VERSION)`. You see `Switched to a new branch 'kit-sync-` and the kit version.
+10. Run this command, with the options that you wrote down. You see the diff of each file that the sync changes. Nothing is written yet.
     ```
     python3 ../archimedes_lever/scripts/sync_baseline.py --baseline ../archimedes_lever
     ```
 11. Read the diff. You see each change of the sync. If a change is not what you want, do not go on. No file is written yet, so the project stays as it is.
-12. Run the same command again, with `--apply` at the end. You see the line `Written, with the kit lock`, or `No changes: the project already matches the baseline.` After `No changes`, the task is complete. Go on.
-13. Run `git --no-pager diff`. You see the changes in the terminal. Go on.
-14. Run `git add -A`. You see no output. Go on.
-15. Run `git commit -m "Kit sync"`. You see the commit summary. Go on.
+12. Run the same command again, with `--apply` at the end. You see the line `Written, with the kit lock`, or `No changes: the project already matches the baseline.` After `No changes`, the task is complete.
+13. Run `git --no-pager diff`. You see the changes in the terminal.
+14. Run `git add -A`.
+15. Run `git commit -m "Kit sync"`. You see the commit summary.
 16. Run `git push -u origin HEAD`. You see the pre-push check. Wait until you see `CHECK PASS` and a link to make a pull request.
-17. Open the link from the push. You see the GitHub page **Open a pull request**. Go on.
+17. Open the link from the push. You see the GitHub page **Open a pull request**.
 18. Click **Create pull request**. You see the page of your new pull request. The task is complete.
 
 An old AGENTS.md that doesn't follow the kit's layout is moved under "Project rules" with a review note. Delete whatever the kit now covers.

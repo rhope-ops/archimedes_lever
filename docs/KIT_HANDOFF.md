@@ -16,7 +16,7 @@ Plan and decisions 1-10: [reviews/2026-11-23-tool-retirement-plan.md](reviews/20
 
 ## Open
 
-- Approved plan (the Maintainer, 2026-11-25): instructions at "80%", no "Go on." ([plan](reviews/2026-11-25-instructions-80-plan.md)); phase 1 in work.
+- [Plan 2026-11-25](reviews/2026-11-25-instructions-80-plan.md): instructions at 80%.
 
 - Follow-ups 2: 11 of 13 done ([plan](reviews/2026-11-25-followups-2-plan.md), [state](reviews/2026-11-23-fleet-v2-coordinator-state.md)); 90-161.Z PR 239 held for the Maintainer (state, last section).
 - Fleet audit (report, "Open questions"): A10, A11, A15 in PR 160; the other audit-the-audit items (A1-A9, A12-A14) open. Cut proposals 5, 8, 9 and each project's AUDIT DUE wait for that project's own audit (the Maintainer, 2026-11-24). Skill-use audit due 2026-12-08.
