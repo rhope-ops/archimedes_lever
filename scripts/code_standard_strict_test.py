@@ -186,6 +186,11 @@ def check_lines(cs, root, g):
         start = time.monotonic()   # no backtracking blow-up; about 0.3 s, 10 s leaves room for a busy machine
         gate.ruff_ok('x = 1  ' + '# type: a ' * 1000 + '# end', 200)
         assert time.monotonic() - start < 10, 'ruff_ok is slow on a run of pragma comments (the old regex took over 120 s)'
+        a = 'a' * 45   # whole files, as ruff 0.17.6 sees them at a cap of 40 (2026-11-25): True = over the cap
+        for text, want in (('x = "# noqa %s"' % a, True), ("x = '''\n%s # noqa\n'''" % a, True), ('x = "%s"' % ('\u65e5' * 22), True),
+                           ('if x:\n\ty = "%s"' % ('a' * 33), True), ('x = "%s"' % ('e\u0301' * 20), False),
+                           ('x = 1  # type: int  # %s' % a, False), ('x = "%s"  # noqa' % a, False)):
+            assert (gate.longest_line(text.split('\n'), [], 40) > 40) == want, 'longest_line(%r...) over the cap: %s' % (text[:20], want)
     finally:
         rules.LINTERS = linters
     off = dict(config, caps={k: v for k, v in caps.items() if k != 'max_line_chars'})
