@@ -36,8 +36,8 @@ DENY = [
     "Bash(git *hookspath*)", "Bash(git *HOOKSPATH*)", "Bash(git * stash*)", "Bash(git * restore *)",
     "Bash(git * branch -D*)", "Bash(git * checkout -- *)", "Bash(git checkout .*)", "Bash(git * checkout .*)",
     "Bash(git checkout -f*)", "Bash(git switch -f*)", "Bash(git *--discard-changes*)",
-    "Bash(git *branch --delete --force*)", "Bash(git tag*)", "Bash(git * tag *)", "Bash(git *update-ref refs/tags/*)",
-    "Bash(git push*-tags*)", "Bash(git * push*-tags*)", "Bash(git push*refs/tags/*)", "Bash(git * push*refs/tags/*)",
+    "Bash(git *branch --delete --force*)", "Bash(git tag*)", "Bash(git *push*--follow-t*)", "Bash(git *push*--mirror*)",
+    "Bash(git -* tag *)", "Bash(git *update-ref*refs/tags/*)", "Bash(git *push*--tags*)", "Bash(git *push*refs/tags/*)",
     "Read(./.env)", "Read(./.env.*)", "Read(./**/*.pem)", "Read(./**/*.key)", "Read(./**/id_rsa*)",
     "Read(./**/id_ed25519*)",
 ]
