@@ -2,11 +2,11 @@
 
 The kit's own handoff (AGENTS.md "Handoff"). Kit only: first use deletes it in a project, which uses docs/NEXT_PROMPT.md. Keep it at 40 lines or fewer and inside the session-load cap (`.check` counts it); evidence and older items go in docs/reviews/. Times are America/Chicago.
 
-Updated: 2026-11-24 19:30 by "Kit · Fleet coordinator 3 · 2026-11-24": approved plan for kit follow-ups 1-8: [reviews/2026-11-24-kit-followups-plan.md](reviews/2026-11-24-kit-followups-plan.md). Older items: [reviews/2026-11-24-kit-handoff-archive.md](reviews/2026-11-24-kit-handoff-archive.md); fleet audit report: [reviews/2026-11-24-fleet-audit.md](reviews/2026-11-24-fleet-audit.md).
+Updated: 2026-11-24 21:18 by "Kit · Fleet coordinator 3 · 2026-11-24": follow-ups done, 11.1.0 in 4 projects, P4-P6 running: [state](reviews/2026-11-23-fleet-v2-coordinator-state.md) last section. Older items: [reviews/2026-11-24-kit-handoff-archive.md](reviews/2026-11-24-kit-handoff-archive.md); fleet audit report: [reviews/2026-11-24-fleet-audit.md](reviews/2026-11-24-fleet-audit.md).
 
 ## State
 
-- Kit 11.1.0 (tag v11.1.0; v11.0.1 9e3f6fa): P1-P3, the fleet audit, follow-ups 1-8 (plan in docs/reviews). All 5 fleet repos lock 11.0.1 (LOCK PASS, 2026-11-24). Script lines (T2) 20,023.
+- Kit 11.1.0 (tag v11.1.0; v11.0.1 9e3f6fa): P1-P3, the fleet audit, follow-ups 1-8 (plan in docs/reviews). 4 fleet repos lock 11.1.0 (2026-11-24). Script lines (T2) 20,023.
 
 ## Approved plan (the Maintainer, 2026-11-23 17:12): custom tool retirement
 
