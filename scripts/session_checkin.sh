@@ -60,6 +60,16 @@ title_lines() {
   echo "SESSIONS:    where the session tools exist, list the sessions tagged $tag that wait on the Maintainer"
 }
 
+# kit_line: in package mode a fresh clone lacks the kit scripts that .check.lock lists (scripts/check.sh --kit-install
+# writes them); without them the check-in lines below skip with no word. Prints one KIT line with the count, or nothing.
+kit_line() {
+  [ -f .check.lock ] || return 0
+  python3 -c 'import json, os, sys
+f = [p for p in json.load(open(".check.lock")).get("files", {}) if p.startswith("scripts/") and not os.path.exists(p)]
+f and print("KIT:         %d kit scripts that .check.lock lists are missing (a fresh clone in package mode): run "
+            "scripts/check.sh --kit-install, then this check-in again" % len(f))' 2>/dev/null || echo "KIT:         .check.lock cannot be read"
+}
+
 if [ "${1:-}" = "--test" ]; then
   export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1  # the host's git config must not change the cases
   unset GIT_CONFIG_PARAMETERS GIT_CONFIG_COUNT GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR
@@ -101,6 +111,13 @@ if [ "${1:-}" = "--test" ]; then
   eq "TITLE: CRLF and end spaces trimmed" "$(title_lines "$t/a4.md" | grep -c '(tag project:rade);')" "1"
   printf '# {{PROJECT_NAME}}: agent instructions\n\n- Time zone: {{TIMEZONE}}\n- Short name: {{SHORT_NAME}}\n' > "$t/a3.md"
   eq "TITLE: the kit clone is Kit" "$(title_lines "$t/a3.md" | tail -n 1 | grep -o 'project:kit')" "project:kit"
+  # The KIT line: a lock-listed kit script missing on disk is named; all present, or no lock: no line
+  mkdir -p "$t/k/scripts"; printf '{"commit": "x", "files": {"scripts/a.py": "1", "scripts/b.py": "2", "AGENTS.md": "3"}}' > "$t/k/.check.lock"
+  touch "$t/k/scripts/a.py"
+  eq "KIT: a missing kit script is counted" "$(cd "$t/k" && kit_line | grep -c '^KIT:         1 kit scripts that .check.lock lists are missing')" "1"
+  touch "$t/k/scripts/b.py"
+  eq "KIT: all kit scripts present: no line" "$(cd "$t/k" && kit_line)" ""
+  rm "$t/k/.check.lock"; eq "KIT: no lock: no line" "$(cd "$t/k" && kit_line)" ""
   [ "$fails" = 0 ] && echo "CHECKIN TEST PASS" || { echo "CHECKIN TEST FAIL"; exit 1; }
   exit 0
 fi
@@ -135,6 +152,7 @@ echo "uncommitted: $uncommitted"
 [ "$uncommitted" -gt 0 ] && git status --short
 [ -f AGENTS.md ] && title_lines AGENTS.md
 
+kit_line
 [ -f scripts/bloat_check.py ] && python3 scripts/bloat_check.py --brief
 # The last check run in this clone: lane, wall time and the 3 slowest checks (scripts/check.sh writes it).
 last="$(git rev-parse --git-dir)/check-last"
