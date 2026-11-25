@@ -16,7 +16,7 @@
 #      code standard (scripts/code_standard.py, when .check.state.json holds its baseline; settings: the `code-` lines of .check),
 #   1b. the Python parse, line length and file size: ruff and pylint (ruff.toml, .pylintrc; a SKIP line when a linter is missing),
 #   1c. shellcheck on the shell files the code standard covers: findings are WARN lines and never fail (a SKIP line when it is missing),
-#   1d. bandit on scripts/ and gitleaks on the working tree (full lane; the scans of .github/workflows/security.yml;
+#   1d. bandit on scripts/ and gitleaks on the tracked files (full lane; the scans of .github/workflows/security.yml;
 #       a SKIP line when one is missing),
 #   1e. the kit package (scripts/kit_package.py --verify), when .check.lock lists a script that git does not track
 #       (scripts/check.sh --kit-install installs it at the lock commit),
@@ -501,10 +501,16 @@ fi
 # bandit (medium severity and higher) on scripts/ and gitleaks on the working tree, full lane only: the scans of
 # .github/workflows/security.yml, which skips pull requests in a private repo. Never a silent pass: a missing tool is a
 # SKIP line that names the install.
+# gitleaks reads a copy of the tracked files (uncommitted edits included): the files of the CI checkout, as gitleaks
+# does not skip ignored files (a self-test's __pycache__ is a false finding; the Maintainer, 2026-11-25).
+gitleaks_tracked() {
+  mkdir "$tmp/gitleaks" && git ls-files -z | tar --null --ignore-failed-read -T - -cf - 2>/dev/null | tar -xf - -C "$tmp/gitleaks" &&
+    gitleaks detect --no-git --source "$tmp/gitleaks" --redact
+}
 if [ "$lane" = full ] && [ -d scripts ]; then
   if command -v bandit >/dev/null; then run "bandit" bandit -q -r scripts/ -ll
   else skip "bandit" "bandit is missing: pip install bandit==1.9.4"; fi
-  if command -v gitleaks >/dev/null; then run "gitleaks" gitleaks detect --no-git --source . --redact
+  if command -v gitleaks >/dev/null; then run "gitleaks" gitleaks_tracked
   else skip "gitleaks" "gitleaks is missing: go install github.com/zricethezav/gitleaks/v8@v8.30.1"; fi
 fi
 
