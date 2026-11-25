@@ -6,7 +6,7 @@ Updated: 2026-11-24 23:25 by "Kit · Fleet coordinator 3 · 2026-11-24": P4 done
 
 ## State
 
-- Kit 11.1.0 (tag v11.1.0; v11.0.1 9e3f6fa): P1-P3, the fleet audit, follow-ups 1-8 (plan in docs/reviews). 4 fleet repos lock 11.1.0 (2026-11-24). Script lines (T2) 20,023.
+- Kit 11.1.0 = a6295509 (tag v11.1.0 not made: the git proxy refuses tag pushes; the Maintainer's step). P1-P3, the fleet audit, follow-ups 1-8. 10 fleet repos on 11.1.0 (2026-11-24). Script lines (T2) 20,132.
 
 ## Approved plan (the Maintainer, 2026-11-23 17:12): custom tool retirement
 
