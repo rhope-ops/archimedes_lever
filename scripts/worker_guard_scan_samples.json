@@ -45,6 +45,14 @@
   "l.py": [
    "subprocess.run([\"git\", \"status\"])\n",
    null
+  ],
+  "ps_array.py": [
+   "text += '$' + var + ' = @(\\n' + ',\\n'.join(rows) + \"\\n) -join ''\\n\"\n",
+   null
+  ],
+  "ps_and_at.py": [
+   "x = ' = @(' + ''.join(['us', '@', 'er'])\n",
+   "rebuilt"
   ]
  },
  "range": "x = 1\n++ 1\ny = \"\u00ff\"\nz = \"a\" + chr(64)\n"

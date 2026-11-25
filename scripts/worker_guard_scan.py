@@ -7,7 +7,7 @@ Usage:
 
 Finds two kinds, one line per finding, and exits 1 when there is any (0 when there is none):
   rebuilt   a line of code (a script or source file; prose is not code) that builds a string at run time from pieces (chr(N), a byte or unicode escape, a join of literals,
-            a base64, hex or rot13 decode) whose value holds the at sign or a word the content check blocks.
+            a base64, hex or rot13 decode) whose value holds the at sign (not one that starts a PowerShell @( or @{) or a word the content check blocks.
   wrapped   a line of a shell script (a .sh or .bash file, or a file that starts with #!) that holds a git command
             the worker guard blocks: a command put in a file runs where the guard cannot see it.
 For a folder every line of every text file is read; for a git range only the added lines. The output names the file,
@@ -34,6 +34,7 @@ import worker_guard as guard   # scripts/worker_guard.py: the block rules (reaso
 BUILDERS = re.compile(r"chr\(\s*(?:0x[0-9A-Fa-f]+|\d+)\s*\)|\\x[0-9A-Fa-f]{2}|\\u[0-9A-Fa-f]{4}|\\[0-7]{3}|&#\d+;|"
                       r"b64decode|fromhex|unhexlify|rot_?13|\.join\(")
 LITERAL = re.compile(r"(['\"])((?:\\.|(?!\1).)*)\1")
+AT_SIGN = re.compile(r"@(?![({])")   # each at sign counts, except one that starts a PowerShell @( or @{
 SHELL_SUFFIXES = ('.sh', '.bash')
 CODE_SUFFIXES = SHELL_SUFFIXES + ('.py', '.js', '.mjs', '.cjs', '.ps1', '.psm1')
 
@@ -79,7 +80,8 @@ def rebuilt(line, deny, terms):
     """
     if not BUILDERS.search(line):
         return False
-    return any('@' in v or scan.scan_text(v, 'built', deny, [], terms=terms) for v in values(line))
+    # An at sign right before ( or { is PowerShell array or hash syntax (code that writes PowerShell), not an address.
+    return any(AT_SIGN.search(v) or scan.scan_text(v, 'built', deny, [], terms=terms) for v in values(line))
 
 
 def wrapped(path, line):
