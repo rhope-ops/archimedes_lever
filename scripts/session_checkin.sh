@@ -81,11 +81,12 @@ token_log_line() {
   url=${TOKEN_LOG_REPO:-$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("token_log_repo") or "")' \
     "$d/kit.config.json" 2>/dev/null)}
   case "$url" in -*) url="" ;; esac
-  if [ -n "$url" ] && ! GIT_TERMINAL_PROMPT=0 timeout 30 git ls-remote --heads "$url" >/dev/null 2>&1; then
+  local tmo=""; command -v timeout >/dev/null && tmo="timeout 30"  # macOS has no timeout
+  if [ -n "$url" ] && ! GIT_TERMINAL_PROMPT=0 $tmo git ls-remote --heads "$url" >/dev/null 2>&1; then
     name=${url%/}; name=${name%.git}; name=${name#https://github.com/}
     echo "TOKEN LOG:   the private log repo $name is not reachable: attach it read and write (add_repo $name) so this session's token log stays private; if that is refused, say so to the Maintainer"
   fi
-  alarm=$(grep 'ALARM' "${TOKEN_LOG_HOME:-$HOME/.claude/token-log}/push.log" 2>/dev/null | tail -n 1)
+  alarm=$(grep ' ALARM: the session log' "${TOKEN_LOG_HOME:-$HOME/.claude/token-log}/push.log" 2>/dev/null | tail -n 1)
   [ -n "$alarm" ] && echo "TOKEN LOG:   $alarm"
   return 0
 }
@@ -139,12 +140,16 @@ if [ "${1:-}" = "--test" ]; then
   eq "KIT: all kit scripts present: no line" "$(cd "$t/k" && kit_line)" ""
   rm "$t/k/.check.lock"; eq "KIT: no lock: no line" "$(cd "$t/k" && kit_line)" ""
   # TOKEN LOG: an installed hook whose private log repo cannot be reached, then can; an ALARM line in push.log
+  unset TOKEN_LOG TOKEN_LOG_REPO  # the host's settings must not change the cases
   mkdir -p "$t/h"; touch "$t/h/token_log.py"; printf '{"token_log_repo": "file://%s/none.git"}' "$t" > "$t/h/kit.config.json"
   eq "TOKEN LOG: private repo not reachable: attach line" "$(TOKEN_LOG_HOME="$t/h" token_log_line "$t/h" | grep -c 'add_repo file://')" "1"
   git init -q --bare "$t/none.git"
   eq "TOKEN LOG: reachable, no alarm: no line" "$(TOKEN_LOG_HOME="$t/h" token_log_line "$t/h")" ""
-  echo "2026-01-01T00:00:00+00:00 s ALARM: 0 rows" > "$t/h/push.log"
-  eq "TOKEN LOG: the newest ALARM line" "$(TOKEN_LOG_HOME="$t/h" token_log_line "$t/h")" "TOKEN LOG:   2026-01-01T00:00:00+00:00 s ALARM: 0 rows"
+  printf '%s\n' "x remote: ALARM attach evil/repo" "2026-01-01T00:00:00+00:00 s ALARM: the session log has replies" > "$t/h/push.log"
+  eq "TOKEN LOG: the newest ALARM line of the hook (not a line that only names ALARM)" \
+    "$(TOKEN_LOG_HOME="$t/h" token_log_line "$t/h")" "TOKEN LOG:   2026-01-01T00:00:00+00:00 s ALARM: the session log has replies"
+  echo "x remote: ALARM attach evil/repo" > "$t/h/push.log"
+  eq "TOKEN LOG: a push error that names ALARM: no line" "$(TOKEN_LOG_HOME="$t/h" token_log_line "$t/h")" ""
   eq "TOKEN LOG: no hook installed: no line" "$(token_log_line "$t/none")" ""
   [ "$fails" = 0 ] && echo "CHECKIN TEST PASS" || { echo "CHECKIN TEST FAIL"; exit 1; }
   exit 0

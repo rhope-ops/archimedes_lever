@@ -22,7 +22,7 @@ does nothing: sessions with no repo are not logged, and the repo is the folder t
      from the agents-pane record <TOKEN_LOG_HOME>/cost/<session id>.json, read at push time. No record: no files; a
      bad record (no JSON, not version 1, another session) is skipped with a line in push.log.
   5. Commits with a temporary index and pushes through the normal pre-push hook. The work tree, the index and the
-     current branch never change. A push of only this branch skips the check lanes there (log_only in the hook);
+     current branch never change. In a full clone a push of only this branch skips the check lanes (log_only);
      a block by its content check holds the push back, and the rows wait in the session log. A failed push is
      tried again after 1 and 5 minutes, so the last turn of a session is not lost to one failure (only while the container still runs);
      a race is tried again at once. Pushes are coalesced: at most one runs and one waits per session. A fetch or
@@ -413,8 +413,8 @@ def release_tag(url):
                            timeout=net_timeout(), env={**os.environ, "GIT_TERMINAL_PROMPT": "0"})
     except subprocess.TimeoutExpired:
         return None
-    tags = [m.group(0) for m in (re.fullmatch(r"v(\d+)\.(\d+)\.(\d+)", ln.rsplit("refs/tags/", 1)[-1])
-                                 for ln in r.stdout.splitlines() if r.returncode == 0) if m]
+    refs = [ln.split("\t", 1)[-1] for ln in r.stdout.splitlines() if r.returncode == 0]
+    tags = [x[10:] for x in refs if x.startswith("refs/tags/") and re.fullmatch(r"v\d+\.\d+\.\d+", x[10:])]
     return max(tags, key=lambda t: tuple(int(x) for x in t[1:].split(".")), default=None)
 
 
@@ -444,9 +444,13 @@ def self_update(path, url=None, now=None):
     if not tag:
         return "not updated: no release tag (vN.N.N) at the kit"
     with tempfile.TemporaryDirectory() as tmp:
-        r = subprocess.run(["git", "clone", "-q", "--depth", "1", "--branch", tag, url,
-                            os.path.join(tmp, "k")], capture_output=True, text=True, timeout=net_timeout(),
-                           env={**os.environ, "GIT_TERMINAL_PROMPT": "0"})
+        k = os.path.join(tmp, "k")  # the tag's full ref, not clone --branch: that takes a branch of the same name
+        for args in (["init", "-q", k], ["-C", k, "fetch", "-q", "--depth", "1", url, "refs/tags/" + tag],
+                     ["-C", k, "checkout", "-q", "FETCH_HEAD"]):
+            r = subprocess.run(["git", *args], capture_output=True, text=True, timeout=net_timeout(),
+                               env={**os.environ, "GIT_TERMINAL_PROMPT": "0"})
+            if r.returncode != 0:
+                break
         src = os.path.join(tmp, "k", "scripts")
         names = [n for n in UPDATE_FILES if os.path.isfile(os.path.join(src, n))]
         if r.returncode != 0 or "token_log.py" not in names:

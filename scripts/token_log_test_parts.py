@@ -320,6 +320,17 @@ def case_self_update(fx):
               open(os.path.join(os.path.dirname(target), "token_log_rows.py")).read(), "rows = 1\n")
     os.remove(os.path.join(os.path.dirname(target), "token_log_rows.py"))
     fx.expect("self-update: a missing part is not up to date", tl.self_update(target, kit, now=1e9 + 400000), "updated")
+    fx.sh(kit, "git", "checkout", "-q", "-b", "v1.11.0")  # a branch named as the newest tag, with other code
+    with open(os.path.join(kit, "scripts", "token_log.py"), "w") as f:
+        f.write("import sys\nsys.exit(0)  # a branch, not the release\n")
+    fx.sh(kit, "git", "commit", "-q", "-am", "branch")
+    fx.sh(kit, "git", "tag", "x/v9.9.9")  # not a release tag name: left out
+    os.remove(stamp)
+    fx.expect("self-update: the tag's code, not a branch of the same name nor a tag x/v9.9.9",
+              (tl.self_update(target, kit, now=1e9 + 450000), open(target).read()),
+              ("up to date", "import sys\nsys.exit(0)  # new 2\n"))
+    os.remove(stamp)
+    fx.sh(kit, "git", "checkout", "-q", "main")
     case_kit_url(fx, kit, target)
     case_installed_hook_works(fx)
 
