@@ -49,7 +49,8 @@ Note on `dod-security`: the key is new in the plan `docs/reviews/2026-11-23-flee
 reader is `scripts/build_site_html.py:32` (`dod_security`). Two tools use it: a page the kit builds gets a
 Content-Security-Policy and a no-referrer meta tag, and `scripts/sync_baseline.py` adds the DoD group
 (`DOD_FILES`: `SECURITY.md`, `.github/dependabot.yml`, `.github/workflows/security.yml`) when the project has no
-copy. The group is never replaced and never in the kit lock. ICF-Source keeps the key off.
+copy. A copy that is byte-identical to an earlier kit version is replaced; a copy the project changed is kept, and the
+sync prints a line that names it. The group is never in the kit lock. ICF-Source keeps the key off.
 
 ## Keys of the code standard
 
