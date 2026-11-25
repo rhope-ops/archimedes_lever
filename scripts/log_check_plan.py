@@ -23,11 +23,10 @@ GROUP_HEADING = re.compile(r"^#{2,3}\s+([A-Z][0-9]?)\.")
 GROUP_CELL = re.compile(r"^\W*([A-Z][0-9]?)\.")
 # The two forms of the Decisions table: Date | Decision | By, or Date | Scope | Decision with "By: ..." in the Decision cell.
 DECISIONS_HEAD = re.compile(r"^\s*\|\s*date\s*\|\s*(?:decision\s*\|\s*by|scope\s*\|\s*decision)\s*\|", re.I)   # sync_baseline.py: the same
-# A Date | Scope | Decision table has no By cell: its Decision cell starts with "By: <who>"; when <who> is a role word,
-# the quoted approval follows at once: By: the Maintainer: "I approve". Anchored at the cell start, so no later text counts.
-BY_WHO = re.compile(r'\s*\**by\b[\s:*]*([^:,(;."“|]*)', re.I)   # one class between "By" and <who>: linear
-APPROVED_WHO = re.compile(r'(?:the\s+)?(?:maintainer|owner|administrator)\**\s*:\s*(?:"\s*[^"\s][^"\n]*"|“\s*[^”\s][^”\n]*”)',
-                          re.I)   # at <who>: the role, ":" and the quoted approval; one way to match each quote
+# A Date | Scope | Decision table has no By cell: a Decision cell that holds a role word anywhere must start with the
+# role and its quoted approval: By: the Maintainer: "I approve". Anchored at the cell start; one way to match: linear.
+APPROVED_START = re.compile(r'\s*\**by\b[\s:*]*(?:the\s+)?(?:maintainer|owner|administrator)\**\s*:\s*'
+                            r'(?:"\s*[^"\s][^"\n]*"|“\s*[^”\s][^”\n]*”)', re.I)
 NO_QUOTE = ('the By cell names the Maintainer but quotes no approval: a new decision row needs the approval of its exact '
             'text in quotes, for example "I approve the plan"')
 APPROVER = re.compile(r"maintainer|owner|administrator", re.I)   # the role words a By cell can name (the sync swaps them per project)
@@ -54,13 +53,12 @@ def decisions_table(text):
 
 
 def scope_missing(cell):
-    """The finding of one Decision cell of a Date | Scope | Decision table, or None: the cell starts with "By: <who>",
-    and when <who> names a role word the quoted approval follows at once (BY_WHO, APPROVED_WHO)."""
-    m = BY_WHO.match(cell)
-    if not m or not re.search(r"[^\W\d_]", re.sub(r"(?i)^\W*the\b", "", m.group(1))):   # <who> needs a word besides "the"
-        return 'the Decision cell must start with By: <who>, for example By: the Maintainer: "I approve the plan"'
-    if APPROVER.search(m.group(1)) and not APPROVED_WHO.match(cell, m.start(1)):
-        return 'By names the Maintainer but quotes no approval right after it: write By: the Maintainer: "..."'
+    """The finding of one Decision cell of a Date | Scope | Decision table, or None: a cell that holds a role word anywhere
+    must start with By: <role>: "<the quoted approval>" (APPROVED_START), as a By cell with a role word needs its quote."""
+    if APPROVER.search(cell) and not APPROVED_START.match(cell):
+        return ('the Decision cell names the Maintainer but has no approval at its start: it must start with the quoted '
+                'approval of its exact text: '
+                'By: the Maintainer: "I approve the plan" (the Maintainer\'s own message, date time)')
     return None
 
 
@@ -243,20 +241,19 @@ def self_test_t6_t7():
         ("T6 a Date | Scope | Decision table: a quote that holds a full stop is read whole",
          SCOPE_TABLE.replace('"I approve the sync"', '"Yes. Go ahead."'), None),
         ("T6 a Date | Scope | Decision table: a quote with no closing mark is still checked",
-         SCOPE_TABLE.replace('"I approve the sync" (own message). Sync', '"Yes. Sync'), "quotes no approval"),
+         SCOPE_TABLE.replace('"I approve the sync" (own message). Sync', '"Yes. Sync'), "no approval at its start"),
         ("T6 a Date | Scope | Decision table: mixed quote marks are no approval quote",
-         SCOPE_TABLE.replace('"I approve the sync"', '“Yes. Go ahead."'), "quotes no approval"),
-        ("T6 a Date | Scope | Decision table: an approver that is no role needs no quote",
-         SCOPE_TABLE.replace('By: the Maintainer: "I approve the sync" (own message).', "By: Agent. The Maintainer decides later."), None),
-        ("T6 a Date | Scope | Decision table: a lower-case by: is read",
-         SCOPE_TABLE.replace('By: the Maintainer: "I approve the sync" (own message).', "by: the Maintainer."), "no approval"),
+         SCOPE_TABLE.replace('"I approve the sync"', '“Yes. Go ahead."'), "no approval at its start"),
+        ("T6 Scope table: markup around the role fails", SCOPE_TABLE.replace("By: the Maintainer:", "By: _the_ (Maintainer)"), "no approval at its start"),
+        ("T6 Scope table: a row with no role word needs no quote", SCOPE_TABLE.replace(
+            'By: the Maintainer: "I approve the sync" (own message).', "By: Agent. A recommendation."), None),
+        ("T6 Scope table: a role word anywhere needs the approval at the start", SCOPE_TABLE.replace(
+            'By: the Maintainer: "I approve the sync" (own message).', "By: Agent. Until the Maintainer approves."), "no approval at its start"),
         ("T6 a Date | Scope | Decision table: a later quote is no approval", SCOPE_TABLE.replace(
-            'By: the Maintainer: "I approve the sync" (own message).', 'By: the Maintainer. Replaces "the plan" with "x".'), "no approval"),
-        ("T6 Scope table: a <who> of only \"the\" fails", SCOPE_TABLE.replace("By: the Maintainer:", "By: the (Maintainer)"), "must start"),
-        ("T6 Scope table: an empty <who> fails", SCOPE_TABLE.replace("By: the Maintainer:", "By: (the Maintainer)"), "must start"),
+            'By: the Maintainer: "I approve the sync" (own message).', 'By: the Maintainer. Replaces "the plan" with "x".'), "no approval at its start"),
         ("T6 a Date | Scope | Decision table: a cell that does not start with By: fails",
          SCOPE_TABLE.replace('By: the Maintainer: "I approve the sync" (own message).', 'Sync. By: the Maintainer: "Yes".'),
-         "must start with By:"),
+         "no approval at its start"),
         ("T6 a Date | Scope | Decision | By table reads its By cell", SCOPE_TABLE.replace("| Replaces |", "| By |").replace(
             '| By: the Maintainer: "I approve the sync" (own message). Sync to 11.1.0. | - |', "| Sync. | the Maintainer |"),
          "quotes no approval"),
