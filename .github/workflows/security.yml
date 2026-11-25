@@ -1,4 +1,5 @@
 name: security
+# A private repo skips the pull-request run, as check.yml does (Actions minutes; the local full lane is its gate); a manual run still works.
 # Static security scans: bandit on scripts/ (in package mode after --kit-install writes the kit scripts) and gitleaks on the working tree. Pull requests and manual runs only, never on push (Actions minutes).
 on:
   pull_request:
@@ -8,6 +9,7 @@ permissions:
 jobs:
   bandit:
     name: bandit
+    if: github.event_name != 'pull_request' || github.event.repository.private == false
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -25,6 +27,7 @@ jobs:
         run: bandit -r scripts/ -ll
   gitleaks:
     name: gitleaks
+    if: github.event_name != 'pull_request' || github.event.repository.private == false
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
