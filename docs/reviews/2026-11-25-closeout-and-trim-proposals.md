@@ -293,7 +293,7 @@ Old:
 ```text
 ## Approved plan (the Maintainer, 2026-11-23 17:12): custom tool retirement
 
-Plan and decisions 1-10: [reviews/2026-11-23-tool-retirement-plan.md](reviews/2026-11-23-tool-retirement-plan.md); P2 record: [reviews/2026-11-23-tool-retirement-handoff.md](reviews/archive-index.md#2026-11-23-tool-retirement-handoff-md).
+Plan and decisions 1-10: [reviews/2026-11-23-tool-retirement-plan.md](reviews/2026-11-23-tool-retirement-plan.md); P2 record: [reviews/2026-11-23-tool-retirement-handoff.md](reviews/2026-11-23-tool-retirement-handoff.md).
 
 - [x] Research and plan. [x] P1 (PR 137). [x] P2. [x] Fleet audit (PRs 158, 159). [x] P3: kit package (kit PRs 164, 168, 169); 33-332.Z pilot in package mode (its PRs 99, 102, 103, 104; 27 of 53 kit scripts from the package). Follow-ups: --kit-install after a branch switch (S7 text), check-in KIT line when the package is missing, MAINTAINER_GUIDE step, bandit in security.yml, 4 MINOR of PR 168. [~] P4: done, except 90-161.Z PR 235 (open for your look) and the SBOM steps (ask rule `*--output*`); RADE CodeQL not started. [x] P5. [~] P6: exports, [branch list](reviews/2026-11-24-p6-branch-list.md); deletes need the Maintainer's OK.
 ```
