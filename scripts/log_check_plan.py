@@ -24,8 +24,6 @@ GROUP_CELL = re.compile(r"^\W*([A-Z][0-9]?)\.")
 # The two forms of the Decisions table: Date | Decision | By, or Date | Scope | Decision with "By: ..." in the Decision cell.
 DECISIONS_HEAD = re.compile(r"^\s*\|\s*date\s*\|\s*(?:decision\s*\|\s*by|scope\s*\|\s*decision)\s*\|", re.I)   # sync_baseline.py: the same
 APPROVER = re.compile(r"maintainer|owner|administrator", re.I)   # the role words a By cell can name (the sync swaps them per project)
-# Date | Scope | Decision: the "By: ..." part of the Decision cell, to the first ". " outside a quote.
-BY_PART = re.compile(r'\bBy:\s*((?:"[^"\n]*"|“[^”\n]*”|[^"“])*?)(?:\.\s|$)')
 
 
 def decisions_table(text):
@@ -48,6 +46,29 @@ def decisions_table(text):
     return no + i - 1, head, [(n + i - 1, c) for n, c in rows]
 
 
+def by_part(cell):
+    """The "By: ..." part of a Decision cell (a Date | Scope | Decision table): from "By:" to the first ". " outside a
+    quote, else to the cell end, so a quote with no closing mark runs to the end and is still checked. One pass over the
+    cell (no regex backtracking).
+
+    Args:
+        cell: the text of the Decision cell.
+
+    Returns:
+        The "By: ..." text, or '' when the cell has no "By:".
+    """
+    m = re.search(r"\bBy:", cell)
+    if not m:
+        return ""
+    quoted = False
+    for j in range(m.end(), len(cell)):
+        if cell[j] in '"“”':
+            quoted = not quoted if cell[j] == '"' else cell[j] == "“"
+        elif not quoted and cell[j] == "." and cell[j + 1:j + 2].isspace():
+            return cell[m.start():j]
+    return cell[m.start():]
+
+
 def check_decisions(path):
     """Check that each new DECISIONS row naming the Maintainer quotes the approval of its exact text (T6).
 
@@ -68,7 +89,7 @@ def check_decisions(path):
     if cols not in (["date", "decision", "by"], ["date", "scope", "decision"]):
         return 0, [f"{p}: Decisions columns must start with Date | Decision | By or Date | Scope | Decision"]
     dec = cols.index("decision")   # the cell the marker names; with no By column, the "By: ..." part of it is the By cell
-    by = (lambda c: c[2]) if "by" in cols else (lambda c: (BY_PART.search(c[2]) or [""])[0])
+    by = (lambda c: c[2]) if "by" in cols else (lambda c: by_part(c[2]))
     marker = EXEMPT_MARK.search(text)
     exempt_from = marker.group(1) if marker else None
     if exempt_from and not any(c[dec].startswith(exempt_from) for _, c in rows if len(c) > dec):
@@ -223,6 +244,10 @@ def self_test_t6_t7():
          "matches no Decisions row"),
         ("T6 a Date | Scope | Decision table: a quote that holds a full stop is read whole",
          scope.replace('"I approve the sync"', '"Yes. Go ahead."'), None),
+        ("T6 a Date | Scope | Decision table: a quote with no closing mark is still checked",
+         scope.replace('"I approve the sync" (own message). Sync', '"Yes. Sync'), "quotes no approval"),
+        ("T6 a Date | Scope | Decision table: mixed quote marks are no approval quote",
+         scope.replace('"I approve the sync"', '“Yes. Go ahead."'), "quotes no approval"),
         ("T6 a By cell with the old role word Administrator needs a quote",
          DECISIONS_TABLE.replace(row, "| 2026-11-24 | New row | the Administrator | - |"), "quotes no approval"),
     ]
