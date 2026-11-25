@@ -21,12 +21,15 @@ EXEMPT_MARK = re.compile(r"<!--\s*approval-quote-exempt-from:\s*(.+?)\s*-->")
 MARKS = ("in", "out", "later", "ask")
 GROUP_HEADING = re.compile(r"^#{2,3}\s+([A-Z][0-9]?)\.")
 GROUP_CELL = re.compile(r"^\W*([A-Z][0-9]?)\.")
-DECISIONS_HEAD = re.compile(r"^\s*\|\s*date\s*\|\s*decision\s*\|\s*by\s*\|", re.I)   # scripts/sync_baseline.py: the same
+# The two forms of the Decisions table: Date | Decision | By, or Date | Scope | Decision with "By: ..." in the Decision cell.
+DECISIONS_HEAD = re.compile(r"^\s*\|\s*date\s*\|\s*(?:decision\s*\|\s*by|scope\s*\|\s*decision)\s*\|", re.I)   # sync_baseline.py: the same
+APPROVER = re.compile(r"maintainer|owner|administrator", re.I)   # the role words a By cell can name (the sync swaps them per project)
+BY_PART = re.compile(r"\bBy:\s*(.*?)(?:\.\s|$)")   # Date | Scope | Decision: the "By: ..." part of the Decision cell
 
 
 def decisions_table(text):
     """Find the Decisions table: the first table under '## Decisions'; in a file with no such heading, the first table
-    whose columns start Date, Decision, By (a project file can hold it under its title).
+    whose columns start Date, Decision, By or Date, Scope, Decision (a project file can hold it under its title).
 
     Args:
         text: the text of docs/DECISIONS.md.
@@ -58,22 +61,25 @@ def check_decisions(path):
     found = []
     table = decisions_table(text)
     if not table:
-        return 0, [f"{p}:1: no Decisions table (under '## Decisions', or with the columns Date | Decision | By)"]
+        return 0, [f"{p}:1: no Decisions table (under '## Decisions', or with the columns Date | Decision | By or Date | Scope | Decision)"]
     _, header, rows = table
-    if [c.lower() for c in header[:3]] != ["date", "decision", "by"]:
-        return 0, [f"{p}: Decisions columns must start with Date | Decision | By"]
+    cols = [c.lower() for c in header[:3]]
+    if cols not in (["date", "decision", "by"], ["date", "scope", "decision"]):
+        return 0, [f"{p}: Decisions columns must start with Date | Decision | By or Date | Scope | Decision"]
+    dec = cols.index("decision")   # the cell the marker names; with no By column, the "By: ..." part of it is the By cell
+    by = (lambda c: c[2]) if "by" in cols else (lambda c: (BY_PART.search(c[2]) or [""])[0])
     marker = EXEMPT_MARK.search(text)
     exempt_from = marker.group(1) if marker else None
-    if exempt_from and not any(c[1].startswith(exempt_from) for _, c in rows if len(c) > 1):
+    if exempt_from and not any(c[dec].startswith(exempt_from) for _, c in rows if len(c) > dec):
         return 0, [f"{p}: the marker 'approval-quote-exempt-from: {exempt_from}' matches no Decisions row"]
     checked = 0
     for no, c in rows:
-        if exempt_from and len(c) > 1 and c[1].startswith(exempt_from):
+        if exempt_from and len(c) > dec and c[dec].startswith(exempt_from):
             break
         checked += 1
         if len(c) < 3:
             found.append(f"{p}:{no}: Decisions row has {len(c)} cells, need at least 3")
-        elif re.search(r"maintainer|owner", c[2], re.I) and not APPROVAL_QUOTE.search(c[2]):
+        elif APPROVER.search(by(c)) and not APPROVAL_QUOTE.search(by(c)):
             found.append(f"{p}:{no}: the By cell names the Maintainer but quotes no approval: a new decision row "
                          'needs the approval of its exact text in quotes, for example "I approve the plan" '
                          "(the Maintainer's own message, date time)")
@@ -207,6 +213,16 @@ def self_test_t6_t7():
     expect("T6 no Decisions table fails", check_decisions, "# Decisions\n\nNo table.\n", "no Decisions table")
     expect("T6 '## Decisions' with no table under it fails (no fallback)", check_decisions,
            untitled + "\n## Decisions\n\nText.\n", "no Decisions table")
+    scope = ('# Decisions\n\n<!-- approval-quote-exempt-from: Old text -->\n\n| Date | Scope | Decision | Replaces |\n|---|---|---|---|\n'
+             '| 2026-11-25 | Kit sync | By: the Maintainer: "I approve the sync" (own message). Sync to 11.1.0. | - |\n'
+             '| 2026-11-24 | Kit sync | Old text. By: the Maintainer. | - |\n')
+    expect("T6 a Date | Scope | Decision table: a quoted By part passes", check_decisions, scope, None)
+    expect("T6 a Date | Scope | Decision table: a By part with no quote fails", check_decisions,
+           scope.replace(': "I approve the sync" (own message)', ""), "quotes no approval")
+    expect("T6 a Date | Scope | Decision table: the marker names the Decision cell", check_decisions,
+           scope.replace("Old text -->", "Kit sync -->"), "matches no Decisions row")
+    expect("T6 a By cell with the old role word Administrator needs a quote", check_decisions,
+           DECISIONS_TABLE.replace(row, "| 2026-11-24 | New row | the Administrator | - |"), "quotes no approval")
     expect("T6 marker that matches no row fails", check_decisions, DECISIONS_TABLE.replace("exempt-from: Old row", "exempt-from: Gone"), "matches no Decisions row")
     expect("T7 clean coverage list passes", check_coverage, COVERAGE_GOOD, None)
     expect("T7 ask row fails", check_coverage, COVERAGE_GOOD.replace("| A-2 | Two | out |", "| A-2 | Two | ask |"), "is marked ask")

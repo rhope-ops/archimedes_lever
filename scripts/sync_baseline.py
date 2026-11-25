@@ -196,13 +196,15 @@ def decisions_marker(text):
     lines = text.split("\n")
     head = next((i + 1 for i, l in enumerate(lines) if re.match(r"##\s+Decisions\s*$", l)), None)
     table = next((i for i in range(head or len(lines), len(lines)) if lines[i].lstrip().startswith("|")), None)
-    if head is None:   # no '## Decisions': the first table whose columns start Date | Decision | By (log_check_plan.py: the same)
-        table = next((i for i, l in enumerate(lines) if re.match(r"^\s*\|\s*date\s*\|\s*decision\s*\|\s*by\s*\|", l, re.I)), None)
+    if head is None:   # no '## Decisions': the first Date | Decision | By or Date | Scope | Decision table (log_check_plan.py)
+        table = next((i for i, l in enumerate(lines) if re.match(r"^\s*\|\s*date\s*\|\s*(?:decision\s*\|\s*by|scope\s*\|\s*decision)\s*\|",
+                                                                 l, re.I)), None)
     if table is None:
         return text
+    dec = 2 if re.match(r"^\s*\|\s*date\s*\|\s*scope\s*\|", lines[table], re.I) else 1   # the Decision cell: the marker names it
     rows = list(itertools.takewhile(lambda l: l.lstrip().startswith("|"), lines[table + 2:]))   # table + 1: the separator row
     row = re.split(r"(?<!\\)\|", rows[0].strip().strip("|")) if rows else []
-    first = row[1].strip().replace("\\|", "|") if len(row) > 1 else ""
+    first = row[dec].strip().replace("\\|", "|") if len(row) > dec else ""
     if not first or "-->" in first:
         return text
     return "\n".join(lines[:table] + [f"<!-- approval-quote-exempt-from: {first} -->", ""] + lines[table:])

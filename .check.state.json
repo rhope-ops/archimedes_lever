@@ -10,11 +10,11 @@
   "debt": {}
  },
  "script_lines": {
-  "baseline": 20132,
+  "baseline": 20158,
   "command": "cat scripts/*.py scripts/*.sh | wc -l",
   "commit": "f38ec20",
   "files": 72,
-  "measured": "2026-11-24"
+  "measured": "2026-11-25"
  },
  "timings": {
   "bloat-brief": {
