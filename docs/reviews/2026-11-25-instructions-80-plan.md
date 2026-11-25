@@ -20,4 +20,4 @@ Estimate: 4 to 5 hours, about 15 agents or sessions (Opus for this session and t
 
 ## State
 
-- [ ] Phase 1  - [ ] Phase 2  - [ ] Phase 3
+- [x] Phase 1 (PR 206, merge commit c0fa5f1)  - [x] Phase 2 (RADE#191; 90-161.Z#243)  - [x] Phase 3 (33-332.Z#124, SPAR#23, 65-601.Z#17, 36-3003.Z#18, transcription_assistant#12, no-more-beyond#71, ICF-Source#286, SEC-Source#32)
