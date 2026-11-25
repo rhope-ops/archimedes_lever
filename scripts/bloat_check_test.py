@@ -338,10 +338,37 @@ def archive_cases(bloat, d):
     assert names("2026-01-15") == ["docs/reviews/done-plan.md", "docs/reviews/old.md"], "the folder is 10 days old: %s" % names("2026-01-15")
     assert names("2026-01-19") == ["docs/reviews/done-plan.md", "docs/reviews/fix/a.md", "docs/reviews/fix/b.md",
                                    "docs/reviews/old.md"], "never: a live link, a record, a coverage list, README.md, an open plan or its evidence"
-    day = datetime.date(2026, 1, 19)
+    archive_due_cases(bloat, root, files)
+    (root / "docs/KIT_HANDOFF.md").write_text("Open: other work.")   # the plan closed long ago; the handoff changes later
+    commit("2026-01-20")
+    assert "docs/reviews/done-plan.md" not in names("2026-01-26"), "6 days after the handoff change: the plan stays"
+    assert "docs/reviews/done-plan.md" in names("2026-01-27"), "7 days after it: archivable"
+    (rev / "new.md").write_text("x")
+    git_in(root, "add", "docs/reviews/new.md")
+    files = git_in_out(root, "ls-files").splitlines()
+    assert "docs/reviews/new.md" not in names("2027-01-01"), "a file with no commit: no age, not archivable"
+    (root / ".git/shallow").write_text(git_in_out(root, "rev-parse", "HEAD") + "\n")
+    day, old = datetime.date(2026, 1, 19), f.ARCHIVE_ALL
+    assert f.archivable(root, files, day) is None, "a shallow clone: age unknown"
+    f.ARCHIVE_ALL = (1, 10**9)
+    assert f.archive_due(root, files, day).endswith("age unknown: shallow clone"), "it says so"
+    f.ARCHIVE_ALL = old
+
+
+def archive_due_cases(bloat, root, files):
+    """ARCHIVE DUE on the sample repo of archive_cases (4 files archivable on 2026-01-19, 12 files in docs/reviews/):
+    the archivable count and bytes "reach" their limits (>=), the count and bytes of docs/reviews/ "pass" theirs (>),
+    and the --brief line carries the line. The limits are put back after the cases.
+
+    Args:
+        bloat: the module under test.
+        root: the sample repo of archive_cases (a Path).
+        files: its tracked files.
+    """
+    f, day = bloat.bloat_check_files, datetime.date(2026, 1, 19)
+    old = (f.ARCHIVE_SET, f.ARCHIVE_ALL)
     found = sum(b for _, b in f.archivable(root, files, day))
     assert f.archive_due(root, files, day) == "", "4 files and %d bytes: not due" % found
-    old = (f.ARCHIVE_SET, f.ARCHIVE_ALL)
     f.ARCHIVE_SET = (4, 10**9)
     assert f.archive_due(root, files, day).startswith("4 files, 0 KB archivable"), "the count reaches it"
     f.ARCHIVE_SET = (10**9, found)
@@ -357,17 +384,6 @@ def archive_cases(bloat, d):
     with contextlib.redirect_stdout(buf):
         bloat.report(root, argparse.Namespace(brief=True, time=False, record=False, strict=False))
     assert "ARCHIVE DUE (docs/reviews/ 12 files" in buf.getvalue(), "the brief line says so: %s" % buf.getvalue()
-    (root / "docs/KIT_HANDOFF.md").write_text("Open: other work.")   # the plan closed long ago; the handoff changes later
-    commit("2026-01-20")
-    assert "docs/reviews/done-plan.md" not in names("2026-01-26"), "6 days after the handoff change: the plan stays"
-    assert "docs/reviews/done-plan.md" in names("2026-01-27"), "7 days after it: archivable"
-    (rev / "new.md").write_text("x")
-    git_in(root, "add", "docs/reviews/new.md")
-    files = git_in_out(root, "ls-files").splitlines()
-    assert "docs/reviews/new.md" not in names("2027-01-01"), "a file with no commit: no age, not archivable"
-    (root / ".git/shallow").write_text(git_in_out(root, "rev-parse", "HEAD") + "\n")
-    assert f.archivable(root, files, day) is None, "a shallow clone: age unknown"
-    assert f.archive_due(root, files, day).endswith("age unknown: shallow clone"), "it says so"
     f.ARCHIVE_SET, f.ARCHIVE_ALL = old
 
 
