@@ -56,7 +56,7 @@ Moved 2026-11-25 from the tool-retirement plan and the fleet audit at their clos
 
 ## Plan detail and the last Updated line (as of 2026-11-24 08:44)
 
-Updated: 2026-11-24 08:44 by "Kit · Fleet audit · 2026-11-24 · #158": fleet audit of all 5 repos done, report [reviews/2026-11-24-fleet-audit.md](2026-11-24-fleet-audit.md) with 5 appendices; #158 merged (T2 19123); 33-332.Z PR 77 (-13) waits for "merge 77"; `fleet.last_audit` 2026-11-24; open: 3 questions in the report. P2 done: [reviews/2026-11-23-tool-retirement-handoff.md](2026-11-23-tool-retirement-handoff.md)
+Updated: 2026-11-24 08:44 by "Kit · Fleet audit · 2026-11-24 · #158": fleet audit of all 5 repos done, report [reviews/2026-11-24-fleet-audit.md](2026-11-24-fleet-audit.md) with 5 appendices; #158 merged (T2 19123); 33-332.Z PR 77 (-13) waits for "merge 77"; `fleet.last_audit` 2026-11-24; open: 3 questions in the report. P2 done: [reviews/2026-11-23-tool-retirement-handoff.md](archive-index.md#2026-11-23-tool-retirement-handoff-md)
 
 Plan, texts and decisions 1-10: [reviews/2026-11-23-tool-retirement-plan.md](2026-11-23-tool-retirement-plan.md); coverage list (85 rows) and research files beside it. Session "Kit · Tool retirement · 2026-11-23 · #125".
 

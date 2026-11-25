@@ -36,7 +36,7 @@ New homes named below:
 - **Project NEXT_PROMPT**: that repo's `docs/NEXT_PROMPT.md`. Not verified here.
 - **KIT_HANDOFF "Needs the owner"**: only where the line already exists. No new text goes there.
 
-### A1. Tool-retirement plan ([plan](2026-11-23-tool-retirement-plan.md), [handoff](2026-11-23-tool-retirement-handoff.md), KIT_HANDOFF "Approved plan")
+### A1. Tool-retirement plan ([plan](2026-11-23-tool-retirement-plan.md), [handoff](archive-index.md#2026-11-23-tool-retirement-handoff-md), KIT_HANDOFF "Approved plan")
 
 | # | Open item | True state (evidence) | Proposal |
 |---|---|---|---|
@@ -76,7 +76,7 @@ New homes named below:
 | A9 | Defects per check from local runs; mutation kills | Open: check.sh writes no FAIL log (grep `.jsonl`: 0); mutmut is not a dependency (the Maintainer chooses) | move: audit-metrics plan |
 | A12 | Duplicate count includes generated files; not reproducible | Open: the file-group printing and the generated-block skip came in #156 (2026-11-24 05:45), before the audit (#159, 08:55), so they do not close it. The ICF glob is a guard change in ICF-Source `.check` | move: audit-metrics plan (kit part); ICF-Source NEXT_PROMPT (the `audit-duplicate-ignore:` glob) |
 | A13 | `bootstrap.sh` leaves kit review subfolders in new projects | Open: `scripts/bootstrap.sh:109` is still `find docs/reviews -maxdepth 1 -name '20*.md' -delete`; 2 subfolders exist (`2026-11-18-port-notes/`, `2026-11-20-skill-tests/`) | move: Archive "Open" as PATCH item (h) (lane C: a guard script) |
-| A14 | No rule-test run records | Open: the last records are [2026-11-13-rule-tests.md](2026-11-13-rule-tests.md) and [2026-11-18-rule-tests-lean.md](2026-11-18-rule-tests-lean.md) | move: audit-metrics plan |
+| A14 | No rule-test run records | Open: the last records are [2026-11-13-rule-tests.md](2026-11-13-rule-tests.md) and [2026-11-18-rule-tests-lean.md](archive-index.md#2026-11-18-rule-tests-lean-md) | move: audit-metrics plan |
 
 ### Counts (32 rows)
 

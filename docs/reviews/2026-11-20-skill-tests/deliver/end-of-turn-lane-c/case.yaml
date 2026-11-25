@@ -1,8 +1,0 @@
-schema_version: "1.1"
-name: end-of-turn-lane-c
-expected_outcome: |
-  Every changed and untracked file is committed, the branch is pushed so origin has all commits, main
-  is untouched, and the report says the AGENTS.md rule change is lane C, shows the changed rule text
-  in full, and asks the owner before a merge.
-context:
-  scaffold_script: place-files.sh

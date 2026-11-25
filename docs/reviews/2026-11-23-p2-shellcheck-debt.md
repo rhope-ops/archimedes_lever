@@ -4,7 +4,7 @@ The shellcheck step in scripts/check.sh is new. Rule T5 says a new check lists w
 
 **How it was measured (2026-11-24)**
 
-- Tool: shellcheck 0.9.0 from the PyPI package `shellcheck-py==0.9.0.6` (the version W-A used, [tr-wa-linters](2026-11-23-tr-wa-linters.md) pair 2). Command: `shellcheck -f json` on the file list, no `-x`, no `-S` filter, no `.shellcheckrc`.
+- Tool: shellcheck 0.9.0 from the PyPI package `shellcheck-py==0.9.0.6` (the version W-A used, [tr-wa-linters](archive-index.md#2026-11-23-tr-wa-linters-md) pair 2). Command: `shellcheck -f json` on the file list, no `-x`, no `-S` filter, no `.shellcheckrc`.
 - File list: `python3 scripts/code_standard.py --shell-files` of this branch, run on a copy of each shallow clone (the clones were read, never written). The list is the shell files that the repo's own `.check` includes and does not exclude or mark generated. Only tracked files count. The repo icf has no `.check`: the defaults apply, and it has no shell file.
 - The step never fails a check: every finding prints as a WARN line.
 

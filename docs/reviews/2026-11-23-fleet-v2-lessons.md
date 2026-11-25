@@ -60,7 +60,7 @@ tracking began on 2026-11-17, ~$2,665 at list prices; fleet v2 day so far ~0.84 
 ## 5. Preventive measures (the Part 2 program, session "Kit · Tool retirement · 2026-11-23")
 
 Approved by the Maintainer as a program; each rule text is approved through its plan. Prompt:
-[2026-11-23-tool-retirement-prompt.md](2026-11-23-tool-retirement-prompt.md).
+[2026-11-23-tool-retirement-prompt.md](archive-index.md#2026-11-23-tool-retirement-prompt-md).
 
 | Measure | Cause | Enforcement |
 |---|---|---|

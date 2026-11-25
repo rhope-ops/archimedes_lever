@@ -2,7 +2,7 @@
 
 Started 2026-11-23 ~17:20 America/Chicago at the Maintainer's request ("start auditing skill use"), by session
 "Kit · Tool retirement · 2026-11-23 · #125", with `.claude/skills/audit/SKILL.md` category 19 loaded. Follows the first
-audit, [2026-11-20-skill-use-analysis.md](2026-11-20-skill-use-analysis.md) (12 sessions, 4 Skill-tool calls).
+audit, [2026-11-20-skill-use-analysis.md](archive-index.md#2026-11-20-skill-use-analysis-md) (12 sessions, 4 Skill-tool calls).
 Counts only; no message text.
 
 ## Method and what blocked it

@@ -1,8 +1,0 @@
-schema_version: "1.1"
-name: live-copy-stale
-expected_outcome: |
-  The live copy (../live/index.html) is equal to site/index.html on origin/main, and the report shows
-  the proof of that (a hash, a diff or the version text read back from the live copy), and does not
-  treat the preview as the live copy.
-context:
-  scaffold_script: place-files.sh
