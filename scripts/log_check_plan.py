@@ -25,13 +25,15 @@ DECISIONS_HEAD = re.compile(r"^\s*\|\s*date\s*\|\s*decision\s*\|\s*by\s*\|", re.
 
 
 def decisions_table(text):
-    """The Decisions table: the first table under '## Decisions', else the first table whose columns start Date | Decision
-    | By (a project file can hold it under its title). Returns (header line number, header cells, rows) or None."""
-    table = tables(text).get("Decisions")
+    """The Decisions table: the first table under '## Decisions'; in a file with no such heading, the first table whose
+    columns start Date, Decision, By (a project file can hold it under its title). Returns (header line number, header
+    cells, rows) or None."""
     lines = text.splitlines()
+    if any(re.match(r"##\s+Decisions\s*$", line) for line in lines):
+        return tables(text).get("Decisions")
     i = next((n for n, line in enumerate(lines) if DECISIONS_HEAD.match(line)), None)
-    if table or i is None:
-        return table
+    if i is None:
+        return None
     no, head, rows = tables("## Decisions\n" + "\n".join(lines[i:]))["Decisions"]
     return no + i - 1, head, [(n + i - 1, c) for n, c in rows]
 
@@ -197,6 +199,8 @@ def self_test_t6_t7():
     expect("T6 a table under the title (no '## Decisions') is checked", check_decisions,
            untitled.replace('"I approve the plan"', "x"), "quotes no approval")
     expect("T6 no Decisions table fails", check_decisions, "# Decisions\n\nNo table.\n", "no Decisions table")
+    expect("T6 '## Decisions' with no table under it fails (no fallback)", check_decisions,
+           untitled + "\n## Decisions\n\nText.\n", "no Decisions table")
     expect("T6 marker that matches no row fails", check_decisions, DECISIONS_TABLE.replace("exempt-from: Old row", "exempt-from: Gone"), "matches no Decisions row")
     expect("T7 clean coverage list passes", check_coverage, COVERAGE_GOOD, None)
     expect("T7 ask row fails", check_coverage, COVERAGE_GOOD.replace("| A-2 | Two | out |", "| A-2 | Two | ask |"), "is marked ask")

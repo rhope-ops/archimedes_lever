@@ -75,6 +75,7 @@ Writes: with --apply, the kit files of the project and its kit lock .check.lock 
 Credentials: none itself; a clone uses the credentials git already has.
 """
 import argparse
+import itertools
 import re
 import subprocess
 import sys
@@ -199,7 +200,7 @@ def decisions_marker(text):
         table = next((i for i, l in enumerate(lines) if re.match(r"^\s*\|\s*date\s*\|\s*decision\s*\|\s*by\s*\|", l, re.I)), None)
     if table is None:
         return text
-    rows = [l for l in lines[table + 2:] if l.lstrip().startswith("|")]   # table + 1 is the separator row
+    rows = list(itertools.takewhile(lambda l: l.lstrip().startswith("|"), lines[table + 2:]))   # table + 1: the separator row
     row = re.split(r"(?<!\\)\|", rows[0].strip().strip("|")) if rows else []
     first = row[1].strip().replace("\\|", "|") if len(row) > 1 else ""
     if not first or "-->" in first:
