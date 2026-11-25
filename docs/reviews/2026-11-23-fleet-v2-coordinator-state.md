@@ -193,3 +193,16 @@ approval for anything. if you have a doubt, go with your top recommendation ever
   fleet audit and the SEC-Source inventory; P6 exports and the branch-delete list.
 - Known limits: strict gate without linters is a little looser than ruff (CI catches it); worker scan @( false finding
   stays (DEC 5).
+
+### Coordinator 3: night run (2026-11-24 21:40-22:20 America/Chicago)
+
+- P4c 33-332.Z: #118 merged (fae3916; paste check in Ion; CI 4/4, review 0 MAJOR). Open: 3 MINOR text items (one
+  follow-up PR after the PAM's ISE test, expect "Paste check: OK", build 240bf873); #61 paused, rebuild after.
+- P4a RADE: #179 merged (f5b4687, paste guard in build(); check.local.sh:73 runs tests/paste_guard_test.py), release
+  engine-v38 tagged at f5b4687 (run 45544195036); #180 merged (2c7bedd, 175 % window run, green on Windows PS 5.1).
+  Blocked: hashed requirements (7 pins, branch claude/p4a-hashed-requirements, local only in the child) and its
+  CycloneDX SBOM (a person rejected the cyclonedx-py call at the prompt, 04:02Z); CodeQL Python workflow not started.
+  Unblock: the Maintainer says go (or "pins without SBOM") in session_01PyXpdVfw9jpFCReAUi1PYG.
+- P4b 90-161.Z: waits for R42 #231 (it moves its lock to engine-v38 before its merge).
+- P6: full-history .7z exports made for 9 repos (all but the kit and 90-161.Z, which still change); branch list:
+  [2026-11-24-p6-branch-list.md](2026-11-24-p6-branch-list.md) (112 CONTAINED, safe; 41 NOT-CONTAINED, keep).
