@@ -354,6 +354,13 @@ class ApplyOwner(unittest.TestCase):
         self.assertEqual(sb.decisions_marker(got), got, "a second run changes nothing")
         self.assertEqual(sb.decisions_marker("# D\n\n## Decisions\n\n| Date | Decision | By |\n|---|---|---|\n"), "# D\n\n## Decisions\n\n| Date | Decision | By |\n|---|---|---|\n", "no row: no marker")
         self.assertEqual(sb.decisions_marker("# No table\n"), "# No table\n")
+        untitled = TABLE.replace("## Decisions", "Text under the title.")
+        self.assertIn("\n<!-- approval-quote-exempt-from: Newest row -->\n\n| Date | Decision | By |\n",
+                      sb.decisions_marker(untitled), "no '## Decisions': the Date | Decision | By table gets the marker")
+        self.assertEqual(sb.decisions_marker("# D\n\n| Name | Value |\n|---|---|\n| a | b |\n"), "# D\n\n| Name | Value |\n|---|---|\n| a | b |\n",
+                         "another table: no marker")
+        empty = "# D\n\n| Date | Decision | By |\n|---|---|---|\n\n| Name | Value |\n|---|---|\n| a | b |\n"
+        self.assertEqual(sb.decisions_marker(empty), empty, "an empty Decisions table: no marker from a later table")
 
     def swap(self, base, text, owner):
         """apply_owner(text, owner) with BASELINE_OWNER set to base for this call."""
