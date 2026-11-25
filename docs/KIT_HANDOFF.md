@@ -10,7 +10,7 @@ Updated: 2026-11-25 14:40 ("Kit · Closeout R1-R3 and docs"): the tool-retiremen
 
 ## Open
 
-- [Archival plan](reviews/2026-11-25-archival-plan.md) (approved 2026-11-25): phase 1 kit inventory. Follow-ups 3: [state](reviews/2026-11-23-fleet-v2-coordinator-state.md).
+- [Archival plan](reviews/2026-11-25-archival-plan.md) (approved 2026-11-25): phase 1 (kit), 2 and 3 done (PR 214), phase 1 fleet open; the archive step runs again from 2026-12-02, and its first real run is the phase 4 pilot (index, restore drill, proofs as in the plan). Follow-ups 3: [state](reviews/2026-11-23-fleet-v2-coordinator-state.md).
 - Tool retirement and fleet audit: open items in the [close-out list](reviews/2026-11-25-closeout-and-trim-proposals.md). Skill-use audit due 2026-12-08.
 - Kit PATCH fixes (a)-(g) and Step 5: archive file, "Open".
 

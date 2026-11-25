@@ -62,7 +62,7 @@ ARCHIVE_DAYS = {True: 7, False: 14}   # days since the newest change: a plan (cl
 HISTORY_DOCS = ("docs/DECISIONS.md", "docs/LOG.md", "docs/CHANGELOG.md")   # a link from these is history, not live
 CHECK_READ = re.compile(r"(?:rule-conflict-check|debt-check): ")   # bloat_check_rules.conflict_recorded reads these
 HANDOFF_FILES = ("docs/KIT_HANDOFF.md", "docs/NEXT_PROMPT.md")
-KEEP_NAMES = ("README.md",)   # the folder's own guide, never archived
+KEEP_NAMES = ("README.md", "archive-index.md")   # the folder's own guide and the archive index: never archived
 OPEN_BOX = re.compile(r"\[ \]|\[~")
 DONE_BOX = re.compile(r"\[[xX]\]")
 
