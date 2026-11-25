@@ -8,6 +8,19 @@ AGENTS.md text in Part B is rule text: the Maintainer approves each exact text, 
 Base: origin/main 9454e6e. Fleet repos: `add_repo` was denied in this session (auto-mode classifier), so fleet states come
 only from kit records. Such a row says "not verified".
 
+## Outcome (the Maintainer, 2026-11-25, coordinator 4 chat)
+
+Part A and Part B: the Maintainer accepted the advisor's recommendation. Approved by dialog ("Approve R1-R3 (Recommended)"): R1-R3 (R1 with a corrected text: docs/DECISIONS.md, row of 2026-11-25). Not approved: R4, D2, O1 (O1: a line in the [archive file](2026-11-24-kit-handoff-archive.md) "Open"). Corrections to Part A:
+
+- A2: decided, not dropped. The Maintainer set a blanket T2 ceiling of 30000 ("cap": true, PR 215; docs/DECISIONS.md, 2026-11-25).
+- T3: move, not drop: 33-332.Z has docs/MAINTAINER_GUIDE.md, and its kit-12 sync session recommended a fix there.
+- No audit-metrics plan: A1, A3-A5, A7-A9, A12 (kit part), A13 and A14 go to the archive file "Open".
+- Rows for a project's NEXT_PROMPT (T3, T10, F1-F3, A12 ICF part) are not written into those repos (a project NEXT_PROMPT counts in its session load). They are in the archive file "Open", under a heading per repo.
+- T6: done, verified by coordinator 4: 90-161.Z main has c4a6ea0 (#235) and 7ae9303 (#238, SBOM). That also verifies the 90-161.Z part of T7. T7 RADE part and T8 stay "verify" (archive file, "For the next RADE session").
+- T14: archive file "Needs the owner". T12, T13, F4: the KIT_HANDOFF "Needs the owner" lines that exist.
+
+With this, the tool-retirement plan and the fleet audit are closed (2026-11-25).
+
 ## Part A: close-out lists
 
 Proposal key: **done** (with evidence) · **verify** (kit records conflict; check in a session that has the fleet repo,
