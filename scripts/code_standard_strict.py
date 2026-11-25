@@ -61,9 +61,19 @@ def safety_ok(head):
     return all(any(re.match(r'^[\s#/*]*' + re.escape(x) + r'\s*\S', line) for line in lines) for x in SAFETY_LABELS)
 
 
-def longest_line(lines, skip):
-    """Return the length in characters of the longest line outside the generated blocks `skip` (1-based first, last)."""
-    return max([len(x.rstrip('\r')) for i, x in enumerate(lines, 1) if not any(a <= i <= b for a, b in skip)] or [0])
+def longest_line(lines, skip, cap=0):
+    """Return the length in characters of the longest line outside the generated blocks `skip` (1-based first, last);
+    with `cap`, a line that ruff's E501 also lets pass does not count (ruff_ok)."""
+    return max([len(x.rstrip('\r')) for i, x in enumerate(lines, 1)
+                if not any(a <= i <= b for a, b in skip) and not (cap and ruff_ok(x.rstrip('\r'), cap))] or [0])
+
+
+def ruff_ok(line, cap):
+    """True for a long Python line that ruff's E501 lets pass: a `# noqa` (bare or with E501), one word with no space,
+    or a last word that holds :// and starts before the cap (the line ends with a URL)."""
+    words = line.split()
+    return bool(re.search(r'#\s*noqa(?::[^#]*\bE501\b|\s*$)', line)) or len(words) == 1 or (
+        len(words) > 1 and '://' in words[-1] and len(line) - len(words[-1]) < cap)
 
 
 def file_rules(v, p, lines, head, config, skip):
@@ -84,10 +94,11 @@ def file_rules(v, p, lines, head, config, skip):
     if config.get('c1_safety') and not safety_ok(head):
         v['safety'][p] = 1
     cap = config['caps'].get('max_line_chars')
-    longest = longest_line(lines, skip) if cap else 0
+    py = p.endswith('.py') and not skip   # without ruff and pylint, measured here as ruff's E501 would
+    longest = longest_line(lines, skip, cap if py else 0) if cap else 0
     # A .py with no generated block: ruff and pylint (scripts/check.sh) when both are installed, else measured here, so a
     # run without them neither passes a long line nor reports a Python line debt as fixed.
-    if cap and longest > cap and not (p.endswith('.py') and not skip and rules.LINTERS):
+    if cap and longest > cap and not (py and rules.LINTERS):
         v['line'][p] = longest
 
 

@@ -23,6 +23,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import check_settings as settings   # noqa: E402 - scripts/check_settings.py: the reader of .check and .check.state.json
 import code_standard as cs   # noqa: E402 - the kit check (scripts/code_standard.py)
 import code_standard_rules as rules   # noqa: E402 - LINTERS, set both ways in check_lines
+import code_standard_strict as gate   # noqa: E402 - ruff_ok, the lines ruff E501 lets pass
 from code_standard_test_gate import SAMPLE_GATE, commit, config_of, write   # noqa: E402 - the kit's sample-repo helpers
 
 STRICT_FILE = Path(__file__).resolve().parent / 'code_standard_strict.py'
@@ -174,6 +175,11 @@ def check_lines(cs, root, g):
         rules.LINTERS = False
         now = cs.measure(config)['violations']['line']
         assert now == {'long.py': 256, 'long.sh': 256, 'blk2.py': 256}, 'without ruff and pylint a long .py line is measured here: %s' % now
+        ok = [('x = "%s"  # noqa: E501' % ('a b ' * 70), True), ('x = "%s"  # noqa: F401' % ('a b ' * 70), False),
+              ('# see https://x.org/' + 'a' * 240, True), ('# ' + 'word ' * 45 + 'https://x.org/' + 'a' * 30, False),
+              ('#' + 'a' * 250, True), ('x = "%s"' % ('a b ' * 85), False)]
+        for line, want in ok:   # the lines that ruff E501 lets pass (checked against ruff 0.17.6, 2026-11-24)
+            assert gate.ruff_ok(line, 200) == want, 'ruff_ok(%r...) should be %s' % (line[:30], want)
     finally:
         rules.LINTERS = linters
     off = dict(config, caps={k: v for k, v in caps.items() if k != 'max_line_chars'})
