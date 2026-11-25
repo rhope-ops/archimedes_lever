@@ -65,7 +65,7 @@ Network: none (it runs local git read commands, and pwsh to parse PowerShell fil
 Writes:  .check.state.json, only with --init, --update or --adopt (and Python's __pycache__ when it imports its modules).
 Credentials: none.
 Parts:   scripts/code_standard_rules.py (the rule table, the per-function measures), scripts/code_standard_ratchet.py
-         (the baseline against main, --adopt), scripts/code_standard_parse.py and scripts/code_standard_docs.py.
+         (the ratchet: the baseline, main, --adopt), scripts/code_standard_parse.py and scripts/code_standard_docs.py.
 Needs:   Python 3.8+, git, and pwsh 7 only when the repo has PowerShell files (the parser gives the function list).
 """
 
@@ -322,48 +322,14 @@ def measure(config):
     return {'files': report, 'violations': v}
 
 
-# ---------------------------------------------------------------- ratchet ----------------------------------------------
-
-
 def compare(now, debt, caps):
-    """Compare the measured violations with the debt list.
-
-    Args:
-        now: the violations measured now {kind: {key: value}}.
-        debt: the baseline's debt list, in the same shape.
-        caps: the caps of the settings.
-
-    Returns:
-        (new problems, fixed items). New: a violation not in the debt, or a debt value that grew. Fixed: a debt item
-        that is gone or smaller (the baseline must be lowered in the same change).
-    """
-    new, fixed = [], []
-    table = rules()
-    for kind, items in now.items():
-        if kind in WARN_KINDS:   # a warning: no FAIL, no baseline (warn_lines)
-            continue
-        text, cap = table[kind]
-        label = text % caps.get(cap, 0) if cap else text
-        old = debt.get(kind, {})
-        for key, value in sorted(items.items()):
-            if key not in old:
-                new.append('FAIL  %s: %s%s' % (label, key, '' if value == 1 else ' (%d)' % value))
-            elif value > old[key] and cap:
-                new.append('FAIL  %s: %s grew from %d to %d' % (label, key, old[key], value))
-        for key, value in sorted(old.items()):
-            if key not in items or (cap and items[key] < value):
-                fixed.append('FIXED %s: %s' % (label, key))
-    return new, fixed
+    """Return (new problems, fixed items): the measured violations against the debt list (scripts/code_standard_ratchet.py)."""
+    return ratchet.compare(sys.modules[__name__], now, debt, caps)
 
 
 def git(*args):
     """Run git in the repo root; return the finished process (text output)."""
     return subprocess.run(['git', '-C', str(ROOT), *args], capture_output=True, text=True)
-
-
-def decided_at(ref):
-    """Return (decided, refusal lines) for this change against `ref` (scripts/code_standard_ratchet.py)."""
-    return ratchet.decided_at(sys.modules[__name__], ref)
 
 
 def against_main(config, debt):
@@ -457,40 +423,7 @@ def main():
         return 0
     if args.adopt:
         return adopt(config, debt, m['violations'])
-    return check(args, config, debt, m)
-
-
-def check(args, config, debt, m):
-    """Compare the measurement with the baseline and with main, print each problem and the result line; with
-    --update, lower the baseline when there is no new debt.
-
-    Args:
-        args: the parsed command line.
-        config: the code standard settings.
-        debt: the baseline's debt list.
-        m: the result of measure().
-
-    Returns:
-        The exit code: 0 pass, 1 fail.
-    """
-    new, fixed = compare(m['violations'], debt, config['caps'])
-    hand, note = against_main(config, debt)
-    new += hand
-    for line in warn_lines(m['violations'], config['caps']) + new + fixed + ([note] if note else []):
-        print(line)
-    if args.update:
-        if new:
-            print('CODE-STANDARD fail: new debt cannot go into the baseline; fix it (docs/code-standard.md)')
-            return 1
-        save(m['violations'])
-        print('CODE-STANDARD baseline lowered: %s' % summary(m['violations']))
-        return 0
-    if fixed and not new:
-        print('Debt was fixed: run python3 scripts/code_standard.py --update and commit the lower baseline.')
-    gate = ', gate %s active' % Path(GATE.__file__).name if GATE else ''
-    print('CODE-STANDARD %s (files=%d, debt: %s%s)' % ('fail' if new or fixed else 'pass', len(m['files']),
-                                                      summary(m['violations']), gate))
-    return 1 if new or fixed else 0
+    return ratchet.check(sys.modules[__name__], args, config, debt, m)
 
 
 def adopt(config, debt, now):

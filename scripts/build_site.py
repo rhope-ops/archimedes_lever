@@ -28,64 +28,18 @@ Credentials: none.
 
 import argparse
 import importlib.util
-import re
 import sys
 import tempfile
 import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from build_site_html import (BOLD, README, build_intro, build_key_facts, fact_rows, inline,  # noqa: E402,F401
-                             paragraphs, refuse_marks)
+from build_site_html import (BLOCK, BOLD, README, README_MARK, SECTION, SITE, SITE_MARK, build_intro, build_key_facts,  # noqa
+                             fact_rows, inline, paragraphs, readme_sections, refuse_marks, stray_marks, unquote)
 
 ROOT = Path(__file__).resolve().parent.parent
-SITE = 'index.html'
 LOCAL = 'scripts/build_site_local.py'
 COMMAND = 'scripts/build_site.py --write'
-# A README section and a generated block on the page; NAME is lower-case letters, digits and "-". Each end mark starts
-# its own line (after the indent), so no old text can stay in front of it; the body may be empty.
-SECTION = re.compile(r'<!-- site:([a-z0-9-]+) -->\n(?:(.*?)\n)?<!-- /site:\1 -->', re.S)
-BLOCK = re.compile(r'^([ \t]*)<!-- >>> site:([a-z0-9-]+): generated from README\.md by scripts/build_site\.py --write '
-                   r'\(do not edit\) -->\n(?:(.*?)\n)?[ \t]*<!-- <<< site:\2 -->', re.S | re.M)
-# Any site mark, also a broken one (a typo in a name or an end mark): each must be used by SECTION or BLOCK (stray_marks).
-README_MARK = re.compile(r'<!-- /?site:[^>]*-->')
-SITE_MARK = re.compile(r'<!-- (?:>>>|<<<) site:[^>]*-->')
-# A quote mark at a line's start, and a GitHub alert line; both are taken off before a section is built (unquote).
-QUOTE_MARK = r'^>[ \t]?'
-ALERT_LINE = r'\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]'
-
-
-def readme_sections(readme):
-    """Return the README's site sections by name, each without its marks and quote marks, stripped.
-
-    Args:
-        readme: the whole README.md.
-    Returns:
-        A dict of section name to its Markdown.
-    Raises:
-        ValueError: when a name is used for two sections.
-    """
-    found = {}
-    for name, body in SECTION.findall(readme):
-        if name in found:
-            raise ValueError(f'{README}: two sections <!-- site:{name} -->')
-        found[name] = unquote(body or '').strip()
-    return found
-
-
-def unquote(markdown):
-    """Return Markdown with quote marks ("> ") taken off and GitHub alert lines ("[!CAUTION]") dropped.
-
-    A README can show a line as a quote or a GitHub alert box; the site shows the same words in its own style, so the
-    builder reads them as the plain text inside.
-
-    Args:
-        markdown: the text of one README section.
-    Returns:
-        The same text without quote marks and alert lines.
-    """
-    lines = [re.sub(QUOTE_MARK, '', line) for line in markdown.splitlines()]
-    return '\n'.join(line for line in lines if not re.fullmatch(ALERT_LINE, line.strip()))
 
 
 def load_local(root):
@@ -144,27 +98,6 @@ def project_builder(name, build):
         except ValueError as err:
             raise ValueError(f'site:{name}: {err}') from err
     return run_it
-
-
-def stray_marks(readme, site):
-    """Return findings for site marks that are not the two ends of a section or block (a typo, capitals, a missing end
-    mark, or a mark inside another block, which a rebuild would drop).
-
-    Args:
-        readme: the text of README.md.
-        site: the text of index.html.
-    Returns:
-        A list of finding lines, empty when every mark belongs to a section or a block.
-    """
-    found = []
-    for text, file, mark, pair in ((readme, README, README_MARK, SECTION), (site, SITE, SITE_MARK, BLOCK)):
-        used = set()
-        for pm in pair.finditer(text):  # only the first and the last mark of a match are its two ends
-            ends = list(mark.finditer(pm.group(0)))
-            used |= {pm.start() + ends[0].start(), pm.start() + ends[-1].start()}
-        found += [f'{file}: a site mark with no pair or a name not in a-z, 0-9 and "-": {m.group(0)}'
-                  for m in mark.finditer(text) if m.start() not in used]
-    return found
 
 
 def build_one(kinds, name, markdown, indent):
