@@ -221,3 +221,26 @@ approval for anything. if you have a doubt, go with your top recommendation ever
 - Sessions ready to archive (all PRs merged, nothing pending; the Maintainer archives): SEC2 P5, 65-601.Z sync,
   36-3003.Z sync, SPAR sync, TA sync, no-more-beyond sync, ICF P4d, 33-332.Z P4c. Keep open until their PRs settle:
   RADE P4a (#183), 90-161.Z P4b (#235 preview), 90-161.Z R42 (the PFM's round), this coordinator.
+
+## Coordinator 3: follow-ups 2 (2026-11-25 04:20-06:20 America/Chicago)
+
+Plan and approval: [2026-11-25-followups-2-plan.md](2026-11-25-followups-2-plan.md). Each merge had green CI on an up-to-date head and a last fresh review with 0 MAJOR.
+
+- Kit: #187 (security.yml skips private PRs), #193 item 8 (splits), #194 items 5, 7, 13 (bandit in the full lane), #197 item 6
+  (hook on resume), #198 item 1 (linear regexes), #195 items 3, 4 (T6: `By: the Maintainer: "..."` in a Decision cell
+  when a table has no By column; "the Administrator"), #196 item 9 (gate = ruff E501). T2 20132 -> 20389 (+257).
+  Tag v11.1.0 made by the Maintainer. Kit child's list of pre-existing MINOR cases: its final report (session
+  session_01PyXpdUN3MKoiWiAAb65v8s).
+- RADE: #182 CodeQL, #183 hashed pins, #184 SBOM, #185 CI pin check, #186 Start-SignInSize -SignInOnly; release
+  engine-v39 at b231e2e (first run failed on a PyPI timeout; the one re-run passed).
+- 90-161.Z: #235 page built from go.md, #237 round skill (approved text), #238 hashed pins and SBOM. HELD: #239 (lock
+  engine-v39, R42 bundle r1 -> r2): a live change to the round the PFM runs; the Maintainer decides (REC: after the
+  R42 result). Until then its lock check fails on main.
+- Role word "the Maintainer": no-more-beyond #70, SEC-Source #31, SPAR #22.
+- Item 2: dropped (an ask rule wins over an allow; the Maintainer approves each SBOM run). Item 12: not written;
+  33-332.Z session load 5,504 > 5,500 with one line (local branch claude/next-prompt-p4c-minors, not pushed).
+- Environment "Work": setup script installs markdown-it-py 4.3.0 (saved 2026-11-25; first proof: the engine-v39 lock
+  session ran the 90-161.Z full lane).
+- New follow-ups: build_site.py README_MARK and SECTION regexes are quadratic; bump_lock.py leaves the old .txt round
+  copy; SEC-Source security.yml fails in a private repo until its next kit sync; SEC-Source old DECISIONS rows hold a
+  credential and years of experience (personal data review for the Maintainer).

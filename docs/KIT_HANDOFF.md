@@ -2,11 +2,11 @@
 
 The kit's own handoff (AGENTS.md "Handoff"). Kit only: first use deletes it in a project, which uses docs/NEXT_PROMPT.md. Keep it at 40 lines or fewer and inside the session-load cap (`.check` counts it); evidence and older items go in docs/reviews/. Times are America/Chicago.
 
-Updated: 2026-11-24 23:25 by "Kit · Fleet coordinator 3 · 2026-11-24": P4 done except 90-161.Z PR 235 (preview) and the SBOMs (blocked), P6 exports sent: [state](reviews/2026-11-23-fleet-v2-coordinator-state.md) last section. Older items: [reviews/2026-11-24-kit-handoff-archive.md](reviews/2026-11-24-kit-handoff-archive.md); fleet audit report: [reviews/2026-11-24-fleet-audit.md](reviews/2026-11-24-fleet-audit.md).
+Updated: 2026-11-25 06:20 by "Kit · Fleet coordinator 3 · 2026-11-24": follow-ups 2 done (11 of 13; item 2 dropped, item 12 blocked by a cap); 90-161.Z PR 239 held for the Maintainer: [state](reviews/2026-11-23-fleet-v2-coordinator-state.md) last section; plan [reviews/2026-11-25-followups-2-plan.md](reviews/2026-11-25-followups-2-plan.md). Older items: [reviews/2026-11-24-kit-handoff-archive.md](reviews/2026-11-24-kit-handoff-archive.md); fleet audit report: [reviews/2026-11-24-fleet-audit.md](reviews/2026-11-24-fleet-audit.md).
 
 ## State
 
-- Kit 11.1.0 = a6295509 (tag v11.1.0 not made: the git proxy refuses tag pushes; the Maintainer's step). P1-P3, the fleet audit, follow-ups 1-8. 10 fleet repos on 11.1.0 (2026-11-24). Script lines (T2) 20,132.
+- Kit 11.1.0 = a6295509 (tag v11.1.0, made by the Maintainer 2026-11-25). P1-P3, the fleet audit, follow-ups 1-8 and follow-ups 2 (kit PRs 187, 193-198). 10 fleet repos on 11.1.0. Script lines (T2) 20,389.
 
 ## Approved plan (the Maintainer, 2026-11-23 17:12): custom tool retirement
 
