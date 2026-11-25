@@ -24,7 +24,8 @@ GROUP_CELL = re.compile(r"^\W*([A-Z][0-9]?)\.")
 # The two forms of the Decisions table: Date | Decision | By, or Date | Scope | Decision with "By: ..." in the Decision cell.
 DECISIONS_HEAD = re.compile(r"^\s*\|\s*date\s*\|\s*(?:decision\s*\|\s*by|scope\s*\|\s*decision)\s*\|", re.I)   # sync_baseline.py: the same
 APPROVER = re.compile(r"maintainer|owner|administrator", re.I)   # the role words a By cell can name (the sync swaps them per project)
-BY_PART = re.compile(r"\bBy:\s*(.*?)(?:\.\s|$)")   # Date | Scope | Decision: the "By: ..." part of the Decision cell
+# Date | Scope | Decision: the "By: ..." part of the Decision cell, to the first ". " outside a quote.
+BY_PART = re.compile(r'\bBy:\s*((?:"[^"\n]*"|“[^”\n]*”|[^"“])*?)(?:\.\s|$)')
 
 
 def decisions_table(text):
@@ -220,6 +221,8 @@ def self_test_t6_t7():
          "quotes no approval"),
         ("T6 a Date | Scope | Decision table: the marker names the Decision cell", scope.replace("Old text -->", "Kit sync -->"),
          "matches no Decisions row"),
+        ("T6 a Date | Scope | Decision table: a quote that holds a full stop is read whole",
+         scope.replace('"I approve the sync"', '"Yes. Go ahead."'), None),
         ("T6 a By cell with the old role word Administrator needs a quote",
          DECISIONS_TABLE.replace(row, "| 2026-11-24 | New row | the Administrator | - |"), "quotes no approval"),
     ]

@@ -63,7 +63,7 @@ What it changes:
                            (--owner NAME); a public repo uses a role. Owner: letters, digits, space . _ , ( ) -
     docs/DECISIONS.md      In a full project: the line `<!-- approval-quote-exempt-from: TEXT -->` above the Decisions table when it
                            is missing (TEXT: the Decision cell of the newest row), so the T6 check reads only new rows; with no '## Decisions'
-                           heading, above the first table whose columns start Date | Decision | By. Nothing else.
+                           heading, above the first table whose columns start Date | Decision | By or Date | Scope | Decision. Nothing else.
 What it never changes: README.md, docs/ (except docs/FIRST_USE.md and docs/DECISIONS.md as said above, docs/code-standard.md and the kit
 license), .check and all other files. A project's own code lives in its own files (scripts/check.local.sh,
 scripts/check_content_local.py, scripts/check_instructions_local.py, scripts/code_standard_gate.py), which a sync
@@ -182,7 +182,7 @@ def apply_owner(text, owner):
 
 
 def decisions_marker(text):
-    """Add the line `<!-- approval-quote-exempt-from: <newest row's first text cell> -->` above the Decisions table when it is missing.
+    """Add the line `<!-- approval-quote-exempt-from: <newest row's Decision cell> -->` above the Decisions table when it is missing.
     Rows from the one it names down are older than the T6 check and are not checked (scripts/log_check_plan.py).
 
     Args:
