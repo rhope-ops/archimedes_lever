@@ -1,5 +1,5 @@
 name: security
-# Static security scans: bandit on scripts/ and gitleaks on the working tree. Pull requests and manual runs only, never on push (Actions minutes).
+# Static security scans: bandit on scripts/ (in package mode after --kit-install writes the kit scripts) and gitleaks on the working tree. Pull requests and manual runs only, never on push (Actions minutes).
 on:
   pull_request:
   workflow_dispatch:
@@ -19,6 +19,8 @@ jobs:
           python-version: "3.12"
       - name: Install bandit
         run: pip install bandit==1.9.4
+      - name: Kit package (package mode only; else it prints "not used"), so bandit also scans the package scripts
+        run: scripts/check.sh --kit-install
       - name: Scan scripts (medium severity and higher)
         run: bandit -r scripts/ -ll
   gitleaks:
