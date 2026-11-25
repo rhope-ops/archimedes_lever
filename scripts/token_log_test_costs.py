@@ -17,6 +17,8 @@ import io
 import json
 import os
 import subprocess
+import tempfile
+import types
 from datetime import datetime, timezone
 
 from token_log_test import append, msg, prompt
@@ -187,3 +189,35 @@ def case_limit_split(fx):
     fx.expect("report: /cost by week next to the estimate", [ln.split() for ln in text if ln.startswith("2025-12-29")],
               [["2025-12-29", "2", "1", "2.00", "2.50", "1.00"]])
     fx.expect("report: sessions with no /cost record", text[-1], "no /cost record (1): sessB")
+
+
+def case_best_and_sources(fx):
+    """The best estimate (/cost where recorded, else the hook's $ x the median /cost ratio) and the --report sources.
+
+    Args:
+        fx: the shared test fixture (Fixture).
+    """
+    rep = fx.rep
+    rows = [{"session_id": "sessA", "timestamp": "2026-01-01T09:00:00Z", "model": "claude-opus-5-5",
+             "output_tokens": "100000"}, {"session_id": "sessB", "timestamp": "2026-01-01T09:30:00Z",
+                                         "model": "claude-opus-5-5", "output_tokens": "50000"}]
+    costs = [{"session_id": "sessA", "source": "main", "usd": "1.0", "session_usd": "2.5"}]
+    text = rep.limits_report(rows, costs, []).splitlines()
+    fx.expect("report: best estimate: /cost where recorded, else the hook's $ x the median ratio (2.50 + 1.00 x 1.25)",
+              [ln for ln in text if ln.startswith("best estimate")],
+              ["best estimate, all weeks: 3.75 $ (/cost where recorded, else the hook's $ x 1.25, the median /cost "
+               "ratio of 1 sessions)"])
+    with tempfile.TemporaryDirectory() as d:
+        core = types.SimpleNamespace(  # a stand-in for the token_log module
+            __file__=os.path.join(d, "hooks", "token_log.py"), KIT_CONFIG="kit.config.json")
+        with open(os.path.join(d, "kit.config.json"), "w", encoding="utf-8") as f:
+            json.dump({"token_log_sources": ["https://h/a", "-x", 3, "https://h/b"]}, f)
+        old_env = os.environ.pop("TOKEN_LOG_SOURCES", None)
+        os.environ["TOKEN_LOG_SOURCES"] = "https://h/p https://h/a"
+        try:
+            fx.expect("sources: the variable first, then the repo's config; no repeats, no option, no non-text",
+                      rep.sources(core, d), ["https://h/p", "https://h/a", "https://h/b"])
+        finally:
+            os.environ.pop("TOKEN_LOG_SOURCES")
+            if old_env is not None:
+                os.environ["TOKEN_LOG_SOURCES"] = old_env

@@ -412,7 +412,7 @@ def run(tl):
                      case_fetch_head_and_timeout, case_waiting_push, case_bad_input_and_off, parts.case_agent_type,
                      parts.case_skill_use, parts.case_agent_type_bad_input, parts.case_report, parts.case_prices,
                      parts.case_self_update, costs.case_cost_files, costs.case_bad_records, costs.case_limit_split,
-                     case_private_repo):
+                     costs.case_best_and_sources, case_private_repo):
             case(fx)
     finally:
         tl.push = fx.real_push

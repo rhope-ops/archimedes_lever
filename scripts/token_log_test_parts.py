@@ -178,13 +178,24 @@ def case_report(fx):
               True)
     fx.expect("report: unpriced model listed", text.splitlines()[-3],
               "no token price (tokens counted as 0, web searches counted): claude-test")
-    fx.expect("report: footer counts the old rows priced as 5-minute cache writes", text.splitlines()[-1],
-              "Rows from before the cache_write_1h_tokens column (4): cache writes priced as 5-minute.")
+    fx.expect("report: footer counts the old rows; no newer rows: priced as 5-minute", text.splitlines()[-1],
+              "Rows from before the cache_write_1h_tokens column (4): 1-hour share of their cache writes estimated "
+              "from the newer rows of the same source: none: priced as 5-minute.")
     new = [{**r, "cache_write_1h_tokens": "0"} for r in rows]
     fx.expect("report: no old-row footer when every row has the column",
               "cache_write_1h_tokens" in fx.rep.report(new), False)
     fx.expect("report: footer for 1 old row among new rows",
-              fx.rep.report(new + rows[:1]).splitlines()[-1].endswith("column (1): cache writes priced as 5-minute."), True)
+              fx.rep.report(new + rows[:1]).splitlines()[-1].endswith("same source: main 0%, subagent 0%."), True)
+    hour = {**rows[0], "cache_write_1h_tokens": "250000"}  # a newer main row: a quarter of its writes are 1-hour
+    filled, share, n = fx.rep.fill_1h([hour, rows[0], rows[1]])
+    fx.expect("1-hour estimate: share from the newer rows of the same source, old rows filled, count",
+              (share, filled[1]["cache_write_1h_tokens"], filled[2]["cache_write_1h_tokens"], n),
+              ({"main": 0.25}, "250000", "0", 2))
+    fx.expect("1-hour estimate: an old main row costs as the newer one", round(fx.rep.row_cost(filled[1]), 2),
+              round(fx.rep.row_cost(hour), 2))
+    fx.expect("report: one repo line for two letter cases",
+              [l.split()[:2] for l in fx.rep.report([{**new[0], "repo": "Kit"}, {**new[0], "repo": "kit"}]).splitlines()
+               if l.startswith("kit ")], [["kit", "2"]])
     searched = {**row, "model": "claude-test", "web_search_requests": "3", "source": "main",
                 "timestamp": "2026-11-17T12:00:00Z", "cache_write_1h_tokens": "0"}
     fx.expect("row cost: unknown model with 3 web searches is the search fee only",

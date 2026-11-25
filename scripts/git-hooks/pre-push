@@ -5,7 +5,8 @@
 # Also runs scripts/check.sh (when present): the full lane for a push to main, master or the default branch (the
 # remote's HEAD, init.defaultBranch, or each name in the git config key check.fullLaneBranch), the fast lane for any other
 # branch (.claude/skills/deliver/SKILL.md), and the content check (scripts/check_content.py) on the tracked files and the
-# pushed commits (when the repo root has the settings file .check, or .pii-guard, its old name).
+# pushed commits (when the repo root has the settings file .check, or .pii-guard, its old name). A push of only the
+# token log branch (log_only) skips check.sh, and its content check scans only the pushed commits.
 # Blocks: a push that git runs outside the repo's own work tree (own_tree), a push that is not a fast-forward (every force-push form, including --force-with-lease),
 # deleting main or master on the remote, pushing a remote commit this clone has not fetched, and a push that adds a commit
 # whose author or committer e-mail is not a GitHub noreply address (check_identity; it prints the length, never the address).
@@ -81,6 +82,12 @@ lane_of() {  # lane_of [BRANCH...]: reads the same lines; prints "full" when a p
        NF>=4 && $2 !~ /^0+$/ && ($3 in full) {f=1} END {print (f ? "full" : "fast")}'
 }
 
+log_only() {  # log_only: reads the same lines; true when every pushed ref is the token log branch claude/token-usage
+             # (scripts/token_log.py commits only log files to it, never work-tree files; a TOKEN_LOG_BRANCH override
+             # runs the normal checks)
+  awk 'NF>=4 {n++; if ($3 != "refs/heads/claude/token-usage") o=1} END {exit !(n && !o)}'
+}
+
 # default_branches REMOTE: the names this clone knows for a default branch, on one line
 default_branches() {
   local r="${1:-origin}" d out=""
@@ -139,6 +146,14 @@ if [ "${1:-}" = "--test" ]; then
   lane "branch and main: full lane"   full "refs/heads/x $c refs/heads/x $zero
 refs/heads/main $b refs/heads/main $a"
   lane "delete only: fast lane"       fast "(delete) $zero refs/heads/main $b"
+  # logs NAME WANT INPUT: feed the push lines to log_only and compare (yes or no)
+  logs() { local got=no; printf '%s\n' "$3" | log_only && got=yes
+           if [ "$got" = "$2" ]; then echo "ok   $1"; else echo "FAIL $1 (got $got)"; fails=1; fi; }
+  logs "token log branch only: log-only"   yes "refs/heads/x $c refs/heads/claude/token-usage $a"
+  logs "log branch and another: not"       no  "refs/heads/x $c refs/heads/claude/token-usage $a
+refs/heads/y $c refs/heads/y $zero"
+  logs "another branch: not"               no  "refs/heads/x $c refs/heads/claude/token-usagex $zero"
+  logs "no lines: not"                     no  ""
   # eq NAME GOT WANT: print ok or FAIL, and remember a failure
   eq() { if [ "$2" = "$3" ]; then echo "ok   $1"; else echo "FAIL $1 (got '$2', want '$3')"; fails=1; fi; }
   eq "no origin/HEAD, no config: no extra default branch" "$(default_branches origin)" ""
@@ -214,9 +229,12 @@ idout=$(printf '%s\n' "$input" | check_identity "${1:-origin}") || { echo "$idou
 # Lane: full for main, master or a default branch (default_branches), so nothing reaches it on a fast-lane pass; fast for other branches.
 # --cached: a lane that already passed on this commit with a clean tree is not run again.
 # --no-content: with the content check on, the guard step below scans the tracked files and the pushed commits in one run.
-carries=0
+# A push of only the token log branch (log_only) skips check.sh: its commits hold no work-tree files, so the checks
+# would test files it does not carry. The content check still scans its pushed commits (the Maintainer, 2026-11-25).
+carries=0 logs=0
 printf '%s\n' "$input" | awk 'NF>=4 && $2 !~ /^0+$/ {f=1} END {exit !f}' && carries=1
-if [ -f "$top/scripts/check.sh" ] && [ "$carries" = 1 ]; then
+printf '%s\n' "$input" | log_only && logs=1
+if [ -f "$top/scripts/check.sh" ] && [ "$carries" = 1 ] && [ "$logs" = 0 ]; then
   args=(--cached)
   # shellcheck disable=SC2046  # the names are split on purpose
   [ "$(printf '%s\n' "$input" | lane_of $(default_branches "${1:-origin}"))" = fast ] && args+=(--fast)
@@ -240,7 +258,7 @@ if [ -f "$top/.check" ] || [ -f "$top/.pii-guard" ]; then
     echo "pre-push: blocked: .check is on but check_content.py was not found (scripts/ or tools/)." >&2; exit 1
   fi
   gargs=(--push --require-denylist)
-  [ "$carries" = 1 ] && gargs=(--all "${gargs[@]}")  # one run: every tracked file, and the pushed commits
+  [ "$carries" = 1 ] && [ "$logs" = 0 ] && gargs=(--all "${gargs[@]}")  # one run: every tracked file, and the pushed commits
   g0=$(date +%s%N 2>/dev/null)
   pout=$(printf '%s\n' "$input" | python3 "$guard" "${gargs[@]}" 2>&1); rc=$?
   [ -n "$pout" ] && printf '%s\n' "$pout" >&2
