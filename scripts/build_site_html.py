@@ -43,7 +43,7 @@ def dod_security(root):
     """
     path = Path(root) / CHECK
     text = path.read_text(encoding='utf-8-sig', errors='replace') if path.is_file() else ''
-    found = [re.match(r'(?i)^dod-security\s*:\s*(.*?)\s*$', line.strip()) for line in text.splitlines()]
+    found = [re.match(r'(?i)^dod-security\s*:\s*(.*)$', line.strip()) for line in text.splitlines()]
     values = [m.group(1) for m in found if m]
     if len(values) > 1 or any(v not in ('on', 'off') for v in values):
         raise ValueError(f'{CHECK}: `dod-security:` takes one line, `on` or `off`')
@@ -105,9 +105,11 @@ BOLD = (r'(?:(?<=^)|(?<=[\s("\'“‘-]))\*\*(?=[^\s*`])([^*`]*?[^\s*`])\*\*'
         r'(?=$|[\s.,;:!?)"\'”’-])')
 # Rendered by GitHub although every character is on the allow list: HTML entities (also with digits, &frac12;),
 # emoji codes (:warning:; a name that starts with a letter, not right after a letter or digit, so 09:00-17:00 and
-# 1:2:3 pass), and web addresses of any scheme or case (ftp://, HTTP://, WWW.).
+# 1:2:3 pass), and web addresses of any scheme or case (ftp://, HTTP://, WWW.). A scheme is tried only at the start of a run
+# of scheme characters, so a long run with no "://" takes linear time, not quadratic (ReDoS; CodeQL in 90-161.Z #232).
+SCHEME = r'(?<![A-Za-z0-9+.-])[0-9+.-]*[A-Za-z][A-Za-z0-9+.-]*://'   # build_site.py address_test: same strings as the old form
 ENTITY_OR_ADDRESS = (r'&(#\d+|#x[0-9A-Fa-f]+|[A-Za-z][A-Za-z0-9]*);|(?<![A-Za-z0-9]):[A-Za-z_+][A-Za-z0-9_+-]*:'
-                     r'|[A-Za-z][A-Za-z0-9+.-]*://|(?i:www\.)')
+                     r'|' + SCHEME + r'|(?i:www\.)')
 # A line that starts a list (also an empty item: "+" or "1." alone), is indented (an indented code block, or a
 # continuation GitHub may read differently), ends with a hard break, or underlines a heading ("===" or "---").
 LIST_START = r'([-+]|\d+[.)])(\s|$)'
