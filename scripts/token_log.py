@@ -227,7 +227,8 @@ def push(root, sid, tpath):
 
 
 def has_replies(tpath):
-    """True when the session log holds an assistant reply with token use (0 rows then means a changed format)."""
+    """True when the session log holds at least one assistant reply with token use (a log of 0 rows then means its
+    format changed)."""
     try:
         with open(tpath, encoding="utf-8", errors="replace") as f:
             return any('"assistant"' in ln and '"usage"' in ln for ln in f)
