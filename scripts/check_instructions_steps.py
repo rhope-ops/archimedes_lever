@@ -48,11 +48,11 @@ WAIT_WORDS = re.compile(r"\b(?:wait|waiting|loading|takes|for (?:about )?(?:\d+|
                         r"(?:secs?|seconds?|mins?|minutes?|hrs?|hours?)\b|for (?:about )?(?:a minute|an hour)\b|restarts?|restarting|reboots?|processing|"
                         r"syncing|in progress|spinner|progress bar)\b")
 WAIT_STATE = re.compile(r"\bwait until\b|\bwait for\b[^.]*\b(?:to|until)\b|\bdo not [^.]*\buntil\b|\buntil you see\b")
-FILLER = re.compile(r"(?:^|[.!?]\s+)(?:then )?(?:go on|continue)\s*(?:[.!](?=\s|$)|$)")  # a sentence that is only "Go on." or "Continue.": filler
+FILLER = re.compile(r"(?:^|[.!?;]\s+|,\s+)(?:then |now |and )?(?:go on|continue)\s*(?:[.!](?=\s|$)|$)")  # a sentence that is only "Go on." or "Continue.": filler
 ITEM = re.compile(r"^(\s*)(\d+)[.)]\s+(.*)$")
 FENCE = re.compile(r"^\s*(?:```|~~~)")
 WORD = re.compile(r"[A-Za-z0-9][A-Za-z0-9'’-]*")
-CLAUSES = re.compile(r"\s*[,;]?\s*(?:and\s+)?then\s+|;\s*|,\s+and\s+|\s+and\s+", re.IGNORECASE)
+CLAUSES = re.compile(r"\s*[,;]?\s*(?:and\s+)?then\s+|;\s*|,\s+and\s+|\s+and\s+|,\s+", re.IGNORECASE)
 SENTENCES = re.compile(r"(?<=[.!?])\s+")
 # A next-state span ("you see <the thing>", up to the next "and", "then" or mark): it names what is on the screen,
 # so it is not read for pointers or wait words; the rest of the sentence is.

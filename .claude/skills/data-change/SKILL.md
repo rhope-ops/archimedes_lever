@@ -1,6 +1,6 @@
 ---
 name: data-change
-description: Use before a write to live data (a list, database, spreadsheet, data file or schema) and before a large query.
+description: Use before a write to data that people or a live page use, and before a query that can read a large table or list.
 ---
 
 # Data change

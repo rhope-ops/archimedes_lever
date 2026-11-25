@@ -187,7 +187,7 @@ Your name list holds your names, your user name variants and your employer. It n
 8. In the editor, type the names of your list, one on each line. You see the names in the editor.
 9. If you use **nano**, press **Ctrl+X**, **Y** and **Enter**. This saves the file and closes **nano**. You see the prompt again.
 10. If you use **Notepad**, press **Ctrl+S**. This saves the file. You see no mark of unsaved changes in the title bar.
-11. If you use Claude Code on the web, open the environment menu, then click **Edit**.
+11. If you use Claude Code on the web, open the environment menu at the top, then click **Edit**.
 12. If you use Claude Code on the web, type `PII_GUARD_DENYLIST=Name1,Name2` in **Environment variables**, with your names in place of `Name1,Name2`. Click **Save**. A new session reads the list; this session does not.
 13. In your browser, open `https://github.com/` with your GitHub user name and the repository name after it, for example `https://github.com/YOUR_USER/NEW_NAME`. You see the tab **Code** of the repository.
 14. On the page of your repository, click **Settings**. You see the page **General**.
