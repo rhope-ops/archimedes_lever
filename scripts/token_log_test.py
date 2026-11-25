@@ -354,7 +354,7 @@ def case_bad_input_and_off(fx):
 
 
 def case_log_repo(fx):
-    """TOKEN_LOG_REPO sends the log branch to another repo: origin gets no new commit, the report reads from it.
+    """TOKEN_LOG_REPO sends the log branch to another repo: origin gets no new commit.
 
     Args:
         fx: the shared test fixture (Fixture).

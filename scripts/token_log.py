@@ -58,7 +58,7 @@ Network: TOKEN_LOG_REPO, else the git remote "origin" of the repo (fetch and pus
 shallow clone of the kit (kit_url()) at most once a day; none in the self-test.
 Writes: the branch claude/token-usage (sessions/, costs/ and limits/: one CSV file each for each session), through a temporary index; push.log, lock
 files and update.stamp in TOKEN_LOG_HOME; the installed hook file (self-update); never the work tree.
-Credentials: none itself; the push uses the credentials git already has for origin.
+Credentials: none itself; the push uses the credentials git already has for origin (or for TOKEN_LOG_REPO).
 """
 import csv
 import fcntl
