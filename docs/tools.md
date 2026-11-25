@@ -96,14 +96,16 @@ Without `scripts/git-hooks/pre-push`: 65 files, 17,096 lines (the prompt's basel
 
 ## Token log
 
+Lines and jobs of the token log rows re-measured 2026-11-25 (token log follow-ups); the other columns are from the first measurement.
+
 | File | Job | Lines | Callers | Self-test | Commits 30 d | Lines changed | Sync churn | Candidates |
 |---|---|---|---|---|---|---|---|---|
-| `scripts/token_log.py` | Claude Code Stop hook: log the token use of each API call to the branch claude/token-usage of the session's re | 394 | check.sh +7 scripts | yes | 26 | 2181 | 0 | Claude Code OpenTelemetry metrics, `/cost`, Anthropic usage API |
-| `scripts/token_log_report.py` | The report of the token log: the price tables and the --report command (estimated cost by week, by source, age | 153 | check.sh +3 scripts | no | 1 | 153 | 0 | Claude Code OpenTelemetry metrics, `/cost`, Anthropic usage API |
-| `scripts/token_log_rows.py` | The rows of the token log: reads a session log and its subagent logs into one row per API call (message id, tu | 162 | check.sh +4 scripts | yes | 1 | 162 | 0 | Claude Code OpenTelemetry metrics, `/cost`, Anthropic usage API |
-| `scripts/token_log_test.py` | Self-test of scripts/token_log.py (run by `python3 scripts/token_log.py --test`; kept in its own file so each | 368 | check.sh +4 scripts | yes | 15 | 876 | 0 | Claude Code OpenTelemetry metrics, `/cost`, Anthropic usage API |
-| `scripts/token_log_test_parts.py` | Self-test cases of the token log's parts: the rows (agent, agent_id and skill_use columns, bad agent input), t | 349 | check.sh +3 scripts | yes | 7 | 361 | 0 | Claude Code OpenTelemetry metrics, `/cost`, Anthropic usage API |
-| `scripts/token_log_test_costs.py` | Self-test cases of the /cost and /usage records in the token log: the agents-pane record <TOKEN_LOG_HOME>/cost | 155 | check.sh +1 scripts | yes | 0 | 0 | 0 | Claude Code OpenTelemetry metrics, `/cost`, Anthropic usage API |
+| `scripts/token_log.py` | Claude Code Stop hook: log the token use of each API call to the branch claude/token-usage of the private log  | 517 | check.sh +7 scripts | yes | 26 | 2181 | 0 | Claude Code OpenTelemetry metrics, `/cost`, Anthropic usage API |
+| `scripts/token_log_report.py` | The report of the token log: the price tables and the --report command (estimated cost by week, by source, age | 439 | check.sh +3 scripts | no | 1 | 153 | 0 | Claude Code OpenTelemetry metrics, `/cost`, Anthropic usage API |
+| `scripts/token_log_rows.py` | The rows of the token log: reads a session log and its subagent logs into one row per API call (message id, tu | 358 | check.sh +4 scripts | yes | 1 | 162 | 0 | Claude Code OpenTelemetry metrics, `/cost`, Anthropic usage API |
+| `scripts/token_log_test.py` | Self-test of scripts/token_log.py (run by `python3 scripts/token_log.py --test`; kept in its own file so each  | 455 | check.sh +4 scripts | yes | 15 | 876 | 0 | Claude Code OpenTelemetry metrics, `/cost`, Anthropic usage API |
+| `scripts/token_log_test_parts.py` | Self-test cases of the token log's parts: the rows (agent, agent_id and skill_use columns, bad agent input), t | 417 | check.sh +3 scripts | yes | 7 | 361 | 0 | Claude Code OpenTelemetry metrics, `/cost`, Anthropic usage API |
+| `scripts/token_log_test_costs.py` | Self-test cases of the /cost and /usage records in the token log: the agents-pane record <TOKEN_LOG_HOME>/cost | 225 | check.sh +1 scripts | yes | 0 | 0 | 0 | Claude Code OpenTelemetry metrics, `/cost`, Anthropic usage API |
 
 ## Rule caps and audit
 

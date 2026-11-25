@@ -147,7 +147,9 @@ def sliced_skills(command):
 def skill_calls(tpath):
     """Count the skill use in one log file, by the reply (message id) that made each call. A tool_use block counts
     one time (its id), though the log repeats a reply on each content block; a block with no usable id counts each
-    time. A line or block of an unexpected type is skipped, as in read_log. The same rules as scripts/skill_use.py.
+    time. A line or block of an unexpected type is skipped, as in read_log. The SKILL.md path rule is the one of
+    scripts/skill_use.py (a self-test keeps SKILL_PATH equal to its SKILL_FILE); this file counts only the shell
+    commands of SLICE_COMMANDS, skill_use.py every shell command that names a SKILL.md.
 
     Args:
         tpath: the path of a log file.

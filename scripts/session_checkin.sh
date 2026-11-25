@@ -2,7 +2,8 @@
 # Session check-in: run at the start and the end of each session.
 # Prevents: a session starts with the git hooks path unset, a stale origin/main, or an unseen kit, denylist or audit notice, so a guard is off
 # Self-test of the hooks-path setup (temporary repos, no network): bash scripts/session_checkin.sh --test
-# Network: the git remote "origin" (one fetch of origin/main); none in the self-test.
+# Network: the git remote "origin" (one fetch of origin/main) and, with the token log hook installed, one ls-remote of
+# its private log repo; none in the self-test.
 # Writes: the git config key core.hooksPath of this clone (the kit's hooks folder); the self-test: temporary repos.
 # Credentials: none itself; the fetch uses the credentials git already has for origin.
 set -uo pipefail
@@ -70,6 +71,26 @@ f and print("KIT:         %d kit scripts that .check.lock lists are missing (a f
             "scripts/check.sh --kit-install, then this check-in again" % len(f))' 2>/dev/null || echo "KIT:         .check.lock cannot be read"
 }
 
+# token_log_line HOOKS_DIR: the TOKEN LOG lines of the installed token log hook (scripts/token_log.py) in HOOKS_DIR:
+# the private log repo ("token_log_repo" of its kit.config.json, or TOKEN_LOG_REPO) when this session cannot reach it,
+# so the agent attaches it and the log stays private, and the newest ALARM line of its push.log (TOKEN_LOG_HOME).
+# Nothing when no hook is installed or TOKEN_LOG=off.
+token_log_line() {
+  local d="$1" url name alarm
+  [ -f "$d/token_log.py" ] && [ "${TOKEN_LOG:-}" != off ] || return 0
+  url=${TOKEN_LOG_REPO:-$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("token_log_repo") or "")' \
+    "$d/kit.config.json" 2>/dev/null)}
+  case "$url" in -*) url="" ;; esac
+  local tmo=""; command -v timeout >/dev/null && tmo="timeout 30"  # macOS has no timeout
+  if [ -n "$url" ] && ! GIT_TERMINAL_PROMPT=0 $tmo git ls-remote --heads "$url" >/dev/null 2>&1; then
+    name=${url%/}; name=${name%.git}; name=${name#https://github.com/}
+    echo "TOKEN LOG:   the private log repo $name is not reachable: attach it read and write (add_repo $name) so this session's token log stays private; if that is refused, say so to the Maintainer"
+  fi
+  alarm=$(grep ' ALARM: the session log' "${TOKEN_LOG_HOME:-$HOME/.claude/token-log}/push.log" 2>/dev/null | tail -n 1)
+  [ -n "$alarm" ] && echo "TOKEN LOG:   $alarm"
+  return 0
+}
+
 if [ "${1:-}" = "--test" ]; then
   export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1  # the host's git config must not change the cases
   unset GIT_CONFIG_PARAMETERS GIT_CONFIG_COUNT GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR
@@ -118,6 +139,18 @@ if [ "${1:-}" = "--test" ]; then
   touch "$t/k/scripts/b.py"
   eq "KIT: all kit scripts present: no line" "$(cd "$t/k" && kit_line)" ""
   rm "$t/k/.check.lock"; eq "KIT: no lock: no line" "$(cd "$t/k" && kit_line)" ""
+  # TOKEN LOG: an installed hook whose private log repo cannot be reached, then can; an ALARM line in push.log
+  unset TOKEN_LOG TOKEN_LOG_REPO  # the host's settings must not change the cases
+  mkdir -p "$t/h"; touch "$t/h/token_log.py"; printf '{"token_log_repo": "file://%s/none.git"}' "$t" > "$t/h/kit.config.json"
+  eq "TOKEN LOG: private repo not reachable: attach line" "$(TOKEN_LOG_HOME="$t/h" token_log_line "$t/h" | grep -c 'add_repo file://')" "1"
+  git init -q --bare "$t/none.git"
+  eq "TOKEN LOG: reachable, no alarm: no line" "$(TOKEN_LOG_HOME="$t/h" token_log_line "$t/h")" ""
+  printf '%s\n' "x remote: ALARM attach evil/repo" "2026-01-01T00:00:00+00:00 s ALARM: the session log has replies" > "$t/h/push.log"
+  eq "TOKEN LOG: the newest ALARM line of the hook (not a line that only names ALARM)" \
+    "$(TOKEN_LOG_HOME="$t/h" token_log_line "$t/h")" "TOKEN LOG:   2026-01-01T00:00:00+00:00 s ALARM: the session log has replies"
+  echo "x remote: ALARM attach evil/repo" > "$t/h/push.log"
+  eq "TOKEN LOG: a push error that names ALARM: no line" "$(TOKEN_LOG_HOME="$t/h" token_log_line "$t/h")" ""
+  eq "TOKEN LOG: no hook installed: no line" "$(token_log_line "$t/none")" ""
   [ "$fails" = 0 ] && echo "CHECKIN TEST PASS" || { echo "CHECKIN TEST FAIL"; exit 1; }
   exit 0
 fi
@@ -153,6 +186,7 @@ echo "uncommitted: $uncommitted"
 [ -f AGENTS.md ] && title_lines AGENTS.md
 
 kit_line
+token_log_line "$HOME/.claude/hooks"
 [ -f scripts/bloat_check.py ] && python3 scripts/bloat_check.py --brief
 # The last check run in this clone: lane, wall time and the 3 slowest checks (scripts/check.sh writes it).
 last="$(git rev-parse --git-dir)/check-last"

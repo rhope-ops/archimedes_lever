@@ -56,6 +56,13 @@ def case_skill_use(fx):
     Args:
         fx: the shared test fixture (Fixture).
     """
+    sys.path.insert(0, os.path.dirname(os.path.abspath(fx.rows.__file__)))
+    try:
+        import skill_use  # the kit's own copy of the SKILL.md path rule; an installed hook has none: no check
+        fx.expect("SKILL.md path rule: one rule in token_log_rows.py and skill_use.py",
+                  fx.rows.SKILL_PATH.pattern, skill_use.SKILL_FILE.pattern)
+    except ImportError:
+        pass
     t6 = os.path.join(fx.root, "proj", "s6.jsonl")
     u = json.loads(msg("k1", "2026-01-04T00:00:01Z"))["message"]["usage"]
 
@@ -268,7 +275,8 @@ def case_prices(fx):
 
 
 def case_self_update(fx):
-    """Self-update: a newer copy replaces the file; once a day; a copy that does not compile is not used.
+    """Self-update: the newest release tag's copy replaces the file (main without a tag never); once a day; a copy
+    whose self-test fails is not used.
 
     Args:
         fx: the shared test fixture (Fixture).
@@ -282,6 +290,7 @@ def case_self_update(fx):
     fx.sh(root, "git", "init", "-q", "-b", "main", kit)
     fx.sh(kit, "git", "add", ".")
     fx.sh(kit, "git", "commit", "-q", "-m", "kit")
+    fx.sh(kit, "git", "tag", "v1.9.0")
     os.environ["TOKEN_LOG_HOME"] = os.path.join(root, "update-home")
     fx.expect("self-update: newer copy replaces the file", tl.self_update(target, kit, now=1e9), "updated")
     fx.expect("self-update: file has the new text", open(target).read(), "import sys\nsys.exit(0)  # new\n")
@@ -290,6 +299,12 @@ def case_self_update(fx):
     with open(os.path.join(kit, "scripts", "token_log.py"), "w") as f:
         f.write("import sys\nsys.exit(1)  # compiles, fails its self-test\n")
     fx.sh(kit, "git", "commit", "-q", "-am", "fails")
+    stamp = os.path.join(os.environ["TOKEN_LOG_HOME"], "update.stamp")
+    os.remove(stamp)  # an extra check between the daily ones
+    fx.expect("self-update: a newer main with no new release tag is not installed",
+              tl.self_update(target, kit, now=1e9 + 150000), "up to date")
+    os.remove(stamp)
+    fx.sh(kit, "git", "tag", "v1.10.0")  # newer than v1.9.0 by number, older by text
     fx.expect("self-update: a copy whose self-test fails is not used",
               tl.self_update(target, kit, now=1e9 + 200000).startswith("not updated: self-test failed"), True)
     fx.expect("self-update: file kept", open(target).read(), "import sys\nsys.exit(0)  # new\n")
@@ -299,11 +314,23 @@ def case_self_update(fx):
     append(part, "rows = 1")
     fx.sh(kit, "git", "add", ".")
     fx.sh(kit, "git", "commit", "-q", "-m", "parts")
+    fx.sh(kit, "git", "tag", "v1.11.0")
     fx.expect("self-update: the parts and the file install", tl.self_update(target, kit, now=1e9 + 300000), "updated")
     fx.expect("self-update: the part is next to the file",
               open(os.path.join(os.path.dirname(target), "token_log_rows.py")).read(), "rows = 1\n")
     os.remove(os.path.join(os.path.dirname(target), "token_log_rows.py"))
     fx.expect("self-update: a missing part is not up to date", tl.self_update(target, kit, now=1e9 + 400000), "updated")
+    fx.sh(kit, "git", "checkout", "-q", "-b", "v1.11.0")  # a branch named as the newest tag, with other code
+    with open(os.path.join(kit, "scripts", "token_log.py"), "w") as f:
+        f.write("import sys\nsys.exit(0)  # a branch, not the release\n")
+    fx.sh(kit, "git", "commit", "-q", "-am", "branch")
+    fx.sh(kit, "git", "tag", "x/v9.9.9")  # not a release tag name: left out
+    os.remove(stamp)
+    fx.expect("self-update: the tag's code, not a branch of the same name nor a tag x/v9.9.9",
+              (tl.self_update(target, kit, now=1e9 + 450000), open(target).read()),
+              ("up to date", "import sys\nsys.exit(0)  # new 2\n"))
+    os.remove(stamp)
+    fx.sh(kit, "git", "checkout", "-q", "main")
     case_kit_url(fx, kit, target)
     case_installed_hook_works(fx)
 
@@ -321,6 +348,7 @@ def case_kit_url(fx, kit, target):
         f.write('{"kit_url": "https://example.invalid/sample-org/sample-kit"}')
     fx.sh(kit, "git", "add", ".")
     fx.sh(kit, "git", "commit", "-q", "-m", "config")
+    fx.sh(kit, "git", "tag", "v1.12.0")
     tl.self_update(target, kit, now=1e9 + 500000)
     sibling = os.path.join(os.path.dirname(target), "kit.config.json")
     fx.expect("self-update: kit.config.json installs next to the file", os.path.isfile(sibling), True)
@@ -341,6 +369,7 @@ def case_kit_url(fx, kit, target):
         with open(os.path.join(kit, "scripts", "token_log.py"), "w") as f:
             f.write("import sys\nsys.exit(1)  # fails its self-test\n")
         fx.sh(kit, "git", "commit", "-q", "-am", "hostile")
+        fx.sh(kit, "git", "tag", "v1.13.0")
         with open(sibling, "w") as f:
             f.write('{"kit_url": "https://example.invalid/sample-org/sample-kit"}')
         tl.self_update(target, kit, now=1e9 + 700000)
