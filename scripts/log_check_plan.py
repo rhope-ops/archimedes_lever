@@ -57,7 +57,7 @@ def scope_missing(cell):
     """The finding of one Decision cell of a Date | Scope | Decision table, or None: the cell starts with "By: <who>",
     and when <who> names a role word the quoted approval follows at once (BY_WHO, APPROVED_WHO)."""
     m = BY_WHO.match(cell)
-    if not m or not m.group(1).strip():
+    if not m or not re.search(r"[^\W\d_]", re.sub(r"(?i)^\W*the\b", "", m.group(1))):   # <who> needs a word besides "the"
         return 'the Decision cell must start with By: <who>, for example By: the Maintainer: "I approve the plan"'
     if APPROVER.search(m.group(1)) and not APPROVED_WHO.match(cell, m.start(1)):
         return 'By names the Maintainer but quotes no approval right after it: write By: the Maintainer: "..."'
@@ -252,8 +252,8 @@ def self_test_t6_t7():
          SCOPE_TABLE.replace('By: the Maintainer: "I approve the sync" (own message).', "by: the Maintainer."), "no approval"),
         ("T6 a Date | Scope | Decision table: a later quote is no approval", SCOPE_TABLE.replace(
             'By: the Maintainer: "I approve the sync" (own message).', 'By: the Maintainer. Replaces "the plan" with "x".'), "no approval"),
-        ("T6 a Date | Scope | Decision table: an empty <who> fails",
-         SCOPE_TABLE.replace('By: the Maintainer: "I approve the sync" (own message).', 'By: (the Maintainer) Sync.'), "must start with By:"),
+        ("T6 Scope table: a <who> of only \"the\" fails", SCOPE_TABLE.replace("By: the Maintainer:", "By: the (Maintainer)"), "must start"),
+        ("T6 Scope table: an empty <who> fails", SCOPE_TABLE.replace("By: the Maintainer:", "By: (the Maintainer)"), "must start"),
         ("T6 a Date | Scope | Decision table: a cell that does not start with By: fails",
          SCOPE_TABLE.replace('By: the Maintainer: "I approve the sync" (own message).', 'Sync. By: the Maintainer: "Yes".'),
          "must start with By:"),
