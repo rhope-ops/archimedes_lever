@@ -23,6 +23,7 @@ GROUP_HEADING = re.compile(r"^#{2,3}\s+([A-Z][0-9]?)\.")
 GROUP_CELL = re.compile(r"^\W*([A-Z][0-9]?)\.")
 # The two forms of the Decisions table: Date | Decision | By, or Date | Scope | Decision with "By: ..." in the Decision cell.
 DECISIONS_HEAD = re.compile(r"^\s*\|\s*date\s*\|\s*(?:decision\s*\|\s*by|scope\s*\|\s*decision)\s*\|", re.I)   # sync_baseline.py: the same
+BY_MARK = re.compile(r"\bby\s*\**\s*:", re.I)   # the start of the By text in a Decision cell (by_part)
 APPROVER = re.compile(r"maintainer|owner|administrator", re.I)   # the role words a By cell can name (the sync swaps them per project)
 
 
@@ -47,26 +48,18 @@ def decisions_table(text):
 
 
 def by_part(cell):
-    """The "By: ..." part of a Decision cell (a Date | Scope | Decision table): from "By:" to the first ". " outside a
-    quote, else to the cell end, so a quote with no closing mark runs to the end and is still checked. One pass over the
-    cell (no regex backtracking).
+    """The By text of a Decision cell (a Date | Scope | Decision table): from the first "By:" (any case; "**By**:" and
+    "By :" too) to the cell end, or the whole cell when it has no "By:". It fails closed: a role word in it needs a
+    quoted approval after the marker, wherever the sentence ends. Known limit: any quote after "By:" counts.
 
     Args:
         cell: the text of the Decision cell.
 
     Returns:
-        The "By: ..." text, or '' when the cell has no "By:".
+        The By text.
     """
-    m = re.search(r"\bBy:", cell)
-    if not m:
-        return ""
-    quoted = False
-    for j in range(m.end(), len(cell)):
-        if cell[j] in '"“”':
-            quoted = not quoted if cell[j] == '"' else cell[j] == "“"
-        elif not quoted and cell[j] == "." and cell[j + 1:j + 2].isspace():
-            return cell[m.start():j]
-    return cell[m.start():]
+    m = BY_MARK.search(cell)
+    return cell[m.start():] if m else cell
 
 
 def check_decisions(path):
@@ -248,6 +241,14 @@ def self_test_t6_t7():
          scope.replace('"I approve the sync" (own message). Sync', '"Yes. Sync'), "quotes no approval"),
         ("T6 a Date | Scope | Decision table: mixed quote marks are no approval quote",
          scope.replace('"I approve the sync"', '“Yes. Go ahead."'), "quotes no approval"),
+        ("T6 a Date | Scope | Decision table: a second By: is read", scope.replace(
+            'By: the Maintainer: "I approve the sync" (own message).', "By: x. By: the Maintainer."), "quotes no approval"),
+        ("T6 a Date | Scope | Decision table: a full stop after By: is read past",
+         scope.replace('By: the Maintainer: "I approve the sync" (own message).', "By: approx. the Maintainer."), "quotes no approval"),
+        ("T6 a Date | Scope | Decision table: a lower-case by: is read",
+         scope.replace('By: the Maintainer: "I approve the sync" (own message).', "by: the Maintainer."), "quotes no approval"),
+        ("T6 a Date | Scope | Decision table: a cell with no By: is read whole",
+         scope.replace('By: the Maintainer: "I approve the sync" (own message).', "The Maintainer decided."), "quotes no approval"),
         ("T6 a By cell with the old role word Administrator needs a quote",
          DECISIONS_TABLE.replace(row, "| 2026-11-24 | New row | the Administrator | - |"), "quotes no approval"),
     ]
