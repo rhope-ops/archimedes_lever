@@ -287,7 +287,7 @@ sys.exit(0 if set(f) - set(subprocess.run(["git", "ls-files", "-z", "--"] + f, c
 # The kit package's command: archimedes-kit, else its module (a user install can put the command off PATH).
 kit() { if command -v archimedes-kit >/dev/null; then archimedes-kit "$@"; else python3 -m archimedes_kit.kit_package "$@"; fi; }
 # --kit-install: in package mode, install the kit package at the lock commit and write the kit scripts (the CI step, the
-# SessionStart hook at startup, the setup script and kit-update use it: one home for the install command); else nothing.
+# SessionStart hook at startup, kit-update and a setup script that calls it use it: one home for the install command); else nothing.
 if [ "$kitinstall" = 1 ]; then
   pkg_mode || { echo "KIT PACKAGE: not used (each kit script in .check.lock is tracked)"; exit 0; }
   c="$(python3 -c 'import json; print(json.load(open(".check.lock"))["commit"])')" || exit 1
