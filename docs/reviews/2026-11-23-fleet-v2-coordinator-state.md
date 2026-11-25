@@ -255,3 +255,15 @@ Plan and approval: [2026-11-25-followups-2-plan.md](2026-11-25-followups-2-plan.
   bump_lock .txt copy (session_01PyXpdVP2QtCp9RgdmoMSrK); SEC-Source bandit and gitleaks on main
   (session_01PyXpdUxYkeFEnwdfWF2sRQ; its kit 12.0.0 sync PR #32 closed the security.yml item).
 - Archival: [plan](2026-11-25-archival-plan.md), approved.
+
+- Fleet run (the Maintainer, 2026-11-25: "do it now and audit the entire fleet since it keeps whining", "Approve, Sonnet",
+  "I approve you to attach and finish this work"): kit 13.0.0 (PR 219), 13.0.1 (PR 221, dead-link fix), 13.1.0 (PR 222,
+  ARCHIVE DUE counts archivable only), 13.1.1 (PR 223, a 217-character line). Kit archive run: PR 220, 112 files.
+  Per repo: kit sync, full audit, archive step (age waits waived); all merged after fresh reviews with 0 MAJOR.
+  Reviews caught 3 wrong deletions (90-161.Z r28 notes, RADE r21 notes and standards close-out, 33-332.Z 4 result pages)
+  and 1 mode change (ICF taken out of package mode); all fixed before merge.
+- Open for the Maintainer: tags v13.0.0-v13.1.1; TA audit: a first name in 9 tracked files and a company address in
+  `.check` (personal-data review); SEC-Source old DECISIONS rows (same); attach rhope-ops/token-logs (classifier denied).
+- Follow-ups (not approved): archive step reads plan text for evidence cited by description; bootstrap.sh leaves
+  archive-index.md in new projects; full-lane time (kit 4.2 -> ~29 s, RADE 51 -> 161 s); T2 cap MINORs (truthy "cap",
+  no test over the cap); a coordinator session should start with all fleet repos attached (child add_repo is denied).
