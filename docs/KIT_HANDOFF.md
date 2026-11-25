@@ -2,7 +2,7 @@
 
 The kit's own handoff (AGENTS.md "Handoff"). Kit only: first use deletes it in a project, which uses docs/NEXT_PROMPT.md. Keep it at 40 lines or fewer and inside the session-load cap (`.check` counts it); evidence and older items go in docs/reviews/. Times are America/Chicago.
 
-Updated: 2026-11-25 08:41 (token log session): PRs 200-204 merged; v11.2.0 tagged; setup script on the tag. No tag ruleset: one admin (the Maintainer, 2026-11-25). Older items: [archive file](reviews/2026-11-24-kit-handoff-archive.md); fleet audit [report](reviews/2026-11-24-fleet-audit.md).
+Updated: 2026-11-25 13:15 (coordinator 4): 90-161.Z #239 merged (70c72e3). Older items: [archive file](reviews/2026-11-24-kit-handoff-archive.md); fleet audit [report](reviews/2026-11-24-fleet-audit.md).
 
 ## State
 
@@ -18,7 +18,7 @@ Plan and decisions 1-10: [reviews/2026-11-23-tool-retirement-plan.md](reviews/20
 
 - [Plan 2026-11-25](reviews/2026-11-25-instructions-80-plan.md): instructions at 80%.
 
-- Follow-ups 2: 11 of 13 done ([plan](reviews/2026-11-25-followups-2-plan.md), [state](reviews/2026-11-23-fleet-v2-coordinator-state.md)); 90-161.Z PR 239 held for the Maintainer (state, last section).
+- [Archival plan](reviews/2026-11-25-archival-plan.md) (approved 2026-11-25): phase 1 kit inventory. Follow-ups 3: [state](reviews/2026-11-23-fleet-v2-coordinator-state.md).
 - Fleet audit (report, "Open questions"): A10, A11, A15 in PR 160; the other audit-the-audit items (A1-A9, A12-A14) open. Cut proposals 5, 8, 9 and each project's AUDIT DUE wait for that project's own audit (the Maintainer, 2026-11-24). Skill-use audit due 2026-12-08.
 - Kit PATCH fixes (a)-(f) and Step 5: archive file, "Open".
 
