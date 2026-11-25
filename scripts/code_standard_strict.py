@@ -37,7 +37,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))   # the check loads thi
 import check_settings as settings   # noqa: E402 - scripts/check_settings.py: the settings file name and its name test
 import code_standard_rules as rules   # noqa: E402 - scripts/code_standard_rules.py: LINTERS (ruff and pylint installed)
 
-PRAGMA = re.compile(r'\s*#\s*(?:noqa|type:|pylint:|pyright:|mypy:|nosec|isort:|ruff:|fmt:)[^#]*$', re.I)   # ruff E501 skips it
+PRAGMA = re.compile(r'(?:\s*#\s*(?:noqa|type:|pylint:|pyright:|mypy:|nosec|isort:|ruff:|fmt:)[^#]*)+$', re.I)   # ruff E501 skips it
 SAFETY_LABELS = ('Network:', 'Writes:', 'Credentials:')   # C1 safety: what a reviewer must find before a run
 # A By cell with one of these marks a script or an agent, not the Maintainer (the Maintainer, 2026-11-17: only the Maintainer decides).
 NOT_OWNER = ('scripts/', '.py', 'agent', 'delegation')

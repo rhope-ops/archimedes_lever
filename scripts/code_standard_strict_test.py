@@ -178,7 +178,8 @@ def check_lines(cs, root, g):
         ok = [('x = "%s"  # noqa: E501' % ('a b ' * 70), True), ('x = "%s"  # noqa: F401' % ('a b ' * 70), False),
               ('# see https://x.org/' + 'a' * 240, True), ('# ' + 'word ' * 45 + 'https://x.org/' + 'a' * 30, False),
               ('#' + 'a' * 250, True), ('x = "%s"' % ('a b ' * 85), False),
-              ('x = "%s"  # type: ignore' % ('a b ' * 48), True), ('x = "%s"  # NOQA' % ('a b ' * 70), True)]
+              ('x = "%s"  # type: ignore' % ('a b ' * 48), True), ('x = "%s"  # NOQA' % ('a b ' * 70), True),
+              ('x = "%s"  # type: ignore  # noqa: F401' % ('a b ' * 48), True)]
         for line, want in ok:   # the lines that ruff E501 lets pass (checked against ruff 0.17.6, 2026-11-24)
             assert gate.ruff_ok(line, 200) == want, 'ruff_ok(%r...) should be %s' % (line[:30], want)
     finally:
