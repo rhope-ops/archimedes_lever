@@ -52,11 +52,12 @@ def kinds(text, path="go.md"):
     return [line.split(": ", 2)[1].split(":")[0] for line in findings(text, path)]
 
 
-FILLER_CASES = [  # (step text, findings): "Go on." filler, and texts that are no filler
-    ("Click **Restore**. Go on.", ["filler"]), ("Click **Restore**. Continue.", ["filler"]),
+STEP_CASES = [  # (step text, findings): "Go on." filler, texts that are no filler, and a 4-action list
+    ("Click **Restore**. Go on.", ["filler"]), ("Click **Restore**. Continue.", ["filler"]), ("Click **A**, click **B**, click **C** and click **D**.", ["actions"]),
     ("Click **A**. Then go on.", ["filler"]), ("Click **A**, then go on.", ["filler"]), ("Click **A**; go on.", ["filler"]),
     ("Click **A**. Now go on.", ["filler"]), ("Click **Restore**.", []), ("Click **A**. Do not go on until **Done** shows.", []),
-    ("If you see **Done**: continue.", []), ("Go on with step 2.", ["pointer"]),
+    ("If you see **Done**: continue.", []), ("Go on with step 2.", ["pointer"]), ("If you see **Error**, continue.", []),
+    ("When the window opens, go on.", []), ("Click **A** and go on.", ["filler"]), ("Click **A** then go on.", ["filler"]),
 ]
 
 
@@ -78,7 +79,7 @@ def case_steps():
     assert kinds(step("Select the appropriate file. You see the form.")) == ["vague"]
     assert kinds(step("Click **Restore**. You see the card. Wait a few minutes.")) == ["vague", "wait"]
     assert kinds(step("Click **Restore**. Wait until the card **Done** shows.")) == []
-    for text, want in FILLER_CASES:
+    for text, want in STEP_CASES:
         assert kinds(step(text)) == want, (text, findings(step(text)))
     long_sentence = "Click **Open** in the window that is on the left side of the screen near the top of the list of all the files."
     assert kinds(step(long_sentence + " You see it.")) == ["long"]
@@ -109,7 +110,6 @@ def case_steps():
                "   2. Type `b` in **B**.\n   You see **Saved**.\n2. Click **D**. You see E.\n"
     assert kinds(bad_lead) == ["actions"], findings(bad_lead)
     assert kinds("1. On **A**, do these actions:\n   1. Type `a`. Go on.\n2. Click **D**.\n") == ["filler"]
-    assert kinds(step("Click **A**, click **B**, click **C** and click **D**.")) == ["actions"]
     assert kinds("1. On **A**, do these actions:\n   1. Type `a`.\n   2. Type `b`.\n   3. Type `c`.\n   4. Type `d`.\n2. Click **D**.\n") == ["actions"]
     tabbed = lead.replace("   1.", "\t1.").replace("   2.", "\t2.").replace("   You", "\tYou")
     assert findings(tabbed) == [], findings(tabbed)

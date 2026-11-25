@@ -48,7 +48,7 @@ WAIT_WORDS = re.compile(r"\b(?:wait|waiting|loading|takes|for (?:about )?(?:\d+|
                         r"(?:secs?|seconds?|mins?|minutes?|hrs?|hours?)\b|for (?:about )?(?:a minute|an hour)\b|restarts?|restarting|reboots?|processing|"
                         r"syncing|in progress|spinner|progress bar)\b")
 WAIT_STATE = re.compile(r"\bwait until\b|\bwait for\b[^.]*\b(?:to|until)\b|\bdo not [^.]*\buntil\b|\buntil you see\b")
-FILLER = re.compile(r"(?:^|[.!?;]\s+|,\s+)(?:then |now |and )?(?:go on|continue)\s*(?:[.!](?=\s|$)|$)")  # a sentence that is only "Go on." or "Continue.": filler
+FILLER = re.compile(r"(?:^|[.!?;]\s*)(?!\s*(?:if|when|once|after|unless)\b)[^.!?;:]*?(?:^|,\s+|\s+)(?:then\s+|now\s+|and\s+)?(?:go on|continue)\s*(?:[.!;]|$)")  # "Go on." as a clause of its own
 ITEM = re.compile(r"^(\s*)(\d+)[.)]\s+(.*)$")
 FENCE = re.compile(r"^\s*(?:```|~~~)")
 WORD = re.compile(r"[A-Za-z0-9][A-Za-z0-9'’-]*")
@@ -70,7 +70,7 @@ def plain(raw):
 
 
 def count_actions(sentence, verbs=ACTION_VERBS):
-    """The number of actions in one sentence: clauses (split on "then", "and", ";") whose first word, after a
+    """The number of actions in one sentence: clauses (split on "then", "and", ";", ",") whose first word, after a
     leading condition up to its comma, is one of `verbs`.
 
     Args:
