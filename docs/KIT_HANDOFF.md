@@ -18,7 +18,7 @@ Plan and decisions 1-10: [reviews/2026-11-23-tool-retirement-plan.md](reviews/20
 
 - Kit 12.0.0 (c0fa5f1) in all 10 repos ([plan](reviews/2026-11-25-instructions-80-plan.md)); tag: the Maintainer.
 
-- [Archival plan](reviews/2026-11-25-archival-plan.md) (approved 2026-11-25): phase 1 kit inventory. Follow-ups 3: [state](reviews/2026-11-23-fleet-v2-coordinator-state.md).
+- [Archival plan](reviews/2026-11-25-archival-plan.md) (approved 2026-11-25): phase 1 (kit), 2 and 3 done (PR 214), phase 1 fleet open; the archive step runs again from 2026-12-02, and its first real run is the phase 4 pilot (index, restore drill, proofs as in the plan). Follow-ups 3: [state](reviews/2026-11-23-fleet-v2-coordinator-state.md).
 - Fleet audit (report, "Open questions"): A10, A11, A15 in PR 160; the other audit-the-audit items (A1-A9, A12-A14) open. Cut proposals 5, 8, 9 and each project's AUDIT DUE wait for that project's own audit (the Maintainer, 2026-11-24). Skill-use audit due 2026-12-08.
 - Kit PATCH fixes (a)-(f) and Step 5: archive file, "Open".
 
