@@ -1,2 +1,5 @@
 message_id,timestamp,turn,session_id,repo,model,source,agent,agent_id,input_tokens,cache_creation_input_tokens,cache_read_input_tokens,output_tokens,cache_write_1h_tokens,speed,web_search_requests,inference_geo,skill_use
 msg_011ChQmpUxb3YHJp1KSwFhDW,2026-11-26T02:45:48.610Z,1,51c9ddf0-c6fb-5d28-9a57-e567ca8335ea,archimedes_lever,claude-sonnet-5-5,main,main,,2,30160,63462,632,30160,standard,0,global,
+msg_011ChQmq7oPHa5BH6RnRQwiE,2026-11-26T02:45:54.714Z,1,51c9ddf0-c6fb-5d28-9a57-e567ca8335ea,archimedes_lever,claude-sonnet-5-5,main,main,,4,820,93622,145,820,standard,0,global,
+msg_011ChQmqH3G3rQXBxpzvrVm8,2026-11-26T02:45:57.439Z,1,51c9ddf0-c6fb-5d28-9a57-e567ca8335ea,archimedes_lever,claude-sonnet-5-5,main,main,,2,1615,94442,218,1615,standard,0,global,
+msg_011ChQmqYWSrbVnr5G3HUm5g,2026-11-26T02:46:01.457Z,1,51c9ddf0-c6fb-5d28-9a57-e567ca8335ea,archimedes_lever,claude-sonnet-5-5,main,main,,2,233,96057,227,233,standard,0,global,
