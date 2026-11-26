@@ -1,0 +1,5 @@
+message_id,timestamp,turn,session_id,repo,model,source,agent,agent_id,input_tokens,cache_creation_input_tokens,cache_read_input_tokens,output_tokens,cache_write_1h_tokens,speed,web_search_requests,inference_geo,skill_use
+msg_011ChRsfTUkcdSjXBfMhXa4x,2026-11-26T16:43:02.616Z,1,935d93a9-401e-5de2-b2f2-717e2a9d8b9b,archimedes_lever,claude-opus-5-5,main,main,,2,31813,63280,371,31813,standard,0,global,
+msg_011ChRsfwYwyynD39thqdVR3,2026-11-26T16:43:09.368Z,1,935d93a9-401e-5de2-b2f2-717e2a9d8b9b,archimedes_lever,claude-opus-5-5,main,main,,2,7899,95093,331,7899,standard,0,global,"{""handoff"":{""slice"":1}}"
+msg_011ChRsgRAs56gXULk3bu5qt,2026-11-26T16:43:14.612Z,1,935d93a9-401e-5de2-b2f2-717e2a9d8b9b,archimedes_lever,claude-opus-5-5,main,main,,2,2884,102992,371,2884,standard,0,global,
+msg_011ChRskrhduvxTTZ4C3efuP,2026-11-26T16:44:31.127Z,1,935d93a9-401e-5de2-b2f2-717e2a9d8b9b,archimedes_lever,claude-opus-5-5,main,main,,2,538,105876,2234,538,standard,0,global,
