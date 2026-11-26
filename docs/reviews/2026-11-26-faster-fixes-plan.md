@@ -9,7 +9,19 @@ Source: the Maintainer's approved "deeper version" prompt (chat, 2026-11-26), pl
 - 90-161.Z R44 r2 round: about 2 h 30 min; slowest step: 7 pushes, each with an 8-10 min Windows CI job, 2 failed runs, 4 review rounds (90-161.Z docs/reviews/2026-11-26-r44r2-plan.md line 33).
 - 90-161.Z git history since 2026-11-20 (shallow clone, depth 50): 6 of 67 merges were handoff-only pull requests; 8 commits start "Handoff".
 - Kit check lanes, this clone, 2026-11-26: fast 26.4 s, full 27.8 s.
-- Phase times of 4 fix sessions: step 1 file (measurement running).
+- Phase times of 4 fix sessions ([baseline](2026-11-26-fix-lead-time-baseline.md)): push+checks 41%, fix 29%, review 20% (10 reviewer runs, 6 of them repeats after a fix or a merge of main); start, skill loads and handoff under 4% together.
+
+## Phase each text cuts (from the baseline)
+
+| Text | Phase | Expected effect |
+|---|---|---|
+| T1, T3, T9 | review (20%) | repeat reviews read only the new diff; a base merge with no conflict needs none (S1: 2 of 3 runs); small changes reviewed on the fast tier |
+| T4, T10 | push+checks (41%) | fewer pushes; superseded CI runs stop |
+| T3 step 1 | how long it feels | the Maintainer sees the proven fix before delivery |
+| T5, T6, L2 | none (measure) | phase times in each report; re-measure after the release |
+| T7 | handoff (0.4% in fix sessions) | saves little in fix sessions; removes handoff-only pull requests in round work (6 of 67 in 90-161.Z) |
+| T3 as a fast path | skill-load (0.2%) | saves almost no time; its value is one short list of steps |
+| T8 | future rules | stops the session load from growing |
 
 ## Source items: in / out / later
 
@@ -31,15 +43,15 @@ Source: the Maintainer's approved "deeper version" prompt (chat, 2026-11-26), pl
 
 ## Exact texts (rule text: the Maintainer approves each)
 
-T1. AGENTS.md "Fresh review", whole line, new text (changed parts: the bracket after "the author's", and the sentence after "head commit you merge:"):
+T1. AGENTS.md "Fresh review", whole line, new text (changed parts: the bracket after "the author's", and the sentence after "head commit you merge:"; a base merge with no conflict needs no new review):
 
-> - **Fresh review.** For lanes B and C, a fresh reviewer gets only the diff and the brief, not the author's conclusions (a fresh context finds what self-review misses): the `reviewer` subagent where the host has subagents, else a new session, on a model tier no lower than the author's (a small change: the fast tier, deliver skill); if neither is possible, review it yourself, call it "self-review" and treat the merge as lane C. The review covers the head commit you merge: a later fix gets a review of its diff and the earlier findings. Review a change made to pass a check against its goal: "only the number moved" is MAJOR.
+> - **Fresh review.** For lanes B and C, a fresh reviewer gets only the diff and the brief, not the author's conclusions (a fresh context finds what self-review misses): the `reviewer` subagent where the host has subagents, else a new session, on a model tier no lower than the author's (a small change: deliver skill); if neither is possible, review it yourself, call it "self-review" and treat the merge as lane C. The review covers the head commit you merge: a later fix or a base merge with a conflict gets a review of its diff and the earlier findings. Review a change made to pass a check against its goal: "only the number moved" is MAJOR.
 
 T2. AGENTS.md "Checks", whole line, new text (pays for T1; removes a duplicate: deliver "GitHub Actions" and the workflow `if:` lines hold the private-repo case):
 
 > - **Checks.** Each push runs the fast lane (`scripts/git-hooks/pre-push`), so do not run it by hand first. Green for a merge means: `scripts/check.sh` passed one time on the head commit, and, in a public repo, the pull-request Action finished green. Change a generated file through its source and a rebuild.
 
-Protection removed by T2: none known; the private-repo reason stays in deliver "GitHub Actions". Session load, measured with `bloat_check.py --brief` (T1 + T2 applied in a scratch copy, 2026-11-26 ~11:05): kit 5,061 -> 5,056; 90-161.Z 5,433 -> 5,427. Every repo has the same kit text, so each one goes down about 5 tokens.
+Protection removed by T2: none known; the private-repo reason stays in deliver "GitHub Actions". Session load, measured with `bloat_check.py --brief` (T1 + T2 applied in a scratch copy, 2026-11-26 ~11:05): kit 5,061 -> 5,060 (final T1 text); an earlier T1 text measured kit 5,056 and 90-161.Z 5,433 -> 5,427. Every repo has the same kit text, so each one changes by the same amount.
 
 Decision rows checked (rule-change step 1): 2026-11-16 "reviewer.md model: inherit" (a conflict check on a lower tier had to run again) stays; T1 and T9 add a fast tier only for a small change, never for a conflict check or a lane C review. 2026-11-18 "Handoff" restart text stays (not touched).
 
@@ -96,7 +108,7 @@ T11. `.claude/rule-tests.md`: 2 rows. "Small change, 20 lines": a 20-line script
 1. Baseline file (lane A, in the kit pull request).
 2. T1, T2 in AGENTS.md (T2 retires a duplicate); T3-T9 in the skills; T11 rule tests (lane C).
 3. T10 workflows (lane C: guard files).
-4. `bloat_check.py --rules`: session load at most 5,056 (measured with T1 + T2; it must not rise); conflict check by a fresh reviewer, record `docs/reviews/2026-11-26-rule-conflict.md`; debt file `docs/reviews/2026-11-26-faster-fixes-debt.md` (T5 of rule-change).
+4. `bloat_check.py --rules`: session load at most 5,060 (measured with T1 + T2; it must not rise); conflict check by a fresh reviewer, record `docs/reviews/2026-11-26-rule-conflict.md`; debt file `docs/reviews/2026-11-26-faster-fixes-debt.md` (T5 of rule-change).
 5. Run the 2 new rule-test scenarios; record `docs/reviews/2026-11-26-rule-tests.md`.
 6. Dry-run sync of each fleet repo: session load by `bloat_check.py --brief`, each under 5,500.
 7. CHANGELOG row, kit 14.0.0 (MAJOR: changed AGENTS.md rule text), DECISIONS row, KIT_HANDOFF line. `scripts/check.sh` green; pull-request Action green.
