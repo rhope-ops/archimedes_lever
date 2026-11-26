@@ -1,6 +1,6 @@
 # Plan: faster small fixes (2026-11-26)
 
-Written 2026-11-26 10:55 America/Chicago by session "Kit · Faster small fixes · 2026-11-26". Status: **draft, waits for the Maintainer's approval of the exact texts below** (AGENTS.md "Rule text"). Scope: the kit; projects get it by the next kit release and sync.
+Written 2026-11-26 10:55 America/Chicago by session "Kit · Faster small fixes · 2026-11-26". Status: **approved 2026-11-26 11:05 America/Chicago** (the Maintainer, question dialog: "Approve all T1-T11 (Recommended)"; AGENTS.md "Rule text"). Step 1 done. Scope: the kit; projects get it by the next kit release and sync.
 
 Source: the Maintainer's approved "deeper version" prompt (chat, 2026-11-26), plus the 2 items it left out ("include the additional parts left out"). Decisions in the same chat (question dialog): small change gets a fast-tier review in parallel with the full lane; a re-review reads the fix diff only; done = kit pull request + CHANGELOG row (the Maintainer tags).
 
