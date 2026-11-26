@@ -34,7 +34,7 @@ Source: the Maintainer's approved "deeper version" prompt (chat, 2026-11-26), pl
 | 2d | Report the proven fix first, then deliver | in | deliver "Small change" step 1 |
 | 2e | Handoff once per session, in the last pull request | in | handoff step 5 |
 | 2f | Fast path at the top of deliver | in | deliver "Small change" |
-| 2g | One in, one out for each new rule | in | rule-change step 3 |
+| 2g | One in, one out for each new rule | in | rule-change step 4 |
 | 3 | Texts in full; session load does not rise; dry-run sync of each fleet repo | in | this plan; step 6 |
 | 4 | Proof: check.sh, rule tests 20 vs 21 lines and lane C, conflict record, CHANGELOG | in | steps 5-7 |
 | L1 | Fewer CI round trips: push once per round; cancel superseded CI runs | in | deliver step 2; kit check.yml and security.yml; CHANGELOG sync note for project workflows (RADE, 90-161.Z ps51.yml) |
@@ -83,7 +83,7 @@ T7. handoff step 5, new text:
 
 > 5. Write the handoff once for each session or pause, as a commit in the session's last pull request before its last review (a commit after the review moves the head and runs the review again); a handoff-only pull request (lane A) only when that pull request has merged.
 
-T8. rule-change step 3, new text:
+T8. rule-change step 4 (step 3 before kit 14.1.0), new text:
 
 > 3. Each new rule line removes or shortens a line in the same change, so the session load does not grow (one in, one out); only the Maintainer can waive this for one rule. The caps are the Maintainer's decision (`KIT_CAPS` in `scripts/bloat_check.py`).
 
@@ -111,7 +111,7 @@ T11. `.claude/rule-tests.md`: 2 rows. "Small change, 20 lines": a 20-line script
 4. `bloat_check.py --rules`: session load at most 5,060 (measured with T1 + T2; it must not rise); conflict check by a fresh reviewer, record `docs/reviews/2026-11-26-rule-conflict.md`; debt file `docs/reviews/2026-11-26-faster-fixes-debt.md` (T5 of rule-change).
 5. Run the 2 new rule-test scenarios; record `docs/reviews/2026-11-26-rule-tests.md`.
 6. Dry-run sync of each fleet repo: session load by `bloat_check.py --brief`, each under 5,500.
-7. CHANGELOG row, kit 14.0.0 (MAJOR: changed AGENTS.md rule text), DECISIONS row, KIT_HANDOFF line. `scripts/check.sh` green; pull-request Action green.
+7. CHANGELOG row, kit 15.0.0 (MAJOR; 14.0.0 and 14.1.0 merged meanwhile: changed AGENTS.md rule text), DECISIONS row, KIT_HANDOFF line. `scripts/check.sh` green; pull-request Action green.
 8. Fresh review of the whole pull request (author tier). Then ask the Maintainer to merge (lane C).
 9. After the merge: a one-time scheduled task 7 days after the tag: measure 5 fix tasks as in step 1, compare with the baseline (target: median lead time down 30% or more; fix-of-fix commits not up), write `docs/reviews/YYYY-MM-DD-fix-lead-time-after.md`.
 
