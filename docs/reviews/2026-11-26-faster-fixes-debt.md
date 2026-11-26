@@ -10,4 +10,7 @@ The change: AGENTS.md "Fresh review" (a small change may use the fast-tier revie
 
 The one-in-one-out step (T8) is for new rule lines only: no rule of today fails it.
 
+After the conflict check: 2 MAJOR fixes approved (2026-11-26): the fast path excludes lane C by effect, and "The review covers the changes you merge". After the merge of kit 14.0.0 and 14.1.0 from main (this release is 15.0.0): session load, measured, origin/main 5,087 -> this branch 5,082. Nothing more fails in any fleet repo.
+
 debt-check: 210907f36b08
+debt-check: e47fb5cc0f06
