@@ -1,5 +1,5 @@
 {
-  "_about": "Social preview cards (1280x640) for the kit and the fleet. scripts/social_preview.py builds each card's HTML (and PNG) from this file. Format (the Maintainer, 2026-11-26): name; line 2 = source + bullet + label, or a label alone, or none; purpose; motto. source: the official publication number with .Z, or null when the app has none.",
+  "_about": "Social preview cards (1280x640) for the kit and the fleet. scripts/social_preview.py builds each card's HTML (and PNG) from this file. Format (approved 2026-11-26): name; line 2 = source + bullet + label, or a label alone, or none; purpose; motto. source: the official publication number with .Z, or null when the app has none.",
   "cards": [
     {"repo": "90-161.Z", "file": "90-161.Z-social-preview", "mark": "delta-fulcrum.svg",
      "name": "KANON", "source": "90-161.Z", "label": "Publications and Forms Management",
