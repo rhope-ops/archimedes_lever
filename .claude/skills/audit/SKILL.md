@@ -46,7 +46,7 @@ When the cause is spread over many files (layers of small additions), stop and p
 
 - A command people or hooks run: add a timing with its `cmd` to `timings` in `.check.state.json`, then record it.
 - A script that runs itself (a hook, the check-in): measure the run and call `bloat_check.py --compare NAME=SECONDS`, as `scripts/session_checkin.sh` does.
-- An agent procedure (deliver, a review, an audit): write its start and end time in the report. When it runs a 2nd time, propose a script for it under Suggest.
+- An agent procedure (deliver, a review, an audit): write its phase times in the report (deliver step 8). When it runs a 2nd time, propose a script for it under Suggest.
 
 ## The full audit: bloat, drift and assumptions
 
