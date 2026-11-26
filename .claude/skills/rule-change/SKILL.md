@@ -45,6 +45,7 @@ Why: <the trigger, with its evidence>. Replaces: <the line it replaces, or "noth
 4. Record the approval as a row in docs/DECISIONS.md (date, scope, what it replaces).
 5. Run `python3 scripts/bloat_check.py --rules` and fix or explain each lint line (below).
 6. A hard rule (a line in "Hard rules", or a project rule marked "(cannot be changed)"): run its scenario in `.claude/rule-tests.md` and the conflict check (below). A default or another project rule: step 1 is the conflict check.
+7. Before you change a rule about what a session can do, test it in a session that another session starts, and record the result.
 
 ## Rule lint (warn only)
 
