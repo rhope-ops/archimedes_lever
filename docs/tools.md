@@ -140,6 +140,7 @@ Lines and jobs of the token log rows re-measured 2026-11-25 (token log follow-up
 | `scripts/build_site.py` | Build the shared parts of the site page (index.html) from README.md, so the README is the one source of truth. | 441 | check.sh +7 scripts | yes | 6 | 785 | 17 | python-markdown / markdown-it-py, MkDocs, Style Dictionary |
 | `scripts/build_site_html.py` | HTML parts of the kit's pages: the Markdown-to-HTML builders of scripts/build_site.py (moved here so that file | 233 | check.sh +7 scripts | no | 3 | 241 | 4 | python-markdown / markdown-it-py, MkDocs, Style Dictionary |
 | `scripts/fulcrum_palette.py` | Build and check the Fulcrum Minimal design tokens: docs/brand/fulcrum.json is the source, docs/brand/fulcrum.c | 312 | check.sh +2 scripts | yes | 1 | 312 | 4 | python-markdown / markdown-it-py, MkDocs, Style Dictionary |
+| `scripts/social_preview.py` | Build the social preview cards of the kit and the fleet from docs/brand/social-cards.json (HTML, and PNG through Playwright). | 202 | none | yes | 3 | 202 | 0 | Satori (vercel/og), Puppeteer screenshot scripts, Figma templates |
 | `scripts/timeline.py` | Render one or more project logs (docs/LOG.md) as one self-contained HTML timeline page. | 412 | check.sh +6 scripts | yes | 11 | 476 | 18 | python-markdown / markdown-it-py, MkDocs, Style Dictionary |
 
 ## Log, fleet, usage
