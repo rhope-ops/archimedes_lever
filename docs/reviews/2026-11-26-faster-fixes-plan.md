@@ -126,3 +126,9 @@ The 2 MAJOR fixes (approved 2026-11-26 ~11:30, question dialog "Approve both fix
 - Final fresh review of PR 226 at ec6c610: no MAJOR. MINOR: (1) delegate "Model routing": besides "strong" -> "strong or fast", the clause "for a role whose default is lower" became "for a role whose default is not that tier" (needed: the fast tier is lower than the reviewer default); it goes to the Maintainer with the merge. (2) The workflows have one comment line above `concurrency:` that T10 did not show. (3) The CHANGELOG session-load number: fixed to -5. (5) `--numstat` counts a binary file as 0 lines, and "test files" is not defined: recorded.
 - Step 5: [rule tests](2026-11-26-rule-tests.md), 37 and 38 pass (38 in its 21-line form only).
 - Step 6, in part: the session load was measured in the kit (5,087 -> 5,082 against main) and in 90-161.Z; the other fleet repos were not measured one by one. The AGENTS.md change is the same kit text in each repo and is 5 tokens shorter, so no repo's session load rises.
+
+## Close (2026-11-26 12:10)
+
+- Merged: PR 226, merge commit 2e127ab on main (12:07 America/Chicago), after the Maintainer's approval ("Approve merge + wording (Recommended)").
+- Open for the Maintainer: the tag v15.0.0 (a deny rule blocks agents from tags); the delete of the branch `claude/dreamy-brown-64futp` after this record merges.
+- Step 9: a one-time scheduled task "Kit · Fix lead time re-measure" (trig_01PzbLNqbx8xNdcxwQGmdxgf) starts a fresh session on 2026-12-03 10:13 America/Chicago. It stores no connectors, so that session may have no GitHub tools for its pull request; it then reports the block.
