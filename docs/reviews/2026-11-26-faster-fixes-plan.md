@@ -1,6 +1,6 @@
 # Plan: faster small fixes (2026-11-26)
 
-Written 2026-11-26 10:55 America/Chicago by session "Kit · Faster small fixes · 2026-11-26". Status: **approved 2026-11-26 11:05 America/Chicago** (the Maintainer, question dialog: "Approve all T1-T11 (Recommended)"; AGENTS.md "Rule text"). Step 1 done. Scope: the kit; projects get it by the next kit release and sync.
+Written 2026-11-26 10:55 America/Chicago by session "Kit · Faster small fixes · 2026-11-26". Status: **approved 2026-11-26 11:05 America/Chicago** (the Maintainer, question dialog: "Approve all T1-T11 (Recommended)"; AGENTS.md "Rule text"). Steps 1-5 and 7-8 done; step 6 in part (see the end); step 9 after the merge. Scope: the kit; projects get it by the next kit release and sync.
 
 Source: the Maintainer's approved "deeper version" prompt (chat, 2026-11-26), plus the 2 items it left out ("include the additional parts left out"). Decisions in the same chat (question dialog): small change gets a fast-tier review in parallel with the full lane; a re-review reads the fix diff only; done = kit pull request + CHANGELOG row (the Maintainer tags).
 
@@ -120,3 +120,9 @@ Not in this plan: the project workflow changes (RADE, 90-161.Z ps51.yml). The CH
 ## After the conflict check
 
 The 2 MAJOR fixes (approved 2026-11-26 ~11:30, question dialog "Approve both fixes (Recommended)") are in T1 and T3 above: "The review covers the changes you merge"; "nothing in lane C, by file or by effect"; deliver step 4 names the clean base merge. This release is kit 15.0.0 (14.0.0 and 14.1.0 merged to main meanwhile).
+
+## Final review and steps not run in full (2026-11-26 ~11:45)
+
+- Final fresh review of PR 226 at ec6c610: no MAJOR. MINOR: (1) delegate "Model routing": besides "strong" -> "strong or fast", the clause "for a role whose default is lower" became "for a role whose default is not that tier" (needed: the fast tier is lower than the reviewer default); it goes to the Maintainer with the merge. (2) The workflows have one comment line above `concurrency:` that T10 did not show. (3) The CHANGELOG session-load number: fixed to -5. (5) `--numstat` counts a binary file as 0 lines, and "test files" is not defined: recorded.
+- Step 5: [rule tests](2026-11-26-rule-tests.md), 37 and 38 pass (38 in its 21-line form only).
+- Step 6, in part: the session load was measured in the kit (5,087 -> 5,082 against main) and in 90-161.Z; the other fleet repos were not measured one by one. The AGENTS.md change is the same kit text in each repo and is 5 tokens shorter, so no repo's session load rises.
