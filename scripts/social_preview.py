@@ -31,7 +31,7 @@ WIDTH, HEIGHT = 1280, 640
 # Fulcrum Minimal colours, the same values as docs/brand/fulcrum.json primitives (disc, ring_and_symbol, accent, gold)
 # and the soft text colour of the earlier cards.
 STYLE = """html,body{margin:0;background:#15171D}
-.card{width:1280px;height:640px;box-sizing:border-box;padding:80px 88px 80px 108px;display:grid;grid-template-columns:440px 1fr;gap:92px;align-items:center;background:#15171D;color:#F3EEE4}
+.card{width:%(w)dpx;height:%(h)dpx;box-sizing:border-box;padding:80px 88px 80px 108px;display:grid;grid-template-columns:440px 1fr;gap:92px;align-items:center;background:#15171D;color:#F3EEE4}
 .mark{width:440px;height:440px;display:block}
 .title{font-family:FreeSerif,serif;font-weight:700;font-size:80px;line-height:1;margin:0 0 22px}
 .sub{font-family:Inter,sans-serif;font-weight:600;font-size:24px;line-height:1.3;margin:0 0 26px;color:#E4DED3;white-space:nowrap}
@@ -39,12 +39,12 @@ STYLE = """html,body{margin:0;background:#15171D}
 .sub .sep{color:#E4572E;font-weight:700;margin:0 .42em 0 .28em}
 .rule{width:96px;height:4px;background:#E4572E;margin:0 0 26px}
 .desc{font-family:Inter,sans-serif;font-size:30px;line-height:1.38;margin:0 0 28px;text-wrap:balance}
-.motto{font-family:FreeSerif,serif;font-style:italic;font-size:32px;color:#D4AF37;margin:0}"""
+.motto{font-family:FreeSerif,serif;font-style:italic;font-size:32px;color:#D4AF37;margin:0}""" % {"w": WIDTH, "h": HEIGHT}
 # Renders each HTML file given as an argument to a PNG beside it, at scale 1 (Playwright's bundled Chromium).
 RENDER_JS = """const {chromium}=require('playwright');
 (async()=>{const b=await chromium.launch();
 const p=await b.newPage({viewport:{width:%d,height:%d},deviceScaleFactor:1});
-for(const f of process.argv.slice(1)){await p.goto('file://'+f);await p.evaluate(()=>document.fonts.ready);
+for(const f of process.argv.slice(1)){await p.goto(require('url').pathToFileURL(f).href);await p.evaluate(()=>document.fonts.ready);
 await p.screenshot({path:f.replace(/\\.html$/,'.png')});}
 await b.close();})();""" % (WIDTH, HEIGHT)
 
@@ -60,6 +60,8 @@ def sub_line(card):
     """
     esc = html.escape
     if card.get("source"):
+        if not card.get("label"):
+            raise ValueError("card %r: a source needs a label" % card.get("repo"))
         return ('<p class="sub"><span class="src">%s</span><span class="sep">·</span>%s</p>\n'
                 % (esc(card["source"]), esc(card["label"])))
     if card.get("label"):
@@ -111,7 +113,10 @@ def render_png(paths):
     Returns:
         The exit code of node (0 = every PNG written).
     """
-    return subprocess.run(["node", "-e", RENDER_JS] + [str(p) for p in paths], check=False).returncode
+    try:
+        return subprocess.run(["node", "-e", RENDER_JS] + [str(p) for p in paths], check=False).returncode
+    except FileNotFoundError:
+        return 1
 
 
 def build(out_dir, only=None, png=False):
@@ -157,7 +162,13 @@ def self_test():
         '<p class="sub">L</p>' in label_only,
         'class="sub"' not in neither,
         "<b>" not in card_html(dict(base, source=None, label="<b>")),
+        "width:%dpx;height:%dpx" % (WIDTH, HEIGHT) in with_src,
     ]
+    try:
+        card_html(dict(base, source="1-2.Z", label=None))
+        checks.append(False)
+    except ValueError:
+        checks.append(True)
     with tempfile.TemporaryDirectory() as tmp:
         checks.append(build(pathlib.Path(tmp)) == 0)
         checks.append(len(list(pathlib.Path(tmp).glob("*.html"))) == len(load_cards()))
