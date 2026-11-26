@@ -31,17 +31,23 @@ Source: the Maintainer's approved "deeper version" prompt (chat, 2026-11-26), pl
 
 ## Exact texts (rule text: the Maintainer approves each)
 
-T1. AGENTS.md "Fresh review", whole line, new text:
+T1. AGENTS.md "Fresh review", whole line, new text (changed parts: the bracket after "the author's", and the sentence after "head commit you merge:"):
 
-> - **Fresh review.** For lanes B and C, a fresh reviewer gets only the diff and the brief, not the author's conclusions (a fresh context finds what self-review misses): the `reviewer` subagent where the host has subagents, else a new session, on a model tier no lower than the author's (a small change, deliver "Small change": the fast tier); if neither is possible, review it yourself, call it "self-review" and treat the merge as lane C. The review covers the head commit you merge: after a fix, a new review reads the diff since the last review and its findings. Review a change made to pass a check against its goal: "only the number moved" is MAJOR.
+> - **Fresh review.** For lanes B and C, a fresh reviewer gets only the diff and the brief, not the author's conclusions (a fresh context finds what self-review misses): the `reviewer` subagent where the host has subagents, else a new session, on a model tier no lower than the author's (a small change: the fast tier, deliver skill); if neither is possible, review it yourself, call it "self-review" and treat the merge as lane C. The review covers the head commit you merge: a later fix gets a review of its diff and the earlier findings. Review a change made to pass a check against its goal: "only the number moved" is MAJOR.
 
-T2. AGENTS.md "Handoff", retire part of the line (pays for T1; the handoff skill "Start from a handoff" step 1 already says it). Remove: "; after a restart or a compaction, continue it without a new plan review or approval". The sentence ends "…push it before step 1."
+T2. AGENTS.md "Checks", whole line, new text (pays for T1; removes a duplicate: deliver "GitHub Actions" and the workflow `if:` lines hold the private-repo case):
+
+> - **Checks.** Each push runs the fast lane (`scripts/git-hooks/pre-push`), so do not run it by hand first. Green for a merge means: `scripts/check.sh` passed one time on the head commit, and, in a public repo, the pull-request Action finished green. Change a generated file through its source and a rebuild.
+
+Protection removed by T2: none known; the private-repo reason stays in deliver "GitHub Actions". Session load, measured with `bloat_check.py --brief` (T1 + T2 applied in a scratch copy, 2026-11-26 ~11:05): kit 5,061 -> 5,056; 90-161.Z 5,433 -> 5,427. Every repo has the same kit text, so each one goes down about 5 tokens.
+
+Decision rows checked (rule-change step 1): 2026-11-16 "reviewer.md model: inherit" (a conflict check on a lower tier had to run again) stays; T1 and T9 add a fast tier only for a small change, never for a conflict check or a lane C review. 2026-11-18 "Handoff" restart text stays (not touched).
 
 T3. deliver skill, new section after the intro line, before "## Steps":
 
 > ## Small change (fast path)
 >
-> A small change has at most 20 changed lines (`git diff --numstat origin/main`), no lane C file (table "Merge lanes") and a test that covers it.
+> A small change has at most 20 added plus deleted lines outside test files (`git diff --numstat $(git merge-base origin/main HEAD)`), no lane C file (table "Merge lanes") and a test that covers it.
 >
 > 1. When its test passes, tell the Maintainer the fix and the test result in one line. Then deliver.
 > 2. Steps 0-3 as below, with one push.
@@ -63,7 +69,7 @@ T6. audit "Time a new repeatable process", third bullet, new text:
 
 T7. handoff step 5, new text:
 
-> 5. Write the handoff once for each session or pause, as a commit in the session's last pull request; a handoff-only pull request (lane A) only when no pull request of the session is open.
+> 5. Write the handoff once for each session or pause, as a commit in the session's last pull request before its last review (a commit after the review moves the head and runs the review again); a handoff-only pull request (lane A) only when that pull request has merged.
 
 T8. rule-change step 3, new text:
 
@@ -81,19 +87,19 @@ concurrency:
   cancel-in-progress: true
 ```
 
-(A new push to the same pull request stops the run of the old head; the merge gate reads the head run only.)
+(A new push to the same pull request stops the run of the old head; the merge gate reads the head run only.) Not proven for R44: it saves time only when pushes overlap a running job; T4 (fewer pushes) is the main fix. The run records of the repo with the Windows job are not read in this session (no access).
 
 T11. `.claude/rule-tests.md`: 2 rows. "Small change, 20 lines": a 20-line script fix with a test, `Ship it.` → fast-tier review in parallel with the full lane, merge lane B. "Not small": a 21-line fix, or a 3-line change to `.claude/settings.json` → author-tier review (the lane C file: ask the Maintainer).
 
 ## Steps (lane of each)
 
 1. Baseline file (lane A, in the kit pull request).
-2. T1, T2 in AGENTS.md; T3-T9 in the skills; T11 rule tests (lane C).
+2. T1, T2 in AGENTS.md (T2 retires a duplicate); T3-T9 in the skills; T11 rule tests (lane C).
 3. T10 workflows (lane C: guard files).
-4. `bloat_check.py --rules`: session load at most 5,071 (5,061 + 10; T1 adds about 20 tokens, T2 removes about 18); conflict check by a fresh reviewer, record `docs/reviews/2026-11-26-rule-conflict.md`; debt file `docs/reviews/2026-11-26-faster-fixes-debt.md` (T5 of rule-change).
+4. `bloat_check.py --rules`: session load at most 5,056 (measured with T1 + T2; it must not rise); conflict check by a fresh reviewer, record `docs/reviews/2026-11-26-rule-conflict.md`; debt file `docs/reviews/2026-11-26-faster-fixes-debt.md` (T5 of rule-change).
 5. Run the 2 new rule-test scenarios; record `docs/reviews/2026-11-26-rule-tests.md`.
 6. Dry-run sync of each fleet repo: session load by `bloat_check.py --brief`, each under 5,500.
-7. CHANGELOG row (MINOR or MAJOR by the kit's version rule), DECISIONS row, KIT_HANDOFF line. `scripts/check.sh` green; pull-request Action green.
+7. CHANGELOG row, kit 14.0.0 (MAJOR: changed AGENTS.md rule text), DECISIONS row, KIT_HANDOFF line. `scripts/check.sh` green; pull-request Action green.
 8. Fresh review of the whole pull request (author tier). Then ask the Maintainer to merge (lane C).
 9. After the merge: a one-time scheduled task 7 days after the tag: measure 5 fix tasks as in step 1, compare with the baseline (target: median lead time down 30% or more; fix-of-fix commits not up), write `docs/reviews/YYYY-MM-DD-fix-lead-time-after.md`.
 
