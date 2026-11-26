@@ -19,3 +19,17 @@ Checked and OK: the 2026-11-16 row "reviewer model: inherit" stays for every oth
 MINOR findings do not change rule text again (rule-change "Conflict check" step 3).
 
 rule-conflict-check: 210907f36b08
+
+## Re-check after the MAJOR fixes and the merge of main (hash e47fb5cc0f06)
+
+Reviewer: the `reviewer` subagent, fresh context, model inherit, 2026-11-26 about 11:36-11:40 America/Chicago; same brief, with rule-change steps 2 and 4 (kit 14.1.0) added.
+
+| # | Grade | Finding | State |
+|---|---|---|---|
+| R1 | MAJOR | The 2026-11-13 decision row ("A fresh review covers the head commit that is merged") contradicts "The review covers the changes you merge"; no decision row recorded the approved MAJOR-fix texts; plan T1 showed the old text | fixed in records: a DECISIONS row of 2026-11-26 with the exact texts and the approval quote, which replaces the 2026-11-13 row and the 2026-11-18 "Checks" text; plan T1 and T3 updated. No rule text changed |
+| R2 | MINOR | AGENTS.md implies the clean-merge case; only deliver step 4 says it | recorded |
+| R3 | MINOR | The fast path's fix commit (step 4) goes to steps 5-8 without step 4; "Checks" still requires check.sh on the head commit | recorded |
+| R4 | MINOR | the 2026-11-18 "Checks" row not in "Replaces" (earlier item 7) | fixed with R1 |
+| R5 | MINOR | "(a small change: deliver skill)" against "may use" (earlier item 3) | recorded |
+
+rule-conflict-check: e47fb5cc0f06

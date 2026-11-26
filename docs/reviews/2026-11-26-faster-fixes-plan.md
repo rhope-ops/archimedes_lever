@@ -45,7 +45,7 @@ Source: the Maintainer's approved "deeper version" prompt (chat, 2026-11-26), pl
 
 T1. AGENTS.md "Fresh review", whole line, new text (changed parts: the bracket after "the author's", and the sentence after "head commit you merge:"; a base merge with no conflict needs no new review):
 
-> - **Fresh review.** For lanes B and C, a fresh reviewer gets only the diff and the brief, not the author's conclusions (a fresh context finds what self-review misses): the `reviewer` subagent where the host has subagents, else a new session, on a model tier no lower than the author's (a small change: deliver skill); if neither is possible, review it yourself, call it "self-review" and treat the merge as lane C. The review covers the head commit you merge: a later fix or a base merge with a conflict gets a review of its diff and the earlier findings. Review a change made to pass a check against its goal: "only the number moved" is MAJOR.
+> - **Fresh review.** For lanes B and C, a fresh reviewer gets only the diff and the brief, not the author's conclusions (a fresh context finds what self-review misses): the `reviewer` subagent where the host has subagents, else a new session, on a model tier no lower than the author's (a small change: deliver skill); if neither is possible, review it yourself, call it "self-review" and treat the merge as lane C. The review covers the changes you merge: a later fix or a base merge with a conflict gets a review of its diff and the earlier findings. Review a change made to pass a check against its goal: "only the number moved" is MAJOR.
 
 T2. AGENTS.md "Checks", whole line, new text (pays for T1; removes a duplicate: deliver "GitHub Actions" and the workflow `if:` lines hold the private-repo case):
 
@@ -59,7 +59,7 @@ T3. deliver skill, new section after the intro line, before "## Steps":
 
 > ## Small change (fast path)
 >
-> A small change has at most 20 added plus deleted lines outside test files (`git diff --numstat $(git merge-base origin/main HEAD)`), no lane C file (table "Merge lanes") and a test that covers it.
+> A small change has at most 20 added plus deleted lines outside test files (`git diff --numstat $(git merge-base origin/main HEAD)`), nothing in lane C, by file or by effect (table "Merge lanes") and a test that covers it.
 >
 > 1. When its test passes, tell the Maintainer the fix and the test result in one line. Then deliver.
 > 2. Steps 0-3 as below, with one push.
@@ -116,3 +116,7 @@ T11. `.claude/rule-tests.md`: 2 rows. "Small change, 20 lines": a 20-line script
 9. After the merge: a one-time scheduled task 7 days after the tag: measure 5 fix tasks as in step 1, compare with the baseline (target: median lead time down 30% or more; fix-of-fix commits not up), write `docs/reviews/YYYY-MM-DD-fix-lead-time-after.md`.
 
 Not in this plan: the project workflow changes (RADE, 90-161.Z ps51.yml). The CHANGELOG sync column tells each project to add T10 to its own workflows in its sync pull request.
+
+## After the conflict check
+
+The 2 MAJOR fixes (approved 2026-11-26 ~11:30, question dialog "Approve both fixes (Recommended)") are in T1 and T3 above: "The review covers the changes you merge"; "nothing in lane C, by file or by effect"; deliver step 4 names the clean base merge. This release is kit 15.0.0 (14.0.0 and 14.1.0 merged to main meanwhile).
