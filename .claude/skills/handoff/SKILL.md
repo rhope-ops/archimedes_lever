@@ -20,7 +20,7 @@ AGENTS.md "Handoff" points here. The next session cannot see this chat: it reads
    - Where `.check` has the line `fleet: on`: also "Fleet format" below.
 3. Put detailed evidence (logs, tables, review findings) in its own file in the place AGENTS.md "Handoff" names (`YYYY-MM-DD-<topic>.md`), and link it.
 4. A decision by the Maintainer: a row in docs/DECISIONS.md (date, scope, what it replaces). Full tier: a story event also gets a project log row (the `project-log` skill).
-5. Deliver it like any change (`.claude/skills/deliver/SKILL.md`): a handoff alone is lane A.
+5. Write the handoff once for each session or pause, as a commit in the session's last pull request before its last review (a commit after the review moves the head and runs the review again); a handoff-only pull request (lane A) only when that pull request has merged.
 6. In the turn summary, give a resume prompt. This step is its home; other skills point here.
    - One code block, at most 100 words, that stands alone: goal, state, approved decisions, next step, full links.
    - Its first line is the next session's title without the date and pull request number (`RADE · Build round R31`), so that session starts named and adds its own date ("Session names").

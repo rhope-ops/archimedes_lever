@@ -7,6 +7,12 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+
+# A new push to the same pull request stops the run of the old head (faster-fixes plan, 2026-11-26).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   scan:
     # Shown on GitHub as "checks" (without a name, GitHub shows the job id "scan"). A repo that made "scan" a

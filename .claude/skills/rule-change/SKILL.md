@@ -42,7 +42,7 @@ Why: <the trigger, with its evidence>. Replaces: <the line it replaces, or "noth
 1. Search AGENTS.md (all sections, and the header values such as `- Time zone:`) and docs/DECISIONS.md for the same topic. If a line or a header value exists or conflicts, show both and ask which wins (two rules that disagree make agents act at random).
 2. Before you change a rule about what a session can do, test it in a session that another session starts, and record the result.
 3. Write one line, as a positive instruction with its reason in brackets where the reason is not plain ("Do Y (because Z)"). Keep "never" for hard rules.
-4. At a cap (below), the same change removes a line (one in, one out). The caps are the Maintainer's decision (`KIT_CAPS` in `scripts/bloat_check.py`).
+4. Each new rule line removes or shortens a line in the same change, so the session load does not grow (one in, one out); only the Maintainer can waive this for one rule. The caps are the Maintainer's decision (`KIT_CAPS` in `scripts/bloat_check.py`).
 5. Record the approval as a row in docs/DECISIONS.md (date, scope, what it replaces).
 6. Run `python3 scripts/bloat_check.py --rules` and fix or explain each lint line (below).
 7. A hard rule (a line in "Hard rules", or a project rule marked "(cannot be changed)"): run its scenario in `.claude/rule-tests.md` and the conflict check (below). A default or another project rule: step 1 is the conflict check.

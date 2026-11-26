@@ -19,7 +19,7 @@ AGENTS.md "Agents" points here. Ask each agent for concise findings with evidenc
 
 ## Model routing
 
-Route by tier. Pass a model on the call only where this table says "strong" for a role whose default is lower.
+Route by tier. Pass a model on the call only where this table says "strong" or "fast" for a role whose default is not that tier.
 
 | Work | Role | Tier |
 |---|---|---|
@@ -27,6 +27,7 @@ Route by tier. Pass a model on the call only where this table says "strong" for 
 | Task from a brief | `worker` | standard |
 | Worker task that failed its checks 2 times, a refactor over 5+ files, a performance fix | `worker` | strong (model on the call) |
 | Fresh review of a routine diff | `reviewer` | the author's tier (inherit) |
+| Fresh review of a small change (deliver "Small change") | `reviewer` | fast (model `haiku` on the call) |
 | Fresh review of data or save migrations, git or hook tools, security, or a refactor that must not change behavior | `reviewer` | strong (model on the call) |
 | Merges, conflict choices, design, artifacts, deploys | orchestrator | strong |
 

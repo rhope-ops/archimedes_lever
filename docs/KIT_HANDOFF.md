@@ -2,7 +2,7 @@
 
 The kit's own handoff (AGENTS.md "Handoff"; first use deletes it, and a project uses docs/NEXT_PROMPT.md). At most 40 lines, inside the session-load cap (`.check` counts it); evidence and older items: docs/reviews/. Times: America/Chicago.
 
-Updated: 2026-11-25 16:34 (coordinator 4): fleet audit + archive run done in all 10 repos; kit 13.1.1 in 9 (ICF PR 291 last). Older items: [archive file](reviews/2026-11-24-kit-handoff-archive.md).
+Updated: 2026-11-26 11:20: kit 15.0.0 in PR 226 ([plan](reviews/2026-11-26-faster-fixes-plan.md)); 14.1.0 on main. Older items: [archive file](reviews/2026-11-24-kit-handoff-archive.md).
 
 ## State
 
