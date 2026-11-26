@@ -143,7 +143,11 @@ def build(out_dir, only=None, png=False):
 
 
 def self_test():
-    """Check the three line-2 forms and that every card in the source file builds; return 0 on pass."""
+    """Check the three line-2 forms, HTML escaping and that every card in the source file builds.
+
+    Returns:
+        0 on pass, 1 on fail.
+    """
     base = {"name": "N", "purpose": "P.", "motto": "M.", "mark": "m.svg", "file": "f", "repo": "r"}
     with_src = card_html(dict(base, source="1-2.Z", label="L"))
     label_only = card_html(dict(base, source=None, label="L"))
@@ -165,7 +169,11 @@ def self_test():
 
 
 def main():
-    """Parse the command line and run the build or the self-test."""
+    """Parse the command line and run the build or the self-test.
+
+    Returns:
+        The exit code: 0 on success, 1 on failure.
+    """
     parser = argparse.ArgumentParser(description="Build the social preview cards from docs/brand/social-cards.json.")
     parser.add_argument("--out", type=pathlib.Path, help="folder for the HTML (and PNG) files")
     parser.add_argument("--only", help="build the card of this repo only")
