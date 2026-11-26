@@ -48,7 +48,7 @@ Round 4, only with 4B, 5B and 11B:
 
 | # | Question | When | Options | Recommended |
 |---|---|---|---|---|
-| 12 | Where does the project log go? It records how the project went and can hold environment details, so a public repo should not show it. | public repo (5B) | A a private repo: a log branch in a private GitHub repo you own · B in the repo, visible to all (docs/LOG.md) · C no project log | A when you have a private repo, else C |
+| 12 | Where does the project log go? It records how the project went and can hold environment details, so a public repo should not show it. | public repo (5B) | A a private Claude doc · B in the repo, visible to all (docs/LOG.md) · C no project log | A when this host has Claude docs, else C |
 
 Rules for the asking agent:
 - A public repo never uses a real name (question 7, option C is refused).
@@ -64,7 +64,7 @@ Rules for the asking agent:
 ## 3. Apply the answers
 
 1. Run `scripts/bootstrap.sh "<1>" <owner/repo from git remote get-url origin> "<2>" "<7>" "<3>" <11>`. Give "the owner" as the 4th argument when that is the answer. The 5th argument is the IANA time zone name (UTC for 3B). The 6th is `starter` (11A) or `full` (11B). The script deletes itself when done; keep this file, because step 4 is also what an agent shows when a session reports DENYLIST. It moves the kit's license to docs/archimedes_lever-LICENSE.txt: keep that file, because it covers the kit's scripts.
-2. Project log (answer 12, public repos in the full tier only): for A, ask the owner for the private repo (owner/name). Put docs/LOG.md in that repo as `project-logs/<short name>/LOG.md` on the branch `claude/project-logs` (the steps: .claude/skills/project-log/SKILL.md "A log in a private repo"), delete docs/LOG.md, and add to AGENTS.md "Project rules": "Project log: <owner/name>, branch claude/project-logs, project-logs/<short name>/LOG.md (the owner, YYYY-MM-DD)". For B, keep docs/LOG.md. For C, delete docs/LOG.md and add to "Project rules": "No project log (the owner, YYYY-MM-DD)".
+2. Project log (answer 12, public repos in the full tier only): for A, make a private Claude doc named "<1> project log" with the Arcs and Log tables of docs/LOG.md, delete docs/LOG.md, and add to AGENTS.md "Project rules": "Project log: <doc link> (the owner, YYYY-MM-DD)". For B, keep docs/LOG.md. For C, delete docs/LOG.md and add to "Project rules": "No project log (the owner, YYYY-MM-DD)".
 3. Guard (answer 8): for B, delete `.check`: the pre-push hook and the Action then skip the scan. The tool-call hook still scans.
 4. License (answer 6): for A, copy docs/archimedes_lever-LICENSE.txt to `LICENSE` and change the copyright line to the current year and the GitHub account or organization from `<owner/repo>`, unless the user names another holder (a public repo never uses a real name the user has not given). For B, save the text from https://www.apache.org/licenses/LICENSE-2.0.txt, unchanged, as `LICENSE`. For C, add no LICENSE.
 5. Record the answers as the Maintainer's decisions in docs/DECISIONS.md (with 4A, one row: "Recommended settings" and the list), and add one `decision` row to the project log (full tier only; not for 12C).

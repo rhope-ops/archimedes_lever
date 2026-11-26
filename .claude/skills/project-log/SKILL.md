@@ -20,16 +20,15 @@ AGENTS.md "Project log" points here; `python3 scripts/log_check.py` checks the f
 - Raised by: who first said it (the Maintainer, Claude, a named agent or person). "What the other missed": the gap on the other side, or `-`.
 - Evidence: a commit, file, test or measurement. Never chat text alone.
 
-## A log in a private repo
+## A log in a Claude doc
 
-A public repo names its log in "Project rules": `Project log: <owner/name>, branch <branch>, <path>`. Write each row there, in the turn it happens:
+A public repo names its log in "Project rules": a private Claude doc link. Write each row there, in the turn it happens. A session that another session starts has the Docs tools too (tested 2026-11-25), so try the write before any paste:
 
-1. Attach the repo with push access (`add_repo`, access `push`). A local session uses its own clone.
-2. Clone only the log branch: `git clone --depth 1 --branch <branch> https://github.com/<owner/name> <dir>`.
-3. Add the row at the end of the Log table and update its arc row.
-4. Run `python3 scripts/log_check.py <dir>/<path>` and `python3 scripts/check_content.py <dir>/<path>`.
-5. Commit, then push straight to the log branch. It is not a default branch, so no pull request is needed.
-6. If the push is rejected, fetch the branch and merge it. Never force a push.
-7. If the attach, the clone or the push is refused, put the full row in the turn summary under Copy. Use the table format above. Add the refused step, its error and "Paste into: project log".
-
-A Claude doc is not a log place: a session that another session starts has no Claude Docs tools, so it cannot write the doc (2026-11-25, RADE).
+1. Load the Docs tools: ToolSearch `select:mcp__Claude_Docs__read,mcp__Claude_Docs__update,mcp__Claude_Docs__guide`.
+2. Call `guide` with items `["topic.index","topic.editing"]`.
+3. Call `read` with ref `{"object":"project","id":"<the id at the end of the link>"}` to get the tab body id.
+4. Read the body outline (payload `{"projection":"outline"}`). Find the Log table: its header holds "What the other missed".
+5. Read that table (payload `{"kind":"view","parentId":"<table id>"}`) to get the last row number.
+6. Append the row: an `update` op `insert` on the table id, `"side":"end"`, `"as":"blocks"`, one cell for each of the 9 columns (topic.editing, ex.2).
+7. Update the arc row in the Arcs table: `replace` each changed cell's words by `find`, `"as":"text"`.
+8. Only when a Docs call is refused, put the full row in the turn summary under Copy. Use the table format above. Add the refused call, its error and "Paste into: project log".
