@@ -2,14 +2,14 @@
 # Fill the template placeholders in a new project made from the kit (kit.config.json "kit_repo").
 # Prevents: a new project keeps template placeholders, the wrong owner word or tier files, or the kit-only files, so it runs with unset values
 # Usage: scripts/bootstrap.sh "Project Name" Owner/repo "One-line purpose" ["Owner name"] ["Time zone"] [starter|full]
-# Owner name: what agents call the decider (default "the Maintainer"). A private repo may use your name; a public repo uses a role,
-# for example "the maintainer".
+# Owner name: what agents call the decider (default "the Administrator"). A private repo may use your name; a public repo uses a role,
+# for example "the administrator".
 # Time zone: an IANA name for project log times, for example Europe/Berlin or America/New_York (default UTC).
 # Tier (default starter): starter keeps the core rules, hooks and checks, and the name denylist only warns when missing;
 # full adds orchestration, the project log, the bloat audit and the rule tests (scripts/sync_baseline.py ADVANCED_FILES).
 # The script deletes itself when it finishes. Review the result, then commit and push.
 # Network: none.
-# Writes: the files of this repo: it fills the placeholders, renames the owner word, applies the tier, writes README.md,
+# Writes: the files of this repo: it fills the placeholders, renames the Administrator word, applies the tier, writes README.md,
 #   .check.state.json and .check.lock, and deletes the kit-only files and itself.
 # Credentials: none.
 set -euo pipefail
@@ -42,13 +42,13 @@ if ! python3 -c 'import sys; sys.path.insert(0, "scripts"); from build_site impo
   exit 1
 fi
 
-export BS_NAME="$1" BS_REPO="$2" BS_PURPOSE="$3" BS_OWNER="${4:-the Maintainer}" BS_TZ BS_DATE BS_TIME
+export BS_NAME="$1" BS_REPO="$2" BS_PURPOSE="$3" BS_OWNER="${4:-the Administrator}" BS_TZ BS_DATE BS_TIME
 # One clock read in the project time zone, so the date and time agree (project log times use it).
 BS_STAMP="$(TZ="$BS_TZ" date '+%F %H:%M')"
 BS_DATE="${BS_STAMP% *}"
 BS_TIME="${BS_STAMP#* }"
 
-# The kit's docs/DECISIONS.md and docs/LOG.md are the maintainer's own, public record (2026-11-13): a project starts from
+# The kit's docs/DECISIONS.md and docs/LOG.md are the administrator's own, public record (2026-11-13): a project starts from
 # the blank copies in docs/templates/ instead.
 for f in DECISIONS.md LOG.md; do
   if [ -f "docs/templates/$f" ]; then mv -f -- "docs/templates/$f" "docs/$f"; fi
@@ -58,20 +58,20 @@ rm -rf -- docs/templates
 files=(AGENTS.md docs/NEXT_PROMPT.md docs/DECISIONS.md docs/host-prompts.md docs/LOG.md)
 for f in "${files[@]}"; do
   perl -pi -e 's/\{\{PROJECT_NAME\}\}/$ENV{BS_NAME}/g; s/\{\{REPO\}\}/$ENV{BS_REPO}/g; s/\{\{PURPOSE\}\}/$ENV{BS_PURPOSE}/g;
-    s/\{\{SHORT_NAME\}\}/(split " ", $ENV{BS_NAME})[0]/ge; s/\{\{DATE\}\}/$ENV{BS_DATE}/g; s/\{\{TIME\}\}/$ENV{BS_TIME}/g; s/\{\{TIMEZONE\}\}/$ENV{BS_TZ}/g; s/\{\{OWNER\}\}/the Maintainer/g;
+    s/\{\{SHORT_NAME\}\}/(split " ", $ENV{BS_NAME})[0]/ge; s/\{\{DATE\}\}/$ENV{BS_DATE}/g; s/\{\{TIME\}\}/$ENV{BS_TIME}/g; s/\{\{TIMEZONE\}\}/$ENV{BS_TZ}/g; s/\{\{OWNER\}\}/the Administrator/g;
     $_ = "" if /^> Template: first use fills in/' "$f"
 done
 
-# Replace the role word "the Maintainer" / "The Maintainer".
-if [ "$BS_OWNER" != "the Maintainer" ]; then
-  # The same files sync_baseline.py renames (those of its COPY_FILES that hold the owner word), so a sync right after bootstrap changes nothing.
+# Replace the role word "the Administrator" / "The Administrator".
+if [ "$BS_OWNER" != "the Administrator" ]; then
+  # The same files sync_baseline.py renames (those of its COPY_FILES that hold the Administrator word), so a sync right after bootstrap changes nothing.
   # Not renamed on purpose: docs/FIRST_USE.md and scripts/first_use_check.py, whose
-  # "the owner" is an option, a role or a literal the script needs.
+  # "the Administrator" is an option, a role or a literal the script needs.
   # The list comes from the sync itself (COPY_FILES without NO_OWNER_RENAME), so it cannot fall behind it.
   mapfile -t kit_owner_files < <(python3 -c 'import os, sys; sys.path.insert(0, "scripts"); import sync_baseline as s; print("\n".join(f for f in s.COPY_FILES if f not in s.NO_OWNER_RENAME and os.path.isfile(f)))')
-  owner_files=("${files[@]}" "${kit_owner_files[@]}" .check docs/MAINTAINER_RUNBOOK.md docs/check-config-schema.md)  # kit-only text a project keeps
+  owner_files=("${files[@]}" "${kit_owner_files[@]}" .check docs/MAINTAINER_RUNBOOK.md docs/check-config-schema.md docs/fleet.md docs/github/README.md docs/account-skills/turn-summary/SKILL.md)  # kit-only text a project keeps
   for f in "${owner_files[@]}"; do
-    perl -pi -e 'my $c = ucfirst $ENV{BS_OWNER}; s/\b([Tt])he Maintainer\b/$1 eq "T" ? $c : $ENV{BS_OWNER}/ge' "$f"
+    perl -pi -e 'my $c = ucfirst $ENV{BS_OWNER}; s/\b([Tt])he Administrator\b/$1 eq "T" ? $c : $ENV{BS_OWNER}/ge' "$f"
   done
 fi
 
@@ -99,7 +99,7 @@ if ! python3 scripts/check_blocks.py --placeholders "${present[@]}"; then
   exit 1
 fi
 
-# The maintainer's preferences template (PREFERENCES.md), the kit's file list (docs/FILES.md) and its tool list (docs/tools.md) live only in the template repo. The kit's license moves next to the docs: the copied scripts
+# The Administrator's preferences template (PREFERENCES.md), the kit's file list (docs/FILES.md) and its tool list (docs/tools.md) live only in the template repo. The kit's license moves next to the docs: the copied scripts
 # stay under it, and the root LICENSE is the project's own choice (docs/FIRST_USE.md, question 6).
 rm -f -- PREFERENCES.md docs/FILES.md docs/tools.md
 # The kit's state (.check.state.json: its last audit and time baselines) is the kit's own. The project starts with a
@@ -107,8 +107,8 @@ rm -f -- PREFERENCES.md docs/FILES.md docs/tools.md
 printf '%s\n' '{' ' "code_standard": {' '  "debt": {}' ' }' '}' > .check.state.json
 # The kit's own review reports describe the kit, not the project; docs/reviews/README.md stays.
 find docs/reviews -maxdepth 1 -name '20*.md' -delete 2>/dev/null || true
-# Projects do not stay in sync with the kit (the owner, 2026-11-13): the sync tools stay in the kit only.
-# The token log hook is installed from the kit by the cloud setup scripts (the owner, 2026-11-17).
+# Projects do not stay in sync with the kit (the Administrator, 2026-11-13): the sync tools stay in the kit only.
+# The token log hook is installed from the kit by the cloud setup scripts (the Administrator, 2026-11-17).
 python3 scripts/sync_baseline.py --lock-here  # the kit lock (.check.lock) of the new project
 rm -f -- scripts/sync_baseline.py scripts/sync_merge.py scripts/drift.py scripts/token_log.py scripts/token_log_test.py \
   scripts/drift_test.py scripts/bootstrap_cli_test.py scripts/check_lock_cli_test.py scripts/drift_cli_test.py \
@@ -132,7 +132,7 @@ esac
 if [ -f LICENSE ]; then mv -- LICENSE docs/archimedes_lever-LICENSE.txt; fi
 
 rm -- "$0"
-if [ "$BS_OWNER" != "the Maintainer" ] && [ -f .check ]; then
+if [ "$BS_OWNER" != "the Administrator" ] && [ -f .check ]; then
   echo "Note: the content check is on (.check). If \"$BS_OWNER\" is a real name in your denylist, the check blocks it: remove .check in a private repo."
 fi
 echo "Done. Next: review with 'git diff', then commit and push."

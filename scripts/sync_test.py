@@ -21,7 +21,7 @@ from pathlib import Path
 
 KIT = Path(__file__).resolve().parent.parent
 TABLE = ("# D\n\n## Decisions\n\nNewest first.\n\n| Date | Decision | By |\n|---|---|---|\n"
-         "| 2026-11-22 | Newest row | the owner |\n| 2026-11-21 | Older row | the owner |\n")
+         "| 2026-11-22 | Newest row | the Administrator |\n| 2026-11-21 | Older row | the Administrator |\n")
 GIT = ["git", "-c", "user.name=Test", "-c", "user.email=test@example.invalid"]
 
 
@@ -44,7 +44,7 @@ def new_repo(path):
 def sync(path, *extra):
     """Sync the kit (this worktree) into the repo at path: starter tier, role owner, with --apply."""
     return py("sync_baseline.py", "--baseline", str(KIT), "--name", "Demo", "--repo", "org/demo", "--purpose", "A demo.",
-              "--timezone", "UTC", "--owner", "the maintainer", "--tier", "starter", *extra, "--apply", cwd=path)
+              "--timezone", "UTC", "--owner", "the administrator", "--tier", "starter", *extra, "--apply", cwd=path)
 
 
 def commit_all(path):
@@ -64,7 +64,7 @@ class SyncBaselineCli(unittest.TestCase):
     def test_dry_run_writes_nothing(self):
         """Prove: dry run writes nothing."""
         p = py("sync_baseline.py", "--baseline", str(KIT), "--name", "Demo", "--repo", "org/demo", "--purpose", "A demo.",
-               "--timezone", "UTC", "--owner", "the maintainer", "--tier", "starter", cwd=self.path)
+               "--timezone", "UTC", "--owner", "the administrator", "--tier", "starter", cwd=self.path)
         self.assertEqual(p.returncode, 0, p.stderr)
         self.assertEqual(run(["git", "status", "--short"], self.path).stdout, "")
 
@@ -78,7 +78,7 @@ class SyncBaselineCli(unittest.TestCase):
         lock = json.loads((self.path / ".check.lock").read_text())
         self.assertIn("scripts/check.sh", lock["files"])
         self.assertIn("version", lock)
-        self.assertIn("- Owner: the maintainer", (self.path / "AGENTS.md").read_text())
+        self.assertIn("- Owner: the administrator", (self.path / "AGENTS.md").read_text())
 
     def test_second_run_changes_nothing(self):
         """Prove: second run changes nothing."""
@@ -119,7 +119,7 @@ class SyncBaselineCli(unittest.TestCase):
         run(GIT + ["commit", "-q", "-m", msg], self.path)
 
     def test_relocked_override_stops_the_sync(self):
-        """Prove: a file the Maintainer relocked (an override) stops the sync (exit 2): nothing written, lock unchanged."""
+        """Prove: a file the Administrator relocked (an override) stops the sync (exit 2): nothing written, lock unchanged."""
         self.synced_and_committed()
         with (self.path / "scripts/check.sh").open("a") as f:
             f.write("# local\n")
@@ -268,7 +268,7 @@ class SyncBaselineCli(unittest.TestCase):
             copy = Path(plain) / "kit"
             shutil.copytree(KIT, copy, ignore=shutil.ignore_patterns(".git", "__pycache__", "worktrees"))
             p = py("sync_baseline.py", "--baseline", str(copy), "--name", "Demo", "--repo", "org/demo", "--purpose", "A demo.",
-                   "--timezone", "UTC", "--owner", "the maintainer", "--tier", "starter", "--apply", cwd=self.path)
+                   "--timezone", "UTC", "--owner", "the administrator", "--tier", "starter", "--apply", cwd=self.path)
         self.assertEqual(p.returncode, 2, p.stdout + p.stderr)
         line = self.advice_line(p.stdout, "scripts/stop_check.py")
         self.assertIn("delete", line)
@@ -293,11 +293,11 @@ class SyncBaselineCli(unittest.TestCase):
         self.assertTrue((self.path / ".check.lock").is_file())
 
     def test_owner_role_replaces_the_owner_word(self):
-        """Prove: owner role replaces the owner word."""
+        """Prove: owner role replaces the Administrator word."""
         self.assertEqual(sync(self.path).returncode, 0)
         text = (self.path / ".claude/skills/deliver/SKILL.md").read_text()
-        self.assertIn("the maintainer", text)
-        self.assertNotIn("the owner", text)
+        self.assertIn("the administrator", text)
+        self.assertNotIn("the Administrator", text)
 
     def test_bad_owner_name_is_refused(self):
         """Prove: bad owner name is refused."""
@@ -394,8 +394,8 @@ class ApplyOwner(unittest.TestCase):
                       sb.decisions_marker(untitled), "no '## Decisions': the Date | Decision | By table gets the marker")
         self.assertEqual(sb.decisions_marker("# D\n\n| Name | Value |\n|---|---|\n| a | b |\n"),
                          "# D\n\n| Name | Value |\n|---|---|\n| a | b |\n", "another table: no marker")
-        scope = "# D\n\n| Date | Scope | Decision | Replaces |\n|---|---|---|---|\n| 2026-11-25 | Kit sync | By: the Maintainer. New text. | - |\n"
-        self.assertIn("\n<!-- approval-quote-exempt-from: By: the Maintainer. New text. -->\n\n| Date | Scope |",
+        scope = "# D\n\n| Date | Scope | Decision | Replaces |\n|---|---|---|---|\n| 2026-11-25 | Kit sync | By: the Administrator. New text. | - |\n"
+        self.assertIn("\n<!-- approval-quote-exempt-from: By: the Administrator. New text. -->\n\n| Date | Scope |",
                       sb.decisions_marker(scope), "a Date | Scope | Decision table: the marker names the Decision cell")
         empty = "# D\n\n| Date | Decision | By |\n|---|---|---|\n\n| Name | Value |\n|---|---|\n| a | b |\n"
         self.assertEqual(sb.decisions_marker(empty), empty, "an empty Decisions table: no marker from a later table")
@@ -412,10 +412,10 @@ class ApplyOwner(unittest.TestCase):
 
     def test_each_baseline_and_role(self):
         """Prove: for the old and the new baseline word, each role word replaces it; near words stay."""
-        for base in ("the owner", "the Maintainer"):
+        for base in ("the Administrator", "the Administrator"):
             word = base.split(" ", 1)[1]
             text = f"The {word} decides. Ask the {word}'s OK. The {word}ship and a running {word.lower()}s stay."
-            for owner in ("the owner", "the PFM", "the Maintainer"):
+            for owner in ("the Administrator", "the Administrator", "the Administrator"):
                 got = self.swap(base, text, owner)
                 cap = owner[:1].upper() + owner[1:]
                 self.assertTrue(got.startswith(f"{cap} decides. Ask {owner}'s OK."), (base, owner, got))

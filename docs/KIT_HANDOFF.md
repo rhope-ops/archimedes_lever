@@ -6,17 +6,17 @@ Updated: 2026-11-26 12:10: kit 15.0.0 on main ([plan](reviews/2026-11-26-faster-
 
 ## State
 
-- Kit 13.1.1 (640561d) in the fleet ([fleet run](reviews/2026-11-23-fleet-v2-coordinator-state.md), "Coordinator 4"); tags v13.0.0-v13.1.1: the Maintainer (a deny rule blocks agents). T2: baseline 30000 as a ceiling ("cap": true).
+- Kit 13.1.1 (640561d) in the fleet ([fleet run](reviews/2026-11-23-fleet-v2-coordinator-state.md), "Coordinator 4"); tags v13.0.0-v13.1.1: the Administrator (a deny rule blocks agents). T2: baseline 30000 as a ceiling ("cap": true).
 
 ## Open
 
-- [Archival plan](reviews/2026-11-25-archival-plan.md) (approved 2026-11-25): phases 1-4 done in the kit and the fleet (2026-11-25, age waits waived by the Maintainer). Follow-up: the archive step misses evidence a plan cites by description (3 wrong deletions, all caught by review). Follow-ups 3: [state](reviews/2026-11-23-fleet-v2-coordinator-state.md).
+- [Archival plan](reviews/2026-11-25-archival-plan.md) (approved 2026-11-25): phases 1-4 done in the kit and the fleet (2026-11-25, age waits waived by the Administrator). Follow-up: the archive step misses evidence a plan cites by description (3 wrong deletions, all caught by review). Follow-ups 3: [state](reviews/2026-11-23-fleet-v2-coordinator-state.md).
 - Tool retirement and fleet audit: open items in the [close-out list](reviews/2026-11-25-closeout-and-trim-proposals.md). Skill-use audit due 2026-12-08.
 - Kit PATCH fixes (a)-(g) and Step 5: archive file, "Open".
 
-## Needs the owner
+## Needs the Administrator
 
-- Tags, branch deletes, account skills, the 2026-11-21 items: archive file, "Needs the owner".
+- Tags, branch deletes, account skills, the 2026-11-21 items: archive file, "Needs the Administrator".
 - Add the Dependabot secret `PII_GUARD_DENYLIST` (steps: archive file, "Dependabot secret"), then re-run the checks of PRs 115 and 116.
 
 ## Do not

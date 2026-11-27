@@ -13,8 +13,8 @@ Options:
     --name, --repo, --purpose   Header values, needed only when the project AGENTS.md has none.
     --timezone ZONE          IANA time zone for project log times, needed only when the project AGENTS.md has no
                              "- Time zone:" line (projects synced before 2026-11-11 have none).
-    --owner NAME             Name agents use for the decider (default: the project's "- Owner:" line, else "the Maintainer").
-                             A public repo sets a role, for example --owner "the maintainer", so no real name is synced in.
+    --owner NAME             Name agents use for the decider (default: the project's "- Owner:" line, else "the Administrator").
+                             A public repo sets a role, for example --owner "the administrator", so no real name is synced in.
     --tier starter|full      Kit tier (default: the project's "- Tier:" line, else "full", the only tier before 2026-11-13).
                              --tier full on a starter project adds the advanced parts (ADVANCED_FILES below, and a new
                              docs/LOG.md unless Project rules name a project log place).
@@ -22,7 +22,7 @@ Options:
     --set-tier starter|full  Bootstrap only: apply the tier to THIS repo in place (AGENTS.md blocks; in starter, delete
                              ADVANCED_FILES). No baseline, no diff.
 
-Tiers (the owner, 2026-11-13): a starter project has the core rules, hooks and checks only. AGENTS.md marks text
+Tiers (the Administrator, 2026-11-13): a starter project has the core rules, hooks and checks only. AGENTS.md marks text
 for one tier with lines "<!-- full -->" ... "<!-- /full -->" and "<!-- starter -->" ... "<!-- /starter -->";
 apply_tier() keeps the blocks for the project's tier and drops the marker lines.
 
@@ -60,7 +60,7 @@ What it changes:
                            Problem, Turning point and Lesson, each "-" (.claude/skills/project-log/SKILL.md). Rows are kept.
     docs/archimedes_lever-LICENSE.txt   The kit's license (MIT), which covers the copied files.
     Owner name             In baseline text only (AGENTS.md above "## Project rules" and the copied files, not this
-                           script), "the Maintainer" becomes the project owner ("The Maintainer" becomes the owner with a capital
+                           script), "the Administrator" becomes the project owner ("The Administrator" becomes the Administrator with a capital
                            first letter). Project text is never renamed. A private repo may keep a real name
                            (--owner NAME); a public repo uses a role. Owner: letters, digits, space . _ , ( ) -
     docs/DECISIONS.md      In a full project: the line `<!-- approval-quote-exempt-from: TEXT -->` above the Decisions table when it
@@ -122,9 +122,9 @@ COPY_IF_MISSING = ["docs/FIRST_USE.md"]
 # the copy is an earlier kit version, else kept (never in the kit lock: a project tunes its own scan paths). ICF-Source has it off.
 DOD_FILES = ["SECURITY.md", ".github/dependabot.yml", ".github/workflows/security.yml"]
 COPY_NOTES = []  # one line for each COPY_IF_MISSING or DOD_FILES file that a sync replaces or keeps (main() prints them)
-BASELINE_OWNER = "the Maintainer"  # role word in baseline text; no real name lives in the baseline
-# Never rename the owner inside this script: it holds BASELINE_OWNER as a literal.
-# first_use_check.py and docs/FIRST_USE.md use "the owner" as an answer option and a role: keep them as written
+BASELINE_OWNER = "the Administrator"  # role word in baseline text; no real name lives in the baseline
+# Never rename the Administrator inside this script: it holds BASELINE_OWNER as a literal.
+# first_use_check.py and docs/FIRST_USE.md use "the Administrator" as an answer option and a role: keep them as written
 # (bootstrap.sh skips them too).
 
 
@@ -386,7 +386,7 @@ def unlocked_kit_files(base, root, new, owner, kit_files, copy_state):
         base: the baseline folder.
         root: the project folder.
         new: a dict of project path to the synced text.
-        owner: the owner word of this sync (sync_baseline.project_owner).
+        owner: the Administrator word of this sync (sync_baseline.project_owner).
         kit_files: the paths the kit lock covers (sync_baseline.COPY_FILES).
         copy_state: the function that tells an earlier kit copy from a project change (sync_baseline.copy_state).
 
@@ -422,7 +422,7 @@ def stop_on_changed_kit_files(base, root, new, owner, kit_files, copy_state):
         base: the baseline folder.
         root: the project folder.
         new: a dict of project path to the synced text (the files this sync writes).
-        owner: the owner word of this sync (sync_baseline.project_owner).
+        owner: the Administrator word of this sync (sync_baseline.project_owner).
         kit_files: the paths the kit lock covers (sync_baseline.COPY_FILES).
         copy_state: the function that tells an earlier kit copy from a project change (sync_baseline.copy_state).
     """
@@ -516,7 +516,7 @@ def copy_state(base, root, rel, owner):
     Returns:
         (state, text): text is the kit's file as a sync writes it (owner word applied), state is one of
         "missing" (the project has no copy), "same" (its copy is the kit's file), "older" (its copy is byte for byte
-        an earlier kit version, with or without the owner word applied: never tuned), "tuned" (anything else) and
+        an earlier kit version, with or without the Administrator word applied: never tuned), "tuned" (anything else) and
         "unknown" (it differs, and the baseline has no git history to tell an older copy from a tuned one).
     """
     text = (base / rel).read_text()
@@ -576,7 +576,7 @@ def build_agents(base_text, proj_text, args, owner, tier="full"):
         base_text: the text of the baseline AGENTS.md.
         proj_text: the text of the project's AGENTS.md, or None when it has none.
         args: the parsed command line (--name, --repo, --purpose, --timezone, --short-name).
-        owner: the owner word to apply.
+        owner: the Administrator word to apply.
         tier: the kit tier to apply (default "full").
     Returns:
         The text of the new AGENTS.md.
@@ -657,7 +657,7 @@ def new_log(base, root, proj_text, agents_text, owner, tier):
         root: the project folder.
         proj_text: the text of the project's AGENTS.md, or None.
         agents_text: the text of the new AGENTS.md.
-        owner: the owner word to apply.
+        owner: the Administrator word to apply.
         tier: the kit tier to apply.
     Returns:
         The new text of docs/LOG.md, or None when it does not change.
@@ -683,13 +683,13 @@ def new_log(base, root, proj_text, agents_text, owner, tier):
 
 
 def project_owner(root, args):
-    """The owner word of this sync: --owner, else the project's "- Owner:" line, else the baseline's word.
+    """The Administrator word of this sync: --owner, else the project's "- Owner:" line, else the baseline's word.
 
     Args:
         root: the project folder.
         args: the parsed command line.
     Returns:
-        The owner word; the sync stops when it holds a character that the baseline text cannot hold.
+        The Administrator word; the sync stops when it holds a character that the baseline text cannot hold.
     """
     proj_agents = root / "AGENTS.md"
     owner = args.owner or header_owner(proj_agents.read_text() if proj_agents.exists() else "") or BASELINE_OWNER

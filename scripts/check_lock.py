@@ -4,17 +4,17 @@ each kit-owned file, so a change to a kit file inside a project is seen at once 
 
 A project changes its own things in AGENTS.md "Project rules" and "Commands", in `.check`, in
 scripts/check.local.sh and in its own files. A change to a kit file is made in the kit and arrives by a sync
-(scripts/sync_baseline.py in the kit writes the lock). When the Maintainer asks for a kit file that differs in one
+(scripts/sync_baseline.py in the kit writes the lock). When the Administrator asks for a kit file that differs in one
 project, `--relock FILE` records it as an override; every --verify run lists the overrides.
 
 Usage:
     python3 scripts/check_lock.py --verify          # compare the files with .check.lock; exit 1 on a difference
     python3 scripts/check_lock.py --status          # one line: the kit version and commit this project is pinned to
-    python3 scripts/check_lock.py --relock FILE...  # only on the Maintainer's request: accept these files as they are
+    python3 scripts/check_lock.py --relock FILE...  # only on the Administrator's request: accept these files as they are
     python3 scripts/check_lock.py --test            # self-test; prints LOCK TEST PASS
 Input: the repo at the current folder (or --project DIR). Output: PASS, FAIL and WARN lines on stdout.
 Writes: .check.lock (--relock only). Standard library only.
-Prevents: a kit-owned file is changed inside a project without the Maintainer, or a project runs a kit version that no one can name
+Prevents: a kit-owned file is changed inside a project without the Administrator, or a project runs a kit version that no one can name
 Network: none.
 Credentials: none.
 """
@@ -114,7 +114,7 @@ def load(root):
 
 def changed(root, writes=None):
     """The locked kit files that are in the project now with text that differs from the lock, or that the lock lists
-    as an override (the Maintainer's approved change: a sync would still overwrite it).
+    as an override (the Administrator's approved change: a sync would still overwrite it).
 
     Args:
         root: the repo root (a folder path).
@@ -161,7 +161,7 @@ def verify(root):
     if bad:
         out.append("      A kit file is changed in the kit, then synced (scripts/sync_baseline.py there). This project's "
                    "own rules go in AGENTS.md \"Project rules\", its settings in .check, its tests in scripts/check.local.sh.")
-    out += [f"WARN  kit file with a project override (the Maintainer's request): {rel}" for rel in data.get("overrides", [])]
+    out += [f"WARN  kit file with a project override (the Administrator's request): {rel}" for rel in data.get("overrides", [])]
     out.append(f"LOCK {'FAIL' if bad else 'PASS'}: {len(data['files'])} kit files, kit version {data.get('version', '?')} "
                f"({str(data.get('commit', '?'))[:7]})")
     return out, bad

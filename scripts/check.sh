@@ -5,7 +5,7 @@
 #   scripts/check.sh          full lane: everything. Before a merge, on a push to main (pre-push), in the pull-request Action (public repos).
 #   scripts/check.sh --fast   fast lane: each push to another branch (pre-push). Self-tests only of the kit scripts that
 #                             changed against origin/main, and scripts/check.local.sh gets --fast.
-# The content check alone (scripts/check_content.py: personal data, secrets, the Maintainer's terms, blocked files):
+# The content check alone (scripts/check_content.py: personal data, secrets, the Administrator's terms, blocked files):
 #   scripts/check.sh --content ARGS...   for example --all, --stdin, --range A..B or file names
 #   scripts/check.sh --status            the word lists (counts and fingerprints, never the words) and the tier
 #   scripts/check.sh --hook              the Claude Code PreToolUse hook (.claude/settings.json); any error blocks
@@ -97,8 +97,12 @@ kit() { if command -v archimedes-kit >/dev/null; then archimedes-kit "$@"; else 
 # SessionStart hook at startup, kit-update and a setup script that calls it use it: one home for the install command); else nothing.
 if [ "$kitinstall" = 1 ]; then
   pkg_mode || { echo "KIT PACKAGE: not used (each kit script in .check.lock is tracked)"; exit 0; }
-  c="$(python3 -c 'import json; print(json.load(open(".check.lock"))["commit"])')" || exit 1
-  u="git+https://github.com/rhope-ops/archimedes_lever@$c"
+  read -r c kit_url < <(python3 -c 'import json, os
+lock = json.load(open(".check.lock"))
+url = lock.get("kit_url") or (json.load(open("kit.config.json")).get("kit_url") if os.path.isfile("kit.config.json") else None)
+if not url: raise SystemExit("missing kit_url in .check.lock or kit.config.json")
+print(lock["commit"], url)') || exit 1
+  u="git+${kit_url}@$c"
   if ! o="$(python3 -m pip install -q --force-reinstall "$u" 2>&1)"; then
     # PEP 668: a system Python that refuses pip outside a venv gets a user install (many such systems have no venv module).
     grep -q 'externally-managed-environment' <<<"$o" || { printf '%s\n' "$o"; exit 1; }
@@ -292,7 +296,7 @@ fi
 # .github/workflows/security.yml, which skips pull requests in a private repo. Never a silent pass: a missing tool is a
 # SKIP line that names the install.
 # gitleaks reads a copy of the tracked files (uncommitted edits included): the files of the CI checkout, as gitleaks
-# does not skip ignored files (a self-test's __pycache__ is a false finding; the Maintainer, 2026-11-25).
+# does not skip ignored files (a self-test's __pycache__ is a false finding; the Administrator, 2026-11-25).
 gitleaks_tracked() {
   mkdir "$tmp/gitleaks" && git ls-files -z | tar --null --ignore-failed-read -T - -cf - 2>/dev/null | tar -xf - -C "$tmp/gitleaks" &&
     gitleaks detect --no-git --source "$tmp/gitleaks" --redact
@@ -335,7 +339,7 @@ elif [ -f docs/LOG.md ]; then
 else
   skip "project log" "no docs/LOG.md: the log lives in the place AGENTS.md Project rules names"
 fi
-# T6 (plan 2026-11-23): a DECISIONS row By the Maintainer quotes the approval. The kit (no .check.lock) always runs it: with no
+# T6 (plan 2026-11-23): a DECISIONS row By the Administrator quotes the approval. The kit (no .check.lock) always runs it: with no
 # approval-quote-exempt-from marker every row is checked. A project runs it where docs/DECISIONS.md has the marker (its sync adds
 # it) and prints a SKIP line otherwise. T7: each plan coverage list is complete.
 if [ -f scripts/log_check_plan.py ]; then

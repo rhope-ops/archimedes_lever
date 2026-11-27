@@ -1,10 +1,10 @@
 # Server-side protection on GitHub
 
-The hooks and the rules in AGENTS.md work on the client: a person or a tool can go round them. Two GitHub settings move the most important ones to the server. Only the owner can set them (an agent here has no settings access); an agent checks the result through the public rules API.
+The hooks and the rules in AGENTS.md work on the client: a person or a tool can go round them. Two GitHub settings move the most important ones to the server. Only the Administrator can set them (an agent here has no settings access); an agent checks the result through the public rules API.
 
 ## Ruleset on the default branch
 
-[ruleset-default-branch.json](ruleset-default-branch.json): no deletion, no force-push, every change by pull request, merge commits only, and the check `checks` must pass on a branch that has the newest default branch in it. 0 approvals: the agent and the owner use one GitHub account, and GitHub does not let an author approve their own pull request. The owner's approval of a lane C merge stays a rule in AGENTS.md "Delivery".
+[ruleset-default-branch.json](ruleset-default-branch.json): no deletion, no force-push, every change by pull request, merge commits only, and the check `checks` must pass on a branch that has the newest default branch in it. 0 approvals: the agent and the Administrator use one GitHub account, and GitHub does not let an author approve their own pull request. The Administrator's approval of a lane C merge stays a rule in AGENTS.md "Delivery".
 
 [ruleset-no-ci.json](ruleset-no-ci.json): no deletion and no force-push only, for a repo with no `checks` workflow.
 
@@ -15,7 +15,7 @@ Set it (about 1 minute per repo): download the file (Raw > save), open `https://
 
 ## Secret scanning and push protection
 
-Open `https://github.com/<owner>/<repo>/settings/security_analysis`, then under "Secret Protection" turn on secret scanning and push protection. GitHub's patterns cover many token types that the content check (`scripts/check.sh --content`) does not; the content check covers personal data and the owner's lists, which GitHub does not.
+Open `https://github.com/<owner>/<repo>/settings/security_analysis`, then under "Secret Protection" turn on secret scanning and push protection. GitHub's patterns cover many token types that the content check (`scripts/check.sh --content`) does not; the content check covers personal data and the Administrator's lists, which GitHub does not.
 
 ## Private repos
 

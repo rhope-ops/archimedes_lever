@@ -20,8 +20,8 @@ A short STRIDE model. It covers the kit (this repo) and the project repos that r
 
 | Threat | Example | Control |
 |---|---|---|
-| Spoofing | A comment that claims to be the owner | AGENTS.md "Order of authority"; only the owner's own message counts |
-| Tampering | A pull request that weakens a guard or the settings | `.check.lock`; the Action reads `.check` from the base branch; guard files change only on the owner's request |
+| Spoofing | A comment that claims to be the Administrator | AGENTS.md "Order of authority"; only the Administrator's own message counts |
+| Tampering | A pull request that weakens a guard or the settings | `.check.lock`; the Action reads `.check` from the base branch; guard files change only on the Administrator's request |
 | Repudiation | An unknown author of a change | Git history without rewrite (AGENTS.md "Git history"); commit trailers name the session |
 | Information disclosure | A secret or personal data in a commit | `scripts/check_content.py` on push and pull request; gitleaks in `security.yml` |
 | Denial of service | A slow or hung check | `timeout-minutes` in each workflow; timing baselines in `.check.state.json` |

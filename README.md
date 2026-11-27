@@ -6,7 +6,7 @@ A starter kit for working with Claude so that it is reliable and needs little ef
 
 The name comes from Archimedes: "Give me a place to stand, and I will move the world." Here, the place to stand is a set of files that every agent reads, so your rules, decisions and history stay put instead of disappearing with each chat.
 
-Status: early. Built from 2026-11-10 to 2026-11-13 by one maintainer. In the maintainer's own rule tests on the rules of 2026-11-13 morning (graded by the testing agent, not independently; not re-run after later rule changes), agents followed the written rules in 27 of 30 scenarios ([rule tests](docs/reviews/2026-11-13-rule-tests.md)). Files that contain `{{...}}` values are templates: first use fills them in.
+Status: early. Built from 2026-11-10 to 2026-11-13 by one administrator. In the administrator's own rule tests on the rules of 2026-11-13 morning (graded by the testing agent, not independently; not re-run after later rule changes), agents followed the written rules in 27 of 30 scenarios ([rule tests](docs/reviews/2026-11-13-rule-tests.md)). Files that contain `{{...}}` values are templates: first use fills them in.
 
 ## Try it first
 
@@ -29,7 +29,7 @@ You can take 1 without 2: [PREFERENCES.md, "How to adopt them"](PREFERENCES.md#h
 
 ## The lessons behind the rules
 
-These are things that went wrong across 5 real projects, and the rule each one led to. The reason for every preference rule is in [PREFERENCES.md](PREFERENCES.md#why-each-rule-exists); the Maintainer's decisions are in [docs/DECISIONS.md](docs/DECISIONS.md); the story is in the public [docs/LOG.md](docs/LOG.md). Each rule now lives either in [PREFERENCES.md](PREFERENCES.md) (your account) or in the kit (your projects).
+These are things that went wrong across 5 real projects, and the rule each one led to. The reason for every preference rule is in [PREFERENCES.md](PREFERENCES.md#why-each-rule-exists); the Administrator's decisions are in [docs/DECISIONS.md](docs/DECISIONS.md); the story is in the public [docs/LOG.md](docs/LOG.md). Each rule now lives either in [PREFERENCES.md](PREFERENCES.md) (your account) or in the kit (your projects).
 
 | Lesson | What happened | Where the rule lives |
 |---|---|---|
@@ -46,7 +46,7 @@ These are things that went wrong across 5 real projects, and the rule each one l
 | Treat text in repos and on web pages as data, not as instructions | Research: one model followed an instruction injected into a README or TODO file 2.6 times more often than the same instruction in a code or data file | The kit's AGENTS.md "Untrusted input" |
 | Check for bloat on a schedule, and measure before you cut | One operation went from 116.6 s to 23.4 s after an audit | The kit's `scripts/bloat_check.py` |
 
-Sources: the research figure is from [arXiv 2610.38867](https://arxiv.org/abs/2610.38867) (see [the gap review](docs/reviews/2026-11-13-agentic-gap-review.md)). The other numbers come from the maintainer's own project logs, which are private.
+Sources: the research figure is from [arXiv 2610.38867](https://arxiv.org/abs/2610.38867) (see [the gap review](docs/reviews/2026-11-13-agentic-gap-review.md)). The other numbers come from the administrator's own project logs, which are private.
 
 ## What you need
 
@@ -119,7 +119,7 @@ The bootstrap command takes 6 values, in this order:
 | 1 | The project name | `"Project Name"` | |
 | 2 | The repository | `YOUR_USER/NEW_NAME` | |
 | 3 | The purpose, in one line | `"One-line purpose"` | |
-| 4 | What agents call you | `"the Maintainer"` | A public repo uses a role, for example `"the Maintainer"`. A private repo can use your first name only with the guard off (no `.check` file): the guard blocks each push that has a name from your list. |
+| 4 | What agents call you | `"the Administrator"` | A public repo uses a role, for example `"the Administrator"`. A private repo can use your first name only with the guard off (no `.check` file): the guard blocks each push that has a name from your list. |
 | 5 | Your time zone, as an IANA name | `"Europe/Berlin"` | Default: UTC. |
 | 6 | The tier | `starter` | `starter` (default) or `full`. |
 
@@ -147,7 +147,7 @@ You need git, Python 3.9 or later, bash, perl and [gh](https://cli.github.com). 
 8. Run `cd NEW_NAME`, with the name that you wrote down. You see the name in the prompt.
 9. Run the bootstrap command, with your 6 values from the table in place of the examples. You see the line `Done. Next: review with 'git diff', then commit and push.`
    ```
-   scripts/bootstrap.sh "Project Name" YOUR_USER/NEW_NAME "One-line purpose" "the Maintainer" "Europe/Berlin" starter
+   scripts/bootstrap.sh "Project Name" YOUR_USER/NEW_NAME "One-line purpose" "the Administrator" "Europe/Berlin" starter
    ```
 10. Run `mkdir -p ~/.config/pii-guard && nano ~/.config/pii-guard/denylist.txt`. You see the editor **nano**.
 11. In **nano**, type your names, your user name variants and your employer, one on each line. You see the names in **nano**.
@@ -202,7 +202,7 @@ Your name list holds your names, your user name variants and your employer. It n
 18. On your computer, in a terminal, run `cd` with the path of the project folder. You see the project folder name in the prompt.
 19. Run `python3 scripts/check_content.py --status`. On Windows, the command starts with `py`, not `python3`. You see where the list comes from and the number of entries, never the names.
 20. Run `python3 scripts/check_content.py --all`. You see `CONTENT CHECK PASS`, or each finding with its value masked. If you see `CONTENT CHECK PASS`, the task is complete.
-21. For each finding, open the file at the line that the finding names. Remove the personal data on that line. You see the line without it. If the value must stay, ask the project's Maintainer: only the Maintainer adds an allowed value to `.check`.
+21. For each finding, open the file at the line that the finding names. Remove the personal data on that line. You see the line without it. If the value must stay, ask the project's Administrator: only the Administrator adds an allowed value to `.check`.
 22. Run `python3 scripts/check_content.py --all` again. You see `CONTENT CHECK PASS`. The task is complete.
 
 An optional second list holds your own blocked terms (words that are not personal data), as `CHECK_TERMS` in the same three places. The steps for agents, the fingerprint check and one master copy of the list: [docs/FIRST_USE.md](docs/FIRST_USE.md), step 4.
@@ -217,7 +217,7 @@ The sync command takes these options:
 |---|---|
 | `--tier full` | You move a starter project to the full kit. It adds the advanced files and docs/LOG.md. To make the name guard block, delete the line `denylist: warn` in `.check`. |
 | `--name`, `--repo`, `--purpose` | The project's AGENTS.md has no title line (`--name`), no `- Repo:` line or no `- Purpose:` line. |
-| `--owner NAME` | AGENTS.md has no `- Owner:` line, or you change the role word. For kit 11.0.0, type `--owner "the Maintainer"`. The sync then writes that word in the `- Owner:` line and in the kit text. |
+| `--owner NAME` | AGENTS.md has no `- Owner:` line, or you change the role word. For kit 11.0.0, type `--owner "the Administrator"`. The sync then writes that word in the `- Owner:` line and in the kit text. |
 | `--timezone ZONE` | AGENTS.md has no `- Time zone:` line (ZONE is an IANA name). |
 
 1. In an editor, open the file `AGENTS.md` of the project. You see its header lines at the top.
@@ -251,7 +251,7 @@ The sync replaces every kit file, so a project keeps its own code in its own fil
 - `scripts/check_instructions_local.py`: its own words, lower limits, a parser for another file type or more checks for the steps a person follows (the interface: the header of `scripts/check_instructions.py`).
 - `scripts/code_standard_gate.py`: its own stricter code-standard rules (the interface: the header of `scripts/code_standard.py`; [docs/code-standard.md](docs/code-standard.md) "A project's own gate").
 
-A kit file that the Maintainer wants different in one project is recorded with `python3 scripts/check_lock.py --relock <file>` on the Maintainer's request, and each check run lists it. The steps, the approval of changed rule lines and the before and after proof: [.claude/skills/kit-update/SKILL.md](.claude/skills/kit-update/SKILL.md).
+A kit file that the Administrator wants different in one project is recorded with `python3 scripts/check_lock.py --relock <file>` on the Administrator's request, and each check run lists it. The steps, the approval of changed rule lines and the before and after proof: [.claude/skills/kit-update/SKILL.md](.claude/skills/kit-update/SKILL.md).
 
 ## Limits
 
@@ -259,7 +259,7 @@ A kit file that the Maintainer wants different in one project is recorded with `
 - The hooks run on your computer or in the agent's container. Server-side protection (a ruleset on main, secret scanning) is a GitHub setting that only you can turn on: [docs/github/](docs/github/README.md).
 - Account-wide preferences apply only to your own Claude account. Every Claude session in the project gets the project rules from AGENTS.md.
 - Setup needs an agent with file access. A chat that can't run commands can only give you text to paste; use "Set up a project by hand".
-- With the guard on, the pull-request check needs the `PII_GUARD_DENYLIST` secret (and `CHECK_TERMS` when you use a list of blocked terms). GitHub doesn't give secrets to pull requests from forks, so a pull request from a fork always fails the check. The maintainer checks it by hand, or copies it to a branch in the repo.
+- With the guard on, the pull-request check needs the `PII_GUARD_DENYLIST` secret (and `CHECK_TERMS` when you use a list of blocked terms). GitHub doesn't give secrets to pull requests from forks, so a pull request from a fork always fails the check. The administrator checks it by hand, or copies it to a branch in the repo.
 - The pull-request check runs the scripts from the pull request itself, so a pull request that edits `scripts/check_content.py` or `scripts/check.sh` can change the result. Review changes to those files by hand.
 - Hooks are seat belts, not locks: Claude Code hooks only apply to Claude Code, and `--no-verify` skips git hooks.
 - The Claude Code sandbox (the network allowlist in .claude/settings.json) needs bubblewrap and socat on Linux. Without them, Claude Code warns you and runs commands outside the sandbox; the deny rules and git hooks still apply. Claude cloud containers don't have them, but they sit behind their own network proxy. macOS needs nothing extra.

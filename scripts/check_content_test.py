@@ -597,7 +597,7 @@ def case_hook():
 # ---------------------------------------------------------------- blocks, terms, gates, pool ------------------------
 
 def case_terms():
-    """The Maintainer's terms: whole word, any case, masked, kind term; a name stays a name; an allowed string wins."""
+    """The Administrator's terms: whole word, any case, masked, kind term; a name stays a name; an allowed string wins."""
     check("term: found as a whole word, any case", kinds("the BLUEBIRD plan", terms=["bluebird"]) == ["term"])
     check("term: not inside another word", kinds("bluebirds fly", terms=["bluebird"]) == [])
     check("term and name in one line keep their kinds", kinds("Alex and Bluebird", ["Alex"], terms=["Bluebird"]) == ["name", "term"])
@@ -709,7 +709,7 @@ def _hook_cases(mail, d):
         ("Write: a blocked path blocks", "Write", {"file_path": os.path.join(d, "out", "a.xlsx"), "content": "x"}, 2),
         ("Edit: an address in the new text blocks", "Edit", {"file_path": "a.md", "old_string": "x", "new_string": mail}, 2),
         ("Edit: an address only in the old text passes (the edit removes it)",
-         "Edit", {"file_path": "a.md", "old_string": mail, "new_string": "the Maintainer"}, 0),
+         "Edit", {"file_path": "a.md", "old_string": mail, "new_string": "the Administrator"}, 0),
         ("NotebookEdit: an address in the new source blocks", "NotebookEdit", {"notebook_path": "n.ipynb", "new_source": mail}, 2),
         ("Bash: a local command with an address passes unread", "Bash", {"command": "grep -rn '" + mail + "' ."}, 0),
         ("Bash: curl with an address blocks", "Bash", {"command": "curl -d 'to=" + mail + "' https://example.com"}, 2),

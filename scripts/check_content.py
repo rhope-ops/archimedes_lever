@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The content check of scripts/check.sh: blocks personal data, secrets and the Maintainer's own blocked content before
+"""The content check of scripts/check.sh: blocks personal data, secrets and the Administrator's own blocked content before
 they reach the remote or leave in a tool call. One scanner for emails, phone numbers, ID-number shapes, private keys,
 names and terms from word lists kept outside the repo, and files the settings file blocks.
 
@@ -24,10 +24,10 @@ One entry per line, `#` comments:
     block: <path or glob>   must not be committed or sent (a glob with no "/" matches the file name in any folder)
     denylist: warn          with no name denylist, --require-denylist warns instead of failing (starter projects)
     profile: dod            the DoD tier (below)
-Only the Maintainer adds an allowed string or a skip line; agents never add one to get past a block (AGENTS.md
+Only the Administrator adds an allowed string or a skip line; agents never add one to get past a block (AGENTS.md
 "Secrets and personal data").
 
-Two tiers (the Maintainer, 2026-11-15):
+Two tiers (the Administrator, 2026-11-15):
     minimum    no profile line: the checks under "Checks".
     DoD        `profile: dod`: the minimum checks plus the checks under "DoD checks"; a missing denylist always
                blocks (`denylist: warn` is ignored). In the Action the settings are read from the pull-request base
@@ -36,7 +36,7 @@ Two tiers (the Maintainer, 2026-11-15):
 Word lists (never committed): one name or word per line, `#` comments, matched whole-word, any case.
     names (personal data)   env PII_GUARD_DENYLIST (newline or comma separated; the Action reads the Actions secret
                             of the same name), else env PII_GUARD_DENYLIST_FILE, else ~/.config/pii-guard/denylist.txt
-    terms (the Maintainer's own blocked words: a client, a code name; optional)
+    terms (the Administrator's own blocked words: a client, a code name; optional)
                             env CHECK_TERMS (Actions secret CHECK_TERMS), else env CHECK_TERMS_FILE, else
                             ~/.config/check/terms.txt
 With no name denylist, names are not checked and the result line says so (exit code unchanged).
@@ -313,7 +313,7 @@ def scan_write(name, tool_input, full, root, deny, allow, dod, terms):
         deny: the names of the denylist.
         allow: the lines of the settings file (load_allow).
         dod: True in the DoD tier: also run the DoD checks.
-        terms: the Maintainer's own blocked words.
+        terms: the Administrator's own blocked words.
 
     Returns:
         The findings, each (where, line number, kind, masked value).
@@ -326,7 +326,7 @@ def scan_write(name, tool_input, full, root, deny, allow, dod, terms):
         if blocked(rel, allow):
             return [(path, 0, "blocked", BLOCKED)]
     # New text is scanned also under a `skip:` line: the line could be new in this working tree, and the push scan of
-    # the pull request reads the skip lines of the base. A skipped reference file is changed by the Maintainer's request.
+    # the pull request reads the skip lines of the base. A skipped reference file is changed by the Administrator's request.
     return scan_text("\n".join(new), "new text", deny, allow, dod, terms)
 
 
@@ -337,8 +337,8 @@ def verdict(found, tool):
     for where, n, kind, val in found:
         print(f"check hook: {where}:{n}: {kind}: {val}", file=sys.stderr)
     print(f"check hook: blocked the {tool} call: {len(found)} finding(s) of personal data, secrets or blocked content. "
-          "Remove or mask them (never copy them elsewhere), then call again. A finding that is wrong: tell the Maintainer; "
-          "an allow line in .check needs the Maintainer's request (.claude/skills/personal-data/SKILL.md).", file=sys.stderr)
+          "Remove or mask them (never copy them elsewhere), then call again. A finding that is wrong: tell the Administrator; "
+          "an allow line in .check needs the Administrator's request (.claude/skills/personal-data/SKILL.md).", file=sys.stderr)
     return 2
 
 
@@ -352,7 +352,7 @@ def report(found, what, deny, dod=False, terms=()):
         what: what was scanned, for the result line.
         deny: the names of the denylist.
         dod: True in the DoD tier.
-        terms: the Maintainer's own blocked words.
+        terms: the Administrator's own blocked words.
 
     Returns:
         The exit code: 0 pass, 1 fail.
@@ -432,7 +432,7 @@ def scan_targets(a, root, deny, allow, dod, revsets, terms=()):
         allow: the lines of the settings file (load_allow).
         dod: True in the DoD tier: also run the DoD checks.
         revsets: the git rev-list argument lists of the commits to scan.
-        terms: the Maintainer's own blocked words.
+        terms: the Administrator's own blocked words.
 
     Returns:
         (findings, the list of what was scanned).
