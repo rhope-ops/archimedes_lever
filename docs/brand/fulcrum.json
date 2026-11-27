@@ -1,8 +1,8 @@
 {
   "name": "Fulcrum Minimal",
-  "version": "2.0.0",
-  "date": "2026-11-23",
-  "source": "Logo Studies canvas, rho-family-standard.json v2.9, palettes.fulcrum (the five primitives); UI roles: the Maintainer's decisions of 2026-11-20 (docs/DECISIONS.md)",
+  "version": "2.1.0",
+  "date": "2026-11-27",
+  "source": "Logo Studies canvas, rho-family-standard.json v2.9, palettes.fulcrum (the five primitives); UI roles: the Maintainer's decisions of 2026-11-20 (docs/DECISIONS.md); 2.1.0 window roles (info, tint, raised, off-fill, off-ink, off-error, track, band-deep): RADE window themes, the Maintainer, 2026-11-27",
   "primitives": {"ink": "#15171D", "cream": "#F3EEE4", "ember": "#E4572E", "slate": "#5A5E6A", "gold": "#D4AF37"},
   "derived": {
     "disc-dark": "#1C1F27",
@@ -14,32 +14,50 @@
     "red-deep": "#A3241A",
     "red-soft": "#F49B91",
     "control-line-light": "#7A766E",
-    "control-line-dark": "#6E7382",
+    "control-line-dark": "#7A7F8C",
     "success-light": "#176B3A",
     "success-dark": "#5FD08E",
     "warning-light": "#855700",
     "warning-dark": "#F0C24B",
     "focus-light": "#B83B14",
-    "focus-dark": "#FF8C66"
+    "focus-dark": "#FF8C66",
+    "info-light": "#1F5A9E",
+    "info-dark": "#8DB8F0",
+    "tint-light": "#E4E9F1",
+    "tint-dark": "#1B2433",
+    "raised-light": "#FBF8F2",
+    "raised-dark": "#1E2129",
+    "off-fill-light": "#E6E0D5",
+    "off-fill-dark": "#262A33",
+    "off-ink-light": "#5E5A53",
+    "off-ink-dark": "#9599A3",
+    "off-error-light": "#8E3A2E",
+    "off-error-dark": "#C98F89",
+    "track-light": "#CFC7B8",
+    "track-dark": "#3A3F4A",
+    "band-deep-dark": "#0E1015"
   },
   "roles": {
     "light": {
       "page": "cream", "page-fg": "ink", "page-muted": "slate", "page-line": "hair-light", "page-link": "ember-deep", "page-error": "red-deep",
       "disc": "ink", "disc-fg": "cream", "disc-muted": "mist", "disc-line": "hair-dark", "disc-ring": "cream", "disc-link": "ember-soft", "disc-error": "red-soft",
       "accent": "ember", "on-accent": "ink", "dots": "slate", "rule": "gold", "band": "ink", "band-fg": "cream", "band-muted": "mist", "band-link": "ember-soft", "band-error": "red-soft",
-      "control-line": "control-line-light", "success": "success-light", "warning": "warning-light", "focus": "focus-light"
+      "control-line": "control-line-light", "success": "success-light", "warning": "warning-light", "focus": "focus-light",
+      "info": "info-light", "tint": "tint-light", "raised": "raised-light", "off-fill": "off-fill-light", "off-ink": "off-ink-light", "off-error": "off-error-light", "track": "track-light", "band-deep": "ink"
     },
     "dark": {
       "page": "ink", "page-fg": "cream", "page-muted": "mist", "page-line": "hair-dark", "page-link": "ember-soft", "page-error": "red-soft",
       "disc": "disc-dark", "disc-fg": "cream", "disc-muted": "mist", "disc-line": "hair-dark", "disc-ring": "slate", "disc-link": "ember-soft", "disc-error": "red-soft",
       "accent": "ember", "on-accent": "ink", "dots": "slate", "rule": "gold", "band": "ink", "band-fg": "cream", "band-muted": "mist", "band-link": "ember-soft", "band-error": "red-soft",
-      "control-line": "control-line-dark", "success": "success-dark", "warning": "warning-dark", "focus": "focus-dark"
+      "control-line": "control-line-dark", "success": "success-dark", "warning": "warning-dark", "focus": "focus-dark",
+      "info": "info-dark", "tint": "tint-dark", "raised": "raised-dark", "off-fill": "off-fill-dark", "off-ink": "off-ink-dark", "off-error": "off-error-dark", "track": "track-dark", "band-deep": "band-deep-dark"
     }
   },
   "contrast": [
     ["page-fg", "page", 4.5], ["page-muted", "page", 4.5], ["page-link", "page", 4.5], ["page-error", "page", 4.5], ["success", "page", 4.5], ["warning", "page", 4.5],
     ["disc-fg", "disc", 4.5], ["disc-muted", "disc", 4.5], ["disc-link", "disc", 4.5], ["disc-error", "disc", 4.5],
     ["on-accent", "accent", 4.5], ["band-fg", "band", 4.5], ["band-muted", "band", 4.5], ["band-link", "band", 4.5], ["band-error", "band", 4.5],
-    ["rule", "band", 3], ["control-line", "page", 3], ["focus", "page", 3], ["accent", "disc", 3]
+    ["rule", "band", 3], ["control-line", "page", 3], ["focus", "page", 3], ["accent", "disc", 3],
+    ["info", "page", 4.5], ["info", "tint", 4.5], ["page-muted", "tint", 4.5], ["page-fg", "raised", 4.5], ["control-line", "raised", 3], ["off-ink", "off-fill", 4.5], ["off-error", "off-fill", 4.5], ["info", "track", 3], ["band-fg", "band-deep", 4.5], ["band-muted", "band-deep", 4.5], ["rule", "band-deep", 3]
   ]
 }
