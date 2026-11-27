@@ -26,8 +26,8 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
         with:
           python-version: "3.12"
-      - name: Install bandit
-        run: pip install bandit==1.9.4
+      - name: Install hash-pinned bandit
+        run: pip install --require-hashes -r requirements.txt && pip check
       - name: Kit package (package mode only; else it prints "not used"), so bandit also scans the package scripts
         run: scripts/check.sh --kit-install
       - name: Scan scripts (medium severity and higher)

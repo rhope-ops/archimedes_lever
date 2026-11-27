@@ -166,7 +166,7 @@ def self_test():
     log = "\n".join(json.dumps({"message": {"content": [block]}}) for block in blocks[:2] + [use("h", "Skill", skill="verify")])
     with tempfile.TemporaryDirectory() as folder:
         paths = [os.path.join(folder, "saved.txt"), os.path.join(folder, "log.jsonl")]
-        for path, text in zip(paths, (saved, log)):
+        for path, text in zip(paths, (saved, log), strict=True):
             with open(path, "w", encoding="utf-8") as handle:
                 handle.write(text)
         extra = {"pretty.json": json.dumps({"content": [use("p", "Skill", skill="audit")]}, indent=2),

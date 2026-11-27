@@ -37,7 +37,7 @@ fi
 cd "$(git rev-parse --show-toplevel)"
 
 # The dod-security line of .check, read before the first write: a typo must stop the run while the tree is unchanged.
-if ! python3 -c 'import sys; sys.path.insert(0, "scripts"); from build_site_html import dod_security; dod_security(".")' 2>/dev/null; then
+if ! python3 -c 'import sys; sys.path.insert(0, "scripts"); from build_site import dod_security; dod_security(".")' 2>/dev/null; then
   echo "error: the dod-security line of .check is not 'on' or 'off'; correct it and run bootstrap again" >&2
   exit 1
 fi
@@ -111,16 +111,14 @@ find docs/reviews -maxdepth 1 -name '20*.md' -delete 2>/dev/null || true
 # The token log hook is installed from the kit by the cloud setup scripts (the owner, 2026-11-17).
 python3 scripts/sync_baseline.py --lock-here  # the kit lock (.check.lock) of the new project
 rm -f -- scripts/sync_baseline.py scripts/sync_merge.py scripts/drift.py scripts/token_log.py scripts/token_log_test.py \
-  scripts/drift_test.py scripts/sync_baseline_repo.py scripts/sync_baseline_run.py scripts/sync_baseline_stop.py \
-  scripts/token_log_test_parts.py scripts/token_log_test_costs.py scripts/token_log_rows.py scripts/token_log_report.py \
-  scripts/bootstrap_cli_test.py scripts/check_lock_cli_test.py scripts/drift_cli_test.py scripts/sync_baseline_cli_test.py \
-  scripts/sync_merge_cli_test.py scripts/kit_config.py kit.config.json KIT_VERSION docs/CHANGELOG.md docs/KIT_HANDOFF.md \
+  scripts/drift_test.py scripts/bootstrap_cli_test.py scripts/check_lock_cli_test.py scripts/drift_cli_test.py \
+  scripts/sync_test.py scripts/kit_config.py kit.config.json KIT_VERSION docs/CHANGELOG.md docs/KIT_HANDOFF.md \
   scripts/kit_package.py pyproject.toml  # the kit package (P3): a project installs it, it does not build it
 # The kit's threat model describes the kit. The DoD group (sync_baseline.DOD_FILES) stays only with `dod-security: on`
 # in .check (fleet v2 DEC 4: opt-in); a project writes its own threat model.
 rm -f -- docs/threat-model.md
 dod=0
-python3 -c 'import sys; sys.path.insert(0, "scripts"); from build_site_html import dod_security
+python3 -c 'import sys; sys.path.insert(0, "scripts"); from build_site import dod_security
 try:
     sys.exit(0 if dod_security(".") else 1)
 except ValueError as e:

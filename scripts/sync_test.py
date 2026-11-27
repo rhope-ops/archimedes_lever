@@ -1,10 +1,11 @@
-"""The command line of scripts/sync_baseline.py, tested as a process.
+"""The command line of scripts/sync_baseline.py and scripts/sync_merge.py, tested as a process, plus shared CLI test helpers.
 
-What it proves: a sync into an empty repo brings the kit files and the kit lock, a second sync changes nothing, and
---owner swaps the role word; ApplyOwner tests the role swap function itself (by import, no repo).
+What it proves: a sync into an empty repo brings the kit files and the kit lock, a second sync changes nothing,
+--owner swaps the role word, ApplyOwner tests the role swap function itself (by import, no repo), and SyncMergeCli
+tests settings, .gitignore, and Arcs table merges (plus invalid settings.json refusal).
 Inputs:  none (each CLI case builds a temporary git repo and runs the script by its command line).
 Outputs: unittest results.
-Run:     python3 -m unittest discover -s scripts -p 'sync_baseline_cli_test.py'
+Run:     python3 -m unittest discover -s scripts -p 'sync_test.py'
 Network: none (the baseline is this checkout, a local folder).
 Writes: temporary folders only.
 Credentials: none.
@@ -19,7 +20,8 @@ import unittest
 from pathlib import Path
 
 KIT = Path(__file__).resolve().parent.parent
-TABLE = "# D\n\n## Decisions\n\nNewest first.\n\n| Date | Decision | By |\n|---|---|---|\n| 2026-11-22 | Newest row | the owner |\n| 2026-11-21 | Older row | the owner |\n"
+TABLE = ("# D\n\n## Decisions\n\nNewest first.\n\n| Date | Decision | By |\n|---|---|---|\n"
+         "| 2026-11-22 | Newest row | the owner |\n| 2026-11-21 | Older row | the owner |\n")
 GIT = ["git", "-c", "user.name=Test", "-c", "user.email=test@example.invalid"]
 
 
@@ -43,6 +45,12 @@ def sync(path, *extra):
     """Sync the kit (this worktree) into the repo at path: starter tier, role owner, with --apply."""
     return py("sync_baseline.py", "--baseline", str(KIT), "--name", "Demo", "--repo", "org/demo", "--purpose", "A demo.",
               "--timezone", "UTC", "--owner", "the maintainer", "--tier", "starter", *extra, "--apply", cwd=path)
+
+
+def commit_all(path):
+    """Commit what the test wrote (a sync refuses a project with uncommitted changes)."""
+    run(["git", "add", "-A"], path)
+    run(GIT + ["commit", "-q", "-m", "project files"], path)
 
 
 class SyncBaselineCli(unittest.TestCase):
@@ -297,7 +305,6 @@ class SyncBaselineCli(unittest.TestCase):
         self.assertNotEqual(p.returncode, 0)
         self.assertFalse((self.path / ".check.lock").exists())
 
-
     def commit_file(self, rel, text):
         """Write one file into the temporary repo and commit it (the sync needs a clean tree)."""
         (self.path / rel).parent.mkdir(parents=True, exist_ok=True)
@@ -344,7 +351,7 @@ class SyncBaselineCli(unittest.TestCase):
     def test_dod_copy_of_an_earlier_kit_version_is_replaced(self):
         """Prove: a DoD copy equal to an earlier kit version is replaced; an edited copy is kept with a note."""
         sys.path.insert(0, str(KIT / "scripts"))
-        from sync_baseline_repo import dod_files
+        from sync_baseline import dod_files
         base = self.path / "kit"
         base.mkdir()
         new_repo(base)
@@ -372,7 +379,6 @@ class SyncBaselineCli(unittest.TestCase):
 class ApplyOwner(unittest.TestCase):
     """apply_owner follows BASELINE_OWNER (fleet v2 DEC 2): the baseline word is swapped, other words stay."""
 
-
     def test_decisions_marker_added_above_the_table(self):
         """Prove: a Decisions table with no marker gets the line with the newest row's Decision cell, above the header row."""
         sys.path.insert(0, str(KIT / "scripts"))
@@ -380,16 +386,17 @@ class ApplyOwner(unittest.TestCase):
         got = sb.decisions_marker(TABLE)
         self.assertIn("\n<!-- approval-quote-exempt-from: Newest row -->\n\n| Date | Decision | By |\n", got)
         self.assertEqual(sb.decisions_marker(got), got, "a second run changes nothing")
-        self.assertEqual(sb.decisions_marker("# D\n\n## Decisions\n\n| Date | Decision | By |\n|---|---|---|\n"), "# D\n\n## Decisions\n\n| Date | Decision | By |\n|---|---|---|\n", "no row: no marker")
+        self.assertEqual(sb.decisions_marker("# D\n\n## Decisions\n\n| Date | Decision | By |\n|---|---|---|\n"),
+                         "# D\n\n## Decisions\n\n| Date | Decision | By |\n|---|---|---|\n", "no row: no marker")
         self.assertEqual(sb.decisions_marker("# No table\n"), "# No table\n")
         untitled = TABLE.replace("## Decisions", "Text under the title.")
         self.assertIn("\n<!-- approval-quote-exempt-from: Newest row -->\n\n| Date | Decision | By |\n",
                       sb.decisions_marker(untitled), "no '## Decisions': the Date | Decision | By table gets the marker")
-        self.assertEqual(sb.decisions_marker("# D\n\n| Name | Value |\n|---|---|\n| a | b |\n"), "# D\n\n| Name | Value |\n|---|---|\n| a | b |\n",
-                         "another table: no marker")
+        self.assertEqual(sb.decisions_marker("# D\n\n| Name | Value |\n|---|---|\n| a | b |\n"),
+                         "# D\n\n| Name | Value |\n|---|---|\n| a | b |\n", "another table: no marker")
         scope = "# D\n\n| Date | Scope | Decision | Replaces |\n|---|---|---|---|\n| 2026-11-25 | Kit sync | By: the Maintainer. New text. | - |\n"
-        self.assertIn("\n<!-- approval-quote-exempt-from: By: the Maintainer. New text. -->\n\n| Date | Scope |", sb.decisions_marker(scope),
-                      "a Date | Scope | Decision table: the marker names the Decision cell")
+        self.assertIn("\n<!-- approval-quote-exempt-from: By: the Maintainer. New text. -->\n\n| Date | Scope |",
+                      sb.decisions_marker(scope), "a Date | Scope | Decision table: the marker names the Decision cell")
         empty = "# D\n\n| Date | Decision | By |\n|---|---|---|\n\n| Name | Value |\n|---|---|\n| a | b |\n"
         self.assertEqual(sb.decisions_marker(empty), empty, "an empty Decisions table: no marker from a later table")
 
@@ -413,6 +420,61 @@ class ApplyOwner(unittest.TestCase):
                 cap = owner[:1].upper() + owner[1:]
                 self.assertTrue(got.startswith(f"{cap} decides. Ask {owner}'s OK."), (base, owner, got))
                 self.assertIn(f"The {word}ship", got)
+
+
+class SyncMergeCli(unittest.TestCase):
+    def setUp(self):
+        """Make an empty temporary git repo with a .claude folder."""
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.path = Path(self._tmp.name)
+        new_repo(self.path)
+        (self.path / ".claude").mkdir()
+
+    def merged(self):
+        """Write a project with its own settings, .gitignore and old Arcs table, commit it, sync, return the process."""
+        (self.path / ".claude/settings.json").write_text(json.dumps(
+            {"permissions": {"deny": ["Bash(rm -rf demo:*)"]}, "model": "demo-model"}))
+        (self.path / ".gitignore").write_text("build/\n")
+        (self.path / "docs").mkdir()
+        (self.path / "docs/LOG.md").write_text("# Log\n\n| Arc | Span | Summary | Outcome |\n|---|---|---|---|\n"
+                                                "| A1 | May | Did it | Done |\n")
+        commit_all(self.path)
+        return sync(self.path)
+
+    def test_merge_settings_keeps_project_parts(self):
+        """Prove: the settings keep the project deny rule and setting, and gain the kit deny rules and hooks."""
+        self.assertEqual(self.merged().returncode, 0)
+        settings = json.loads((self.path / ".claude/settings.json").read_text())
+        self.assertIn("Bash(rm -rf demo:*)", settings["permissions"]["deny"])
+        self.assertGreater(len(settings["permissions"]["deny"]), 1)
+        self.assertEqual(settings["model"], "demo-model")
+        self.assertIn("hooks", settings)
+
+    def test_merge_gitignore_puts_kit_lines_first(self):
+        """Prove: the kit .gitignore lines go above the project lines, which stay."""
+        self.assertEqual(self.merged().returncode, 0)
+        ignore = (self.path / ".gitignore").read_text().splitlines()
+        self.assertIn("build/", ignore)
+        self.assertLess(ignore.index(".env"), ignore.index("build/"))
+
+    def test_merge_arcs_adds_story_columns(self):
+        """Prove: an old 4-column Arcs table gets the story columns and keeps its rows."""
+        self.assertEqual(self.merged().returncode, 0)
+        log = (self.path / "docs/LOG.md").read_text()
+        self.assertIn("Problem", log)
+        self.assertIn("| A1 | May | Did it | - | - | Done | - |", log)
+
+    def test_invalid_settings_json_is_refused(self):
+        """Prove: invalid settings json is refused."""
+        (self.path / ".claude/settings.json").write_text("{not json")
+        commit_all(self.path)
+        p = sync(self.path)
+        self.assertEqual(p.returncode, 1)
+        self.assertIn("settings.json is not valid JSON", p.stderr)
+        self.assertEqual((self.path / ".claude/settings.json").read_text(), "{not json")
+        self.assertFalse((self.path / ".check.lock").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

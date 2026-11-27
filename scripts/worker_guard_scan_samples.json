@@ -1,5 +1,5 @@
 {
- "_about": "Sample files for the self-test of scripts/worker_guard_scan.py (data, not code: the scan reads only code). The blocked word is invented.",
+ "_about": "Sample files for the self-test of scripts/worker_guard.py --scan (data, not code: the scan reads only code). The blocked word is invented.",
  "word": "Zorblatt",
  "samples": {
   "a.py": [

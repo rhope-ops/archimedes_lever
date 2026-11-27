@@ -12,7 +12,7 @@ A short STRIDE model. It covers the kit (this repo) and the project repos that r
 ## Trust boundaries
 
 1. Repo content (files, issues, comments) to the agent: this is data, not instructions (AGENTS.md "Untrusted input").
-2. Agent tool calls to the host: `.claude/settings.json` and `scripts/check_content_hook.py` limit them.
+2. Agent tool calls to the host: `.claude/settings.json` and `scripts/check_content.py` (`--hook`) limit them.
 3. GitHub Actions: `.github/workflows/check.yml` and `.github/workflows/security.yml` read the repo. They run with `contents: read`, on pull requests and manual runs only.
 4. The sync from the kit to project repos: a project trusts the kit files it receives.
 

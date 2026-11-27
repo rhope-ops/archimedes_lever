@@ -12,7 +12,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from sync_baseline_cli_test import KIT, new_repo, py, run, sync  # the shared CLI test helpers
+from sync_test import KIT, new_repo, py, run, sync  # the shared CLI test helpers
 
 
 class DriftCli(unittest.TestCase):
@@ -43,7 +43,7 @@ class DriftCli(unittest.TestCase):
         p = self.drift()
         self.assertEqual(p.returncode, 0, p.stderr)
         self.assertNotIn("DRIFT: 0 of", p.stdout)
-        line = [l for l in p.stdout.splitlines() if "scripts/session_checkin.sh" in l]
+        line = [ln for ln in p.stdout.splitlines() if "scripts/session_checkin.sh" in ln]
         self.assertEqual(len(line), 1, p.stdout)
         self.assertIn("differs", line[0])
 

@@ -31,6 +31,44 @@ def die(msg):
     sys.exit(1)
 
 
+def _merge_deny(base, proj):
+    """Ensure permissions.deny holds the kit deny rules first, then any project rules.
+
+    Args:
+        base: parsed baseline settings dict.
+        proj: parsed project settings dict, mutated in place.
+    """
+    if not isinstance(proj.get("permissions"), dict):
+        if proj.get("permissions") not in (None,):
+            die('.claude/settings.json "permissions" must be an object; fix it first')
+        proj["permissions"] = {}
+    deny = proj["permissions"].get("deny")
+    if deny is None:
+        deny = proj["permissions"]["deny"] = []
+    if not isinstance(deny, list):
+        die('.claude/settings.json "permissions.deny" must be a list; fix it first')
+    # The kit's deny rules (scripts/check_blocks.py DENY) come first, in the kit's order; the project's own follow.
+    kit = check_blocks.DENY + [r for r in base.get("permissions", {}).get("deny", []) if r not in check_blocks.DENY]
+    deny[:] = kit + [r for r in deny if r not in kit]
+
+
+def _merge_hooks(base_hooks, proj):
+    """Merge baseline hook entries into project hooks, keeping project entries after kit entries.
+
+    Args:
+        base_hooks: hooks dict from the baseline settings.
+        proj: parsed project settings dict, mutated in place.
+    """
+    hooks = proj.get("hooks")
+    if hooks is None:
+        hooks = proj["hooks"] = {}
+    if not isinstance(hooks, dict):
+        die('.claude/settings.json "hooks" must be an object; fix it first')
+    # The kit's hook entries come first and replace older copies of themselves; the project's own entries follow.
+    for event, entries in base_hooks.items():
+        hooks[event] = entries + [e for e in map(own_part, hooks.get(event) or []) if e and e not in entries]
+
+
 def merge_settings(base_path, proj_path):
     """The project settings.json plus the baseline deny rules, missing hook events and sandbox block.
 
@@ -48,32 +86,13 @@ def merge_settings(base_path, proj_path):
         die(f".claude/settings.json is not valid JSON ({e}); fix it first")
     if not isinstance(proj, dict):
         die(".claude/settings.json must be a JSON object; fix it first")
-    if not isinstance(proj.get("permissions"), dict):
-        if proj.get("permissions") not in (None,):
-            die('.claude/settings.json "permissions" must be an object; fix it first')
-        proj["permissions"] = {}
-    deny = proj["permissions"].get("deny")
-    if deny is None:
-        deny = proj["permissions"]["deny"] = []
-    if not isinstance(deny, list):
-        die('.claude/settings.json "permissions.deny" must be a list; fix it first')
-    # The kit's deny rules (scripts/check_blocks.py DENY) come first, in the kit's order; the project's own follow.
-    kit = check_blocks.DENY + [r for r in base.get("permissions", {}).get("deny", []) if r not in check_blocks.DENY]
-    deny[:] = kit + [r for r in deny if r not in kit]
+    _merge_deny(base, proj)
     # Sandbox: add the baseline block only when the project has none (a project's own block is kept whole).
     if "sandbox" in base and "sandbox" not in proj:
         proj["sandbox"] = base["sandbox"]
-    # Hooks: add a baseline hook event only when the project has no hook for that event.
     base_hooks = base.get("hooks") or {}
     if base_hooks:
-        hooks = proj.get("hooks")
-        if hooks is None:
-            hooks = proj["hooks"] = {}
-        if not isinstance(hooks, dict):
-            die('.claude/settings.json "hooks" must be an object; fix it first')
-        # The kit's hook entries come first and replace older copies of themselves; the project's own entries follow.
-        for event, entries in base_hooks.items():
-            hooks[event] = entries + [e for e in map(own_part, hooks.get(event) or []) if e and e not in entries]
+        _merge_hooks(base_hooks, proj)
     return json.dumps(proj, indent=2, ensure_ascii=False) + "\n"
 
 
@@ -162,7 +181,7 @@ def migrate_arcs(text):
 def merge_lines(base_path, proj_path):
     """The project .gitignore with the baseline lines it lacks added at the top."""
     lines = proj_path.read_text().splitlines() if proj_path.exists() else []
-    add = [l for l in base_path.read_text().splitlines() if l.strip() and l not in lines]
+    add = [ln for ln in base_path.read_text().splitlines() if ln.strip() and ln not in lines]
     # Baseline lines go first, so a later project exception (for example "!.env.example") still wins.
     return "\n".join(add + lines) + "\n"
 

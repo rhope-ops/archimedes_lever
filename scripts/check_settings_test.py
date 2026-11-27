@@ -76,9 +76,22 @@ def case_settings(root, git):
     case_instructions(root)
     (root / CHECK).write_bytes(b"\xff\xfec\x00o\x00")
     assert "UTF-8" in fails(code_config, root), "a .check that is not UTF-8 fails"
+    _case_settings_state(root, git)
+    assert NAMES_CHECK.search("| x | `.check` |") and NAMES_CHECK.search("see .check.") \
+        and not NAMES_CHECK.search(".check.lock and .check.state.json and x.check"), "a row names .check itself"
+
+
+def _case_settings_state(root, git):
+    """Check code standard settings at git refs and state file persistence.
+
+    Args:
+        root: a temporary git repo.
+        git: runs one git command in it.
+    """
     (root / CHECK).write_text("code-max-function-lines: 40\n")
     save_part(root, "code_standard", {"debt": {"length": {"a.py::f": 70}}})
-    git("add", "-A"); git("commit", "-q", "-m", "base")
+    git("add", "-A")
+    git("commit", "-q", "-m", "base")
     (root / CHECK).write_text("code-max-function-lines: 50\n")
     save_part(root, "timings", {"check": {"seconds": 2.0}})
     save_part(root, "audit", {"last_audit": {"date": "2026-01-01"}})
@@ -93,8 +106,6 @@ def case_settings(root, git):
     for bad in ("{bad", "[]", '{"timings": 1}'):
         (root / STATE).write_text(bad)
         assert fails(load_state, root), "a state file that is not valid fails: " + bad
-    assert NAMES_CHECK.search("| x | `.check` |") and NAMES_CHECK.search("see .check.") \
-        and not NAMES_CHECK.search(".check.lock and .check.state.json and x.check"), "a row names .check itself"
 
 
 def case_paste(root, git):
@@ -137,10 +148,14 @@ def case_validate(root, git):
     import check_settings as cs
     import contextlib
     import io
-    cases = (("code-max-file-lines: 450\ndod-security: on\nprofile: dod\n", 0, ""),
+    assert CODE_DEFAULTS["caps"]["max_file_lines"] is None, "DEC-LINES: code-max-file-lines has no hard default cap"
+    cases = (("code-max-file-lines: 450\ndod-security: on\nnipr-safe: on\nprofile: dod\n", 0, ""),
+             ("nipr-safe: off\n", 0, ""),
              ("code-max-file-lines: many\n", 1, "code:"),
              ("audit-every-days: -3\n", 1, "audit:"),
              ("dod-security: maybe\n", 1, "dod-security:"),
+             ("nipr-safe: maybe\n", 1, "nipr-safe:"),
+             ("nipr-safe: on\nnipr-safe: off\n", 1, "nipr-safe:"),
              ("profile: dodd\n", 1, "profile:"),
              ("code-strict-gate = on\n", 1, "looks like a setting"), ("code_strict_gate: on\n", 1, "looks like a setting"))
     for text, code, mark in cases:
@@ -186,7 +201,7 @@ def case_gate_keys(root):
         and code_settings(pairs(b"code-c1-safety: off\n")) == CODE_DEFAULTS, "on is True, off is the default"
     old = code_from_old({"caps": {"max_line_chars": 200}, "c1_safety": True})
     assert old["caps"]["max_line_chars"] == 200 and old["c1_safety"] is True and code_settings(
-        [tuple(l.split(": ")) for l in code_lines(old)]) == old, "an old file with the line cap gives the same settings"
+        [tuple(line.split(": ")) for line in code_lines(old)]) == old, "an old file with the line cap gives the same settings"
     assert [code_from_old({"c1_safety": v})["c1_safety"] for v in (2, 3, "strict", True, 1, False, 0, None)] == \
         [STRICT, STRICT, STRICT, True, True, False, False, False], "an old level of 2 or more is the strict form"
     for line, why in (("code-max-line-chars: 0", "whole number"), ("code_max_line_chars: 9", "looks like a setting"),
@@ -281,7 +296,7 @@ def case_migrate_header(root, git):
         assert migrated(root)[0] == 0 and files_of(root) == before, "a second run changes nothing"
         (root / CHECK).unlink()
         (root / STATE).unlink()
-    pfm = [l.replace("the Maintainer", "the PFM").replace("The Maintainer", "The PFM") for l in HEADER_BLOCK]  # kit fix 0(a)
+    pfm = [line.replace("the Maintainer", "the PFM").replace("The Maintainer", "The PFM") for line in HEADER_BLOCK]  # kit fix 0(a)
     (root / CHECK).write_text("\n".join(pfm) + "\nprofile: dod\n")
     assert migrated(root)[0] == 0 and (root / CHECK).read_text() == block + "profile: dod\n", \
         "a header synced with another role word is renewed, not kept as a project comment: " + (root / CHECK).read_text()
@@ -325,7 +340,8 @@ def case_migrate(root, git):
     (root / OLD_CODE).write_text(json.dumps(old_code))
     (root / OLD_AUDIT).write_text(json.dumps(old_audit))
     assert MIGRATE in fails(code_config, root) and MIGRATE in fails(audit_config, root), "an old file fails the readers"
-    git("add", "-A"); git("commit", "-q", "-m", "old layout")
+    git("add", "-A")
+    git("commit", "-q", "-m", "old layout")
     out = io.StringIO()
     with contextlib.redirect_stdout(out):
         assert migrate(root) == 0, "the migration runs"

@@ -28,8 +28,8 @@ apply_tier() keeps the blocks for the project's tier and drops the marker lines.
 
 Before it writes (also in a dry run), it compares the kit files it would write with the project's .check.lock. When one differs from its lock hash, is an
 override, or is not in the lock and differs from the kit's file, it writes nothing, names the files and exits 2, with the way forward
-for each (a PROJECT.md beside a kit skill, AGENTS.md "Project rules", scripts/check.local.sh or .check, or the kit). With no .check.lock, an unreadable one, or a
-missing kit file, it does not stop.
+for each (a PROJECT.md beside a kit skill, AGENTS.md "Project rules", scripts/check.local.sh or .check, or the kit). With no .check.lock,
+an unreadable one, or a missing kit file, it does not stop.
 
 What it changes:
     AGENTS.md              Baseline text above "## Project rules", with this project's header values.
@@ -37,15 +37,17 @@ What it changes:
                            An AGENTS.md without the baseline layout goes under "## Project rules" as it is.
     CLAUDE.md              Adds "@AGENTS.md" at the top if it is missing. Keeps the rest.
     scripts/session_checkin.sh, scripts/stop_check.py, scripts/worker_guard.py,
-    .claude/skills/ (every kit skill), scripts/check_instructions*.py, .claude/agents/worker.md, scout.md, reviewer.md
+    .claude/skills/ (every kit skill), scripts/check_instructions.py, scripts/check_instructions_test.py,
+    .claude/agents/worker.md, scout.md, reviewer.md
                            Replaced with the baseline copies.
     docs/FIRST_USE.md      Added when missing. A project may tune it (it holds the denylist places that the
                            session-start check names), so a copy the project changed is kept, with one line that
                            says it differs and how to compare. A copy that is byte for byte an earlier kit version
                            of the file was never tuned: it is replaced. This needs the baseline's git history; with
                            a baseline folder that is no git repo, a copy that differs is kept.
-    scripts/log_check.py, scripts/timeline.py, scripts/fleet_harvest*.py, scripts/check_content*.py, scripts/first_use_check.py,
-    scripts/check.sh, scripts/bloat_check*.py, scripts/code_standard*.py, docs/code-standard.md, scripts/git-hooks/pre-push,
+    scripts/log_check.py, scripts/timeline.py, scripts/fleet_harvest.py, scripts/fleet_harvest_test.py,
+    scripts/check_content*.py, scripts/first_use_check.py, scripts/check.sh, scripts/bloat_check.py,
+    scripts/bloat_check_test.py, scripts/code_standard*.py, docs/code-standard.md, scripts/git-hooks/pre-push,
     .claude/rule-tests.md
                            Replaced with the baseline copies. A starter project gets none of ADVANCED_FILES. (.check is not copied: a project opts in itself.)
     .claude/settings.json  The kit's deny rules first (scripts/check_blocks.py), the kit's hook entries first in each
@@ -68,57 +70,49 @@ What it never changes: README.md, docs/ (except docs/FIRST_USE.md and docs/DECIS
 license), .check and all other files. A project's own code lives in its own files (scripts/check.local.sh,
 scripts/check_content_local.py, scripts/check_instructions_local.py, scripts/code_standard_gate.py), which a sync
 never touches.
-Parts: scripts/sync_baseline_repo.py (the reads of the baseline repo, the diff), scripts/sync_baseline_stop.py (the stop before a write)
-and scripts/sync_baseline_run.py (the writes). Standard library only. Needs git.
+Standard library only. Needs git.
 Network: the baseline repo, only when --baseline is a URL (one git clone); none for a local folder.
 Writes: with --apply, the kit files of the project and its kit lock .check.lock (the list: "What it changes" above); without it, nothing.
 Credentials: none itself; a clone uses the credentials git already has.
 """
 import argparse
+import difflib
 import itertools
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from build_site import dod_security  # noqa: E402 - scripts/build_site.py: the one reader of `dod-security:`
 import check_blocks  # noqa: E402,F401 - the deny rules and the placeholder pattern
 import check_lock  # noqa: E402 - the kit lock that a sync writes into the project
+import kit_config  # noqa: E402 - scripts/kit_config.py: the one home of the kit addresses (kit.config.json)
 from sync_merge import REPLACED_HOOKS, changed_matchers, die, merge_lines, merge_settings, migrate_arcs  # noqa: E402,F401 - scripts/sync_merge.py
 from sync_merge import (apply_tier, find_heading, header_short_name, header_timezone, header_tier, header_values,  # noqa: E402,F401
                         headings, section, valid_timezone)  # the AGENTS.md header helpers (drift.py reads them here)
-# scripts/sync_baseline_repo.py: the reads of the baseline repo and the diff (kept apart, docs/code-standard.md C4).
-from sync_baseline_repo import (baseline_sha, dod_files, get_baseline, git, header_owner, kit_history, log_stamp,  # noqa: E402,F401
-                                log_template, show_diff)
-# scripts/sync_baseline_run.py: the write side (the placeholder stop, the leftovers report, the files and the kit lock).
-from sync_baseline_run import check_placeholders, report_leftovers, write_files, write_lock  # noqa: E402,F401
-# scripts/sync_baseline_stop.py: the check side (the stop before a write when a kit file holds a project change).
-from sync_baseline_stop import stop_on_changed_kit_files, unlocked_kit_files  # noqa: E402,F401
 
-import kit_config  # noqa: E402 - scripts/kit_config.py: the one home of the kit addresses (kit.config.json)
 DEFAULT_BASELINE = kit_config.value("kit_url")  # None when kit.config.json is missing: parse_args stops
 RULES_HEADING = "## Project rules"
 COMMANDS_HEADING = "## Commands"
-COPY_FILES = ["scripts/session_checkin.sh", "scripts/stop_check.py", "scripts/check_blocks.py", "scripts/check_lock.py", "scripts/check_content_test_blocks.py",
-              "scripts/worker_guard.py", "scripts/worker_guard_scan.py", "scripts/worker_guard_scan_samples.json", "scripts/log_check.py", "scripts/log_check_plan.py", "scripts/timeline.py", "scripts/fleet_harvest.py", "scripts/fleet_harvest_test.py", "scripts/check_content.py", "scripts/first_use_check.py",
-              "scripts/fleet_harvest_parse.py",
-              "scripts/check_content_scan.py", "scripts/check_content_hook.py", "scripts/check_content_test.py",
-              "scripts/check_content_finders.py", "scripts/check_content_test_local.py", "scripts/check_settings_test.py",
-              "scripts/check_content_scan_settings.py", "scripts/check_content_scan_words.py", "scripts/check_content_test_cli.py",
-              "scripts/check.sh", "scripts/check_settings.py", "scripts/check_settings_read.py", "scripts/bloat_check.py", "scripts/bloat_check_skills.py", "scripts/bloat_check_test.py",
-              "scripts/bloat_check_rules.py", "scripts/bloat_check_files.py", "scripts/skill_use.py", "scripts/bloat_check_timing.py", "scripts/bloat_check_test_rules.py",
-              "ruff.toml", ".pylintrc", "scripts/code_standard.py", "scripts/code_standard_test.py", "scripts/code_standard_docs.py", "scripts/code_standard_parse.py",
-              "scripts/code_standard_rules.py", "scripts/code_standard_ratchet.py", "scripts/code_standard_test_gate.py", "scripts/code_standard_test_docs.py",
-              "scripts/code_standard_strict.py", "scripts/code_standard_strict_test.py",
+COPY_FILES = ["scripts/session_checkin.sh", "scripts/stop_check.py", "scripts/check_blocks.py", "scripts/check_lock.py",
+              "scripts/worker_guard.py", "scripts/worker_guard_scan_samples.json", "scripts/log_check.py", "scripts/timeline.py",
+              "scripts/fleet_harvest.py", "scripts/fleet_harvest_test.py", "scripts/check_content.py", "scripts/first_use_check.py",
+              "scripts/check_content_scan.py", "scripts/check_content_test.py", "scripts/check_settings_test.py",
+              "scripts/check.sh", "scripts/check_settings.py", "scripts/bloat_check.py", "scripts/bloat_check_test.py",
+              "scripts/skill_use.py",
+              "ruff.toml", ".pylintrc", "scripts/code_standard.py", "scripts/code_standard_test.py",
               "docs/code-standard.md", "scripts/git-hooks/pre-push",
-              "scripts/fulcrum_palette.py", "docs/brand/fulcrum.json", "docs/brand/fulcrum.css", "scripts/build_site.py", "scripts/build_site_html.py",
-              ".claude/skills/delegate/SKILL.md", ".claude/skills/audit/SKILL.md", ".claude/skills/project-log/SKILL.md", ".claude/rule-tests.md", ".github/workflows/check.yml",
+              "scripts/fulcrum_palette.py", "docs/brand/fulcrum.json", "docs/brand/fulcrum.css", "scripts/build_site.py",
+              ".claude/skills/delegate/SKILL.md", ".claude/skills/audit/SKILL.md", ".claude/skills/project-log/SKILL.md",
+              ".claude/rule-tests.md", ".github/workflows/check.yml",
               ".claude/skills/deliver/SKILL.md", ".claude/skills/personal-data/SKILL.md", ".claude/skills/rule-change/SKILL.md",
               ".claude/skills/data-change/SKILL.md", ".claude/skills/verify/SKILL.md", ".claude/skills/verify/measure.mjs",
               ".claude/skills/handoff/SKILL.md",
               ".claude/skills/kit-update/SKILL.md", ".claude/skills/instructions/SKILL.md",
-              "scripts/check_instructions.py", "scripts/check_instructions_test.py", "scripts/check_instructions_steps.py",
+              "scripts/check_instructions.py", "scripts/check_instructions_test.py", "scripts/nipr_guard.py",
               ".claude/agents/worker.md", ".claude/agents/scout.md", ".claude/agents/reviewer.md"]
 # A file a project may tune: added when missing, replaced when the project's copy is an earlier kit version, else kept
 # (copy_state). (The kit's agent files are kit files since 2026-11-18: an old copy can restate a rule; a project adds
@@ -136,10 +130,9 @@ BASELINE_OWNER = "the Maintainer"  # role word in baseline text; no real name li
 
 # Advanced parts: a starter project has none of these (one list for bootstrap, sync and drift).
 ADVANCED_FILES = [".claude/skills/delegate/SKILL.md", ".claude/agents/scout.md", ".claude/agents/worker.md",
-                  ".claude/skills/project-log/SKILL.md", "docs/LOG.md", "scripts/log_check.py", "scripts/log_check_plan.py", "scripts/timeline.py",
-                  ".claude/skills/audit/SKILL.md", "scripts/bloat_check.py", "scripts/bloat_check_skills.py", "scripts/bloat_check_rules.py", "scripts/bloat_check_files.py",
-                  "scripts/bloat_check_test.py", ".claude/rule-tests.md", "scripts/skill_use.py",
-                  "scripts/bloat_check_timing.py", "scripts/bloat_check_test_rules.py"]
+                  ".claude/skills/project-log/SKILL.md", "docs/LOG.md", "scripts/log_check.py", "scripts/timeline.py",
+                  ".claude/skills/audit/SKILL.md", "scripts/bloat_check.py", "scripts/bloat_check_test.py",
+                  ".claude/rule-tests.md", "scripts/skill_use.py"]
 # Moved or renamed in the kit (to .claude/skills/ on 2026-11-16; the guard to check_content on 2026-11-18; run-verify
 # and ui-verify merged into verify, and port renamed kit-update, on 2026-11-18; efficiency merged into audit in
 # kit 6.0.0): a project synced before then still
@@ -149,10 +142,311 @@ MOVED_FILES = [".claude/orchestration.md", ".claude/bloat-audit.md", ".claude/pr
                "scripts/pii_guard_test.py", ".github/workflows/pii-guard.yml",
                ".claude/skills/run-verify/SKILL.md", ".claude/skills/ui-verify/SKILL.md",
                ".claude/skills/ui-verify/measure.mjs", ".claude/skills/port/SKILL.md",
-               ".claude/skills/efficiency/SKILL.md", "scripts/fulcrum_tokens.py"]  # renamed to fulcrum_palette.py in 11.0.0 (a secret scan read its name as a key)
+               ".claude/skills/efficiency/SKILL.md", "scripts/fulcrum_tokens.py",  # renamed to fulcrum_palette.py in 11.0.0
+               # Kit 16.0.0 (DEC-LINES): merged into their parent module; a sync removes the old shards.
+               *(f"scripts/{n}.py" for n in (
+                   "bloat_check_files", "bloat_check_rules", "bloat_check_skills", "bloat_check_timing", "bloat_check_test_rules",
+                   "build_site_html", "check_content_finders", "check_content_hook", "check_content_scan_settings",
+                   "check_content_scan_words", "check_content_test_blocks", "check_content_test_cli", "check_content_test_local",
+                   "check_instructions_steps", "check_settings_read", "code_standard_docs", "code_standard_parse",
+                   "code_standard_ratchet", "code_standard_rules", "code_standard_strict", "code_standard_strict_test",
+                   "code_standard_test_docs", "code_standard_test_gate", "fleet_harvest_parse", "log_check_plan",
+                   "worker_guard_scan"))]
 TIERS = ("starter", "full")
 NO_OWNER_RENAME = {"scripts/sync_baseline.py", "scripts/first_use_check.py", "docs/FIRST_USE.md"}
 OWNER_RE = r"[A-Za-z0-9 ._,()-]+"  # safe inside Python strings, JSON and Markdown
+
+
+def git(*args, cwd=None):
+    """Run git and return its stripped stdout; raise on failure."""
+    return subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True, text=True).stdout.strip()
+
+
+def get_baseline(src, tmp):
+    """The baseline folder: `src` itself when it is a folder, else a clone of it in `tmp` (with its history: an older
+    kit copy of a file is known by it, copy_state).
+
+    Args:
+        src: a baseline folder or a git URL.
+        tmp: a temporary folder to clone into.
+    Returns:
+        The path of the baseline folder.
+    """
+    path = Path(src)
+    if path.is_dir():
+        return path.resolve()
+    dest = Path(tmp) / "baseline"
+    try:
+        git("clone", "--quiet", src, str(dest))
+    except subprocess.CalledProcessError as e:
+        die(f"cannot clone baseline {src}: {e.stderr.strip()}")
+    return dest
+
+
+def kit_history(base, rel):
+    """The earlier versions of a baseline file, from the baseline's git history.
+
+    Args:
+        base: the baseline folder.
+        rel: the file's path in it.
+
+    Returns:
+        A list of the file's bytes at each commit that changed it, newest first; None when the baseline folder is
+        not the top of a git repo (no history to read).
+    """
+    try:
+        if Path(git("rev-parse", "--show-toplevel", cwd=base)).resolve() != Path(base).resolve():
+            return None
+        shas = git("log", "--format=%H", "--", rel, cwd=base).split()
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return None
+    shown = [subprocess.run(["git", "show", f"{sha}:{rel}"], cwd=base, capture_output=True) for sha in shas]
+    return [r.stdout for r in shown if r.returncode == 0]   # a commit that deleted the file has no version
+
+
+def baseline_sha(base):
+    """The baseline commit, marked when its folder has uncommitted changes or is not a git repo.
+
+    Args:
+        base: the baseline folder (a Path).
+    Returns:
+        The commit hash, with a note when the folder has uncommitted changes, or an "unknown" text.
+    """
+    try:
+        if Path(git("rev-parse", "--show-toplevel", cwd=base)).resolve() != base.resolve():
+            raise subprocess.CalledProcessError(1, "git")
+        sha = git("rev-parse", "HEAD", cwd=base)
+        if git("status", "--porcelain", cwd=base):
+            sha += " (with uncommitted baseline changes)"
+        return sha
+    except subprocess.CalledProcessError:
+        return "unknown (baseline folder is not a git repo)"
+
+
+def log_template(base):
+    """The blank project log: docs/templates/LOG.md (the kit's docs/LOG.md is its own log); older baselines: docs/LOG.md."""
+    t = base / "docs/templates/LOG.md"
+    return t if t.exists() else base / "docs/LOG.md"
+
+
+def log_stamp(zone):
+    """'YYYY-MM-DD HH:MM' now, in the project time zone (UTC when the zone database is missing)."""
+    import datetime
+    try:
+        import zoneinfo
+        tz = zoneinfo.ZoneInfo(zone)
+    except Exception:
+        tz = datetime.timezone.utc
+    return datetime.datetime.now(tz).strftime("%Y-%m-%d %H:%M")
+
+
+def header_owner(text):
+    """The project's "- Owner:" value, or None."""
+    owner = re.search(r"^- Owner: (.+?)\s*$", text or "", re.M)
+    return owner and owner.group(1)
+
+
+def show_diff(root, new):
+    """Print a unified diff for each file that would change; return their paths.
+
+    Args:
+        root: the project folder.
+        new: a dict of project path to the synced text.
+    Returns:
+        The list of paths whose text would change.
+    """
+    changed = []
+    for rel, text in new.items():
+        path = root / rel
+        old = path.read_text() if path.exists() else ""
+        if old == text:
+            continue
+        changed.append(rel)
+        sys.stdout.writelines(difflib.unified_diff(
+            old.splitlines(True), text.splitlines(True), f"a/{rel}", f"b/{rel}"))
+        if not text.endswith("\n"):
+            print()
+    return changed
+
+
+def dod_files(base, root, rels):
+    """The DoD group a sync writes (fleet v2 DEC 4), when the project's .check has `dod-security: on` (read by
+    scripts/build_site.py dod_security, the one reader of that key): each file of rels the project lacks, and each
+    copy that is byte-identical to an earlier kit version of that file (so a kit fix reaches it). A copy the project
+    changed is kept, with a note that names it.
+
+    Args:
+        base: the baseline folder.
+        root: the project folder.
+        rels: the DoD file paths (sync_baseline.DOD_FILES).
+    Returns:
+        (new, notes): new maps each path to write to the kit's text (empty when the key is off or missing); notes has
+        one line for each copy that is replaced or kept although it differs.
+    """
+    new, notes = {}, []
+    if not dod_security(root):
+        return new, notes
+    for rel in rels:
+        if not (base / rel).exists():
+            continue
+        text, path = (base / rel).read_text(), root / rel
+        if not path.exists():
+            new[rel] = text
+            continue
+        mine = path.read_bytes()
+        if mine == text.encode():
+            continue
+        old = kit_history(base, rel)
+        if old and mine in old:
+            new[rel] = text
+            notes.append(f"{rel}: the project's copy is an earlier kit version that was never changed here; it is replaced.")
+        else:
+            why = "this project changed it" if old is not None else "the baseline folder has no git history to tell"
+            notes.append(f"{rel}: kept; it differs from the kit's file ({why}). Compare it with the kit's {rel}.")
+    return new, notes
+
+
+def check_placeholders(root):
+    """Stop when AGENTS.md, README.md or docs/*.md still holds a {{PLACEHOLDER}} (bootstrap has not run)."""
+    for f in [root / "AGENTS.md", root / "README.md", *sorted(root.glob("docs/*.md"))]:
+        rel = f.relative_to(root)
+        if f.is_file() and check_blocks.placeholders([f]):
+            die(f"{rel} still has template placeholders; run scripts/bootstrap.sh first")
+
+
+def report_leftovers(root, tier, advanced, moved):
+    """List the advanced files a starter project keeps and old copies of moved files, for deletion by hand.
+
+    Args:
+        root: the project folder.
+        tier: the kit tier.
+        advanced: the paths of the advanced files (sync_baseline.ADVANCED_FILES).
+        moved: the paths that moved or were renamed in the kit (sync_baseline.MOVED_FILES).
+    """
+    if tier == "starter":
+        extra = [f for f in advanced if (root / f).exists()]
+        if extra:
+            print(f"Tier starter: these advanced files are not synced; delete them by hand if you want: {', '.join(extra)}")
+    old = [f for f in moved if (root / f).exists()]
+    if old:
+        print(f"These files moved or were renamed in the kit; delete the old copies by hand: {', '.join(old)}")
+    old = [f for f in (".pii-guard", ".code-standard.json", ".bloat-audit.json") if (root / f).exists()]
+    if old:
+        print(f"Old settings files ({', '.join(old)}): run 'python3 scripts/check_settings.py --migrate' (it moves "
+              "them into .check and .check.state.json; the lines of .check stay as they are).")
+
+
+def write_files(base, root, new, changed, kit_files):
+    """Write the changed files (with the baseline's file mode for scripts); stop when the project is not committed.
+
+    Args:
+        base: the baseline folder.
+        root: the project folder.
+        new: a dict of project path to the synced text.
+        changed: the paths to write.
+        kit_files: the paths the kit lock covers (sync_baseline.COPY_FILES).
+    """
+    if git("status", "--porcelain", cwd=root):
+        die("the project has uncommitted changes; commit them first")
+    for rel in changed:
+        path = root / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(new[rel])
+        if rel.endswith((".sh", ".py")) or rel.startswith("scripts/git-hooks/"):
+            shutil.copymode(base / rel, path) if (base / rel).exists() else None
+    version = write_lock(base, root, new, kit_files)
+    print(f"Written, with the kit lock {check_lock.LOCK} (kit version {version}). Review with 'git diff', then commit and push.")
+
+
+def write_lock(base, root, files, kit_files):
+    """Write the kit lock of the project for the kit files among `files`; return the kit version.
+
+    Args:
+        base: the baseline folder.
+        root: the project folder.
+        files: the paths a sync wrote or planned.
+        kit_files: the paths the kit lock covers (sync_baseline.COPY_FILES).
+
+    Returns:
+        The kit version that the lock records.
+    """
+    version = (base / "KIT_VERSION").read_text().strip() if (base / "KIT_VERSION").exists() else "unknown"
+    check_lock.write(root, check_lock.build(root, [r for r in files if r in kit_files], version,
+                                            baseline_sha(base).split()[0]))
+    return version
+
+
+def unlocked_kit_files(base, root, new, owner, kit_files, copy_state):
+    """The kit files this sync writes that the lock does not list and that the project already has with a project change.
+
+    A copy that has the kit's text (line ends as read_text gives them, as the lock hash does) or is an earlier kit
+    version holds no project change, so it is not listed.
+
+    Args:
+        base: the baseline folder.
+        root: the project folder.
+        new: a dict of project path to the synced text.
+        owner: the owner word of this sync (sync_baseline.project_owner).
+        kit_files: the paths the kit lock covers (sync_baseline.COPY_FILES).
+        copy_state: the function that tells an earlier kit copy from a project change (sync_baseline.copy_state).
+
+    Returns:
+        A dict of path to the reason; empty when the project has no lock.
+    """
+    data = check_lock.load(root)
+    if data is None:
+        return {}
+    found = {}
+    for rel in sorted(new):
+        path = root / rel
+        if rel not in kit_files or rel in data["files"] or not path.is_file():
+            continue
+        if path.read_text(encoding="utf-8", errors="replace") == new[rel]:
+            continue
+        state = copy_state(base, root, rel, owner)[0]
+        if state == "older":
+            continue
+        found[rel] = "not in the kit lock, and differs from the kit's file"
+        if state == "unknown":
+            found[rel] += "; the baseline has no git history, so an earlier kit copy cannot be told from a project change: " \
+                          "if it is an old kit copy, delete the file and sync again"
+    return found
+
+
+def stop_on_changed_kit_files(base, root, new, owner, kit_files, copy_state):
+    """Stop (exit 2, nothing written) when a kit file that this sync writes differs from its hash in the kit lock
+    .check.lock, is an override in it, or is not in it and holds a project change. A lock that cannot be read is
+    said in one line and does not stop the sync.
+
+    Args:
+        base: the baseline folder.
+        root: the project folder.
+        new: a dict of project path to the synced text (the files this sync writes).
+        owner: the owner word of this sync (sync_baseline.project_owner).
+        kit_files: the paths the kit lock covers (sync_baseline.COPY_FILES).
+        copy_state: the function that tells an earlier kit copy from a project change (sync_baseline.copy_state).
+    """
+    try:
+        found = {rel: "differs from the kit lock or is an override in it" for rel in check_lock.changed(root, set(new))}
+        found.update(unlocked_kit_files(base, root, new, owner, kit_files, copy_state))
+    except ValueError:
+        print(f"{check_lock.LOCK} could not be read: local edits to kit files were not checked.")
+        return
+    if found:
+        rules_way = "put the project's own rules in AGENTS.md \"Project rules\", or change the text in the kit"
+        skill_way = "move the project's change into a PROJECT.md beside the kit skill, or change the file in the kit"
+        script_way = "move the project's change into scripts/check.local.sh or .check, or change the file in the kit"
+        print(f"Sync stopped, nothing written: {len(found)} kit file(s) in this project would be overwritten:")
+        for rel, why in sorted(found.items()):
+            if rel == check_lock.KIT_PART:
+                way = rules_way
+            elif rel.startswith(".claude/skills/"):
+                way = skill_way
+            else:
+                way = script_way
+            print(f"  {rel} ({why}): {way}.")
+        print("Then run the sync again.")
+        sys.exit(2)
 
 
 def tier_files(tier):
@@ -183,7 +477,7 @@ def apply_owner(text, owner):
 
 def decisions_marker(text):
     """Add the line `<!-- approval-quote-exempt-from: <newest row's Decision cell> -->` above the Decisions table when it is missing.
-    Rows from the one it names down are older than the T6 check and are not checked (scripts/log_check_plan.py).
+    Rows from the one it names down are older than the T6 check and are not checked (scripts/log_check.py).
 
     Args:
         text: the text of docs/DECISIONS.md.
@@ -194,15 +488,15 @@ def decisions_marker(text):
     if re.search(r"<!--\s*approval-quote-exempt-from:", text):
         return text
     lines = text.split("\n")
-    head = next((i + 1 for i, l in enumerate(lines) if re.match(r"##\s+Decisions\s*$", l)), None)
+    head = next((i + 1 for i, ln in enumerate(lines) if re.match(r"##\s+Decisions\s*$", ln)), None)
     table = next((i for i in range(head or len(lines), len(lines)) if lines[i].lstrip().startswith("|")), None)
-    if head is None:   # no '## Decisions': the first Date | Decision | By or Date | Scope | Decision table (log_check_plan.py)
-        table = next((i for i, l in enumerate(lines) if re.match(r"^\s*\|\s*date\s*\|\s*(?:decision\s*\|\s*by|scope\s*\|\s*decision)\s*\|",
-                                                                 l, re.I)), None)
+    if head is None:   # no '## Decisions': the first Date | Decision | By or Date | Scope | Decision table (log_check.py)
+        table = next((i for i, ln in enumerate(lines) if re.match(r"^\s*\|\s*date\s*\|\s*(?:decision\s*\|\s*by|scope\s*\|\s*decision)\s*\|",
+                                                                  ln, re.I)), None)
     if table is None:
         return text
     dec = 2 if re.match(r"^\s*\|\s*date\s*\|\s*scope\s*\|", lines[table], re.I) else 1   # the Decision cell: the marker names it
-    rows = list(itertools.takewhile(lambda l: l.lstrip().startswith("|"), lines[table + 2:]))   # table + 1: the separator row
+    rows = list(itertools.takewhile(lambda ln: ln.lstrip().startswith("|"), lines[table + 2:]))   # table + 1: the separator row
     row = re.split(r"(?<!\\)\|", rows[0].strip().strip("|")) if rows else []
     first = row[dec].strip().replace("\\|", "|") if len(row) > dec else ""
     if not first or "-->" in first:
@@ -423,7 +717,7 @@ def planned_files(base, root, args):
     new["AGENTS.md"] = build_agents((base / "AGENTS.md").read_text(), proj_text, args, owner, tier)
     claude = root / "CLAUDE.md"
     old_claude = claude.read_text() if claude.exists() else ""
-    if not any(l.strip() == "@AGENTS.md" for l in old_claude.splitlines()):
+    if not any(ln.strip() == "@AGENTS.md" for ln in old_claude.splitlines()):
         new["CLAUDE.md"] = "@AGENTS.md\n" + ("\n" + old_claude if old_claude.strip() else "")
     for rel in copy_files:
         if (base / rel).exists():
@@ -435,7 +729,7 @@ def planned_files(base, root, args):
     new.update(tuned)
     COPY_NOTES[:] = notes + dod_notes
     decisions = root / "docs/DECISIONS.md"
-    if "scripts/log_check_plan.py" in copy_files and decisions.is_file():
+    if "scripts/log_check.py" in copy_files and decisions.is_file():
         marked = decisions_marker(decisions.read_text())
         if marked != decisions.read_text():
             new["docs/DECISIONS.md"] = marked

@@ -14,7 +14,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from sync_baseline_cli_test import new_repo, py, sync  # the shared CLI test helpers
+from sync_test import new_repo, py, sync  # the shared CLI test helpers
 
 
 class CheckLockCli(unittest.TestCase):

@@ -190,7 +190,8 @@ def edge_cases(base):
     ok("a lowercase ID row fails", quiet(M.check, make_project(base, HANDOFF_OK, rows + "| d4 | 2026-11-19 | x | the Maintainer | - |\n"))[0] == 1)
     ok("an escaped pipe stays in its cell", quiet(M.check, make_project(base, HANDOFF_OK, rows.replace("| A. |", "| A \\| B. |")))[0] == 0)
     ok("a missing section fails", quiet(M.check, make_project(base, HANDOFF_OK.replace("## Timeline", "## Plan"), rows))[0] == 1)
-    ok("a counted heading is read", quiet(M.check, make_project(base, HANDOFF_OK.replace("## Needs the Maintainer", "## Needs the Maintainer (2)"), rows))[0] == 0)
+    ok("a counted heading is read",
+       quiet(M.check, make_project(base, HANDOFF_OK.replace("## Needs the Maintainer", "## Needs the Maintainer (2)"), rows))[0] == 0)
     ok("a heading with another role word is read (a project's own handoff)",
        quiet(M.check, make_project(base, HANDOFF_OK.replace("## Needs the Maintainer", "## Needs the PFM"), rows))[0] == 0)
     crlf = ("| Date | Event |\r\n|---|---|\r\n| 2025-01-01 | y |\r\n\r\n" + DECISIONS_OLD.replace("\n", "\r\n")
@@ -199,7 +200,9 @@ def edge_cases(base):
     ok("add-ids numbers only the decisions table", M.add_ids(p) == 2)
     ok("after add-ids the check passes (a second table is not read)", quiet(M.check, p)[0] == 0)
     raw = (p / "docs/DECISIONS.md").read_bytes()
-    ok("add-ids keeps CRLF and the second table", b"| D1 | 2026-11-18 |" in raw and b"\r\n| 2025-01-01 | y |\r\n" in raw and b"\r\n| 2026-01-01 | x |\r\n" in raw and b"\n\n" not in raw)
+    ok("add-ids keeps CRLF and the second table",
+       b"| D1 | 2026-11-18 |" in raw and b"\r\n| 2025-01-01 | y |\r\n" in raw
+       and b"\r\n| 2026-01-01 | x |\r\n" in raw and b"\n\n" not in raw)
     return out
 
 
