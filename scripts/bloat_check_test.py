@@ -267,7 +267,7 @@ def hard_rule_cases(bloat, rs):
             "Never repin an approval.", "A review finding is not approval.", "Review on a model tier no lower than the author's.",
             "Never review with a lower tier."]
     passes = ['Rules: see (AGENTS.md "Hard rules").', "| pre-push | blocks every force-push form and a push to main |",
-              "Run git clean up on a scratch folder.", "The Maintainer's approval is in the pull request.",
+              "Run git clean up on a scratch folder.", "The Administrator's approval is in the pull request.",
               "Check that the hook refuses --no-verify."]
     for i, line in enumerate(hits + passes):
         write_skill(rs, f"s{i}", f"---\nname: s{i}\ndescription: Use when testing.\n---\n{line}\n")
@@ -330,9 +330,9 @@ def rule_count_cases(bloat):
     assert "Build: none." in every, "the list of changed lines also covers sections that are not counted"
     assert rule_lines("## A\n\n- Rule start\n  continues with a | b here.\n")[0] == ["Rule start continues with a | b here."], \
         "a continuation with a pipe stays in its rule (a change to it shows)"
-    keyed = rule_lines("## Hard rules\n\n- **Git history.** Never x.\n- **The Maintainer may change anything** here.\n- Plain.\n\n"
+    keyed = rule_lines("## Hard rules\n\n- **Git history.** Never x.\n- **The Administrator may change anything** here.\n- Plain.\n\n"
                        "## Project rules\n\n- **Own.** P.\n", with_sections=True)
-    assert [k for k, _ in keyed] == ["Git history", "The Maintainer may change anything", "Hard rules", "Own"], \
+    assert [k for k, _ in keyed] == ["Git history", "The Administrator may change anything", "Hard rules", "Own"], \
         "a bold label is the lint key, without its dot; else the heading"
     kit, project, _ = rule_lines("## A\n\n* Star.\n1. Numbered.\n  - Nested.\nA paragraph.\n\n"
                                  "## Project rules\n\n+ Plus.\n  wrapped.\nA rule as a paragraph.\n")
@@ -343,7 +343,7 @@ def rule_count_cases(bloat):
         "Project rules: unindented lines are rules each; '#1' is text, not a heading"
     _, project, _ = rule_lines("## Project rules\n\nRule | Why\n--- | ---\nT one | x\nT two | y\n\n| R | W |\n|---|---|\n| T three | z |\n-\n")
     assert project == ["T one | x", "T two | y", "| T three | z |"], "tables without leading pipes: one rule per row; a lone '-' removes no row"
-    kit, project, every = rule_lines("## Order of authority\n\n1. The Maintainer.\n2. This file.\n- A bullet here counts.\n\n## B\n\n"
+    kit, project, every = rule_lines("## Order of authority\n\n1. The Administrator.\n2. This file.\n- A bullet here counts.\n\n## B\n\n"
                                      "- One rule,\n  wrapped.\n~~~\n- in a tilde fence\n~~~\n* * *\n---\n### Sub\n\n"
                                      "## Project rules\n\n### Group\n\n- P one,\n  wrapped.\n\nA paragraph rule\nover two lines.\n\n---\n\n"
                                      "| Rule | Why |\n|---|---|\n| T one | x |\n| T two | y |\n")
@@ -351,12 +351,12 @@ def rule_count_cases(bloat):
         "the ranking is not counted, a bullet in that section is; wraps, fences, rules and sub-headings are not rules"
     assert project == ["P one, wrapped.", "A paragraph rule", "over two lines.", "| T one | x |", "| T two | y |"], \
         "Project rules: wrapped bullet 1, an unindented paragraph line 1 each, table rows without header and separator"
-    assert "The Maintainer." in every, "ranking lines are still listed when they change"
+    assert "The Administrator." in every, "ranking lines are still listed when they change"
 
 
 def third_party_cases(bloat, ro, caps):
     """The `audit-third-party` globs: a matched skill folder or agent file leaves the session load and counts
-    against its own cap (the Maintainer, 2026-11-20).
+    against its own cap (the Administrator, 2026-11-20).
 
     Args:
         bloat: the bloat_check module.
@@ -589,7 +589,7 @@ def ratchet_cases(bloat, root):
     assert not bloat.ratchet_report(root)[1], "at the baseline: passes"
     (root / "scripts/a.py").write_text("x\nx\n")
     problems = bloat.ratchet_report(root)[1]
-    assert len(problems) == 1 and "pass the baseline 2 (+1)" in problems[0] and "By the Maintainer" in problems[0], problems
+    assert len(problems) == 1 and "pass the baseline 2 (+1)" in problems[0] and "By the Administrator" in problems[0], problems
     git_in(root, "add", "-A")
     git_in(root, "commit", "-qm", "state")
     git_in(root, "update-ref", "refs/remotes/origin/main", "HEAD")
@@ -597,14 +597,14 @@ def ratchet_cases(bloat, root):
     problems = bloat.ratchet_report(root)[1]
     assert len(problems) == 1 and "rose from 2 to 3" in problems[0], "a higher baseline needs a row: %s" % problems
     (root / "docs").mkdir(exist_ok=True)
-    good = 'the Maintainer: "Approve 3" (2026-11-23 18:10)'
+    good = 'the Administrator: "Approve 3" (2026-11-23 18:10)'
     cases = [("baseline 3 \\| wc", good, True), ("baseline 3.", good, True),
              ("baseline 31", good, False), ("baseline 3.5", good, False), ("v3", good, False), ("1.3", good, False),
-             ("baseline 3", "Agent: the Maintainer 3", False), ("baseline 3", "the Maintainer (2026-11-23)", False),
-             ("baseline 3", 'the Maintainer: "3"', False), ("baseline 3", 'the Maintainer\'s agent: "3" 2026-11-23', False),
-             ("baseline 3", 'the Maintainer-bot: "3" 2026-11-23', False), ("baseline 3", 'the Maintainer: agent wrote "3" 2026-11-23', False),
-             ("baseline 3", 'the Maintainer: "2026-11-23"', False), ("baseline 3", '“Approve 3” 2026-11-23', False),
-             ("baseline 3", 'The Maintainer: “Approve 3” 2026-11-23', True)]
+             ("baseline 3", "Agent: the Administrator 3", False), ("baseline 3", "the Administrator (2026-11-23)", False),
+             ("baseline 3", 'the Administrator: "3"', False), ("baseline 3", 'the Administrator\'s agent: "3" 2026-11-23', False),
+             ("baseline 3", 'the Administrator-bot: "3" 2026-11-23', False), ("baseline 3", 'the Administrator: agent wrote "3" 2026-11-23', False),
+             ("baseline 3", 'the Administrator: "2026-11-23"', False), ("baseline 3", '“Approve 3” 2026-11-23', False),
+             ("baseline 3", 'The Administrator: “Approve 3” 2026-11-23', True)]
     for decision, by, ok in cases:
         (root / "docs/DECISIONS.md").write_text(f"| 2026-11-23 | Script lines {decision} | {by} |\n")
         git_in(root, "add", "-A")
@@ -623,27 +623,21 @@ def role_cases(bloat, root):
         bloat: the module bloat_check.
         root: the sample kit repo (a Path).
     """
-    (root / "scripts/sync_baseline.py").write_text('COPY_FILES = ["docs/x.md"]\nCOPY_IF_MISSING = []\n# Never rename the owner inside this script\n')
-    (root / "docs/x.md").write_text("the owner decides\nRule (the owner, 2026-11-23: ok)\nThe Owner's word\nthe Maintainer\n")
+    o_word, m_word = "the " + "owner", "the " + "Maintainer"
+    (root / "scripts/sync_baseline.py").write_text('COPY_FILES = ["docs/x.md"]\nCOPY_IF_MISSING = []\n')
+    (root / "docs/x.md").write_text(f"{o_word} decides\nRule ({o_word}, 2026-11-23: ok)\n{m_word}'s word\nthe Administrator\n")
     rows, problems = bloat.role_report(root)
     assert not rows and len(problems) == 1 and "2 line(s)" in problems[0] and "docs/x.md:1, docs/x.md:3" in problems[0], problems
-    (root / "scripts/sync_baseline.py").write_text('COPY_FILES = ["docs/x.md", "docs/FIRST_USE.md"]\nCOPY_IF_MISSING = []\n')
-    (root / "docs/x.md").write_text("the Maintainer\n")
-    (root / "docs/FIRST_USE.md").write_text('| 7 | A "the owner" \xb7 B a role |\nAsk the owner.\n')
-    problems = bloat.role_report(root)[1]
-    assert len(problems) == 1 and "1 line(s)" in problems[0] and "docs/FIRST_USE.md:2" in problems[0], \
-        "a kept line passes, the next line of the file fails: %s" % problems
-    (root / "docs/FIRST_USE.md").unlink()
-    (root / "scripts/sync_baseline.py").write_text('COPY_FILES = ["docs/x.md"]\nCOPY_IF_MISSING = []\n# Never rename the owner inside this script\n')
-    (root / "docs/x.md").write_text("the owner decides\nRule (the owner, 2026-11-23: ok)\nThe Owner's word\nthe Maintainer\n")
+    (root / "scripts/sync_baseline.py").write_text('COPY_FILES = ["docs/x.md"]\nCOPY_IF_MISSING = []\n')
+    (root / "docs/x.md").write_text(f"{o_word} decides\nRule ({o_word}, 2026-11-23: ok)\n{m_word}'s word\nthe Administrator\n")
     (root / ".check.lock").write_text("{}")
     assert bloat.role_report(root) == ([], []), "a project keeps its own role word"
     (root / ".check.lock").unlink()
-    (root / "docs/x.md").write_text("the Maintainer\n")
-    assert bloat.role_report(root) == ([], []), "no role word: no line"
-    (root / "docs/x.md").write_text("the Administrator decides\nRule (the Administrator, 2026-11-23: ok)\n")
+    (root / "docs/x.md").write_text("the Administrator\n")
+    assert bloat.role_report(root) == ([], []), "Administrator passes"
+    (root / "docs/x.md").write_text(f"{m_word} decides\nRule ({m_word}, 2026-11-23: ok)\n")
     problems = bloat.role_report(root)[1]
-    assert len(problems) == 1 and "1 line(s)" in problems[0] and "docs/x.md:1" in problems[0], "the old role word Administrator fails: %s" % problems
+    assert len(problems) == 1 and "1 line(s)" in problems[0] and "docs/x.md:1" in problems[0], "the old role word fails: %s" % problems
 
 
 def file_check_cases(bloat, d):

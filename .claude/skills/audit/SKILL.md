@@ -9,7 +9,7 @@ AGENTS.md "Caps and audit" points here. Two procedures: a slow run (one operatio
 
 ## A slow run
 
-A slowdown that nobody looks at grows: agents add steps, and each one seems small. So each repeatable process compares its time with a baseline, and a slowdown starts this section. Warn only: a slowdown never fails a check (the Maintainer, 2026-11-16).
+A slowdown that nobody looks at grows: agents add steps, and each one seems small. So each repeatable process compares its time with a baseline, and a slowdown starts this section. Warn only: a slowdown never fails a check (the Administrator, 2026-11-16).
 
 ### Where times are compared
 
@@ -31,7 +31,7 @@ Slower means both: over `max_slowdown` (default +25%) and over `min_slowdown_sec
 4. Prove it. Give the median of 3 runs before and after, the command and the machine (cores) in the report.
 5. Record a baseline (below), in the same branch as the fix.
 
-When the cause is spread over many files (layers of small additions), stop and propose the full audit (below) to the Maintainer.
+When the cause is spread over many files (layers of small additions), stop and propose the full audit (below) to the Administrator.
 
 ### Record a baseline
 
@@ -40,7 +40,7 @@ When the cause is spread over many files (layers of small additions), stop and p
 - Commands with a `cmd`: `python3 scripts/bloat_check.py --time --record`.
 - Commit the change to `.check.state.json`, with the before and after numbers, the 3 run times and the machine (`nproc` cores) in the commit message.
 - Record only on a quiet machine: a run while other agents or lanes share the CPU is not a measurement. When a lane gains or loses a step, record its baseline again in the same pull request.
-- A new baseline after a fix, or for a new step, is routine. A slower baseline with no fix (accepting the cost) needs the Maintainer's approval: put it under Suggest, with the numbers.
+- A new baseline after a fix, or for a new step, is routine. A slower baseline with no fix (accepting the cost) needs the Administrator's approval: put it under Suggest, with the numbers.
 
 ### Time a new repeatable process
 
@@ -50,21 +50,21 @@ When the cause is spread over many files (layers of small additions), stop and p
 
 ## The full audit: bloat, drift and assumptions
 
-The full periodic audit that AGENTS.md "Caps and audit" names. Claude or a person can run it, and only when the Maintainer asks: when the check-in says AUDIT DUE, tell the Maintainer and ask (about 1 hour of agent time).
+The full periodic audit that AGENTS.md "Caps and audit" names. Claude or a person can run it, and only when the Administrator asks: when the check-in says AUDIT DUE, tell the Administrator and ask (about 1 hour of agent time).
 
-Due: every 14 days or 300 commits to main, whichever comes first, and before a release. The Maintainer may set other values in `.check` (`audit-every-days:`, `audit-every-commits:`).
+Due: every 14 days or 300 commits to main, whichever comes first, and before a release. The Administrator may set other values in `.check` (`audit-every-days:`, `audit-every-commits:`).
 
 Why: two audits of one project found layered bloat that made a simple operation 5x slower (116.6 s to 23.4 s after the fix). Each layer looked reasonable when an agent added it. Agents add; they seldom remove. This audit finds what to remove and proposes it.
 
 ## Fleet audit
 
-At each kit release, or 14 days after the last fleet audit (AUDIT DUE (fleet) at the kit check-in), report it and ask the Maintainer; when the Maintainer says yes, run the full audit for every fleet repo in a fresh session. Report per repo: kit version and lock state, caps, open branches, kit lag; and the outcome metrics: defects found per check in the last 30 days, mutant kill rate where measured, files changed per kit change, and fix-of-a-fix rate (commits that fix a commit of the last 7 days). File size and file counts are warnings only. Write the date to `fleet.last_audit` in kit.config.json. Each check, and this skill, gets a retire / shrink / keep line in docs/tools.md.
+At each kit release, or 14 days after the last fleet audit (AUDIT DUE (fleet) at the kit check-in), report it and ask the Administrator; when the Administrator says yes, run the full audit for every fleet repo in a fresh session. Report per repo: kit version and lock state, caps, open branches, kit lag; and the outcome metrics: defects found per check in the last 30 days, mutant kill rate where measured, files changed per kit change, and fix-of-a-fix rate (commits that fix a commit of the last 7 days). File size and file counts are warnings only. Write the date to `fleet.last_audit` in kit.config.json. Each check, and this skill, gets a retire / shrink / keep line in docs/tools.md.
 
 ## The archive step
 
-Item 16 in Step 2 finds the candidates; this step archives them. Run it when the check-in says ARCHIVE DUE and the Maintainer says yes. ARCHIVE DUE prints when the archivable files reach 20 files or 200 KB (decimal KB; code: `archive_due` in `scripts/bloat_check.py`). The total size of docs/reviews/ does not count: files that a check reads stay there.
+Item 16 in Step 2 finds the candidates; this step archives them. Run it when the check-in says ARCHIVE DUE and the Administrator says yes. ARCHIVE DUE prints when the archivable files reach 20 files or 200 KB (decimal KB; code: `archive_due` in `scripts/bloat_check.py`). The total size of docs/reviews/ does not count: files that a check reads stay there.
 
-The retention schedule (the Maintainer, 2026-11-25; source: the kit's archival inventory report of 2026-11-25 in its docs/reviews folder):
+The retention schedule (the Administrator, 2026-11-25; source: the kit's archival inventory report of 2026-11-25 in its docs/reviews folder):
 
 | File class | Archive when | Test |
 |---|---|---|
@@ -80,7 +80,7 @@ Exceptions, always kept: a plan that is open and approved, a file that a check r
 
 The script (`archivable` in `scripts/bloat_check.py`) makes these tests: the age, a live link, a check reads the file, and a plan with a checked box and no open box (`[ ]`, `[~`) is closed. It counts a plan with no box as open, and a shallow clone as age unknown. The script cannot make the person tests, so its count is an upper bound: the dry run removes the files that fail a person test. The 7 days of a plan also count from the last change of the handoff, so in a repo whose handoff changes each week the script seldom lists a plan: a person adds a closed plan to the dry run by the close tests of the schedule (a release row, or every box checked and the handoff does not name it), 7 days after the close. A person makes these tests: a plan closed by a release row in CHANGELOG, the evidence of a closed plan, that a candidate is not the evidence of an open plan (an open plan does not always link its evidence), the close of an audit report, and a coverage list that check.sh no longer runs.
 
-1. Make the list: the units that pass every test, with path, bytes and reason. This is the dry run: change no file. Send the list and the totals (files, bytes) to the Maintainer.
+1. Make the list: the units that pass every test, with path, bytes and reason. This is the dry run: change no file. Send the list and the totals (files, bytes) to the Administrator.
 2. For each file, record the last commit on main before you delete it: `git log -1 --format=%H origin/main -- <path>`.
 3. Add one row for each file to the archive index, docs/reviews/archive-index.md: path, the link `https://github.com/<owner>/<repo>/blob/<sha>/<path>`, the date, the reason. Make the file if it is not there.
 4. Delete the files with `git rm`. In each kept file that links a deleted file, change the link to its row in the index.
@@ -90,7 +90,7 @@ The script (`archivable` in `scripts/bloat_check.py`) makes these tests: the age
 
 - Measure first, then change. Every finding has evidence: a path and line, a count, a size or a time. No finding from impression.
 - Fix the cause, then apply the same fix everywhere the pattern appears.
-- Removals need the Maintainer's approval. Do not remove, shorten or reword code, a script, a flag, a config, a template, a doc section, a rule, a decision, a test or a feature until the Maintainer approves. Deliver the proposals as a pull request (Step 5.4).
+- Removals need the Administrator's approval. Do not remove, shorten or reword code, a script, a flag, a config, a template, a doc section, a rule, a decision, a test or a feature until the Administrator approves. Deliver the proposals as a pull request (Step 5.4).
 - Profile before you prune: a slow check is more often 1 or 2 hot spots than too many tests. Time the steps first.
 - "Nothing in the repo calls it" does not prove a thing is unused. People run tools by hand, from other repos or devices, and from pasted prompts. Agents read only the repo, so a request that lives only in chat is invisible to them.
 - Exceptions (no approval), the only list: (a) files made on this audit's own branch; (b) generated files rebuilt from their source; (c) agent scratch files (debug output, "_old"/"_v2" copies) that nothing references AND whose adding commit names no request or decision; (d) exact duplicates merged into the canonical copy, text kept word for word; (e) reference text moved out of start-read files unchanged, except from instruction and guard files (AGENTS.md "Rule text"), where every change is a proposal. List each in the report.
@@ -144,23 +144,23 @@ Assumptions that nobody checked are drift that has not happened yet.
 
 1. List the key assumptions the project depends on: in plans, designs, code comments, docs, handoff and decisions. A key assumption is one that changes the design, the cost or the result if it is wrong.
 2. For each, give: the assumption, where it is used (path:line), its source (a decision with a date, a document paragraph, a test, a measurement, or none), and your confidence: high (verified by a source or test), medium (consistent with sources, not verified), low (no source, or the sources disagree).
-3. Untraced or low-confidence assumptions that matter go to the Maintainer as questions, with 2–3 options and a recommendation. Do not resolve them yourself.
+3. Untraced or low-confidence assumptions that matter go to the Administrator as questions, with 2–3 options and a recommendation. Do not resolve them yourself.
 4. Assumptions that a test can check get a test.
 5. Find stale assumptions: true when written, no longer true (versions, access rights, limits, prices, people's roles, tool behavior).
 
 ## Step 4: fix and measure again
 
-1. Make only the fixes in the exceptions list in "Rules for the auditor". Every other removal, shortening or rewording is a proposal for the Maintainer (Step 5.4); make it only after the Maintainer approves.
+1. Make only the fixes in the exceptions list in "Rules for the auditor". Every other removal, shortening or rewording is a proposal for the Administrator (Step 5.4); make it only after the Administrator approves.
 2. Run the project's checks (AGENTS.md "Commands"). All must pass as before.
 3. Run `python3 scripts/bloat_check.py --time` again. Report before → after for each number.
 4. AGENTS.md "Delivery" and "Fresh review" say which changes need the fresh review and who merges.
 
 ## Step 5: record
 
-1. Write `docs/reviews/YYYY-MM-DD-bloat-audit.md` (or the place AGENTS.md "Project rules" names): the before/after table, findings by category with evidence, fixes made, proposals for the Maintainer, the assumption table, the tech-debt register.
+1. Write `docs/reviews/YYYY-MM-DD-bloat-audit.md` (or the place AGENTS.md "Project rules" names): the before/after table, findings by category with evidence, fixes made, proposals for the Administrator, the assumption table, the tech-debt register.
 2. Update `.check.state.json`: `audit`: `last_audit` (date, commit on main after the fixes, report path) and new `timings` baselines (`--time --record`; the lanes as "Record a baseline" above says). In `.check`: `audit-duplicate-ignore:` globs for generated or reference files that only the duplicate scan should skip, `audit-ignore:` for files no audit measure should read (each new glob is a proposal: it hides files from the scan).
 3. Log the audit in the project log (milestone; a breakthrough when a fix removes a blocker or saves 25%+ time).
-4. Ask the Maintainer the open questions together, each with options and a recommendation. Removal proposals: make the 5 with the largest saving on a second branch and open one pull request for them, one commit for each item, with a table in its text: what, where, why it exists (or "not found"), evidence it is unused, saving, risk. Ask the Maintainer to approve each item in a question dialog, drop the commits that are not approved, then deliver it (`.claude/skills/deliver/SKILL.md`). List the other proposals in the report for the next audit; a long list is not approved, so it removes nothing.
+4. Ask the Administrator the open questions together, each with options and a recommendation. Removal proposals: make the 5 with the largest saving on a second branch and open one pull request for them, one commit for each item, with a table in its text: what, where, why it exists (or "not found"), evidence it is unused, saving, risk. Ask the Administrator to approve each item in a question dialog, drop the commits that are not approved, then deliver it (`.claude/skills/deliver/SKILL.md`). List the other proposals in the report for the next audit; a long list is not approved, so it removes nothing.
 
 ## Report table (minimum)
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Code standard check: measures every source file of this repo against docs/code-standard.md and fails on new debt.
 
-Why: the Maintainer, 2026-11-17: all code is lean, modular, commented and human-editable, and stays so as work continues.
+Why: the Administrator, 2026-11-17: all code is lean, modular, commented and human-editable, and stays so as work continues.
 A written rule alone is not always obeyed, so this check fails a push or a pull request instead. The kit owns this
 file; a project gets it by sync, keeps its own settings in its `.check` file and its own stricter rules in its own
 gate file (below) or via `code-strict-gate: on`, never in a copy of this file.
@@ -29,7 +29,7 @@ started. A violation that is not in that list fails. A listed function that grew
 fails too, until the baseline is lowered in the same change (`--update`), so the list can only shrink and always
 matches the code. The baseline and the settings are compared with those on the merge base with origin/main: an added
 item, a raised value or a changed `code-` setting fails, unless the same change adds a row to docs/DECISIONS.md that
-names `.check` (the Maintainer's decision). A merge base that still has the old .code-standard.json is compared from it.
+names `.check` (the Administrator's decision). A merge base that still has the old .code-standard.json is compared from it.
 
 A project's own gate (the extension point): when the file scripts/code_standard_gate.py stands next to this one, the
 check loads it and calls it. The kit has no gate file. A gate that cannot be imported, or lacks one of the five names
@@ -105,7 +105,7 @@ OPT_IN = {'docs': lambda c: int(c.get('c2') == 'full'),
 PREVENTS = re.compile(r'^[ \t]*Prevents:[ \t]*(?!(?:unclear|unknown|tbd|todo|none|n/?a|see|tba)\b|\?)\S+(?:[ \t]+\S+){2}', re.M | re.I)
 ENTRY_FILES = ('scripts/check.sh', '.claude/settings.json')   # plus scripts/git-hooks/* and .github/workflows/*: what runs a check
 MIN_DUP_LINES = 4          # a body this short (a one-line wrapper) is not counted as a duplicate
-SHORT_FUNCTION = 10        # lines; a function this short needs only the lean C2 comment (the Maintainer's 3B, 2026-11-17)
+SHORT_FUNCTION = 10        # lines; a function this short needs only the lean C2 comment (the Administrator's 3B, 2026-11-17)
 RETURNS_VALUE = re.compile(r'\breturn\s+[^\s;}]')   # `return x`, not a bare `return` or `return;`
 
 DIVIDER = re.compile(r'^\s*(#|//)\s*(-{4,}|={4,})')   # a section line, not a function's comment
@@ -204,7 +204,7 @@ def is_kit(root):
     return (root / 'kit.config.json').is_file() and not (root / '.check.lock').exists()
 
 
-# Debt kinds that only warn: no FAIL, not in the baseline. C1 Prevents (AUD-1; the Maintainer, 2026-11-23):
+# Debt kinds that only warn: no FAIL, not in the baseline. C1 Prevents (AUD-1; the Administrator, 2026-11-23):
 # a FAIL in the kit, a WARN in a project until its debt is 0.
 WARN_KINDS = () if is_kit(ROOT) else ('prevents',)
 
@@ -779,14 +779,14 @@ def ruff_ok(line, cap, comment=None, noqa=None):
 
 
 def owner_role_in(text):
-    """Return the Maintainer role from the "- Owner:" line of an AGENTS.md text, lower case, without a leading "the "
+    """Return the Administrator role from the "- Owner:" line of an AGENTS.md text, lower case, without a leading "the "
     ('' if the text has no such line)."""
     m = re.search(r'^- Owner:\s*(.+?)\s*$', text, re.M)
     return re.sub(r'^the\s+', '', m.group(1).rstrip('.').lower()) if m else ''
 
 
 def owner_role(root):
-    """Return the Maintainer role from the AGENTS.md file under `root` (owner_role_in; '' when there is no file)."""
+    """Return the Administrator role from the AGENTS.md file under `root` (owner_role_in; '' when there is no file)."""
     try:
         return owner_role_in((Path(root) / 'AGENTS.md').read_text(encoding='utf-8'))
     except OSError:
@@ -804,7 +804,7 @@ def row_refusal(text, name, owner, names=None):
     Args:
         text: a line of docs/DECISIONS.md that main does not have.
         name: the settings file name the decision cell must name.
-        owner: the Maintainer role (owner_role), lower case.
+        owner: the Administrator role (owner_role), lower case.
         names: a test that says whether a text names the file (None: the text holds `name`).
 
     Returns:
@@ -823,25 +823,25 @@ def row_refusal(text, name, owner, names=None):
     if bad:
         return 'rule 3: the By cell names a script or an agent (%s)' % bad[0]
     if not owner:
-        return 'rule 4: AGENTS.md has no "- Owner:" line to name the Maintainer'
+        return 'rule 4: AGENTS.md has no "- Owner:" line to name the Administrator'
     if not re.fullmatch(r'(the\s+)?' + re.escape(owner) + r'(\s*\([^()]*\))?', by):
-        return 'rule 4: the By cell is not the Maintainer alone (%s; one note in brackets may follow)' % owner
+        return 'rule 4: the By cell is not the Administrator alone (%s; one note in brackets may follow)' % owner
     return None
 
 
 def owner_row(new_text, name, owner, old_text='', names=None):
-    """Compare docs/DECISIONS.md with its text on the merge base and look for the Maintainer's new row that opens the
+    """Compare docs/DECISIONS.md with its text on the merge base and look for the Administrator's new row that opens the
     ratchet gate. The gate opens only in a change that adds rows and leaves every older row as it was.
 
     Args:
         new_text: docs/DECISIONS.md as it is in this change.
         name: the settings file name.
-        owner: the Maintainer role (owner_role_in).
+        owner: the Administrator role (owner_role_in).
         old_text: docs/DECISIONS.md at the merge base ('' when there is none).
         names: a test that says whether a text names the file (None: the text holds `name`).
 
     Returns:
-        (True, []) when a new table row names `name` and has the Maintainer alone in its By cell, and no older row was
+        (True, []) when a new table row names `name` and has the Administrator alone in its By cell, and no older row was
         edited or removed; else (False, the refusal lines, each with the rule that refused).
     """
     def table(text):
@@ -895,7 +895,7 @@ class StrictGate:
 
     @staticmethod
     def decided(root, ref):
-        """Return whether this change records the Maintainer's decision on `.check` (owner_row)."""
+        """Return whether this change records the Administrator's decision on `.check` (owner_row)."""
         here = Path(root) / 'docs' / 'DECISIONS.md'
         text = here.read_bytes().decode('utf-8', 'replace') if here.is_file() else ''
         return owner_row(text, settings.CHECK, owner_role_in(at_ref(root, ref, 'AGENTS.md')),
@@ -1244,7 +1244,7 @@ def git(*args):
 
 
 def decided_at(ref):
-    """Return (True when this change records the Maintainer's decision on `.check`, refusal lines)."""
+    """Return (True when this change records the Administrator's decision on `.check`, refusal lines)."""
     if GATE:
         return GATE.decided(ROOT, ref)
     return any(x.startswith('+') and settings.NAMES_CHECK.search(x)
@@ -1260,7 +1260,7 @@ def compare_debt_items(debt, old_debt, config, old_config, ref, decided):
         config: the working tree's code standard settings.
         old_config: the merge base's code standard settings.
         ref: the merge base commit SHA.
-        decided: True when the Maintainer's decision row is recorded.
+        decided: True when the Administrator's decision row is recorded.
 
     Returns:
         List of FAIL problem strings.
@@ -1274,7 +1274,7 @@ def compare_debt_items(debt, old_debt, config, old_config, ref, decided):
             if refused:
                 problems.append(refused)
             elif adopting and decided:
-                continue   # an opt-in rule turned on or raised now (--adopt): its list is the Maintainer's decision
+                continue   # an opt-in rule turned on or raised now (--adopt): its list is the Administrator's decision
             elif key not in was:
                 problems.append('FAIL  baseline: %s item added by hand: %s' % (kind, key))
             elif value > was[key]:
@@ -1313,7 +1313,7 @@ def against_main(config, debt):
     problems += compare_debt_items(debt, old_debt, config, old_config, ref, decided)
     if config != old_config and not decided:
         problems.append('FAIL  baseline: a `code-` setting of %s (caps, scope or an opt-in rule) changed with no '
-                        'docs/DECISIONS.md row that names %s (a cap or scope change is the Maintainer\'s decision)'
+                        'docs/DECISIONS.md row that names %s (a cap or scope change is the Administrator\'s decision)'
                         % (settings.CHECK, settings.CHECK))
     return problems + (list(refusals) if problems and not decided else []), ''
 

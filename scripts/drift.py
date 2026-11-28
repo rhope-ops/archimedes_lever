@@ -66,7 +66,7 @@ def baseline_head(base_text, proj_text, owner):
     Args:
         base_text: the text of the baseline AGENTS.md.
         proj_text: the text of the project's AGENTS.md (may be empty).
-        owner: the owner word to put in place of the baseline's.
+        owner: the Administrator word to put in place of the baseline's.
     Returns:
         The baseline text above "## Project rules" as a string.
     """
@@ -251,7 +251,7 @@ def report(project, base, owner=None):
     Args:
         project: the project folder.
         base: the baseline folder.
-        owner: the owner word, or None to read it from the project.
+        owner: the Administrator word, or None to read it from the project.
     Returns:
         (rows, not_same): the rows and the count of rows whose status is not "same".
     """

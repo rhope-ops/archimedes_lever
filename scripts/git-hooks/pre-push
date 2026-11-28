@@ -299,7 +299,7 @@ idout=$(printf '%s\n' "$input" | check_identity "${1:-origin}") || { echo "$idou
 # --cached: a lane that already passed on this commit with a clean tree is not run again.
 # --no-content: with the content check on, the guard step below scans the tracked files and the pushed commits in one run.
 # A push of only the token log branch (log_only) skips check.sh: its commits hold no work-tree files, so the checks
-# would test files it does not carry. The content check still scans its pushed commits (the Maintainer, 2026-11-25).
+# would test files it does not carry. The content check still scans its pushed commits (the Administrator, 2026-11-25).
 carries=0 logs=0
 printf '%s\n' "$input" | awk 'NF>=4 && $2 !~ /^0+$/ {f=1} END {exit !f}' && carries=1
 printf '%s\n' "$input" | log_only && logs=1

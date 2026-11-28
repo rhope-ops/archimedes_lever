@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The kit package (plan 2026-11-23, P3, the Maintainer's design B): a project takes the kit scripts from the
+"""The kit package (plan 2026-11-23, P3, the Administrator's design B): a project takes the kit scripts from the
 installed `archimedes-kit` package instead of from its own commits.
 
 A project in package mode keeps in git only the kit files that a hook calls (and what they import), the instruction
@@ -8,7 +8,7 @@ package into `scripts/` and lists it in `.git/info/exclude`, so check.sh, the lo
 run as before. The package must be installed at the commit that `.check.lock` names (pip records it).
 
 Usage:
-    pip install "git+https://github.com/rhope-ops/archimedes_lever@<the commit in .check.lock>"
+    pip install "git+<kit_url from kit.config.json>@<the commit in .check.lock>"
     archimedes-kit --install    # write the untracked kit scripts from the package (or: python3 -m archimedes_kit.kit_package)
     archimedes-kit --verify     # check.sh runs this (or python3 -m archimedes_kit.kit_package --verify):
                                 # the package is at the lock commit and each file equals its copy
@@ -73,8 +73,11 @@ def run(root, pkg, have, url, write):
     if not files:
         return ["KIT PACKAGE: not used (each kit script in .check.lock is tracked)"], False
     if have != commit:
+        lock_url = json.loads((root / ".check.lock").read_text(encoding="utf-8")).get("kit_url")
+        if not lock_url and (root / "kit.config.json").is_file():
+            lock_url = json.loads((root / "kit.config.json").read_text(encoding="utf-8")).get("kit_url")
         return [f"FAIL  the installed kit package is at {have or 'nothing'}; .check.lock names {commit}: "
-                f"pip install --force-reinstall \"git+{url or 'https://github.com/rhope-ops/archimedes_lever'}@{commit}\""], True
+                f"pip install --force-reinstall \"git+{url or lock_url or '<kit_url>'}@{commit}\""], True
     out = []
     for rel in files:
         src, dst = pkg / rel[len("scripts/"):], root / rel

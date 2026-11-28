@@ -58,7 +58,7 @@ title_lines() {
   day=$(TZ="${tz:-UTC}" date +%F)
   tag="project:$(printf '%s' "$short" | tr '[:upper:]' '[:lower:]')"
   echo "TITLE:       $short · <task, 2-6 words> · $day (tag $tag); keep a title that already has this form; steps: .claude/skills/handoff/SKILL.md \"Session names\""
-  echo "SESSIONS:    where the session tools exist, list the sessions tagged $tag that wait on the Maintainer"
+  echo "SESSIONS:    where the session tools exist, list the sessions tagged $tag that wait on the Administrator"
 }
 
 # kit_line: in package mode a fresh clone lacks the kit scripts that .check.lock lists (scripts/check.sh --kit-install
@@ -84,7 +84,8 @@ token_log_line() {
   local tmo=""; command -v timeout >/dev/null && tmo="timeout 30"  # macOS has no timeout
   if [ -n "$url" ] && ! GIT_TERMINAL_PROMPT=0 $tmo git ls-remote --heads "$url" >/dev/null 2>&1; then
     name=${url%/}; name=${name%.git}; name=${name#https://github.com/}
-    echo "TOKEN LOG:   the private log repo $name is not reachable: attach it read and write (add_repo $name) so this session's token log stays private; if that is refused, say so to the Maintainer"
+    echo "TOKEN LOG:   the private log repo $name is not reachable: attach it read and write (add_repo $name) so this session's token log stays private;" \
+      "if that is refused, say so to the Administrator"
   fi
   alarm=$(grep ' ALARM: the session log' "${TOKEN_LOG_HOME:-$HOME/.claude/token-log}/push.log" 2>/dev/null | tail -n 1)
   [ -n "$alarm" ] && echo "TOKEN LOG:   $alarm"

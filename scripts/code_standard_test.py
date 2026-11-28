@@ -701,7 +701,7 @@ def self_test_gate_ratchet(cs, root, config, now):
         assert len(gone) == 1 and 'main holds line debt, but no rule here knows that kind' in gone[0], \
             'a debt kind of main that no rule knows fails (the gate is gone): %s' % gone
         decisions.write_text('# Decisions\n| the gate is retired | `.check` |\n')
-        assert cs.against_main({}, {})[0] == [], "with the Maintainer's row, removing the gate's rule passes"
+        assert cs.against_main({}, {})[0] == [], "with the Administrator's row, removing the gate's rule passes"
     finally:
         cs.settings.code_base, cs.GATE = real_base, gate
         decisions.write_text(kept)
@@ -734,7 +734,7 @@ def check_safety(cs):
 
 
 def check_rows(cs):
-    """Self-test of the Maintainer-row gate on diff text.
+    """Self-test of the Administrator-row gate on diff text.
 
     Args:
         cs: the check module.
@@ -770,7 +770,7 @@ def check_rows(cs):
 
 
 def check_row_tricks(cs, name):
-    """Self-test of the ways an edited or moved row must not open the Maintainer-row gate.
+    """Self-test of the ways an edited or moved row must not open the Administrator-row gate.
 
     Args:
         cs: the check module.
@@ -1000,7 +1000,7 @@ class StrictGateTest(unittest.TestCase):
         check_safety(cs_mod)
 
     def test_owner_rows(self):
-        """Only a new row with the Maintainer alone in its By cell passes; the refusals name their rule."""
+        """Only a new row with the Administrator alone in its By cell passes; the refusals name their rule."""
         check_rows(cs_mod)
 
     def test_line_cap(self):

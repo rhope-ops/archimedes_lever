@@ -36,7 +36,7 @@ It measures:
                   Caps for every repo (KIT_CAPS; a project can lower one, never raise it): 5,500 tokens (warning at
                   5,000) and 200 lines of AGENTS.md; over a cap fails --rules
     third-party   the names and descriptions of the skills and agents that `.check` names in `audit-third-party:`
-                  lines: counted apart from the session load, against their own kit cap of 1,500 tokens (the Maintainer,
+                  lines: counted apart from the session load, against their own kit cap of 1,500 tokens (the Administrator,
                   2026-11-20); over it fails --rules
     rules         list items in AGENTS.md (any marker, any indent; a wrapped line is part of its item): the kit
                   sections (the header, "## Commands" and the numbered ranking in "## Order of authority" are not
@@ -62,7 +62,7 @@ It measures:
     script lines  (--rules, T2) the lines of scripts/*.py and *.sh against "script_lines": {"baseline": N} in the state file
                   (`cat scripts/*.py scripts/*.sh | wc -l`); over it fails, and so does a baseline above main's with no DECISIONS row;
                   below it fails unless "cap": true; no baseline: FAIL in the kit, SKIP in a project
-    role word     (--rules, T6) kit-synced text in the kit says "the Maintainer", not an old role word; FAIL in the kit, no check in a project
+    role word     (--rules, T6) kit-synced text in the kit says "the Administrator", not an old role word; FAIL in the kit, no check in a project
     debt record   (--rules --gate, T5, kit) changed rule lines, a check entry point added to scripts/check.sh and a lower
                   KIT_CAPS cap need a docs/reviews/*-debt.md file with the line "debt-check: <hash>" (the hash as the conflict gate)
     fleet audit   (kit, R3) AUDIT DUE (fleet): kit.config.json "fleet": {"last_audit": "YYYY-MM-DD"} missing, over 14 days old,
@@ -143,30 +143,18 @@ TOOL_EXT = (".py", ".sh", ".ps1", ".psm1", ".js", ".mjs", ".cjs", ".bat", ".cmd"
 TOOL_SKIP = ("node_modules/", "vendor/", "dist/")   # not the repo's own tools
 TOOLS_DOC = "docs/tools.md"
 STATE_KEY = "script_lines"   # in .check.state.json: {"baseline": N, "command": ..., "measured": ..., "commit": ...}
-# T2: the By cell of a baseline row: "the Maintainer:", then the approval in quotes, then a date after the quote
-APPROVED_BY = re.compile(r'the Maintainer:\s*(?:"[^"\S\n]*[^"\s][^"\n]*"|“[^”\S\n]*[^”\s][^”\n]*”).*?(?<!\d)\d{4}-\d\d-\d\d(?!\d)', re.I)
-ROLE_WORD = re.compile(r"\bthe owner\b|\bOwner's\b|\b[Tt]he Administrator\b|\bAdministrator's\b")
-DATED = re.compile(r"\(the (?:owner|Administrator), \d{4}-\d{2}-\d{2}")   # an attribution that records a past role word stays as written
-# The lines of kit-synced text and of the files that test it that may hold the old role word: file -> one regex for each kept line.
-# Never a whole file. The regexes say "the[ ]owner" so that this list does not match itself.
+# T2: the By cell of a baseline row: "the Administrator:", then the approval in quotes, then a date after the quote
+APPROVED_BY = re.compile(r'the Administrator:\s*(?:"[^"\S\n]*[^"\s][^"\n]*"|“[^”\S\n]*[^”\s][^”\n]*”).*?(?<!\d)\d{4}-\d\d-\d\d(?!\d)', re.I)
+ROLE_WORD = re.compile(r"\bthe[ ]owner\b|\bOwner's\b|\b[Tt]he[ ]Maintainer\b|\bMaintainer's\b|\b[Tt]he[ ]PAM\b|\b[Tt]he[ ]PFM\b")
+DATED = re.compile(r"\((?:the )?(?:[Oo]wner|Administrator|Maintainer), \d{4}-\d{2}-\d{2}")   # an attribution that records a past role word stays as written
 ROLE_ALLOW = {
-    "scripts/bloat_check.py": [r"^ROLE_WORD = re\.compile\(", r"^DATED = re\.compile\("],   # the searched patterns
-    "scripts/bloat_check_test.py": [r"Never rename the[ ]owner inside this script",   # test text of the sync script
-                                    r"the[ ]owner decides\\nRule",   # the test lines with the searched word
-                                    r'"the[ ]owner" \\xb7 B a role',
-                                    r"the[ ]Administrator decides\\n"],
-    "scripts/log_check.py": [r"\| Old row \| the[ ]owner \|",   # sample DECISIONS rows of its self-test
-                             r"\| New row \| the[ ]Administrator \|"],
-    "scripts/sync_baseline.py": [r"Never rename the[ ]owner inside this script", r'use "the[ ]owner" as an answer option'],   # lines 116-117
-    "scripts/sync_test.py": [r'"the[ ]owner"', r"\| the[ ]owner \|", r"the[ ]owner word"],   # the words the sync swaps
-    "docs/FIRST_USE.md": [r'agents call you "the[ ]owner"', r'A "the[ ]owner" \xb7 B a role', r'Give "the[ ]owner" as the 4th argument',
-                          r"\(the[ ]owner, YYYY-MM-DD\)"],   # answer options and the attribution form a user types
+    "scripts/bloat_check.py": [r"^ROLE_WORD = re\.compile\(", r"^DATED = re\.compile\("],
 }
 ENTRY = re.compile(r"(?:python3|bash)\s+(scripts/[\w.-]+\.(?:py|sh))|^[ \t]*(?:selftest|extension)\s+\S+\s+(scripts/[\w.-]+\.(?:py|sh))", re.M)
 CAPS_FILE = "scripts/check_settings.py"
-# The archive step (.claude/skills/audit/SKILL.md, item 16): the thresholds the Maintainer approved on 2026-11-25
+# The archive step (.claude/skills/audit/SKILL.md, item 16): the thresholds the Administrator approved on 2026-11-25
 # (docs/reviews/2026-11-25-archival-inventory-kit.md), in decimal KB. The set "reaches" them (>=).
-ARCHIVE_SET = (20, 200_000)       # the archivable files: count, bytes (no folder-total trigger: the Maintainer, 2026-11-25)
+ARCHIVE_SET = (20, 200_000)       # the archivable files: count, bytes (no folder-total trigger: the Administrator, 2026-11-25)
 ARCHIVE_DAYS = {True: 7, False: 14}   # days since the newest change: a plan (closed), the rest
 HISTORY_DOCS = ("docs/DECISIONS.md", "docs/LOG.md", "docs/CHANGELOG.md")   # a link from these is history, not live
 CHECK_READ = re.compile(r"(?:rule-conflict-check|debt-check): ")   # conflict_recorded reads these
@@ -175,12 +163,12 @@ KEEP_NAMES = ("README.md", "archive-index.md")   # the folder's own guide and th
 OPEN_BOX = re.compile(r"\[ \]|\[~")
 DONE_BOX = re.compile(r"\[[xX]\]")
 
-# One home per rule (the Maintainer, 2026-11-18): a rule that AGENTS.md states must not be stated again, or the other
+# One home per rule (the Administrator, 2026-11-18): a rule that AGENTS.md states must not be stated again, or the other
 # way round, in a skill or an agent file; those files link to it. Each row: (the rule, a pattern that shows a
 # second statement, the files that may hold it). A match in any other skill or agent file fails scripts/check.sh.
 SINGLE_HOME = [
     ("who merges a pull request",
-     r"only the Maintainer merges|the Maintainer merges\b|never merges this pull request|the Maintainer's merge is the approval", ["AGENTS.md"]),
+     r"only the Administrator merges|the Administrator merges\b|never merges this pull request|the Administrator's merge is the approval", ["AGENTS.md"]),
     ("no direct push to main", r"merge to main by merge|\bPush main:|git checkout main && git merge|push to main and republish", ["AGENTS.md"]),
     ("the end-of-turn summary format", r"end-of-turn summary line:", ["AGENTS.md"]),
     # The hard rules (AGENTS.md "Hard rules", 2026-11-18). A pointer such as (AGENTS.md "Hard rules") or a description
@@ -734,7 +722,7 @@ def changed_rules(root, text, parts, gate):
     for mark, lines in (("+", added), ("-", removed)):
         out += [f"  {mark} {ln}" for ln in lines]  # the whole line: a change near its end must show
     if added or removed:
-        out.append("  (rule lines changed against the default branch: each one needs the Maintainer's approval of its exact text)")
+        out.append("  (rule lines changed against the default branch: each one needs the Administrator's approval of its exact text)")
         h = conflict_hash(added, removed)
         if conflict_recorded(root, h):
             out.append(f"  conflict check: recorded (rule-conflict-check: {h})")
@@ -845,7 +833,7 @@ def _census_rules_report(root, cfg, gate=False):
                         "plus the skill and agent descriptions)")
     elif load > b["session_load_warn_tokens"]:
         out.append(f"WARN  session load ~{load:,} tokens is over the warning ({b['session_load_warn_tokens']:,}); trim before the cap")
-    # The bullet counts only warn (the Maintainer, 2026-11-18): the line and load caps are the limits.
+    # The bullet counts only warn (the Administrator, 2026-11-18): the line and load caps are the limits.
     if len(kit) > b["rules"]:
         out.append(f"WARN  {len(kit)} rule bullets (guide {b['rules']})")
     if len(project) > b["project_rules"]:
@@ -959,7 +947,7 @@ def script_lines(root):
 
 def ratchet_report(root):
     """T2: the script lines may not pass the baseline in .check.state.json; a higher baseline than on main needs a docs/DECISIONS.md
-    row By the Maintainer with the number. No baseline in the state: a problem in the kit, a SKIP line in a project (the sync sets it:
+    row By the Administrator with the number. No baseline in the state: a problem in the kit, a SKIP line in a project (the sync sets it:
     plan P5).
 
     Args:
@@ -980,8 +968,8 @@ def ratchet_report(root):
     n, problems = script_lines(root), []
     if n > base:
         problems.append(f"custom script lines {n} pass the baseline {base} (+{n - base}): a higher baseline needs a docs/DECISIONS.md "
-                        f"row By the Maintainer with the number {n} (T2 ratchet)")
-    elif n < base and not part.get("cap"):   # "cap": true makes the baseline a ceiling only (the Maintainer, 2026-11-25)
+                        f"row By the Administrator with the number {n} (T2 ratchet)")
+    elif n < base and not part.get("cap"):   # "cap": true makes the baseline a ceiling only (the Administrator, 2026-11-25)
         problems.append(f"custom script lines {n} are below the baseline {base} (-{base - n}): set \"baseline\": {n} in "
                         f"{check_settings.STATE} in this change, so the freed lines do not return with no decision (T2 ratchet)")
     ref = git(root, "merge-base", "HEAD", "origin/main")
@@ -995,7 +983,7 @@ def ratchet_report(root):
         number = re.compile(rf"(?<![\w.,])(?:{base}|{base:,})(?![\w]|[.,]\d)")   # 18142 or 18,142; not 181420, 1.18142 or 18142.5
         if not any(len(c) > 2 and number.search(c[1]) and APPROVED_BY.match(c[2]) for c in rows):
             problems.append(f"the script lines baseline rose from {was} to {base} with no new docs/DECISIONS.md row that names {base}, "
-                            "By the Maintainer: the approval in quotes, then its date")
+                            "By the Administrator: the approval in quotes, then its date")
     return [f"scripts:     {n} lines in scripts/*.py and *.sh (baseline {base})"], problems
 
 
@@ -1021,7 +1009,7 @@ def synced_files(root):
 
 
 def role_report(root):
-    """T6, in the kit: kit-synced text says "the Maintainer", not the old role words (the sync swaps the word per project). A FAIL
+    """T6, in the kit: kit-synced text says "the Administrator", not the old role words (the sync swaps the word per project). A FAIL
     in the kit. Allowed: a dated attribution and the lines of ROLE_ALLOW. A project has no such check:
     its synced text holds that project's own role word.
 
@@ -1039,7 +1027,7 @@ def role_report(root):
         for n, line in enumerate(p.read_text(encoding="utf-8", errors="replace").splitlines() if p.is_file() else [], 1):
             if ROLE_WORD.search(DATED.sub("", line)) and not any(re.search(a, line) for a in ROLE_ALLOW.get(rel, ())):
                 hits.append(f"{rel}:{n}")
-    return [], [f"{len(hits)} line(s) of kit-synced text use an old role word (T6: write \"the Maintainer\"; the sync swaps it): "
+    return [], [f"{len(hits)} line(s) of kit-synced text use an old role word (T6: write \"the Administrator\"; the sync swaps it): "
                 f"{', '.join(hits[:5])}{' ...' if len(hits) > 5 else ''}"] if hits else []
 
 
@@ -1286,7 +1274,7 @@ def run_timings(root, cfg, record):
 
 def compare_times(cfg, pairs, record=False):
     """pairs: [(name, seconds)]; name is a timings key, or "key:step" for one of its "steps". Returns (line, slow).
-    Warn only: a slowdown is reported, never a failure (the Maintainer, 2026-11-16).
+    Warn only: a slowdown is reported, never a failure (the Administrator, 2026-11-16).
 
     Args:
         cfg: the audit settings, with "timings"; record changes it in place.
@@ -1458,15 +1446,15 @@ def report(root, args, today=None):
     if args.record and args.time:
         save_timings(root, cfg.get("timings", {}))
 
-    tail = (f"AUDIT DUE ({due}): tell the Maintainer and ask whether to run the audit skill (.claude/skills/audit/SKILL.md, "
+    tail = (f"AUDIT DUE ({due}): tell the Administrator and ask whether to run the audit skill (.claude/skills/audit/SKILL.md, "
             "about 1 hour of agent time); never start it unasked") if due else "audit not due"
     fleet = fleet_audit_due(root, today)
     if fleet:
-        tail += (f" · AUDIT DUE (fleet: {fleet}): tell the Maintainer and ask whether to run the fleet audit "
+        tail += (f" · AUDIT DUE (fleet: {fleet}): tell the Administrator and ask whether to run the fleet audit "
                  "(.claude/skills/audit/SKILL.md, section Fleet audit); never start it unasked")
     archive = archive_due(root, (git(root, "ls-files") or "").splitlines(), today)
     if archive:
-        tail += (f" · ARCHIVE DUE ({archive}): tell the Maintainer and ask whether to run the archive step "
+        tail += (f" · ARCHIVE DUE ({archive}): tell the Administrator and ask whether to run the archive step "
                  "(.claude/skills/audit/SKILL.md, section The archive step); never start it unasked")
     if args.brief:
         print(f"bloat:       {r_rows[0][13:]} · duplicate lines "

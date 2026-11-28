@@ -27,7 +27,7 @@ import tempfile
 
 # Git commands that can lose work, and reads of key files. scripts/git-hooks/pre-push blocks the push forms for
 # every git client; these rules stop the local forms in Claude Code. scripts/worker_guard.py parses the same
-# commands for the worker and reviewer subagents. Tags: only the Release Manager (the Maintainer, 2026-11-25).
+# commands for the worker and reviewer subagents. Tags: only the Administrator (the Administrator, 2026-11-25).
 DENY = [
     "Bash(git push --force*)", "Bash(git push -f*)", "Bash(git push * --force*)", "Bash(git push * -f*)",
     "Bash(git reset --hard*)", "Bash(git clean*)", "Bash(*--no-verify*)", "Bash(git *core.hooksPath*)",

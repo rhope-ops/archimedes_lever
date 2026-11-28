@@ -3,7 +3,7 @@
 (else of the session's repo).
 
 Kit only: projects do not get a copy. A cloud environment's setup script installs it from the kit's newest release
-tag as a user-level Stop hook, so every repo session is logged (the owner, 2026-11-17).
+tag as a user-level Stop hook, so every repo session is logged (the Administrator, 2026-11-17).
 
 At each Stop it starts a background push (the end of the turn does not wait) and exits 0. Outside a git repo it
 does nothing: sessions with no repo are not logged, and the repo is the folder the session started in
@@ -765,7 +765,7 @@ def _fetch_release_checkout(tmp, url, tag):
 
 def self_update(path, url=None, now=None):
     """Replace the installed hook file with the copy of the kit's newest release tag (release_tag()) when it differs
-    and its self-test passes; at most once a day. Never main: only a release the Release Manager tagged reaches every
+    and its self-test passes; at most once a day. Never main: only a release the Administrator tagged reaches every
     session (token log audit, 2026-11-25).
 
     Args:

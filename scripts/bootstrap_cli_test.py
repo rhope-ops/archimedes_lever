@@ -1,7 +1,7 @@
 """The command line of scripts/bootstrap.sh, tested as a process.
 
 What it proves: in a copy of the kit (tracked files only) in a temporary git repo, bootstrap fills the placeholders,
-renames the owner word, writes README.md, .check.state.json and .check.lock, deletes the kit-only files and itself, and
+renames the Administrator word, writes README.md, .check.state.json and .check.lock, deletes the kit-only files and itself, and
 leaves a repo whose lock verifies; it refuses a wrong argument count, a bad tier and a bad owner name, and changes nothing
 then. It needs perl and bash, and no network.
 Inputs:  none (each case builds a temporary git repo and runs the script by its command line, never by import).
@@ -53,7 +53,7 @@ class BootstrapCli(unittest.TestCase):
 
     def test_bad_tier_and_bad_owner_are_refused(self):
         """Prove: bad tier and bad owner are refused."""
-        p = self.boot("Demo App", "org/demo", "A demo.", "the maintainer", "UTC", "middle")
+        p = self.boot("Demo App", "org/demo", "A demo.", "the administrator", "UTC", "middle")
         self.assertEqual(p.returncode, 1)
         self.assertIn("use starter or full", p.stderr)
         p = self.boot("Demo App", "org/demo", "A demo.", "bad;name")
@@ -63,24 +63,24 @@ class BootstrapCli(unittest.TestCase):
 
     def test_bad_time_zone_is_refused(self):
         """Prove: bad time zone is refused."""
-        p = self.boot("Demo App", "org/demo", "A demo.", "the maintainer", "Mars/Base")
+        p = self.boot("Demo App", "org/demo", "A demo.", "the administrator", "Mars/Base")
         self.assertEqual(p.returncode, 1)
         self.assertIn("not a known IANA name", p.stderr)
 
     def starter(self):
         """Run a starter bootstrap with the role owner and return the finished process."""
-        return self.boot("Demo App", "org/demo", "A demo.", "the maintainer", "UTC", "starter")
+        return self.boot("Demo App", "org/demo", "A demo.", "the administrator", "UTC", "starter")
 
     def test_starter_run_fills_template(self):
-        """Prove: a starter run fills the placeholders, renames the owner word and writes README.md."""
+        """Prove: a starter run fills the placeholders, renames the Administrator word and writes README.md."""
         p = self.starter()
         self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
         self.assertIn("Done.", p.stdout)
         agents = (self.path / "AGENTS.md").read_text()
-        for want in ("# Demo App: agent instructions", "- Repo: org/demo", "- Owner: the maintainer"):
+        for want in ("# Demo App: agent instructions", "- Repo: org/demo", "- Owner: the administrator"):
             self.assertIn(want, agents)
         self.assertNotIn("{{", agents)
-        self.assertIn("the maintainer", (self.path / ".claude/skills/deliver/SKILL.md").read_text())
+        self.assertIn("the administrator", (self.path / ".claude/skills/deliver/SKILL.md").read_text())
         self.assertTrue((self.path / "README.md").read_text().startswith("# Demo App\n\nA demo."))
 
     def test_starter_run_removes_kit_files(self):
@@ -121,7 +121,7 @@ class BootstrapCli(unittest.TestCase):
         self.assertEqual(self.starter().returncode, 0)
         left = [str(f.relative_to(self.path)) for f in self.path.rglob("*") if f.is_file() and ".git" not in f.parts and f.suffix != ".pyc"
                 and f.name not in ("FIRST_USE.md", "first_use_check.py", "DECISIONS.md")
-                and "the Maintainer" in f.read_text(errors="replace")]
+                and "the Administrator" in f.read_text(errors="replace")]
         self.assertEqual(left, [])
 
     def test_starter_run_writes_state_and_valid_lock(self):

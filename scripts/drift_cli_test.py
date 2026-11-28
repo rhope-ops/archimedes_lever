@@ -27,7 +27,7 @@ class DriftCli(unittest.TestCase):
 
     def drift(self, *extra):
         """Run drift.py on the project against the kit, with these extra arguments."""
-        return py("drift.py", "--project", str(self.path), "--baseline", str(KIT), "--owner", "the maintainer", *extra,
+        return py("drift.py", "--project", str(self.path), "--baseline", str(KIT), "--owner", "the administrator", *extra,
                   cwd=self.path)
 
     def test_no_drift_after_sync(self):

@@ -11,7 +11,7 @@ are those of the kit at commit `fe62213`; a later split of a script can move the
 
 | File | Who writes it | Who reads it |
 |---|---|---|
-| `.check` | A person (on the Maintainer's request) | The scripts in the tables below |
+| `.check` | A person (on the Administrator's request) | The scripts in the tables below |
 | `.check.state.json` | Tools only (sorted keys, indent 1) | `scripts/check_settings.py:359` (`load_state`) |
 | `.check.lock` | `scripts/sync_baseline.py` | `scripts/check_lock.py` (not part of this page) |
 

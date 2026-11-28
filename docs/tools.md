@@ -43,7 +43,7 @@ Without `scripts/git-hooks/pre-push`: 65 files, 17,096 lines (the prompt's basel
 
 | File | Job | Lines | Callers | Self-test | Commits 30 d | Lines changed | Sync churn | Candidates |
 |---|---|---|---|---|---|---|---|---|
-| `scripts/check_content.py` | The content check of scripts/check.sh: blocks personal data, secrets and the Maintainer's own blocked content  | 282 | check.sh,hooks,CI,settings +15 scripts | yes | 11 | 338 | 16 | gitleaks (custom rules), detect-secrets, trufflehog |
+| `scripts/check_content.py` | The content check of scripts/check.sh: blocks personal data, secrets and the Administrator's own blocked content  | 282 | check.sh,hooks,CI,settings +15 scripts | yes | 11 | 338 | 16 | gitleaks (custom rules), detect-secrets, trufflehog |
 | `scripts/check_content_scan.py` | The scanner of check_content.py: the patterns, the readers of the word lists (names, terms) and of the setting | 378 | check.sh +11 scripts | yes | 11 | 1170 | 20 | gitleaks (custom rules), detect-secrets, trufflehog |
 | `scripts/check_content_test.py` | Self-test of scripts/check_content.py (run by `python3 scripts/check_content.py --test`; kept in its own file  | 266 | check.sh +7 scripts | yes | 6 | 1022 | 12 | gitleaks (custom rules), detect-secrets, trufflehog |
 
@@ -125,7 +125,7 @@ Lines and jobs of the token log rows re-measured 2026-11-25 (token log follow-up
 ## Fleet audit verdicts (2026-11-24)
 
 One line per check of `scripts/check.sh` and for the audit skill: **REC** (a recommendation of the fleet audit), not a
-decision; the Maintainer decides each retire or shrink. Evidence and method: docs/reviews/2026-11-24-fleet-audit.md
+decision; the Administrator decides each retire or shrink. Evidence and method: docs/reviews/2026-11-24-fleet-audit.md
 (all 5 repos read). "Decided" names the dated choice that the line follows.
 
 | Check (check.sh step) | REC | Evidence |

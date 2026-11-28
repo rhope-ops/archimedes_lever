@@ -20,7 +20,7 @@ It reports:
     DENYLIST        the repo has the settings file .check but this session has no name denylist, so pushes will be blocked.
     RESUMED         the hook input says source "resume" or "compact" (a restart or a compaction, not a new session):
                     this line (plus DENYLIST when it applies) instead of KIT and FIRST USE: the agent runs the check-in and
-                    continues the approved plan, without a new plan review (the owner, 2026-11-18).
+                    continues the approved plan, without a new plan review (the Administrator, 2026-11-18).
 The kit repo itself keeps its placeholders on purpose: it gets the KIT line, never FIRST USE.
 Exit 0 always: a session-start hook informs, it never blocks. Standard library only.
 Network: none (it runs local git read commands).
@@ -84,7 +84,7 @@ def messages(root):
                    "(docs/FIRST_USE.md, recommended) or to work on the kit.")
     if first_use:
         out.append("FIRST USE: this repo was made from the template and is not set up yet. Before any other work, "
-                   "follow docs/FIRST_USE.md: ask the Maintainer its questions (in Claude Code, with the clickable "
+                   "follow docs/FIRST_USE.md: ask the Administrator its questions (in Claude Code, with the clickable "
                    "question dialog), then run scripts/bootstrap.sh with the answers.")
     try:
         guard_without_list = ((root / ".check").is_file() or (root / ".pii-guard").is_file()) and not has_denylist()
@@ -100,7 +100,7 @@ def messages(root):
             warn = False
         effect = ("names are not checked (starter tier: pushes only warn)" if warn else "pushes will be blocked")
         out.append("DENYLIST: this repo has the personal-data guard on, but this session has no name denylist, so "
-                   + effect + ". Ask the Maintainer to add the environment variable PII_GUARD_DENYLIST to this "
+                   + effect + ". Ask the Administrator to add the environment variable PII_GUARD_DENYLIST to this "
                    "cloud environment (environment menu in the session title bar > Edit > Environment variables; "
                    "names comma separated; a new session picks it up), or, on their own computer, the file "
                    "~/.config/pii-guard/denylist.txt. Never ask for the names in chat. Details: docs/FIRST_USE.md.")
@@ -110,7 +110,7 @@ def messages(root):
 RESUMED = ("RESUMED: this session restarted or its context was compacted; it is not a new session. Run "
            "scripts/session_checkin.sh for the git state, then continue the approved plan in docs/NEXT_PROMPT.md (in the kit: "
            "docs/KIT_HANDOFF.md; or the plan in the summary above) from the first step that is not done. Do not review the "
-           "plan again and do not ask questions the Maintainer already answered; code reviews and checks still apply.")
+           "plan again and do not ask questions the Administrator already answered; code reviews and checks still apply.")
 
 
 def hook_source(raw):

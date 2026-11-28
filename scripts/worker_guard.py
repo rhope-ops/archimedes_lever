@@ -170,7 +170,7 @@ def check_git(args, branch, readonly=False):
     if sub == 'clean':
         return 'no git clean; ask the orchestrator'
     if sub == 'branch' and branch_delete(rest):
-        return 'no branch deletes; the orchestrator or the Maintainer deletes branches'
+        return 'no branch deletes; the orchestrator or the Administrator deletes branches'
     return _check_push(rest, branch) if sub == 'push' else None
 
 
@@ -296,7 +296,7 @@ def rebuilt(line, deny, terms):
     Args:
         line: one line of text.
         deny: the names of the denylist.
-        terms: the Maintainer's own blocked words.
+        terms: the Administrator's own blocked words.
 
     Returns:
         True or False.
@@ -384,7 +384,7 @@ def scan_targets(targets, deny=None, terms=None):
     Args:
         targets: folders or git ranges.
         deny: the names of the denylist (None: the content check's own list).
-        terms: the Maintainer's own blocked words (None: the content check's own list).
+        terms: the Administrator's own blocked words (None: the content check's own list).
 
     Returns:
         A list of (path, line number, kind).

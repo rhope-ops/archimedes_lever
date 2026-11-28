@@ -174,13 +174,13 @@ ok "fast lane: a change to the kit file it extends runs it" "$(c --fast | grep -
 printf '%s\n' 'import sys' 'if "--test" in sys.argv:' '    raise SystemExit(1)' > "$t/r/scripts/check_content_local.py"
 c >/dev/null; ok "a failing self-test of an extension file fails the run" "$?" 1
 # Package mode (scripts/kit_package.py): a lock-listed script that git does not track needs the installed package.
-printf '%s\n' '{"commit": "c0ffee", "files": {"scripts/gone.py": "x"}}' > "$t/r/.check.lock"
+printf '%s\n' '{"commit": "c0ffee", "kit_url": "https://example.invalid/kit", "files": {"scripts/gone.py": "x"}}' > "$t/r/.check.lock"
 nopkg="$t/nopkg:$(dirname "$(command -v python3)"):$(dirname "$(command -v git)"):/usr/bin:/bin"  # a PATH with no archimedes-kit
 out="$(cd "$t/r" && PATH="$nopkg" bash scripts/check.sh 2>&1)"
 ok "package mode with no package fails and names the install" "$(printf '%s\n' "$out" | grep -c -e '^FAIL  kit package' -e 'install: scripts/check.sh --kit-install')" 2
 printf '%s\n' '{"commit": "c0ffee"}' > "$t/r/.check.lock"
 ok "a lock with no file list fails the package step, never skips it" "$(cd "$t/r" && PATH="$nopkg" bash scripts/check.sh 2>&1 | grep -c '^FAIL  kit package')" 1
-printf '%s\n' '{"commit": "c0ffee", "files": {"scripts/gone.py": "x"}}' > "$t/r/.check.lock"
+printf '%s\n' '{"commit": "c0ffee", "kit_url": "https://example.invalid/kit", "files": {"scripts/gone.py": "x"}}' > "$t/r/.check.lock"
 mkdir -p "$t/pkgbin"; printf '#!/bin/sh\necho "KIT PACKAGE PASS: $*"\n' > "$t/pkgbin/archimedes-kit"; chmod +x "$t/pkgbin/archimedes-kit"
 ok "package mode runs the package's verify" "$(cd "$t/r" && PATH="$t/pkgbin:$PATH" bash scripts/check.sh 2>&1 | grep -c '^PASS  kit package')" 1
 # --kit-install under PEP 668: a fake python3 whose pip refuses the system Python (or fails with $PIPERR).

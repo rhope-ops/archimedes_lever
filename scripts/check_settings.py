@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """The one reader of the code standard and audit settings in `.check`, and the one reader and writer of
-`.check.state.json` (the Maintainer, 2026-11-18: one config layout in every repo).
+`.check.state.json` (the Administrator, 2026-11-18: one config layout in every repo).
 
 The three files at the top of a repo:
     .check             every setting a person edits: one entry per line, `#` comments. The content check reads its
@@ -52,7 +52,7 @@ Usage:   python3 scripts/check_settings.py            print the settings and the
          python3 scripts/check_settings.py --test     self-test in temporary repos; prints SETTINGS TEST PASS
                                                       (the cases: scripts/check_settings_test.py)
 Needs:   Python 3.8+ and git. Standard library only.
-Prevents: a `.check` code, audit or security setting is misread, so a cap or an adopted rule differs from what the Maintainer set
+Prevents: a `.check` code, audit or security setting is misread, so a cap or an adopted rule differs from what the Administrator set
 Network: none (it runs local git read commands).
 Writes:  .check.state.json; with --migrate also .check, and it deletes the old settings files.
 Credentials: none.
@@ -86,7 +86,7 @@ AUDIT_DEFAULTS = {"every_days": 14, "every_commits": 300, "start_read": [], "ign
                               "third_party_tokens": 1500,
                               "handoff_lines": 40, "file_kb": 500, "duplicate_lines": 20, "rules": 28,
                               "project_rules": 15}}
-# The Maintainer's caps for every repo (2026-11-18; third_party_tokens 2026-11-20; session load 5,500, warning 5,000: 2026-11-21):
+# The Administrator's caps for every repo (2026-11-18; third_party_tokens 2026-11-20; session load 5,500, warning 5,000: 2026-11-21):
 # a project can lower one, never raise it.
 KIT_CAPS = ("session_load_tokens", "session_load_warn_tokens", "rules_file_lines", "third_party_tokens")
 CODE_LISTS = ("include", "exclude", "generated", "paste")
@@ -413,7 +413,7 @@ HEADER_BLOCK = (
     "#   audit-<key>: <value>    a setting of the audit, for example `audit-ignore: ref/**`",
     "#                           (the keys and their defaults: the header of scripts/check_settings.py; a `code-` change",
     "#                           needs a docs/DECISIONS.md row that names this file)",
-    "# An allowed string or a skip line is added only on the Maintainer's request, never by an agent to get past a block"
+    "# An allowed string or a skip line is added only on the Administrator's request, never by an agent to get past a block"
     ' (AGENTS.md "Guards and checks").',
 )
 HEADER = HEADER_BLOCK[0]
@@ -424,10 +424,10 @@ OLD_HEADERS = (
 OLD_HEADER_LINES = frozenset(HEADER_BLOCK + OLD_HEADERS + (   # the other lines of older kit header blocks
     "# Below: exact strings that are allowed although they look like personal data, one per line.",
     "# `skip: <path or glob>` excludes a path.",
-    '# Only the Maintainer adds entries. Agents never add one to get past a block (AGENTS.md "Personal data").',
-    '# Only the Maintainer adds an allowed string or a skip line. Agents never add one to get past a block (AGENTS.md'
+    '# Only the Administrator adds entries. Agents never add one to get past a block (AGENTS.md "Personal data").',
+    '# Only the Administrator adds an allowed string or a skip line. Agents never add one to get past a block (AGENTS.md'
     ' "Personal data").',
-    "# An allowed string or a skip line is added only on the Maintainer's request, never by an agent to get past a block"
+    "# An allowed string or a skip line is added only on the Administrator's request, never by an agent to get past a block"
     ' (AGENTS.md "Personal data").',
 ))
 
@@ -465,17 +465,17 @@ def old_json(root, name):
     return obj
 
 
-ROLE_IN_LINE = re.compile(r"\b([Tt])he [A-Za-z][A-Za-z ._-]*?(?='s request\b| adds )")  # "the Maintainer's request", "the PFM adds"
+ROLE_IN_LINE = re.compile(r"\b([Tt])he [A-Za-z][A-Za-z ._-]*?(?='s request\b| adds )")  # "the Administrator's request", "the Administrator adds"
 
 
 def role_free(line):
     """A header line with its role word made neutral, so an old kit line matches in any repo (kit fix 0(a): a sync
-    puts each repo's role word, for example "the PFM", into the lines a project's `.check` holds).
+    puts each repo's role word, for example "the Administrator", into the lines a project's `.check` holds).
 
     Args:
         line: one line of a `.check` header block.
     Returns:
-        The line with "the <role>" before "'s request" or " adds " written as "the Maintainer".
+        The line with "the <role>" before "'s request" or " adds " written as "the Administrator".
     """
     return ROLE_IN_LINE.sub(lambda m: m.group(1) + "he owner", line)
 

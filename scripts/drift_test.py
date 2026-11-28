@@ -2,7 +2,7 @@
 """Self-test cases of scripts/drift.py (run by `python3 scripts/drift.py --test`; kept in its own file so drift.py
 stays under the line cap of docs/code-standard.md C4). Kit only: projects do not get a copy.
 
-It compares sample projects with this baseline repo: a legacy AGENTS.md, a synced one with the Maintainer renamed, a
+It compares sample projects with this baseline repo: a legacy AGENTS.md, a synced one with the Administrator renamed, a
 copied file, the tiers, the settings merge, the place of the project log, the short name, a sync that keeps the
 project's own files, and the files a project may tune.
 Input: this baseline repo (its AGENTS.md must still hold its placeholders; elsewhere the test is skipped).
@@ -53,7 +53,7 @@ def last_section(base):
 
 
 def legacy_and_synced_cases(proj, base, results):
-    """A legacy AGENTS.md drifts; a synced one with the Maintainer renamed is the same, also a copied file.
+    """A legacy AGENTS.md drifts; a synced one with the Administrator renamed is the same, also a copied file.
 
     Args:
         proj: an empty temporary project folder.
@@ -69,12 +69,12 @@ def legacy_and_synced_cases(proj, base, results):
     expect(results, "missing copied file", get(("file", "scripts/stop_check.py")), "missing")
     expect(results, "never synced", get(("pin", ".check.lock")), "missing")
     text = filled((base / "AGENTS.md").read_text(), (("PROJECT_NAME", "Demo"), ("REPO", "D/d"), ("PURPOSE", "P"),
-                  ("OWNER", "the maintainer"), ("TIMEZONE", "Europe/Berlin")))
-    (proj / "AGENTS.md").write_text(sb.apply_owner(sb.apply_tier(text.replace("{{TIER}}", "full"), "full"), "the maintainer"))
+                  ("OWNER", "the administrator"), ("TIMEZONE", "Europe/Berlin")))
+    (proj / "AGENTS.md").write_text(sb.apply_owner(sb.apply_tier(text.replace("{{TIER}}", "full"), "full"), "the administrator"))
     expect(results, "synced section, owner renamed", get(("AGENTS.md", last)), "same")
     expect(results, "Project rules present", get(("AGENTS.md", "Project rules")), "absent")
     (proj / "scripts").mkdir()
-    (proj / "scripts/stop_check.py").write_text(sb.apply_owner((base / "scripts/stop_check.py").read_text(), "the maintainer"))
+    (proj / "scripts/stop_check.py").write_text(sb.apply_owner((base / "scripts/stop_check.py").read_text(), "the administrator"))
     expect(results, "copied file, owner renamed", get(("file", "scripts/stop_check.py")), "same")
     text = filled((base / "AGENTS.md").read_text().replace("- Owner: {{OWNER}}\n", ""),
                   (("PROJECT_NAME", "Demo"), ("REPO", "D/d"), ("PURPOSE", "P"), ("TIMEZONE", "UTC")))
@@ -124,11 +124,11 @@ def settings_merge_cases(tmp, base, results):
 
 def log_place_cases(results):
     """The log row: a "- Project log" line that names a URL or a path means the log is kept elsewhere."""
-    line = "- Project log: https://claude.ai/artifact/XXXX (private Claude doc; the Administrator, 2026-11-14). Never in this repo.\n"
+    line = "- Project log: https://example.invalid/artifact/XXXX (private doc; the Administrator, 2026-11-14). Never in this repo.\n"
     same(results, "log elsewhere: a URL", log_kept_elsewhere("## Project rules\n\n" + line), True)
     same(results, "log elsewhere: a path, any case", log_kept_elsewhere("- project LOG: notes/private/log.md\n"), True)
     same(results, "log elsewhere: the old wording", log_kept_elsewhere("- Project log location: the wiki\n"), True)
-    same(results, "log elsewhere: the bold-label form", log_kept_elsewhere("- **Project log.** https://claude.ai/artifact/XXXX (private).\n"), True)
+    same(results, "log elsewhere: the bold-label form", log_kept_elsewhere("- **Project log.** https://example.invalid/artifact/XXXX (private).\n"), True)
     same(results, "log elsewhere: a line with no place", log_kept_elsewhere("- Project log: kept short.\n"), False)
     same(results, "log elsewhere: another rule that names a URL", log_kept_elsewhere("- Docs: https://example.com/x\n"), False)
 
@@ -155,7 +155,7 @@ def apply_keeps_project_files_case(tmp, base, results):
     project_md.write_text("Project addition to the deliver skill.\n")
     own = {"matcher": "^Bash$", "hooks": [{"type": "command", "command": "python3 tools/own_hook.py"}]}
     (proj / ".claude/settings.json").write_text(json.dumps({"hooks": {"PostToolUse": [own]}}))
-    (proj / "AGENTS.md").write_text("# Demo: agent instructions\n\n- Repo: D/d\n- Purpose: P\n- Owner: the maintainer\n"
+    (proj / "AGENTS.md").write_text("# Demo: agent instructions\n\n- Repo: D/d\n- Purpose: P\n- Owner: the administrator\n"
                                     "- Time zone: UTC\n- Tier: full\n\n## Commands\n\n- Test: none.\n\n## Project rules\n\n- Own rule.\n")
     git = ["git", "-c", "user.name=t", "-c", "user.email=t" + "@" + "users.noreply.github.com"]
     for cmd in (["init", "-q"], ["add", "-A"], ["commit", "-q", "-m", "start"]):
@@ -176,7 +176,7 @@ def tier_cases(proj, base, results):
     """
     get = lambda item: status(proj, base, item)  # noqa: E731
     text = filled((base / "AGENTS.md").read_text(), (("PROJECT_NAME", "Demo"), ("REPO", "D/d"), ("PURPOSE", "P"),
-                  ("OWNER", "the Maintainer"), ("TIMEZONE", "UTC"), ("TIER", "starter")))
+                  ("OWNER", "the Administrator"), ("TIMEZONE", "UTC"), ("TIER", "starter")))
     (proj / "AGENTS.md").write_text(sb.apply_tier(text, "starter"))
     expect(results, "starter: no Project log section expected", get(("AGENTS.md", "Project log")), "absent")
     same(results, "starter: no Project log bullet", "**Project log.**" in (proj / "AGENTS.md").read_text(), False)
@@ -207,7 +207,7 @@ def tier_cases(proj, base, results):
 
 def tunable_cases(tmp, results):
     """The files a project may tune, against a small baseline repo with two commits: a sync adds a missing file,
-    replaces an earlier kit version (with or without the Maintainer word applied), keeps a tuned file and says how to
+    replaces an earlier kit version (with or without the Administrator word applied), keeps a tuned file and says how to
     compare; the drift report gives the same states.
 
     Args:
@@ -223,18 +223,18 @@ def tunable_cases(tmp, results):
         for version in ("one", "two"):
             for rel in rels:
                 (base / rel).parent.mkdir(parents=True, exist_ok=True)
-                (base / rel).write_text(f"Version {version} of {rel}. Ask the Maintainer.\n")
+                (base / rel).write_text(f"Version {version} of {rel}. Ask the Administrator.\n")
             if version == "one":
                 run("init", "-q")
             run("add", "-A")
             run("commit", "-q", "-m", version)
-        v1 = lambda rel: f"Version one of {rel}. Ask the Maintainer.\n"  # noqa: E731
+        v1 = lambda rel: f"Version one of {rel}. Ask the Administrator.\n"  # noqa: E731
         put = lambda rel, text: ((proj / rel).parent.mkdir(parents=True, exist_ok=True), (proj / rel).write_text(text))  # noqa: E731
-        put(rels[0], sb.apply_owner(v1(rels[0]), "the maintainer"))   # an earlier kit version, as a sync wrote it
+        put(rels[0], sb.apply_owner(v1(rels[0]), "the administrator"))   # an earlier kit version, as a sync wrote it
         put(rels[2], v1(rels[2]) + "Our own place for the list.\n")    # tuned
-        new, notes = sb.plan_if_missing(base, proj, rels, "the maintainer")
+        new, notes = sb.plan_if_missing(base, proj, rels, "the administrator")
         same(results, "tunable: an earlier kit version is replaced, a missing file is added, a tuned file is kept",
-             new, {rels[0]: f"Version two of {rels[0]}. Ask the maintainer.\n", rels[1]: f"Version two of {rels[1]}. Ask the maintainer.\n"})
+             new, {rels[0]: f"Version two of {rels[0]}. Ask the administrator.\n", rels[1]: f"Version two of {rels[1]}. Ask the administrator.\n"})
         same(results, "tunable: one line for the replaced file, one for the kept file with the compare command",
              [n.split(":")[0] for n in notes] + [notes[1].endswith(f"Compare: diff {base}/{rels[2]} {rels[2]}"), "replaced" in notes[0]],
              [rels[0], rels[2], True, True])
@@ -242,11 +242,11 @@ def tunable_cases(tmp, results):
         same(results, "tunable: drift names the three states and a missing file",
              [state(r) for r in rels], ["older", "missing", "tuned"])
         put(rels[2], v1(rels[2]))   # FIRST_USE.md is never renamed: the plain earlier version is an older copy too
-        put(rels[1], f"Version two of {rels[1]}. Ask the maintainer.\n")
+        put(rels[1], f"Version two of {rels[1]}. Ask the administrator.\n")
         same(results, "tunable: the plain earlier version is older; the current version is the same",
-             [state(rels[2]), state(rels[1]), sorted(sb.plan_if_missing(base, proj, rels, "the maintainer")[0])], ["older", "same", [rels[0], rels[2]]])
+             [state(rels[2]), state(rels[1]), sorted(sb.plan_if_missing(base, proj, rels, "the administrator")[0])], ["older", "same", [rels[0], rels[2]]])
         shutil.rmtree(base / ".git")
-        new, notes = sb.plan_if_missing(base, proj, rels, "the maintainer")
+        new, notes = sb.plan_if_missing(base, proj, rels, "the administrator")
         same(results, "tunable: a baseline with no git history keeps each file that differs, and says so",
              [new, len(notes), all("no git history" in n for n in notes), state(rels[0])], [{}, 2, True, "differs"])
     finally:
@@ -255,7 +255,7 @@ def tunable_cases(tmp, results):
 
 def status_of(proj, base, rel):
     """The status of one file row of the drift report (the files only, so the sample baseline needs no AGENTS.md)."""
-    return {item: s for _, item, s, _ in file_rows(proj, base, "full", "the maintainer")}.get(rel, "absent")
+    return {item: s for _, item, s, _ in file_rows(proj, base, "full", "the administrator")}.get(rel, "absent")
 
 
 def short_name_cases(base, results):
@@ -280,7 +280,7 @@ def short_name_cases(base, results):
     for label, flag, want in (("--short-name wins over the name", "NMB", "- Short name: NMB\n"),
                               ("a sync fills the first word", None, "- Short name: No\n")):
         args = argparse.Namespace(name=None, repo=None, purpose=None, timezone=None, short_name=flag)
-        good = want in sb.build_agents(base_text, proj, args, "the Maintainer")
+        good = want in sb.build_agents(base_text, proj, args, "the Administrator")
         results.append(good)
         print(("ok   " if good else "FAIL ") + f"short name: {label}")
 
