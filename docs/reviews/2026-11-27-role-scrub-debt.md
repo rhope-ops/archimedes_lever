@@ -11,4 +11,4 @@
 | `ion` | Legacy role titles, `-ExecutionPolicy Bypass` in `ps51.yml`, 26 `src/` shards | Resolved in Stage 3A (Batch F5) |
 | `kanon` | Legacy role titles, `-ExecutionPolicy Bypass` in `ps51.yml`, `T20`/`T22` shards | Resolved in Stage 3B (Batch F6) |
 
-debt-check: edc4f582d068
+debt-check: 497963b03d0d

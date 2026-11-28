@@ -8,4 +8,4 @@
 
 Every rule in `AGENTS.md` retains its exact authority, triggers, and enforcement; only the role title (`the Maintainer`, `Content Approver`, `Release Manager`) is unified to `the Administrator` / `Administrator` per `DEC-ROLE`. No conflict with existing hard rules, defaults, or `DEC-NIPR`.
 
-rule-conflict-check: d544675e680a
+rule-conflict-check: 497963b03d0d
