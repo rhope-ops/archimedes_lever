@@ -84,7 +84,8 @@ token_log_line() {
   local tmo=""; command -v timeout >/dev/null && tmo="timeout 30"  # macOS has no timeout
   if [ -n "$url" ] && ! GIT_TERMINAL_PROMPT=0 $tmo git ls-remote --heads "$url" >/dev/null 2>&1; then
     name=${url%/}; name=${name%.git}; name=${name#https://github.com/}
-    echo "TOKEN LOG:   the private log repo $name is not reachable: attach it read and write (add_repo $name) so this session's token log stays private; if that is refused, say so to the Administrator"
+    echo "TOKEN LOG:   the private log repo $name is not reachable: attach it read and write (add_repo $name) so this session's token log stays private;" \
+      "if that is refused, say so to the Administrator"
   fi
   alarm=$(grep ' ALARM: the session log' "${TOKEN_LOG_HOME:-$HOME/.claude/token-log}/push.log" 2>/dev/null | tail -n 1)
   [ -n "$alarm" ] && echo "TOKEN LOG:   $alarm"
