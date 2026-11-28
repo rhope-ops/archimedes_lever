@@ -1,0 +1,33 @@
+name: codeql
+# CodeQL static analysis of Python scripts (SHA-pinned per DEC-BRAND/Stage 1.3).
+# Pull requests and manual runs only, never on push (Actions minutes).
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: codeql (python)
+    if: github.event_name != 'pull_request' || github.event.repository.private == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: github/codeql-action/init@915412ff23e8b7659517e607487dbeae018f2934  # v4.39.5
+        with:
+          languages: python
+          build-mode: none
+      - uses: github/codeql-action/analyze@915412ff23e8b7659517e607487dbeae018f2934  # v4.39.5
+        with:
+          category: "/language:python"

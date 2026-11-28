@@ -93,7 +93,7 @@ def agents_rows(proj_text, head):
     """
     rows = []
     proj_secs = sections(proj_text)
-    proj_lines = {norm(l) for l in proj_text.splitlines() if norm(l)}
+    proj_lines = {norm(line) for line in proj_text.splitlines() if norm(line)}
     if not proj_text:
         rows.append(("AGENTS.md", "file", "missing", ""))
     for heading, body in sections(head).items():
@@ -109,8 +109,8 @@ def agents_rows(proj_text, head):
             rows.append(("AGENTS.md", name, "same", ""))
             continue
         ratio = difflib.SequenceMatcher(None, a, b, autojunk=False).ratio()
-        lines = [norm(l) for l in body.splitlines()[1:] if norm(l)]
-        gone = sum(1 for l in lines if l not in proj_lines)
+        lines = [norm(line) for line in body.splitlines()[1:] if norm(line)]
+        gone = sum(1 for line in lines if line not in proj_lines)
         rows.append(("AGENTS.md", name, "changed", f"{ratio:.0%} similar; {gone}/{len(lines)} baseline lines missing"))
     if sb.find_heading(proj_text, sb.RULES_HEADING) < 0 and proj_text:
         rows.append(("AGENTS.md", "Project rules", "missing", "no baseline layout; sync would migrate the whole file"))

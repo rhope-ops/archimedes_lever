@@ -31,7 +31,8 @@ WIDTH, HEIGHT = 1280, 640
 # Fulcrum Minimal colours, the same values as docs/brand/fulcrum.json primitives (disc, ring_and_symbol, accent, gold)
 # and the soft text colour of the earlier cards.
 STYLE = """html,body{margin:0;background:#15171D}
-.card{width:%(w)dpx;height:%(h)dpx;box-sizing:border-box;padding:80px 88px 80px 108px;display:grid;grid-template-columns:440px 1fr;gap:92px;align-items:center;background:#15171D;color:#F3EEE4}
+.card{width:%(w)dpx;height:%(h)dpx;box-sizing:border-box;padding:80px 88px 80px 108px;
+display:grid;grid-template-columns:440px 1fr;gap:92px;align-items:center;background:#15171D;color:#F3EEE4}
 .mark{width:440px;height:440px;display:block}
 .title{font-family:FreeSerif,serif;font-weight:700;font-size:80px;line-height:1;margin:0 0 22px}
 .sub{font-family:Inter,sans-serif;font-weight:600;font-size:24px;line-height:1.3;margin:0 0 26px;color:#E4DED3;white-space:nowrap}

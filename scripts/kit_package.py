@@ -10,7 +10,8 @@ run as before. The package must be installed at the commit that `.check.lock` na
 Usage:
     pip install "git+https://github.com/rhope-ops/archimedes_lever@<the commit in .check.lock>"
     archimedes-kit --install    # write the untracked kit scripts from the package (or: python3 -m archimedes_kit.kit_package)
-    archimedes-kit --verify     # check.sh runs this (or python3 -m archimedes_kit.kit_package --verify): the package is at the lock commit and each file equals its copy
+    archimedes-kit --verify     # check.sh runs this (or python3 -m archimedes_kit.kit_package --verify):
+                                # the package is at the lock commit and each file equals its copy
     python3 scripts/kit_package.py --test
 Input: the repo at the current folder (or --project DIR), its .check.lock, the installed package. Output: PASS and
 FAIL lines on stdout; exit 1 on a FAIL.
@@ -133,14 +134,16 @@ def self_test():
         lines, bad = run(root, pkg, "c0ffee", None, write=True)
         ok("install writes the untracked file", not bad and (root / "scripts/a.py").read_text() == "print('package a')\n")
         ok("install leaves a tracked kit file alone", (root / "scripts/hook.sh").read_text() == "echo project hook\n")
-        ok("install hides the written file from git", git(root, "status", "--porcelain", "--untracked-files=all").split() == ["A", ".check.lock", "A", "scripts/hook.sh"])
+        ok("install hides the written file from git",
+           git(root, "status", "--porcelain", "--untracked-files=all").split() == ["A", ".check.lock", "A", "scripts/hook.sh"])
         run(root, pkg, "c0ffee", None, write=True)
         ok("a second install keeps one exclude block", (root / ".git/info/exclude").read_text().count(BEGIN) == 1)
         ex = root / ".git/info/exclude"
         ex.write_text(ex.read_text().replace(END + "\n", "") + "/scripts/my_own.py\n")
         run(root, pkg, "c0ffee", None, write=True)
         ok("a block with no end line keeps the user's lines", ex.read_text().endswith(END + "\n/scripts/my_own.py\n"))
-        ok("verify passes after install", run(root, pkg, "c0ffee", None, write=False) == (["KIT PACKAGE PASS: 1 kit scripts from the package at c0ffee"], False))
+        ok("verify passes after install",
+           run(root, pkg, "c0ffee", None, write=False) == (["KIT PACKAGE PASS: 1 kit scripts from the package at c0ffee"], False))
         (root / "scripts/a.py").write_text("print('edited')\n")
         lines, bad = run(root, pkg, "c0ffee", None, write=False)
         ok("an edited copy fails", bad and "differs from the package: scripts/a.py" in lines[0])

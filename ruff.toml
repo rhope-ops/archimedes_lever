@@ -1,4 +1,10 @@
-# Python checks of docs/code-standard.md that ruff runs: parse (C10) and, when scripts/check.sh adds the cap of
-# `code-max-line-chars`, line length (E501). scripts/check.sh runs it; pin: pip install ruff==0.17.6
+# Python checks of docs/code-standard.md that ruff runs: syntax/parse (E9/C10), pycodestyle
+# (E, W), pyflakes (F), flake8-bugbear (B), and McCabe complexity (C90). scripts/check.sh runs it
+# (and passes --line-length when `code-max-line-chars` is set); pin: pip install ruff==0.17.6
+line-length = 160
+
 [lint]
-select = ["E9"]
+select = ["E", "F", "W", "B", "C90"]
+
+[lint.mccabe]
+max-complexity = 15

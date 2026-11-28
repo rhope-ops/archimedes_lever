@@ -6,7 +6,7 @@ leaves a repo whose lock verifies; it refuses a wrong argument count, a bad tier
 then. It needs perl and bash, and no network.
 Inputs:  none (each case builds a temporary git repo and runs the script by its command line, never by import).
 Outputs: unittest results.
-Run:     python3 -m unittest discover -s scripts -p 'sync_baseline_cli_test.py'
+Run:     python3 -m unittest discover -s scripts -p 'bootstrap_cli_test.py'
 Network: none (the baseline is this checkout, a local folder).
 Writes: temporary folders only.
 Credentials: none.
@@ -17,7 +17,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from sync_baseline_cli_test import GIT, KIT, new_repo, py, run  # the shared CLI test helpers
+from sync_test import GIT, KIT, new_repo, py, run  # the shared CLI test helpers
 
 
 def kit_copy(path):
@@ -87,7 +87,7 @@ class BootstrapCli(unittest.TestCase):
         """Prove: a starter run deletes the kit-only files and the script itself."""
         self.assertEqual(self.starter().returncode, 0)
         for gone in ("scripts/bootstrap.sh", "scripts/sync_baseline.py", "scripts/drift.py", "KIT_VERSION", "docs/FILES.md", "docs/tools.md",
-                     "scripts/sync_baseline_cli_test.py", "scripts/bootstrap_cli_test.py", "docs/threat-model.md",
+                     "scripts/sync_test.py", "scripts/bootstrap_cli_test.py", "docs/threat-model.md",
                      "scripts/kit_package.py", "pyproject.toml",
                      "SECURITY.md", ".github/dependabot.yml", ".github/workflows/security.yml"):  # DoD group: key off
             self.assertFalse((self.path / gone).exists(), gone)

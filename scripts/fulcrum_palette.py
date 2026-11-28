@@ -66,7 +66,11 @@ a{color:var(--fm-page-link)}
 .fm-fulcrum{display:flex;align-items:center;gap:8px}
 .fm-fulcrum::before{content:"";flex:none;width:12px;height:10px;background:var(--fm-accent);clip-path:polygon(50% 0,100% 100%,0 100%)}
 /* The primary button: ember with ink text in both themes. */
-.fm-btn{background:var(--fm-accent);color:var(--fm-on-accent);border:1px solid var(--fm-accent);border-radius:6px;min-height:44px;padding:0 16px;font-weight:600}
+.fm-btn{background:var(--fm-accent);color:var(--fm-on-accent);border:1px solid var(--fm-accent);
+  border-radius:6px;min-height:44px;padding:0 16px;font-weight:600}
+/* Elevated card/button surface and bordered progress track (Fulcrum Dark v2.1.1). */
+.fm-raised{background:var(--fm-raised);color:var(--fm-page-fg);border:1px solid var(--fm-page-line);border-radius:8px}
+.fm-track{background:var(--fm-track);border:1px solid var(--fm-control-line);border-radius:4px}
 @media (forced-colors:active){.fm-disc{box-shadow:none;border:1px solid CanvasText}.fm-fulcrum::before,.fm-dots{forced-color-adjust:none}}
 """
 
@@ -286,8 +290,34 @@ def self_test():
     own = run(ROOT, write=False)
     failed += bool(own)
     print(("ok   " if not own else "FAIL ") + "this repo's tokens and CSS pass" + ("" if not own else f": {own}"))
+    failed += _check_v211_wcag(tokens)
     print("FULCRUM TEST PASS" if not failed else "FULCRUM TEST FAIL")
     return 1 if failed else 0
+
+
+def _check_v211_wcag(tokens):
+    """Verify Fulcrum Dark v2.1.1 contrast pairs against WCAG 2.2 thresholds.
+
+    Args:
+        tokens: dictionary of design tokens.
+
+    Returns:
+        Number of failing checks (0 on pass).
+    """
+    dc, dr = palette(tokens), tokens["roles"]["dark"]
+    v211_checks = [
+        ("v2.1.1 dark accent on-accent >= 5.5:1 AA", contrast(dc[dr["accent"]], dc[dr["on-accent"]]), 5.5),
+        ("v2.1.1 dark focus on page >= 7.0:1 AAA", contrast(dc[dr["focus"]], dc[dr["page"]]), 7.0),
+        ("v2.1.1 dark control-line on page >= 4.4:1 AA-UI", contrast(dc[dr["control-line"]], dc[dr["page"]]), 4.4),
+        ("v2.1.1 dark page-fg on raised >= 12.0:1 AAA", contrast(dc[dr["page-fg"]], dc[dr["raised"]]), 12.0),
+        ("v2.1.1 dark control-line on raised >= 3.0:1 AA-UI", contrast(dc[dr["control-line"]], dc[dr["raised"]]), 3.0),
+    ]
+    bad = 0
+    for label, ratio, minimum in v211_checks:
+        ok = ratio >= minimum
+        bad += not ok
+        print(("ok   " if ok else "FAIL ") + f"{label} ({ratio:.2f}:1)")
+    return bad
 
 
 def main():

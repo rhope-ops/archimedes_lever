@@ -43,10 +43,10 @@ Notes:
 | Key | Values | Default | Read by | Example |
 |---|---|---|---|---|
 | `fleet: on` | `on` | off | `scripts/check.sh:369`; `scripts/fleet_harvest.py:56` | `fleet: on` |
-| `dod-security: on\|off` | `on` or `off` | `off` | `scripts/build_site_html.py`, function `dod_security` (see the note below) | `dod-security: on` |
+| `dod-security: on\|off` | `on` or `off` | `off` | `scripts/build_site.py`, function `dod_security` (see the note below) | `dod-security: on` |
 
 Note on `dod-security`: the key is new in the plan `docs/reviews/2026-11-23-fleet-v2-plan.md` (DEC 4). Its one
-reader is `scripts/build_site_html.py:32` (`dod_security`). Two tools use it: a page the kit builds gets a
+reader is `scripts/build_site.py` (`dod_security`). Two tools use it: a page the kit builds gets a
 Content-Security-Policy and a no-referrer meta tag, and `scripts/sync_baseline.py` adds the DoD group
 (`DOD_FILES`: `SECURITY.md`, `.github/dependabot.yml`, `.github/workflows/security.yml`) when the project has no
 copy. A copy that is byte-identical to an earlier kit version is replaced; a copy the project changed is kept, and the
@@ -82,10 +82,10 @@ An unknown `code-` key raises an error: a typo cannot relax a limit.
 | `audit-every-commits` | whole number, 1 or more | 300 | `scripts/bloat_check.py:211` | `audit-every-commits: 500` |
 | `audit-ignore` (many) | glob | none | `scripts/bloat_check.py:107` (`ignored`) | `audit-ignore: ref/**` |
 | `audit-duplicate-ignore` (many) | glob | none | `scripts/bloat_check.py:120` | `audit-duplicate-ignore: docs/templates/**` |
-| `audit-start-read` (many) | path | none | `scripts/bloat_check_rules.py:63` | `audit-start-read: docs/map.md` |
-| `audit-third-party` (many) | glob of a skill folder or agent file | none | `scripts/bloat_check_rules.py:61`, `scripts/bloat_check_rules.py:382` | `audit-third-party: .claude/skills/pack` |
+| `audit-start-read` (many) | path | none | `scripts/bloat_check.py` (`start_read`) | `audit-start-read: docs/map.md` |
+| `audit-third-party` (many) | glob of a skill folder or agent file | none | `scripts/bloat_check.py` (third-party census) | `audit-third-party: .claude/skills/pack` |
 | `audit-instructions` (many) | glob | none | `scripts/check_instructions.py:123`; `scripts/check.sh:375` | `audit-instructions: README.md` |
-| `audit-budget-<name>` | whole number, 0 or more | see the next table | `scripts/bloat_check.py:340`; `scripts/bloat_check_rules.py:372` | `audit-budget-handoff_lines: 30` |
+| `audit-budget-<name>` | whole number, 0 or more | see the next table | `scripts/bloat_check.py` (budgets) | `audit-budget-handoff_lines: 30` |
 
 Budget names and defaults (`scripts/check_settings.py:69`):
 

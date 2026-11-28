@@ -53,8 +53,10 @@ def kinds(text, path="go.md"):
 
 
 STEP_CASES = [  # (step text, findings): "Go on." filler, texts that are no filler, and a 4-action list
-    ("Click **Restore**. Go on.", ["filler"]), ("Click **Restore**. Continue.", ["filler"]), ("Click **A**, click **B**, click **C** and click **D**.", ["actions"]),
-    ("Click **A**. Then go on.", ["filler"]), ("Click **A**, then go on.", ["filler"]), ("Click **A**; go on.", ["filler"]), ("Press **Enter** to continue.", []), ("Do not go on.", []),
+    ("Click **Restore**. Go on.", ["filler"]), ("Click **Restore**. Continue.", ["filler"]),
+    ("Click **A**, click **B**, click **C** and click **D**.", ["actions"]),
+    ("Click **A**. Then go on.", ["filler"]), ("Click **A**, then go on.", ["filler"]), ("Click **A**; go on.", ["filler"]),
+    ("Press **Enter** to continue.", []), ("Do not go on.", []),
     ("Click **A**. Now go on.", ["filler"]), ("Click **Restore**.", []), ("Click **A**. Do not go on until **Done** shows.", []),
     ("If you see **Done**: continue.", []), ("Go on with step 2.", ["pointer"]), ("If you see **Error**, continue.", []), ("Otherwise, continue.", []),
     ("When the window opens, go on.", []), ("Click **A** and go on.", ["filler"]), ("Click **A** then go on.", ["filler"]),

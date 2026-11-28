@@ -31,7 +31,7 @@ import tempfile
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import log_check  # noqa: E402
-from build_site_html import dod_security, page_head, sha256  # noqa: E402
+from build_site import dod_security, page_head, sha256  # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
@@ -75,12 +75,12 @@ def load(label, path, repo):
         (arcs, events), each a list of dicts.
     """
     t = log_check.tables(path.read_text(encoding="utf-8"))
-    arcs = [dict(zip(log_check.ARC_COLS, c)) for _, c in t.get("Arcs", (0, [], []))[2]]
+    arcs = [dict(zip(log_check.ARC_COLS, c, strict=False)) for _, c in t.get("Arcs", (0, [], []))[2]]
     events = []
     for _, c in t["Log"][2]:
         if len(c) != len(log_check.LOG_COLS):
             continue
-        e = dict(zip(["num", "when", "type", "arc", "topic", "raised", "missed", "evidence", "result"], c))
+        e = dict(zip(["num", "when", "type", "arc", "topic", "raised", "missed", "evidence", "result"], c, strict=False))
         m = log_check.WHEN_RE.match(e["when"])
         start = dt.datetime.strptime(f"{m.group(1)} {m.group(2).lstrip('~')}", "%Y-%m-%d %H:%M") if m else None
         e.update(project=label, repo=repo, sort=start.isoformat() if start else "", day=m.group(1) if m else "")
@@ -95,7 +95,10 @@ def link_evidence(text, repo):
     out = html.escape(text)
     if not repo:
         return out
-    link = lambda m: f'<a href="https://github.com/{html.escape(repo)}/commit/{m.group(1)}">{m.group(1)}</a>'
+
+    def link(m):
+        """Return an HTML anchor tag linking to the commit on GitHub."""
+        return f'<a href="https://github.com/{html.escape(repo)}/commit/{m.group(1)}">{m.group(1)}</a>'
     return COMMIT_PHRASE_RE.sub(lambda m: m.group(0).replace(m.group(1), COMMIT_RE.sub(link, m.group(1))), out)
 
 
@@ -216,7 +219,8 @@ def render(title, arcs, events, zones=(), security=None):
     for p in projects:
         out.append(f"<button type='button' data-filter='project' data-value='{e(p)}' aria-pressed='true'>{e(p)}</button>")
     for t in TYPE_ORDER:
-        out.append(f"<button type='button' class='{t}' data-filter='type' data-value='{t}' aria-pressed='true'><span class='type'><span class='mark' aria-hidden='true'></span>{t}</span></button>")
+        out.append(f"<button type='button' class='{t}' data-filter='type' data-value='{t}' aria-pressed='true'>"
+                   f"<span class='type'><span class='mark' aria-hidden='true'></span>{t}</span></button>")
     out.append("<label><span class='meta'>Arc </span><select id='arc'><option value='all'>All arcs</option>")
     for a in arcs:
         out.append(f"<option value='{e(a['project'])}/{e(a['Arc'])}'>{e(a['project'])}: {e(a['Arc'])}</option>")
@@ -349,7 +353,13 @@ def self_test():
     ok = True
     with tempfile.TemporaryDirectory() as d:
         f = pathlib.Path(d, "LOG.md")
-        f.write_text(log_check.GOOD.replace("| T | Owner | - | Commit abc |", "| <script>x</script> | Owner | - | other_repo 59cd968; Commits 1234567, 89abcde |"), encoding="utf-8")
+        f.write_text(
+            log_check.GOOD.replace(
+                "| T | Owner | - | Commit abc |",
+                "| <script>x</script> | Owner | - | other_repo 59cd968; Commits 1234567, 89abcde |",
+            ),
+            encoding="utf-8",
+        )
         page, problems = build([f"Demo={f}@sample-org/demo"], "Test")
         checks = [
             ("renders", page is not None and not problems),

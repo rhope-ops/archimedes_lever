@@ -236,7 +236,7 @@ def self_test():
         ok("relock of an unknown file is refused", relock(root, ["scripts/zzz.py"]) == 1)
         ok("relock accepts the file", relock(root, ["scripts/a.py"]) == 0)
         lines, bad = verify(root)
-        ok("after a relock: passes, and the override is listed", not bad and any(l.startswith("WARN  kit file with a project override") for l in lines))
+        ok("after a relock: passes, and the override is listed", not bad and any(line.startswith("WARN  kit file with a project override") for line in lines))
         ok("a relocked kit part is not locked text", relock(root, [KIT_PART]) == 0 and not verify(root)[1] and not kit_text_locked(root))
         (root / "scripts/a.py").unlink()
         ok("a missing kit file fails", verify(root)[0][0] == "FAIL  kit file missing: scripts/a.py")
