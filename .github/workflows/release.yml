@@ -1,0 +1,65 @@
+name: release
+# Automated Kit Release: verifies KIT_VERSION == tag, runs scripts/check.sh, extracts CHANGELOG.md entry, and creates GitHub Release + tag.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g. v16.0.1)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: release
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Install linters
+        run: pip install ruff==0.17.6 pylint==4.1.4 shellcheck-py==0.9.0.6
+      - name: Verify KIT_VERSION matches tag
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          kit_ver="$(tr -d '[:space:]' < KIT_VERSION)"
+          expected="v${kit_ver}"
+          if [ "$INPUT_TAG" != "$expected" ]; then
+            echo "ERROR: tag '$INPUT_TAG' does not match KIT_VERSION '$expected'"
+            exit 1
+          fi
+      - name: Run full checks
+        run: bash scripts/check.sh
+      - name: Extract CHANGELOG.md entry
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          python3 - <<'PY'
+          import os, pathlib, re
+          ver = os.environ["INPUT_TAG"].lstrip("v")
+          text = pathlib.Path("docs/CHANGELOG.md").read_text(encoding="utf-8")
+          m = re.search(rf"^\|\s*{re.escape(ver)}\s*\|(.+?)\|(.+?)\|\s*$", text, re.M)
+          if not m:
+              raise SystemExit(f"CHANGELOG.md entry for {ver} not found")
+          notes = f"## Kit v{ver}\n\n{m.group(1).strip()}\n\n### Upgrade\n\n{m.group(2).strip()}\n"
+          pathlib.Path("release_notes.md").write_text(notes, encoding="utf-8")
+          PY
+      - name: Create GitHub Release and tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          gh release create "$INPUT_TAG" \
+            --target "$GITHUB_SHA" \
+            --title "Kit $INPUT_TAG" \
+            --notes-file release_notes.md \
+            --latest
